@@ -1,0 +1,5 @@
+build/
+firmware/
+mkespfsimage/*.o
+mkespfsimage/mkespfsimage
+webpages.espfs
