@@ -14,6 +14,8 @@
 #define MAX_HEAD_LEN 1024
 //Max amount of connections
 #define MAX_CONN 8
+//Max post buffer len
+#define MAX_POST 1024
 
 //This gets set at init time.
 static HttpdBuiltInUrl *builtInUrls;
@@ -22,6 +24,9 @@ static HttpdBuiltInUrl *builtInUrls;
 struct HttpdPriv {
 	char head[MAX_HEAD_LEN];
 	int headPos;
+	int postLen;
+	int postPos;
+	char *postBuff;
 };
 
 //Connection pool
@@ -68,6 +73,12 @@ static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
 	return NULL; //WtF?
 }
 
+
+static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
+	if (conn->priv->postBuff) os_free(conn->priv->postBuff);
+	conn->cgi=NULL;
+	conn->conn=NULL;
+}
 
 //Find a specific arg in a string of get- or post-data.
 static char *ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg) {
@@ -123,7 +134,7 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	if (conn->cgi==NULL) { //Marked for destruction?
 		os_printf("Conn %p is done. Closing.\n", conn->conn);
 		espconn_disconnect(conn->conn);
-		conn->conn=NULL;
+		httpdRetireConn(conn);
 		return;
 	}
 
@@ -137,7 +148,7 @@ static void ICACHE_FLASH_ATTR httpdSendResp(HttpdConnData *conn) {
 	int i=0;
 	int r;
 	//See if the url is somewhere in our internal url table.
-	while (builtInUrls[i].url!=NULL) {
+	while (builtInUrls[i].url!=NULL && conn->url!=NULL) {
 		os_printf("%s == %s?\n", builtInUrls[i].url, conn->url);
 		if (os_strcmp(builtInUrls[i].url, conn->url)==0 || builtInUrls[i].url[0]=='*') {
 			os_printf("Is url index %d\n", i);
@@ -159,13 +170,21 @@ static void ICACHE_FLASH_ATTR httpdSendResp(HttpdConnData *conn) {
 }
 
 static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
+	int i;
 	os_printf("Got header %s\n", h);
-	if (os_strncmp(h, "GET ", 4)==0) {
+	if (os_strncmp(h, "GET ", 4)==0 || os_strncmp(h, "POST ", 5)==0) {
 		char *e;
-		conn->url=h+4;
+		
+		//Skip past the space after POST/GET
+		i=0;
+		while (h[i]!=' ') i++;
+		conn->url=h+i+1;
+
+		//Figure out end of url.
 		e=(char*)os_strstr(conn->url, " ");
 		if (e==NULL) return; //wtf?
 		*e=0; //terminate url part
+
 		os_printf("URL = %s\n", conn->url);
 		conn->getArgs=(char*)os_strstr(conn->url, "?");
 		if (conn->getArgs!=0) {
@@ -181,14 +200,39 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		} else {
 			conn->getArgs=NULL;
 		}
+	} else if (os_strncmp(h, "Content-Length: ", 16)==0) {
+		i=0;
+		while (h[i]!=' ') i++;
+		conn->priv->postLen=atoi(h+i+1);
+		if (conn->priv->postLen>MAX_POST) conn->priv->postLen=MAX_POST;
+		os_printf("Mallocced buffer for %d bytes of post data.\n", conn->priv->postLen);
+		conn->priv->postBuff=(char*)os_malloc(conn->priv->postLen)+1;
+		conn->priv->postPos=0;
 	}
 }
 
 static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short len) {
-	int x;
+	int x, l;
 	char *p, *e;
 	HttpdConnData *conn=httpdFindConnData(arg);
 	if (conn==NULL) return;
+
+	os_printf("RECV\n");
+	//Receive post-data if needed
+	if (conn->priv->postLen!=0 && conn->priv->postPos<conn->priv->postLen) {
+		l=conn->priv->postLen-conn->priv->postPos;
+		if (l>len) l=len;
+		for (x=0; x<l; x++) conn->priv->postBuff[conn->priv->postPos++]=data[x];
+		if (conn->priv->postPos>=conn->priv->postLen) {
+			//Received post stuff.
+			conn->priv->postBuff[conn->priv->postPos]=0; //zero-terminate
+			conn->priv->postPos=-1;
+			os_printf("Post data: %s\n", conn->priv->postBuff);
+			//Send the response.
+			httpdSendResp(conn);
+			return;
+		}
+	}
 
 	if (conn->priv->headPos==-1) return; //we don't accept data anymore
 
@@ -208,7 +252,10 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 			httpdParseHeader(p, conn);
 			p=e+2;
 		}
-		httpdSendResp(conn);
+		//If we don't need to receive post data, we can send the response now.
+		if (conn->priv->postLen==0) {
+			httpdSendResp(conn);
+		}
 	}
 }
 
@@ -235,6 +282,7 @@ static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
 			if (connData[i].conn->state==ESPCONN_NONE || connData[i].conn->state==ESPCONN_CLOSE) {
 				connData[i].conn=NULL;
 				if (connData[i].cgi!=NULL) connData[i].cgi(&connData[i]); //flush cgi data
+				httpdRetireConn(&connData[i]);
 				connData[i].cgi=NULL;
 			}
 		}
@@ -257,6 +305,9 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 	}
 	connData[i].conn=conn;
 	connData[i].priv->headPos=0;
+	connData[i].priv->postBuff=NULL;
+	connData[i].priv->postPos=0;
+	connData[i].priv->postLen=0;
 
 	espconn_regist_recvcb(conn, httpdRecvCb);
 	espconn_regist_reconcb(conn, httpdReconCb);
