@@ -4,9 +4,12 @@
 #include "httpd.h"
 #include "io.h"
 #include "httpdespfs.h"
+#include "cgi.h"
 
 HttpdBuiltInUrl builtInUrls[]={
 //	{"/", cgiLiteral, "Lalala etc"},
+	{"/led.cgi", cgiLed, NULL},
+	{"/test.cgi", cgiTest, NULL},
 	{"*", cgiEspFsHook, NULL},
 	{NULL, NULL, NULL}
 };

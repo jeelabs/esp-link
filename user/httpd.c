@@ -24,9 +24,7 @@ static HttpdBuiltInUrl *builtInUrls;
 struct HttpdPriv {
 	char head[MAX_HEAD_LEN];
 	int headPos;
-	int postLen;
 	int postPos;
-	char *postBuff;
 };
 
 //Connection pool
@@ -75,33 +73,62 @@ static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
 
 
 static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
-	if (conn->priv->postBuff!=NULL) os_free(conn->priv->postBuff);
-	conn->priv->postBuff=NULL;
+	if (conn->postBuff!=NULL) os_free(conn->postBuff);
+	conn->postBuff=NULL;
 	conn->cgi=NULL;
 	conn->conn=NULL;
 }
 
-//Find a specific arg in a string of get- or post-data.
-static char *ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg) {
-	char *p;
-	int al;
-	if (line==NULL) return NULL;
+static int httpdHexVal(char c) {
+	if (c>='0' && c<='9') return c-'0';
+	if (c>='A' && c<='F') return c-'A'+10;
+	if (c>='a' && c<='f') return c-'a'+10;
+}
 
-	p=line;
-	al=os_strlen(arg);
-	os_printf("Finding %s in %s\n", arg, line);
-
-	while (p[0]!=0) {
-		if (os_strncmp(p, arg, al)==0 && p[al]=='=') {
-			//Gotcha.
-			return &p[al+1];
+//Decode a percent-encoded value
+int httpdUrlDecode(char *val, int valLen, char *ret, int retLen) {
+	int s=0, d=0;
+	int esced=0, escVal=0;
+	while (s<valLen && d<retLen) {
+		if (esced==1)  {
+			escVal=httpdHexVal(val[s])<<4;
+			esced=2;
+		} else if (esced==2) {
+			escVal+=httpdHexVal(val[s]);
+			ret[d++]=escVal;
+			esced=0;
+		} else if (val[s]=='%') {
+			esced=1;
+		} else if (val[s]=='+') {
+			ret[d++]=' ';
 		} else {
-			//Wrong arg. Advance to start of next arg.
-			p+=os_strlen(p)+1;
+			ret[d++]=val[s];
 		}
+		s++;
+	}
+	if (d<retLen) ret[d]=0;
+}
+
+//Find a specific arg in a string of get- or post-data.
+int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLen) {
+	char *p, *e;
+	int len;
+	if (line==NULL) return 0;
+	p=line;
+	while(p!=NULL && *p!='\n' && *p!='\r' && *p!=0) {
+		os_printf("findArg: %s\n", p);
+		if (os_strncmp(p, arg, os_strlen(arg))==0 && p[strlen(arg)]=='=') {
+			p+=os_strlen(arg)+1; //move p to start of value
+			e=(char*)os_strstr(p, "&");
+			if (e==NULL) e=p+os_strlen(p);
+			os_printf("findArg: val %s len %d\n", p, (e-p));
+			return httpdUrlDecode(p, (e-p), buff, buffLen);
+		}
+		p=(char*)os_strstr(p, "&");
+		if (p!=NULL) p+=1;
 	}
 	os_printf("Finding %s in %s: Not found :/\n", arg, line);
-	return NULL; //not found
+	return 0; //not found
 }
 
 static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266-httpd/0.1\r\nContent-Type: text/plain\r\n\r\nNot Found.\r\n";
@@ -125,6 +152,13 @@ void ICACHE_FLASH_ATTR httpdEndHeaders(HttpdConnData *conn) {
 	espconn_sent(conn->conn, "\r\n", 2);
 }
 
+//ToDo: sprintf->snprintf everywhere
+void ICACHE_FLASH_ATTR httpdRedirect(HttpdConnData *conn, char *newUrl) {
+	char buff[1024];
+	int l;
+	l=os_sprintf(buff, "HTTP/1.1 302 Found\r\nLocation: %s\r\n\r\nMoved to %s\r\n", newUrl, newUrl);
+	espconn_sent(conn->conn, buff, l);
+}
 
 static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	int r;
@@ -192,21 +226,16 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 			*conn->getArgs=0;
 			conn->getArgs++;
 			os_printf("GET args = %s\n", conn->getArgs);
-			l=os_strlen(conn->getArgs);
-			for (x=0; x<l; x++) if (conn->getArgs[x]=='&') conn->getArgs[x]=0;
-			//End with double-zero
-			conn->getArgs[l]=0;
-			conn->getArgs[l+1]=0;
 		} else {
 			conn->getArgs=NULL;
 		}
 	} else if (os_strncmp(h, "Content-Length: ", 16)==0) {
 		i=0;
 		while (h[i]!=' ') i++;
-		conn->priv->postLen=atoi(h+i+1);
-		if (conn->priv->postLen>MAX_POST) conn->priv->postLen=MAX_POST;
-		os_printf("Mallocced buffer for %d bytes of post data.\n", conn->priv->postLen);
-		conn->priv->postBuff=(char*)os_malloc(conn->priv->postLen+1);
+		conn->postLen=atoi(h+i+1);
+		if (conn->postLen>MAX_POST) conn->postLen=MAX_POST;
+		os_printf("Mallocced buffer for %d bytes of post data.\n", conn->postLen);
+		conn->postBuff=(char*)os_malloc(conn->postLen+1);
 		conn->priv->postPos=0;
 	}
 }
@@ -238,19 +267,19 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 					p=e+2;
 				}
 				//If we don't need to receive post data, we can send the response now.
-				if (conn->priv->postLen==0) {
+				if (conn->postLen==0) {
 					httpdSendResp(conn);
 				}
 				conn->priv->headPos=-1; //Indicate we're done with the headers.
 			}
-		} else if (conn->priv->postPos!=-1 && conn->priv->postLen!=0 && conn->priv->postPos <= conn->priv->postLen) {
+		} else if (conn->priv->postPos!=-1 && conn->postLen!=0 && conn->priv->postPos <= conn->postLen) {
 			//This byte is a POST byte.
-			conn->priv->postBuff[conn->priv->postPos++]=data[x];
-			if (conn->priv->postPos>=conn->priv->postLen) {
+			conn->postBuff[conn->priv->postPos++]=data[x];
+			if (conn->priv->postPos>=conn->postLen) {
 				//Received post stuff.
-				conn->priv->postBuff[conn->priv->postPos]=0; //zero-terminate
+				conn->postBuff[conn->priv->postPos]=0; //zero-terminate
 				conn->priv->postPos=-1;
-				os_printf("Post data: %s\n", conn->priv->postBuff);
+				os_printf("Post data: %s\n", conn->postBuff);
 				//Send the response.
 				httpdSendResp(conn);
 				return;
@@ -269,6 +298,7 @@ static void ICACHE_FLASH_ATTR httpdReconCb(void *arg, sint8 err) {
 static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
 #if 0
 	//Stupid esp sdk passes through wrong arg here, namely the one of the *listening* socket.
+	//If it ever gets fixed, be sure to update the code in this snippet; it's probably out-of-date.
 	HttpdConnData *conn=httpdFindConnData(arg);
 	os_printf("Disconnected, conn=%p\n", conn);
 	if (conn==NULL) return;
@@ -304,9 +334,9 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 	}
 	connData[i].conn=conn;
 	connData[i].priv->headPos=0;
-	connData[i].priv->postBuff=NULL;
+	connData[i].postBuff=NULL;
 	connData[i].priv->postPos=0;
-	connData[i].priv->postLen=0;
+	connData[i].postLen=0;
 
 	espconn_regist_recvcb(conn, httpdRecvCb);
 	espconn_regist_reconcb(conn, httpdReconCb);
