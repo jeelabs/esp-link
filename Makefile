@@ -134,6 +134,15 @@ flash: firmware/0x00000.bin firmware/0x40000.bin
 	sleep 3
 	-$(ESPTOOL) --port $(ESPPORT) write_flash 0x40000 firmware/0x40000.bin
 
+webpages.espfs: html/ mkespfsimage/mkespfsimage
+	cd html; find | ../mkespfsimage/mkespfsimage  > ../webpages.espfs; cd ..
+
+mkespfsimage/mkespfsimage: mkespfsimage/
+	make -C mkespfsimage
+
+htmlflash: webpages.espfs
+	-$(ESPTOOL) --port $(ESPPORT) write_flash 0x20000 webpages.espfs
+
 clean:
 	$(Q) rm -f $(APP_AR)
 	$(Q) rm -f $(TARGET_OUT)

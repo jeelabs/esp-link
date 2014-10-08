@@ -8,18 +8,34 @@
 #include "espconn.h"
 #include "httpd.h"
 #include "io.h"
+#include "espfs.h"
 
 #define MAX_HEAD_LEN 1024
 
-int cgiSet(struct espconn *conn);
-
-typedef int (* cgiSendCallback)(struct espconn *conn);
+//struct UrlData;
+typedef struct UrlData UrlData;
 
 typedef struct {
+	char *url;
+	char *getArgs;
+	const UrlData *effUrl;
+	char *datPtr;
+	int datLen;
+	EspFsFile *file;
+} GetData;
+
+typedef int (* cgiSendCallback)(struct espconn *conn, GetData *getData);
+
+struct UrlData {
 	const char *url;
 	const char *fixedResp;
 	cgiSendCallback cgiCb;
-} UrlData;
+};
+
+int cgiSet(struct espconn *conn, GetData *getData);
+int cgiGetFlash(struct espconn *conn, GetData *getData);
+static int cgiSendFile(struct espconn *conn, GetData *getData);
+
 
 const char htmlIndex[]="<html><head><title>Hello World</title></head> \
 <body><h1>Hello, World!</h1></body> \
@@ -29,20 +45,17 @@ const char htmlIndex[]="<html><head><title>Hello World</title></head> \
 static const UrlData urls[]={
 	{"/", htmlIndex, NULL},
 	{"/set", NULL, cgiSet},
+	{"/flash.bin", NULL, cgiGetFlash},
 	{NULL, NULL, NULL},
 };
+
+static const UrlData cpioUrlData={"*", NULL, cgiSendFile};
 
 static struct espconn conn;
 static esp_tcp tcp;
 
 static int recLen;
 static char recBuff[MAX_HEAD_LEN];
-
-typedef struct {
-	char *url;
-	char *getArgs;
-	const UrlData *effUrl;
-} GetData;
 
 static GetData getData;
 
@@ -70,18 +83,35 @@ static char *ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg) {
 }
 
 //ToDo: Move cgi functions to somewhere else
-int cgiSet(struct espconn *conn) {
+int ICACHE_FLASH_ATTR cgiSet(struct espconn *conn, GetData *getData) {
 	char *on;
 	static const char okStr[]="<html><head><title>OK</title></head><body><p>OK</p></body></html>";
-	on=httpdFindArg(getData.getArgs, "led");
+	on=httpdFindArg(getData->getArgs, "led");
 	os_printf("cgiSet: on=%s\n", on?on:"not found");
 	if (on!=NULL) ioLed(atoi(on));
 	espconn_sent(conn, (uint8 *)okStr, os_strlen(okStr));
 	return 1;
 }
 
+int ICACHE_FLASH_ATTR cgiGetFlash(struct espconn *conn, GetData *getData) {
+	static char *p=(char *)0x40200000;
+	static int t=0;
+	espconn_sent(conn, (uint8 *)p, 1024);
+	p+=1024;
+	t++;
+	if (t<1024) return 0;
+	t=0;
+	p=(char*)0x40200000;
+	return 1;
+}
 
-
+static int ICACHE_FLASH_ATTR cgiSendFile(struct espconn *conn, GetData *getData) {
+	int len;
+	char buff[1024];
+	len=espFsRead(getData->file, buff, 1024);
+	espconn_sent(conn, (uint8 *)buff, len);
+	return (len==0);
+}
 
 static const char *httpOkHeader="HTTP/1.0 200 OK\r\nServer: esp8266-thingie/0.1\r\nContent-Type: text/html\r\n\r\n";
 static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266-thingie/0.1\r\n\r\nNot Found.\r\n";
@@ -94,7 +124,7 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	}
 
 	if (getData.effUrl->cgiCb!=NULL) {
-		if (getData.effUrl->cgiCb(conn)) getData.effUrl=NULL;
+		if (getData.effUrl->cgiCb(conn, &getData)) getData.effUrl=NULL;
 	} else {
 		espconn_sent(conn, (uint8 *)getData.effUrl->fixedResp, os_strlen(getData.effUrl->fixedResp));
 		getData.effUrl=NULL;
@@ -103,6 +133,8 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 
 static void ICACHE_FLASH_ATTR httpdSendResp(struct espconn *conn) {
 	int i=0;
+	EspFsFile *fdat;
+	//See if the url is somewhere in our internal url table.
 	while (urls[i].url!=NULL) {
 		if (os_strcmp(urls[i].url, getData.url)==0) {
 			getData.effUrl=&urls[i];
@@ -112,6 +144,16 @@ static void ICACHE_FLASH_ATTR httpdSendResp(struct espconn *conn) {
 		}
 		i++;
 	}
+	//Nope. See if it's in the cpio archive
+	fdat=espFsOpen(getData.url);
+	if (fdat!=NULL) {
+		//Found
+		getData.file=fdat;
+		getData.effUrl=&cpioUrlData;
+		espconn_sent(conn, (uint8 *)httpOkHeader, os_strlen(httpOkHeader));
+		return;
+	}
+
 	//Can't find :/
 	espconn_sent(conn, (uint8 *)httpNotFoundHeader, os_strlen(httpNotFoundHeader));
 }
