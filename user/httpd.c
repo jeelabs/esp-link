@@ -75,7 +75,8 @@ static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
 
 
 static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
-	if (conn->priv->postBuff) os_free(conn->priv->postBuff);
+	if (conn->priv->postBuff!=NULL) os_free(conn->priv->postBuff);
+	conn->priv->postBuff=NULL;
 	conn->cgi=NULL;
 	conn->conn=NULL;
 }
@@ -103,13 +104,12 @@ static char *ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg) {
 	return NULL; //not found
 }
 
-static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266-thingie/0.1\r\n\r\nNot Found.\r\n";
+static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266-httpd/0.1\r\nContent-Type: text/plain\r\n\r\nNot Found.\r\n";
 
 void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code) {
 	char buff[128];
 	int l;
-	//ToDo: Change 'OK' according to code
-	l=os_sprintf(buff, "HTTP/1.0 %d OK\r\nServer: esp8266-thingie/0.1\r\n", code);
+	l=os_sprintf(buff, "HTTP/1.0 %d OK\r\nServer: esp8266-httpd/0.1\r\n", code);
 	espconn_sent(conn->conn, buff, l);
 }
 
@@ -157,14 +157,14 @@ static void ICACHE_FLASH_ATTR httpdSendResp(HttpdConnData *conn) {
 			conn->cgiArg=builtInUrls[i].cgiArg;
 			r=conn->cgi(conn);
 			if (r!=HTTPD_CGI_NOTFOUND) {
-				if (r==HTTPD_CGI_DONE) conn->cgi=NULL;  //Shouldn't happen; we haven't had a chance to send the headers yet
+				if (r==HTTPD_CGI_DONE) conn->cgi=NULL;  //If cgi finishes immediately: mark conn for destruction.
 				return;
 			}
 		}
 		i++;
 	}
-	os_printf("%s not found. 404!\n", conn->url);
 	//Can't find :/
+	os_printf("%s not found. 404!\n", conn->url);
 	espconn_sent(conn->conn, (uint8 *)httpNotFoundHeader, os_strlen(httpNotFoundHeader));
 	conn->cgi=NULL; //mark for destruction
 }
@@ -206,7 +206,7 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		conn->priv->postLen=atoi(h+i+1);
 		if (conn->priv->postLen>MAX_POST) conn->priv->postLen=MAX_POST;
 		os_printf("Mallocced buffer for %d bytes of post data.\n", conn->priv->postLen);
-		conn->priv->postBuff=(char*)os_malloc(conn->priv->postLen)+1;
+		conn->priv->postBuff=(char*)os_malloc(conn->priv->postLen+1);
 		conn->priv->postPos=0;
 	}
 }
@@ -217,44 +217,44 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 	HttpdConnData *conn=httpdFindConnData(arg);
 	if (conn==NULL) return;
 
-	os_printf("RECV\n");
-	//Receive post-data if needed
-	if (conn->priv->postLen!=0 && conn->priv->postPos<conn->priv->postLen) {
-		l=conn->priv->postLen-conn->priv->postPos;
-		if (l>len) l=len;
-		for (x=0; x<l; x++) conn->priv->postBuff[conn->priv->postPos++]=data[x];
-		if (conn->priv->postPos>=conn->priv->postLen) {
-			//Received post stuff.
-			conn->priv->postBuff[conn->priv->postPos]=0; //zero-terminate
-			conn->priv->postPos=-1;
-			os_printf("Post data: %s\n", conn->priv->postBuff);
-			//Send the response.
-			httpdSendResp(conn);
-			return;
-		}
-	}
 
-	if (conn->priv->headPos==-1) return; //we don't accept data anymore
+	for (x=0; x<len; x++) {
 
-	for (x=0; x<len && conn->priv->headPos!=MAX_HEAD_LEN; x++) conn->priv->head[conn->priv->headPos++]=data[x];
-	conn->priv->head[conn->priv->headPos]=0;
-
-	//Scan for /r/n/r/n
-	if ((char *)os_strstr(conn->priv->head, "\r\n\r\n")!=NULL) {
-		//Reset url data
-		conn->url=NULL;
-		//Find end of next header line
-		p=conn->priv->head;
-		while(p<(&conn->priv->head[conn->priv->headPos-4])) {
-			e=(char *)os_strstr(p, "\r\n");
-			if (e==NULL) break;
-			e[0]=0;
-			httpdParseHeader(p, conn);
-			p=e+2;
-		}
-		//If we don't need to receive post data, we can send the response now.
-		if (conn->priv->postLen==0) {
-			httpdSendResp(conn);
+		if (conn->priv->headPos!=-1) {
+			//This byte is a header byte.
+			if (conn->priv->headPos!=MAX_HEAD_LEN) conn->priv->head[conn->priv->headPos++]=data[x];
+			conn->priv->head[conn->priv->headPos]=0;
+			//Scan for /r/n/r/n
+			if (data[x]=='\n' && (char *)os_strstr(conn->priv->head, "\r\n\r\n")!=NULL) {
+				//Reset url data
+				conn->url=NULL;
+				//Find end of next header line
+				p=conn->priv->head;
+				while(p<(&conn->priv->head[conn->priv->headPos-4])) {
+					e=(char *)os_strstr(p, "\r\n");
+					if (e==NULL) break;
+					e[0]=0;
+					httpdParseHeader(p, conn);
+					p=e+2;
+				}
+				//If we don't need to receive post data, we can send the response now.
+				if (conn->priv->postLen==0) {
+					httpdSendResp(conn);
+				}
+				conn->priv->headPos=-1; //Indicate we're done with the headers.
+			}
+		} else if (conn->priv->postPos!=-1 && conn->priv->postLen!=0 && conn->priv->postPos <= conn->priv->postLen) {
+			//This byte is a POST byte.
+			conn->priv->postBuff[conn->priv->postPos++]=data[x];
+			if (conn->priv->postPos>=conn->priv->postLen) {
+				//Received post stuff.
+				conn->priv->postBuff[conn->priv->postPos]=0; //zero-terminate
+				conn->priv->postPos=-1;
+				os_printf("Post data: %s\n", conn->priv->postBuff);
+				//Send the response.
+				httpdSendResp(conn);
+				return;
+			}
 		}
 	}
 }
@@ -275,7 +275,7 @@ static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
 	conn->conn=NULL;
 	if (conn->cgi!=NULL) conn->cgi(conn); //flush cgi data
 #endif
-	//Just look at all the sockets and kill slot if needed.
+	//Just look at all the sockets and kill the slot if needed.
 	int i;
 	for (i=0; i<MAX_CONN; i++) {
 		if (connData[i].conn!=NULL) {
@@ -283,7 +283,6 @@ static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
 				connData[i].conn=NULL;
 				if (connData[i].cgi!=NULL) connData[i].cgi(&connData[i]); //flush cgi data
 				httpdRetireConn(&connData[i]);
-				connData[i].cgi=NULL;
 			}
 		}
 	}
