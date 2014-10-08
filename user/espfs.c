@@ -1,3 +1,9 @@
+/*
+This is a simple read-only implementation of a file system. It uses a block of data coming from the
+mkespfsimg tool, and can use that block to do abstracted operations on the files that are in there.
+It's written for use with httpd, but doesn't need to be used as such.
+*/
+
 #include "driver/uart.h"
 #include "c_types.h"
 #include "user_interface.h"
@@ -33,7 +39,7 @@ a memory exception, crashing the program.
 
 //Copies len bytes over from dst to src, but does it using *only*
 //aligned 32-bit reads.
-void memcpyAligned(char *dst, char *src, int len) {
+void ICACHE_FLASH_ATTR memcpyAligned(char *dst, char *src, int len) {
 	int x;
 	int w, b;
 	for (x=0; x<len; x++) {
@@ -49,7 +55,7 @@ void memcpyAligned(char *dst, char *src, int len) {
 
 
 
-EspFsFile *espFsOpen(char *fileName) {
+EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 	char *p=(char *)(ESPFS_POS+0x40200000);
 	char *hpos;
 	char namebuf[256];
@@ -90,7 +96,7 @@ EspFsFile *espFsOpen(char *fileName) {
 }
 
 
-int espFsRead(EspFsFile *fh, char *buff, int len) {
+int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 	if (fh==NULL) return 0;
 	if (fh->decompressor==COMPRESS_NONE) {
 		int toRead;
@@ -105,7 +111,7 @@ int espFsRead(EspFsFile *fh, char *buff, int len) {
 	}
 }
 
-void espFsClose(EspFsFile *fh) {
+void ICACHE_FLASH_ATTR espFsClose(EspFsFile *fh) {
 	if (fh==NULL) return;
 	os_free(fh);
 }
