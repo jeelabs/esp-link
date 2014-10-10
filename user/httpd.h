@@ -36,6 +36,7 @@ typedef struct {
 	const void *cgiArg;
 } HttpdBuiltInUrl;
 
+int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData);
 void ICACHE_FLASH_ATTR httpdRedirect(HttpdConnData *conn, char *newUrl);
 int httpdUrlDecode(char *val, int valLen, char *ret, int retLen);
 int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLen);

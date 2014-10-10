@@ -110,6 +110,7 @@ int httpdUrlDecode(char *val, int valLen, char *ret, int retLen) {
 }
 
 //Find a specific arg in a string of get- or post-data.
+//Returns len of arg or -1 if not found.
 int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLen) {
 	char *p, *e;
 	int len;
@@ -128,7 +129,7 @@ int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLe
 		if (p!=NULL) p+=1;
 	}
 	os_printf("Finding %s in %s: Not found :/\n", arg, line);
-	return 0; //not found
+	return -1; //not found
 }
 
 static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266-httpd/0.1\r\nContent-Type: text/plain\r\n\r\nNot Found.\r\n";
@@ -159,6 +160,20 @@ void ICACHE_FLASH_ATTR httpdRedirect(HttpdConnData *conn, char *newUrl) {
 	l=os_sprintf(buff, "HTTP/1.1 302 Found\r\nLocation: %s\r\n\r\nMoved to %s\r\n", newUrl, newUrl);
 	espconn_sent(conn->conn, buff, l);
 }
+
+int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData) {
+	int len;
+	char buff[1024];
+	
+	if (connData->conn==NULL) {
+		//Connection aborted. Clean up.
+		return HTTPD_CGI_DONE;
+	}
+
+	httpdRedirect(connData, (char*)connData->cgiArg);
+	return HTTPD_CGI_DONE;
+}
+
 
 static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	int r;
