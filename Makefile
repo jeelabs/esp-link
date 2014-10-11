@@ -22,7 +22,7 @@ ESPTOOL		?= esptool.py
 ESPPORT		?= /dev/ttyUSB0
 
 # name for the target project
-TARGET		= ting
+TARGET		= httpd
 
 # which modules (subdirectories) of the project to include in compiling
 MODULES		= driver user
@@ -141,7 +141,8 @@ mkespfsimage/mkespfsimage: mkespfsimage/
 	make -C mkespfsimage
 
 htmlflash: webpages.espfs
-	-$(ESPTOOL) --port $(ESPPORT) write_flash 0x20000 webpages.espfs
+	if [ $$(stat -c '%s' webpages.espfs) -gt $$(( 0x30000 )) ]; then echo "webpages.espfs too big!"; false; fi
+	-$(ESPTOOL) --port $(ESPPORT) write_flash 0x10000 webpages.espfs
 
 clean:
 	$(Q) rm -f $(APP_AR)

@@ -1,4 +1,5 @@
 
+CFLAGS=-I../lib/heatshrink -std=gnu99
 
-mkespfsimage: main.o
-	$(CC) -o mkespfsimage $<
+mkespfsimage: main.o heatshrink_encoder.o
+	$(CC) -o $@ $^

@@ -17,7 +17,7 @@ with the FLAG_LASTFILE flag set.
 
 #define FLAG_LASTFILE (1<<0)
 #define COMPRESS_NONE 0
-#define COMPRESS_LZF 1
+#define COMPRESS_HEATSHRINK 1
 
 typedef struct {
 	int32_t magic;
