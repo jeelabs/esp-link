@@ -36,6 +36,9 @@ extern char* espFsData;
 #include "heatshrink_decoder.h"
 #endif
 
+
+
+
 struct EspFsFile {
 	EspFsHeader *header;
 	char decompressor;
@@ -46,7 +49,8 @@ struct EspFsFile {
 };
 
 /*
-Available locations, at least in my flash, with boundaries partially guessed:
+Available locations, at least in my flash, with boundaries partially guessed. This
+is using 0.9.1 SDK on a not-too-new module.
 0x00000 (0x10000): Code/data (RAM data?)
 0x10000 (0x02000): Gets erased by something?
 0x12000 (0x2E000): Free (filled with zeroes) (parts used by ESPCloud and maybe SSL)
@@ -62,7 +66,7 @@ a memory exception, crashing the program.
 
 
 //Copies len bytes over from dst to src, but does it using *only*
-//aligned 32-bit reads.
+//aligned 32-bit reads. Yes, it's no too optimized but it's short and sweet and it works.
 void ICACHE_FLASH_ATTR memcpyAligned(char *dst, char *src, int len) {
 	int x;
 	int w, b;
@@ -120,12 +124,14 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 #ifdef EFS_HEATSHRINK
 			} else if (h.compression==COMPRESS_HEATSHRINK) {
 				char parm;
+				heatshrink_decoder *dec;
 				//Decoder params are stored in 1st byte.
 				memcpyAligned(&parm, r->posComp, 1);
 				r->posComp++;
 				os_printf("Heatshrink compressed file; decode parms = %x\n", parm);
-				r->decompData=(heatshrink_decoder *)heatshrink_decoder_alloc(16, (parm>>4)&0xf, parm&0xf);
-				os_printf("Decompressor allocated.\n");
+				dec=heatshrink_decoder_alloc(16, (parm>>4)&0xf, parm&0xf);
+				heatshrink_decoder_reset(dec);
+				r->decompData=dec;
 #endif
 			} else {
 				os_printf("Invalid compression: %d\n", h.compression);
@@ -160,28 +166,21 @@ int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 		int decoded=0;
 		int elen, rlen, r;
 		char ebuff[16];
-		os_printf("heatshrink: reading\n");
 		heatshrink_decoder *dec=(heatshrink_decoder *)fh->decompData;
 		while(decoded<len) {
 			//Feed data into the decompressor
 			elen=flen-(fh->posComp - fh->posStart);
 			if (elen==0) return decoded; //file is read
 			if (elen>0) {
-				os_printf("heatshrink: feeding decoder (%d comp bytes left)\n", elen);
 				memcpyAligned(ebuff, fh->posComp, 16);
-				for (r=0; r<16; r++) os_printf("%02hhx ", ebuff[r]);
-				os_printf("\n");
 				r=heatshrink_decoder_sink(dec, ebuff, (elen>16)?16:elen, &rlen);
-				os_printf("heatshrink: decoder ate %d bytes (code %d)\n", rlen, r);
 				fh->posComp+=rlen;
 				if (rlen==elen) {
-					os_printf("heatshrink: finish\n");
 					heatshrink_decoder_finish(dec);
 				}
 			}
 			//Grab decompressed data and put into buff
 			r=heatshrink_decoder_poll(dec, buff, len-decoded, &rlen);
-			os_printf("heatshrink: decoder emitted %d bytes (code %d)\n", rlen, r);
 			fh->posDecomp+=rlen;
 			buff+=rlen;
 			decoded+=rlen;
