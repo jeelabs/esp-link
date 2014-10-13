@@ -26,6 +26,6 @@ typedef struct {
 	int16_t nameLen;
 	int32_t fileLenComp;
 	int32_t fileLenDecomp;
-} EspFsHeader;
+} __attribute__((packed)) EspFsHeader;
 
 #endif

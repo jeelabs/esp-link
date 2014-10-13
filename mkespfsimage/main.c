@@ -37,11 +37,11 @@ size_t compressHeatshrink(char *in, int insize, char *out, int outsize, int leve
 	char *inp=in;
 	char *outp=out;
 	int len;
-	int ws[]={13, 11, 8, 6, 5};
-	int ls[]={4, 4, 4, 3, 3};
+	int ws[]={5, 6, 8, 11, 13};
+	int ls[]={3, 3, 4, 4, 4};
 	HSE_poll_res pres;
 	HSE_sink_res sres;
-	size_t r=0;
+	size_t r;
 	if (level==-1) level=8;
 	level=(level-1)/2; //level is now 0, 1, 2, 3, 4
 	heatshrink_encoder *enc=heatshrink_encoder_alloc(ws[level], ls[level]);
@@ -49,6 +49,11 @@ size_t compressHeatshrink(char *in, int insize, char *out, int outsize, int leve
 		perror("allocating mem for heatshrink");
 		exit(1);
 	}
+	//Save encoder parms as first byte
+	*outp=(ws[level]<<4)|ls[level];
+	outp++; outsize--;
+
+	r=1;
 	do {
 		if (insize>0) {
 			sres=heatshrink_encoder_sink(enc, inp, insize, &len);
@@ -98,6 +103,7 @@ int handleFile(int f, char *name, int compression, int level) {
 
 	if (csize>size) {
 		//Compressing enbiggened this file. Revert to uncompressed store.
+		compression=COMPRESS_NONE;
 		csize=size;
 		cdat=fdat;
 	}
@@ -116,9 +122,9 @@ int handleFile(int f, char *name, int compression, int level) {
 	write(1, name, nameLen); //ToDo: this can eat up a few bytes after the buffer.
 	write(1, cdat, csize);
 	//Pad out to 32bit boundary
-	while (size&3) {
+	while (csize&3) {
 		write(1, "\000", 1);
-		size++;
+		csize++;
 	}
 	munmap(fdat, size);
 	return (csize*100)/size;
