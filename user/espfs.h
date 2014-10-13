@@ -1,8 +1,6 @@
 #ifndef ESPFS_H
 #define ESPFS_H
 
-//Pos of esp fs in flash
-#define ESPFS_POS 0x20000
 
 
 typedef struct EspFsFile EspFsFile;
