@@ -26,13 +26,16 @@ TARGET		= httpd
 
 # which modules (subdirectories) of the project to include in compiling
 MODULES		= driver user
-EXTRA_INCDIR	= include ../../esp_iot_sdk_novm_unpacked/usr/xtensa/XtDevTools/install/builds/RC-2010.1-win32/lx106/xtensa-elf/include/
+EXTRA_INCDIR	= include \
+		. \
+		lib/heatshrink/ \
+		./../esp_iot_sdk_novm_unpacked/usr/xtensa/XtDevTools/install/builds/RC-2010.1-win32/lx106/xtensa-elf/include/
 
 # libraries used in this project, mainly provided by the SDK
 LIBS		= c gcc hal phy net80211 lwip wpa main
 
 # compiler flags using during compilation of source files
-CFLAGS		= -Os -ggdb -Wpointer-arith -Wundef -Werror -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH
+CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH
 
 # linker flags used to generate the main object file
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static
@@ -105,11 +108,11 @@ endef
 
 all: checkdirs $(TARGET_OUT) $(FW_FILE_1) $(FW_FILE_2)
 
-$(FW_FILE_1): $(TARGET_OUT)
+$(FW_FILE_1): $(TARGET_OUT) firmware
 	$(vecho) "FW $@"
 	$(Q) $(FW_TOOL) -eo $(TARGET_OUT) $(FW_FILE_1_ARGS)
 
-$(FW_FILE_2): $(TARGET_OUT)
+$(FW_FILE_2): $(TARGET_OUT) firmware
 	$(vecho) "FW $@"
 	$(Q) $(FW_TOOL) -eo $(TARGET_OUT) $(FW_FILE_2_ARGS)
 
@@ -129,7 +132,7 @@ $(BUILD_DIR):
 firmware:
 	$(Q) mkdir -p $@
 
-flash: firmware/0x00000.bin firmware/0x40000.bin
+flash: $(FW_FILE_1) $(FW_FILE_2)
 	-$(ESPTOOL) --port $(ESPPORT) write_flash 0x00000 firmware/0x00000.bin
 	sleep 3
 	-$(ESPTOOL) --port $(ESPPORT) write_flash 0x40000 firmware/0x40000.bin
@@ -141,14 +144,13 @@ mkespfsimage/mkespfsimage: mkespfsimage/
 	make -C mkespfsimage
 
 htmlflash: webpages.espfs
-	if [ $$(stat -c '%s' webpages.espfs) -gt $$(( 0x30000 )) ]; then echo "webpages.espfs too big!"; false; fi
-	-$(ESPTOOL) --port $(ESPPORT) write_flash 0x10000 webpages.espfs
+	if [ $$(stat -c '%s' webpages.espfs) -gt $$(( 0x2E000 )) ]; then echo "webpages.espfs too big!"; false; fi
+	-$(ESPTOOL) --port $(ESPPORT) write_flash 0x12000 webpages.espfs
 
 clean:
 	$(Q) rm -f $(APP_AR)
 	$(Q) rm -f $(TARGET_OUT)
-	$(Q) rm -rf $(BUILD_DIR)
-	$(Q) rm -rf $(BUILD_BASE)
+	$(Q) find $(BUILD_BASE) -type f | xargs rm -f
 
 
 	$(Q) rm -f $(FW_FILE_1)
