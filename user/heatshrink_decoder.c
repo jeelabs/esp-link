@@ -8,6 +8,7 @@
 #define _STDDEF_H
 #define _STDINT_H
 
+#include "espmissingincludes.h"
 #include "c_types.h"
 #include "mem.h"
 #include "osapi.h"

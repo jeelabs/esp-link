@@ -2,6 +2,7 @@
 Connector to let httpd use the espfs filesystem to serve the files in that.
 */
 
+#include "espmissingincludes.h"
 #include <string.h>
 #include <osapi.h>
 #include "c_types.h"
@@ -58,14 +59,13 @@ typedef struct {
 	int tokenPos;
 } TplData;
 
-typedef int (* TplCallback)(HttpdConnData *connData, char *token, void **arg);
+typedef void (* TplCallback)(HttpdConnData *connData, char *token, void **arg);
 
 int ICACHE_FLASH_ATTR cgiEspFsTemplate(HttpdConnData *connData) {
 	TplData *tpd=connData->cgiData;
 	int len;
-	int x, sp;
-	char *p, *e;
-	int sentTo;
+	int x, sp=0;
+	char *e=NULL;
 	char buff[1025];
 
 	if (connData->conn==NULL) {

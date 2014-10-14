@@ -12,6 +12,7 @@ It's written for use with httpd, but doesn't need to be used as such.
 #include "espconn.h"
 #include "mem.h"
 #include "osapi.h"
+#include "espmissingincludes.h"
 #else
 //Test build
 #include <stdio.h>
@@ -109,7 +110,8 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 		}
 		p+=sizeof(EspFsHeader);
 		os_memcpy(namebuf, p, sizeof(namebuf));
-		os_printf("Found file '%s'. Namelen=%x fileLenComp=%x, compr=%d flags=%d\n", namebuf, h.nameLen,h.fileLenComp,h.compression,h.flags);
+		os_printf("Found file '%s'. Namelen=%x fileLenComp=%x, compr=%d flags=%d\n", 
+				namebuf, (unsigned int)h.nameLen, (unsigned int)h.fileLenComp, h.compression, h.flags);
 		if (os_strcmp(namebuf, fileName)==0) {
 			p+=h.nameLen;
 			r=(EspFsFile *)os_malloc(sizeof(EspFsFile));
@@ -155,7 +157,7 @@ int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 		int toRead;
 		toRead=flen-(fh->posComp-fh->posStart);
 		if (len>toRead) len=toRead;
-		os_printf("Reading %d bytes from %x\n", len, fh->posComp);
+		os_printf("Reading %d bytes from %x\n", len, (unsigned int)fh->posComp);
 		memcpyAligned(buff, fh->posComp, len);
 		fh->posDecomp+=len;
 		fh->posComp+=len;
@@ -164,23 +166,24 @@ int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 #ifdef EFS_HEATSHRINK
 	} else if (fh->decompressor==COMPRESS_HEATSHRINK) {
 		int decoded=0;
-		int elen, rlen, r;
+		unsigned int elen, rlen;
 		char ebuff[16];
 		heatshrink_decoder *dec=(heatshrink_decoder *)fh->decompData;
 		while(decoded<len) {
 			//Feed data into the decompressor
+			//ToDo: Check ret val of heatshrink fns for errors
 			elen=flen-(fh->posComp - fh->posStart);
 			if (elen==0) return decoded; //file is read
 			if (elen>0) {
 				memcpyAligned(ebuff, fh->posComp, 16);
-				r=heatshrink_decoder_sink(dec, ebuff, (elen>16)?16:elen, &rlen);
+				heatshrink_decoder_sink(dec, (uint8_t *)ebuff, (elen>16)?16:elen, &rlen);
 				fh->posComp+=rlen;
 				if (rlen==elen) {
 					heatshrink_decoder_finish(dec);
 				}
 			}
 			//Grab decompressed data and put into buff
-			r=heatshrink_decoder_poll(dec, buff, len-decoded, &rlen);
+			heatshrink_decoder_poll(dec, (uint8_t *)buff, len-decoded, &rlen);
 			fh->posDecomp+=rlen;
 			buff+=rlen;
 			decoded+=rlen;

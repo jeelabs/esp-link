@@ -1,3 +1,4 @@
+#include "espmissingincludes.h"
 #include "ets_sys.h"
 #include "driver/uart.h"
 #include "osapi.h"
@@ -7,9 +8,16 @@
 #include "cgi.h"
 
 HttpdBuiltInUrl builtInUrls[]={
-//	{"/", cgiLiteral, "Lalala etc"},
+	{"/", cgiRedirect, "/test2.html"},
+	{"/flash.bin", cgiReadFlash, NULL},
 	{"/led.cgi", cgiLed, NULL},
-	{"/test.cgi", cgiTest, NULL},
+
+	{"/wifi", cgiRedirect, "/wifi/wifi.tpl"},
+	{"/wifi/", cgiRedirect, "/wifi/wifi.tpl"},
+	{"/wifi/wifiscan.cgi", cgiWiFiScan, NULL},
+	{"/wifi/wifi.tpl", cgiEspFsTemplate, tplWlan},
+	{"/wifi/connect.cgi", cgiWiFiConnect},
+
 	{"*", cgiEspFsHook, NULL},
 	{NULL, NULL, NULL}
 };

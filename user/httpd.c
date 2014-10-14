@@ -1,3 +1,4 @@
+#include "espmissingincludes.h"
 #include "driver/uart.h"
 #include "c_types.h"
 #include "user_interface.h"
@@ -43,6 +44,7 @@ typedef struct {
 static const MimeMap mimeTypes[]={
 	{"htm", "text/htm"},
 	{"html", "text/html"},
+	{"js", "text/javascript"},
 	{"txt", "text/plain"},
 	{"jpg", "image/jpeg"},
 	{"jpeg", "image/jpeg"},
@@ -83,6 +85,7 @@ static int httpdHexVal(char c) {
 	if (c>='0' && c<='9') return c-'0';
 	if (c>='A' && c<='F') return c-'A'+10;
 	if (c>='a' && c<='f') return c-'a'+10;
+	return 0;
 }
 
 //Decode a percent-encoded value
@@ -107,13 +110,13 @@ int httpdUrlDecode(char *val, int valLen, char *ret, int retLen) {
 		s++;
 	}
 	if (d<retLen) ret[d]=0;
+	return d;
 }
 
 //Find a specific arg in a string of get- or post-data.
 //Returns len of arg or -1 if not found.
 int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLen) {
 	char *p, *e;
-	int len;
 	if (line==NULL) return 0;
 	p=line;
 	while(p!=NULL && *p!='\n' && *p!='\r' && *p!=0) {
@@ -138,7 +141,7 @@ void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code) {
 	char buff[128];
 	int l;
 	l=os_sprintf(buff, "HTTP/1.0 %d OK\r\nServer: esp8266-httpd/0.1\r\n", code);
-	espconn_sent(conn->conn, buff, l);
+	espconn_sent(conn->conn, (uint8 *)buff, l);
 }
 
 
@@ -146,11 +149,11 @@ void ICACHE_FLASH_ATTR httpdHeader(HttpdConnData *conn, const char *field, const
 	char buff[256];
 	int l;
 	l=os_sprintf(buff, "%s: %s\r\n", field, val);
-	espconn_sent(conn->conn, buff, l);
+	espconn_sent(conn->conn, (uint8 *)buff, l);
 }
 
 void ICACHE_FLASH_ATTR httpdEndHeaders(HttpdConnData *conn) {
-	espconn_sent(conn->conn, "\r\n", 2);
+	espconn_sent(conn->conn, (uint8 *)"\r\n", 2);
 }
 
 //ToDo: sprintf->snprintf everywhere
@@ -158,13 +161,10 @@ void ICACHE_FLASH_ATTR httpdRedirect(HttpdConnData *conn, char *newUrl) {
 	char buff[1024];
 	int l;
 	l=os_sprintf(buff, "HTTP/1.1 302 Found\r\nLocation: %s\r\n\r\nMoved to %s\r\n", newUrl, newUrl);
-	espconn_sent(conn->conn, buff, l);
+	espconn_sent(conn->conn, (uint8 *)buff, l);
 }
 
 int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData) {
-	int len;
-	char buff[1024];
-	
 	if (connData->conn==NULL) {
 		//Connection aborted. Clean up.
 		return HTTPD_CGI_DONE;
@@ -198,7 +198,7 @@ static void ICACHE_FLASH_ATTR httpdSendResp(HttpdConnData *conn) {
 	int r;
 	//See if the url is somewhere in our internal url table.
 	while (builtInUrls[i].url!=NULL && conn->url!=NULL) {
-		os_printf("%s == %s?\n", builtInUrls[i].url, conn->url);
+//		os_printf("%s == %s?\n", builtInUrls[i].url, conn->url);
 		if (os_strcmp(builtInUrls[i].url, conn->url)==0 || builtInUrls[i].url[0]=='*') {
 			os_printf("Is url index %d\n", i);
 			conn->cgiData=NULL;
@@ -237,7 +237,6 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		os_printf("URL = %s\n", conn->url);
 		conn->getArgs=(char*)os_strstr(conn->url, "?");
 		if (conn->getArgs!=0) {
-			int x,l;
 			*conn->getArgs=0;
 			conn->getArgs++;
 			os_printf("GET args = %s\n", conn->getArgs);
@@ -256,7 +255,7 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 }
 
 static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short len) {
-	int x, l;
+	int x;
 	char *p, *e;
 	HttpdConnData *conn=httpdFindConnData(arg);
 	if (conn==NULL) return;
@@ -336,7 +335,6 @@ static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
 
 static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 	struct espconn *conn=arg;
-	HttpdConnData *conndata;
 	int i;
 	//Find empty conndata in pool
 	for (i=0; i<MAX_CONN; i++) if (connData[i].conn==NULL) break;
