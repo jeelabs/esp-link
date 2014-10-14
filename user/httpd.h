@@ -26,10 +26,8 @@ struct HttpdConnData {
 	char *postBuff;
 };
 
-
-
-//A struct describing an url that's not in the filesystem or otherwise available.
-//Also the way cgi functions get connected to an URL.
+//A struct describing an url. This is the main struct that's used to send different URL requests to
+//different routines.
 typedef struct {
 	const char *url;
 	cgiSendCallback cgiCb;

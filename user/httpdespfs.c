@@ -2,6 +2,15 @@
 Connector to let httpd use the espfs filesystem to serve the files in that.
 */
 
+/*
+ * ----------------------------------------------------------------------------
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain 
+ * this notice you can do whatever you want with this stuff. If we meet some day, 
+ * and you think this stuff is worth it, you can buy me a beer in return. 
+ * ----------------------------------------------------------------------------
+ */
+
 #include "espmissingincludes.h"
 #include <string.h>
 #include <osapi.h>
@@ -15,6 +24,9 @@ Connector to let httpd use the espfs filesystem to serve the files in that.
 #include "httpdespfs.h"
 
 
+//This is a catch-all cgi function. It takes the url passed to it, looks up the corresponding
+//path in the filesystem and if it exists, passes the file through. This simulates what a normal
+//webserver would do with static files.
 int ICACHE_FLASH_ATTR cgiEspFsHook(HttpdConnData *connData) {
 	EspFsFile *file=connData->cgiData;
 	int len;
@@ -51,6 +63,8 @@ int ICACHE_FLASH_ATTR cgiEspFsHook(HttpdConnData *connData) {
 	}
 }
 
+
+//cgiEspFsTemplate can be used as a template.
 
 typedef struct {
 	EspFsFile *file;

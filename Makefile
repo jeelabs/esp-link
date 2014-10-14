@@ -14,6 +14,9 @@ FW_BASE		= firmware
 # Base directory for the compiler
 XTENSA_TOOLS_ROOT ?= /opt/Espressif/crosstool-NG/builds/xtensa-lx106-elf/bin
 
+#Extra Tensilica includes from the ESS VM
+SDK_EXTRA_INCLUDES ?= /opt/Espressif/include
+
 # base directory of the ESP8266 SDK package, absolute
 SDK_BASE	?= /opt/Espressif/ESP8266_SDK
 
@@ -29,7 +32,7 @@ MODULES		= driver user
 EXTRA_INCDIR	= include \
 		. \
 		lib/heatshrink/ \
-		./../esp_iot_sdk_novm_unpacked/usr/xtensa/XtDevTools/install/builds/RC-2010.1-win32/lx106/xtensa-elf/include/
+		$(SDK_EXTRA_INCLUDES)
 
 # libraries used in this project, mainly provided by the SDK
 LIBS		= c gcc hal phy net80211 lwip wpa main

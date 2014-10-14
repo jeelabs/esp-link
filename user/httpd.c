@@ -1,5 +1,16 @@
+//Esp8266 http server - core routines
+
+/*
+ * ----------------------------------------------------------------------------
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain 
+ * this notice you can do whatever you want with this stuff. If we meet some day, 
+ * and you think this stuff is worth it, you can buy me a beer in return. 
+ * ----------------------------------------------------------------------------
+ */
+
+
 #include "espmissingincludes.h"
-#include "driver/uart.h"
 #include "c_types.h"
 #include "user_interface.h"
 #include "espconn.h"
@@ -11,7 +22,7 @@
 #include "io.h"
 #include "espfs.h"
 
-//Max length of head (plus POST data)
+//Max length of request head
 #define MAX_HEAD_LEN 1024
 //Max amount of connections
 #define MAX_CONN 8
@@ -41,6 +52,8 @@ typedef struct {
 	const char *mimetype;
 } MimeMap;
 
+//The mappings from file extensions to mime types. If you need an extra mime type,
+//add it here.
 static const MimeMap mimeTypes[]={
 	{"htm", "text/htm"},
 	{"html", "text/html"},
@@ -49,9 +62,10 @@ static const MimeMap mimeTypes[]={
 	{"jpg", "image/jpeg"},
 	{"jpeg", "image/jpeg"},
 	{"png", "image/png"},
-	{NULL, "text/html"},
+	{NULL, "text/html"}, //default value
 };
 
+//Returns a static char* to a mime type for a given url to a file.
 const char ICACHE_FLASH_ATTR *httpdGetMimetype(char *url) {
 	int i=0;
 	//Go find the extension
@@ -63,7 +77,7 @@ const char ICACHE_FLASH_ATTR *httpdGetMimetype(char *url) {
 	return mimeTypes[i].mimetype;
 }
 
-
+//Looks up the connData info for a specific esp connection
 static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
 	int i;
 	for (i=0; i<MAX_CONN; i++) {
@@ -73,7 +87,7 @@ static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
 	return NULL; //WtF?
 }
 
-
+//Retires a connection for re-use
 static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
 	if (conn->postBuff!=NULL) os_free(conn->postBuff);
 	conn->postBuff=NULL;
@@ -81,6 +95,7 @@ static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
 	conn->conn=NULL;
 }
 
+//Stupid li'l helper function that returns the value of a hex char.
 static int httpdHexVal(char c) {
 	if (c>='0' && c<='9') return c-'0';
 	if (c>='A' && c<='F') return c-'A'+10;
@@ -88,7 +103,10 @@ static int httpdHexVal(char c) {
 	return 0;
 }
 
-//Decode a percent-encoded value
+//Decode a percent-encoded value.
+//Takes the valLen bytes stored in val, and converts it into at most retLen bytes that
+//are stored in the ret buffer. Returns the actual amount of bytes used in ret. Also
+//zero-terminates the ret buffer.
 int httpdUrlDecode(char *val, int valLen, char *ret, int retLen) {
 	int s=0, d=0;
 	int esced=0, escVal=0;
@@ -114,7 +132,9 @@ int httpdUrlDecode(char *val, int valLen, char *ret, int retLen) {
 }
 
 //Find a specific arg in a string of get- or post-data.
-//Returns len of arg or -1 if not found.
+//Line is the string of post/get-data, arg is the name of the value to find. The
+//zero-terminated result is written in buff, with at most buffLen bytes used. The
+//function returns the length of the result, or -1 if the value wasn't found.
 int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLen) {
 	char *p, *e;
 	if (line==NULL) return 0;
@@ -135,8 +155,8 @@ int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLe
 	return -1; //not found
 }
 
-static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266-httpd/0.1\r\nContent-Type: text/plain\r\n\r\nNot Found.\r\n";
 
+//Start the response headers.
 void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code) {
 	char buff[128];
 	int l;
@@ -144,7 +164,7 @@ void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code) {
 	espconn_sent(conn->conn, (uint8 *)buff, l);
 }
 
-
+//Send a http header.
 void ICACHE_FLASH_ATTR httpdHeader(HttpdConnData *conn, const char *field, const char *val) {
 	char buff[256];
 	int l;
@@ -152,6 +172,7 @@ void ICACHE_FLASH_ATTR httpdHeader(HttpdConnData *conn, const char *field, const
 	espconn_sent(conn->conn, (uint8 *)buff, l);
 }
 
+//Finish the headers.
 void ICACHE_FLASH_ATTR httpdEndHeaders(HttpdConnData *conn) {
 	espconn_sent(conn->conn, (uint8 *)"\r\n", 2);
 }
@@ -192,6 +213,8 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 		conn->cgi=NULL; //mark for destruction.
 	}
 }
+
+static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266-httpd/0.1\r\nContent-Type: text/plain\r\n\r\nNot Found.\r\n";
 
 static void ICACHE_FLASH_ATTR httpdSendResp(HttpdConnData *conn) {
 	int i=0;

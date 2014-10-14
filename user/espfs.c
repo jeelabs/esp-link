@@ -4,9 +4,22 @@ mkespfsimg tool, and can use that block to do abstracted operations on the files
 It's written for use with httpd, but doesn't need to be used as such.
 */
 
+/*
+ * ----------------------------------------------------------------------------
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain 
+ * this notice you can do whatever you want with this stuff. If we meet some day, 
+ * and you think this stuff is worth it, you can buy me a beer in return. 
+ * ----------------------------------------------------------------------------
+ */
+
+
+//These routines can also be tested by comping them in with the espfstest tool. This
+//simplifies debugging, but needs some slightly different headers. The #ifdef takes
+//care of that.
+
 #ifdef __ets__
 //esp build
-#include "driver/uart.h"
 #include "c_types.h"
 #include "user_interface.h"
 #include "espconn.h"
@@ -51,7 +64,7 @@ struct EspFsFile {
 
 /*
 Available locations, at least in my flash, with boundaries partially guessed. This
-is using 0.9.1 SDK on a not-too-new module.
+is using 0.9.1/0.9.2 SDK on a not-too-new module.
 0x00000 (0x10000): Code/data (RAM data?)
 0x10000 (0x02000): Gets erased by something?
 0x12000 (0x2E000): Free (filled with zeroes) (parts used by ESPCloud and maybe SSL)
@@ -83,7 +96,7 @@ void ICACHE_FLASH_ATTR memcpyAligned(char *dst, char *src, int len) {
 }
 
 
-
+//Open a file and return a pointer to the file desc struct.
 EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 #ifdef __ets__
 	char *p=(char *)(ESPFS_POS+0x40200000);
@@ -94,11 +107,12 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 	char namebuf[256];
 	EspFsHeader h;
 	EspFsFile *r;
-	//Skip initial slashes
+	//Strip initial slashes
 	while(fileName[0]=='/') fileName++;
 	//Go find that file!
 	while(1) {
 		hpos=p;
+		//Grab the next file header.
 		os_memcpy(&h, p, sizeof(EspFsHeader));
 		if (h.magic!=0x73665345) {
 			os_printf("Magic mismatch. EspFS image broken.\n");
@@ -108,13 +122,15 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 			os_printf("End of image.\n");
 			return NULL;
 		}
-		p+=sizeof(EspFsHeader);
+		//Grab the name of the file.
+		p+=sizeof(EspFsHeader); 
 		os_memcpy(namebuf, p, sizeof(namebuf));
 		os_printf("Found file '%s'. Namelen=%x fileLenComp=%x, compr=%d flags=%d\n", 
 				namebuf, (unsigned int)h.nameLen, (unsigned int)h.fileLenComp, h.compression, h.flags);
 		if (os_strcmp(namebuf, fileName)==0) {
-			p+=h.nameLen;
-			r=(EspFsFile *)os_malloc(sizeof(EspFsFile));
+			//Yay, this is the file we need!
+			p+=h.nameLen; //Skip to content.
+			r=(EspFsFile *)os_malloc(sizeof(EspFsFile)); //Alloc file desc mem
 			if (r==NULL) return NULL;
 			r->header=(EspFsHeader *)hpos;
 			r->decompressor=h.compression;
@@ -125,6 +141,7 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 				r->decompData=NULL;
 #ifdef EFS_HEATSHRINK
 			} else if (h.compression==COMPRESS_HEATSHRINK) {
+				//File is compressed with Heatshrink.
 				char parm;
 				heatshrink_decoder *dec;
 				//Decoder params are stored in 1st byte.
@@ -132,7 +149,6 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 				r->posComp++;
 				os_printf("Heatshrink compressed file; decode parms = %x\n", parm);
 				dec=heatshrink_decoder_alloc(16, (parm>>4)&0xf, parm&0xf);
-				heatshrink_decoder_reset(dec);
 				r->decompData=dec;
 #endif
 			} else {
@@ -141,18 +157,19 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 			}
 			return r;
 		}
-		//Skip name and file
+		//We don't need this file. Skip name and file
 		p+=h.nameLen+h.fileLenComp;
 		if ((int)p&3) p+=4-((int)p&3); //align to next 32bit val
-//		os_printf("Next addr = %x\n", (int)p);
 	}
 }
 
-
+//Read len bytes from the given file into buff. Returns the actual amount of bytes read.
 int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 	int flen;
 	if (fh==NULL) return 0;
-		memcpyAligned((char*)&flen, (char*)&fh->header->fileLenComp, 4);
+	//Cache file length.
+	memcpyAligned((char*)&flen, (char*)&fh->header->fileLenComp, 4);
+	//Do stuff depending on the way the file is compressed.
 	if (fh->decompressor==COMPRESS_NONE) {
 		int toRead;
 		toRead=flen-(fh->posComp-fh->posStart);
@@ -194,6 +211,7 @@ int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 	return 0;
 }
 
+//Close the file.
 void ICACHE_FLASH_ATTR espFsClose(EspFsFile *fh) {
 	if (fh==NULL) return;
 #ifdef EFS_HEATSHRINK

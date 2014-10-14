@@ -1,3 +1,4 @@
+//Heatshrink config for the decompressor.
 #ifndef HEATSHRINK_CONFIG_H
 #define HEATSHRINK_CONFIG_H
 
