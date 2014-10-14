@@ -1,0 +1,78 @@
+esp-httpd README
+
+This is a small but powerful webserver for ESP8266(EX) chips. Included is an example of how
+to make a module that can have the AP it connects to configured over a webbrowser.
+
+ABOUT THE WEBSERVER
+
+The Good (aka: what's awesome)
+ - Supports multiple connections, for eg simultaneous html/css/js/images downloading
+ - Static files stored in flash, in an (optionally compressed) RO filesystem
+ - Pluggable using external cgi routines
+ - Simple template engine for mixed c and html things
+
+The Bad (aka: what can be improved)
+ - Not built for speediness, although it's reasonable fast.
+ - Built according to what I remember of the HTTP protocol, not according to the
+   RFCs. Should work with most modern browsers, though.
+ - No support for authentication or https.
+
+The Ugly (aka: bugs, misbehaviour)
+- Possible buffer overflows (usually not remotely exploitable) due to no os_snprintf
+  This can be theoretically remedied by either Espressif including an os_snprintf in 
+  their libs or by using some alternate printf lib, like elm-chans xprintf
+
+ABOUT THE EXAMPLE
+
+When you flash the example into an ESP8266(EX) module, you get a small webserver with a few example
+pages. If you've already connected your module to your WLAN before, it'll keep those settings. When
+you haven't or the settings are wrong, keep GPIO0 for >5 seconds. The module will reboot into
+its STA+AP mode. Connect a computer to the newly formed access point and browse to 
+http://192.168.4.1/wifi in order to connect the module to your WiFi network. The example also
+allows you to control a LED that's connected to GPIO2.
+
+BUILDING EVERYTHING
+
+For this, you need an environment that can compile ESP8266 firmware. Environments for this still
+are in flux at the moment, but I'm using a crosstool-ng gcc setup combined with the libs & includes
+from the ESP SDK and ESP VM. You probably also need an UNIX-slike system; I'm working on
+Debian Linux myself. 
+
+To manage the paths to all this, you can source a small shell fragment into your current session. For
+example, I source a file with these contents:
+export PATH=${PWD}/crosstool-NG/builds/xtensa-lx106-elf/bin:$PATH
+export XTENSA_TOOLS_ROOT=${PWD}/crosstool-NG/builds/xtensa-lx106-elf/bin
+export SDK_BASE=${PWD}/esp_iot_sdk_v0.9.2/
+export SDK_EXTRA_INCLUDES=${PWD}/esp_iot_sdk_novm_unpacked/usr/xtensa/XtDevTools/install/builds/RC-2010.1-win32/lx106/xtensa-elf/include/
+export ESPTOOL=${PWD}/esptool/esptool.py
+export ESPPORT=/dev/ttyUSB0
+Actual setup of the SDK and toolchain is out of the scope of this document, so I hope this helps you
+enough to set up your own if you haven't already.
+
+If you have that, you can clone out the source code:
+git clone http://git.spritesserver.nl/esphttpd.git/
+
+This project makes use of heatshrink, which is a git submodule. To fetch the code:
+cd esphttpd
+git submodule init
+git submodule update
+
+
+Now, build the code:
+make
+
+Flash the code happens in 2 steps. First the code itself gets flashed. Reset the module into bootloader
+mode and enter 'make flash'. You may want to reset and re-enter the bootloader halfway (at 'sleep 3') for
+the 2nd part of this flash to work.
+
+The 2nd step is to pack the static files the webserver will serve and flash that. Reset the module into
+bootloader mode again and enter 'make htmlflash'.
+
+You should have a working webserver now.
+
+WRITING CODE FOR THE WEBSERVER
+
+...errm... to be done. For now, look at the examples. Hey, you probably managed to find out how
+the SDK works, this shouldn't be too hard :P
+
+
