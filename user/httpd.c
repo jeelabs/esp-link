@@ -199,7 +199,7 @@ int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData) {
 static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	int r;
 	HttpdConnData *conn=httpdFindConnData(arg);
-	os_printf("Sent callback on conn %p\n", conn);
+//	os_printf("Sent callback on conn %p\n", conn);
 	if (conn==NULL) return;
 	if (conn->cgi==NULL) { //Marked for destruction?
 		os_printf("Conn %p is done. Closing.\n", conn->conn);
@@ -243,7 +243,7 @@ static void ICACHE_FLASH_ATTR httpdSendResp(HttpdConnData *conn) {
 
 static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 	int i;
-	os_printf("Got header %s\n", h);
+//	os_printf("Got header %s\n", h);
 	if (os_strncmp(h, "GET ", 4)==0 || os_strncmp(h, "POST ", 5)==0) {
 		char *e;
 		

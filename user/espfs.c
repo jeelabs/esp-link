@@ -125,8 +125,8 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 		//Grab the name of the file.
 		p+=sizeof(EspFsHeader); 
 		os_memcpy(namebuf, p, sizeof(namebuf));
-		os_printf("Found file '%s'. Namelen=%x fileLenComp=%x, compr=%d flags=%d\n", 
-				namebuf, (unsigned int)h.nameLen, (unsigned int)h.fileLenComp, h.compression, h.flags);
+//		os_printf("Found file '%s'. Namelen=%x fileLenComp=%x, compr=%d flags=%d\n", 
+//				namebuf, (unsigned int)h.nameLen, (unsigned int)h.fileLenComp, h.compression, h.flags);
 		if (os_strcmp(namebuf, fileName)==0) {
 			//Yay, this is the file we need!
 			p+=h.nameLen; //Skip to content.
@@ -174,7 +174,7 @@ int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 		int toRead;
 		toRead=flen-(fh->posComp-fh->posStart);
 		if (len>toRead) len=toRead;
-		os_printf("Reading %d bytes from %x\n", len, (unsigned int)fh->posComp);
+//		os_printf("Reading %d bytes from %x\n", len, (unsigned int)fh->posComp);
 		memcpyAligned(buff, fh->posComp, len);
 		fh->posDecomp+=len;
 		fh->posComp+=len;

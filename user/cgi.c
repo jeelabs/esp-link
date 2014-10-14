@@ -62,7 +62,19 @@ void ICACHE_FLASH_ATTR tplLed(HttpdConnData *connData, char *token, void **arg) 
 	espconn_sent(connData->conn, (uint8 *)buff, os_strlen(buff));
 }
 
+static long hitCounter=0;
 
+//Template code for the counter on the index page.
+void ICACHE_FLASH_ATTR tplCounter(HttpdConnData *connData, char *token, void **arg) {
+	char buff[128];
+	if (token==NULL) return;
+
+	if (os_strcmp(token, "counter")==0) {
+		hitCounter++;
+		os_sprintf(buff, "%ld", hitCounter);
+	}
+	espconn_sent(connData->conn, (uint8 *)buff, os_strlen(buff));
+}
 
 
 //Cgi that reads the SPI flash. Assumes 512KByte flash.

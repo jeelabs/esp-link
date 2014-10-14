@@ -184,10 +184,13 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 	//Schedule disconnect/connect
 	os_timer_disarm(&reassTimer);
 	os_timer_setfn(&reassTimer, reassTimerCb, NULL);
+#if 0
 	os_timer_arm(&reassTimer, 1000, 0);
 
 	httpdRedirect(connData, "connecting.html");
-
+#else
+	httpdRedirect(connData, "/wifi");
+#endif
 	return HTTPD_CGI_DONE;
 }
 

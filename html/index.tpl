@@ -6,7 +6,8 @@
 <div id="main">
 <h1>It Works</h1>
 <p>
-If you see this, it means the tiny li'l website in your ESP8266 does actually work.
+If you see this, it means the tiny li'l website in your ESP8266 does actually work. Fyi, this page has
+been loaded <b>%counter%</b> times.
 <ul>
 <li>If you haven't connected this device to your WLAN network now, you can <a href="/wifi">do so.</a></li>
 <li>You can also control the <a href="led.tpl">LED</a>.</li>
