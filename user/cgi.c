@@ -40,7 +40,7 @@ int ICACHE_FLASH_ATTR cgiLed(HttpdConnData *connData) {
 		ioLed(currLedState);
 	}
 
-	httpdRedirect(connData, "led.html");
+	httpdRedirect(connData, "led.tpl");
 	return HTTPD_CGI_DONE;
 }
 

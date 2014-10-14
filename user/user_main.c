@@ -21,7 +21,7 @@
 #include "stdout.h"
 
 HttpdBuiltInUrl builtInUrls[]={
-	{"/", cgiRedirect, "/test2.html"},
+	{"/", cgiRedirect, "/index.html"},
 	{"/flash.bin", cgiReadFlash, NULL},
 	{"/led.tpl", cgiEspFsTemplate, tplLed},
 	{"/led.cgi", cgiLed, NULL},
