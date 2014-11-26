@@ -16,6 +16,7 @@ XTENSA_TOOLS_ROOT ?= /opt/Espressif/crosstool-NG/builds/xtensa-lx106-elf/bin
 
 #Extra Tensilica includes from the ESS VM
 SDK_EXTRA_INCLUDES ?= /opt/Espressif/include
+SDK_EXTRA_LIBS ?= /opt/Espressif/arch/lib
 
 # base directory of the ESP8266 SDK package, absolute
 SDK_BASE	?= /opt/Espressif/ESP8266_SDK
@@ -28,6 +29,7 @@ ESPPORT		?= /dev/ttyUSB0
 TARGET		= httpd
 
 # which modules (subdirectories) of the project to include in compiling
+#MODULES		= driver user lwip/api lwip/app lwip/core lwip/core/ipv4 lwip/netif
 MODULES		= driver user
 EXTRA_INCDIR	= include \
 		. \
@@ -35,13 +37,15 @@ EXTRA_INCDIR	= include \
 		$(SDK_EXTRA_INCLUDES)
 
 # libraries used in this project, mainly provided by the SDK
-LIBS		= c gcc hal phy net80211 lwip wpa main
+LIBS		= c gcc hal phy pp net80211 wpa main lwip
 
 # compiler flags using during compilation of source files
-CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions -nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH
+CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
+		-nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH \
+		-DLWIP_OPEN_SRC -Wno-address
 
 # linker flags used to generate the main object file
-LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static
+LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -L$(SDK_EXTRA_LIBS)
 
 # linker script used for the above linkier step
 LD_SCRIPT	= eagle.app.v6.ld
@@ -141,7 +145,7 @@ flash: $(FW_FILE_1) $(FW_FILE_2)
 	-$(ESPTOOL) --port $(ESPPORT) write_flash 0x40000 firmware/0x40000.bin
 
 webpages.espfs: html/ mkespfsimage/mkespfsimage
-	cd html; find | ../mkespfsimage/mkespfsimage  > ../webpages.espfs; cd ..
+	cd html; find | ../mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..
 
 mkespfsimage/mkespfsimage: mkespfsimage/
 	make -C mkespfsimage

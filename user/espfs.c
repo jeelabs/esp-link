@@ -131,6 +131,7 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 			//Yay, this is the file we need!
 			p+=h.nameLen; //Skip to content.
 			r=(EspFsFile *)os_malloc(sizeof(EspFsFile)); //Alloc file desc mem
+//			os_printf("Alloc %p\n", r);
 			if (r==NULL) return NULL;
 			r->header=(EspFsHeader *)hpos;
 			r->decompressor=h.compression;
@@ -186,6 +187,7 @@ int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 		unsigned int elen, rlen;
 		char ebuff[16];
 		heatshrink_decoder *dec=(heatshrink_decoder *)fh->decompData;
+//		os_printf("Alloc %p\n", dec);
 		while(decoded<len) {
 			//Feed data into the decompressor
 			//ToDo: Check ret val of heatshrink fns for errors
@@ -216,9 +218,12 @@ void ICACHE_FLASH_ATTR espFsClose(EspFsFile *fh) {
 	if (fh==NULL) return;
 #ifdef EFS_HEATSHRINK
 	if (fh->decompressor==COMPRESS_HEATSHRINK) {
-		heatshrink_decoder_free((heatshrink_decoder*)fh->decompData);
+		heatshrink_decoder *dec=(heatshrink_decoder *)fh->decompData;
+		heatshrink_decoder_free(dec);
+//		os_printf("Freed %p\n", dec);
 	}
 #endif
+//	os_printf("Freed %p\n", fh);
 	os_free(fh);
 }
 

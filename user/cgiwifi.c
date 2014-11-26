@@ -28,9 +28,9 @@ typedef struct {
 	char enc;
 } ApData;
 
-//Scan resolt
+//Scan result
 typedef struct {
-	char scanInProgress;
+	char scanInProgress; //if 1, don't access the underlying stuff from the webpage.
 	ApData **apData;
 	int noAps;
 } ScanResultData;
@@ -46,7 +46,6 @@ void ICACHE_FLASH_ATTR wifiScanDoneCb(void *arg, STATUS status) {
 	os_printf("wifiScanDoneCb %d\n", status);
 	if (status!=OK) {
 		cgiWifiAps.scanInProgress=0;
-		wifi_station_disconnect(); //test HACK
 		return;
 	}
 
@@ -65,11 +64,16 @@ void ICACHE_FLASH_ATTR wifiScanDoneCb(void *arg, STATUS status) {
 	//Allocate memory for access point data
 	cgiWifiAps.apData=(ApData **)os_malloc(sizeof(ApData *)*n);
 	cgiWifiAps.noAps=n;
+	os_printf("Scan done: found %d APs\n", n);
 
 	//Copy access point data to the static struct
 	n=0;
 	bss_link = (struct bss_info *)arg;
 	while (bss_link != NULL) {
+		if (n>=cgiWifiAps.noAps) {
+			os_printf("Huh? I have more than the allocated %d aps!\n", cgiWifiAps.noAps);
+			break;
+		}
 		cgiWifiAps.apData[n]=(ApData *)os_malloc(sizeof(ApData));
 		cgiWifiAps.apData[n]->rssi=bss_link->rssi;
 		cgiWifiAps.apData[n]->enc=bss_link->authmode;
@@ -78,7 +82,6 @@ void ICACHE_FLASH_ATTR wifiScanDoneCb(void *arg, STATUS status) {
 		bss_link = bss_link->next.stqe_next;
 		n++;
 	}
-	os_printf("Scan done: found %d APs\n", n);
 	//We're done.
 	cgiWifiAps.scanInProgress=0;
 }
@@ -86,14 +89,17 @@ void ICACHE_FLASH_ATTR wifiScanDoneCb(void *arg, STATUS status) {
 
 //Routine to start a WiFi access point scan.
 static void ICACHE_FLASH_ATTR wifiStartScan() {
-	int x;
+//	int x;
+	if (cgiWifiAps.scanInProgress) return;
 	cgiWifiAps.scanInProgress=1;
+/*
 	x=wifi_station_get_connect_status();
 	if (x!=STATION_GOT_IP) {
 		//Unit probably is trying to connect to a bogus AP. This messes up scanning. Stop that.
 		os_printf("STA status = %d. Disconnecting STA...\n", x);
 		wifi_station_disconnect();
 	}
+*/
 	wifi_station_scan(NULL, wifiScanDoneCb);
 }
 
@@ -137,6 +143,7 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
 	int x=wifi_station_get_connect_status();
 	if (x==STATION_GOT_IP) {
 		//Go to STA mode. This needs a reset, so do that.
+		os_printf("Got IP. Going into STA mode..\n");
 		wifi_set_opmode(1);
 		system_restart();
 	} else {
@@ -150,6 +157,7 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
 static void ICACHE_FLASH_ATTR reassTimerCb(void *arg) {
 	int x;
 	static ETSTimer resetTimer;
+	os_printf("Try to connect to AP....\n");
 	wifi_station_disconnect();
 	wifi_station_set_config(&stconf);
 	wifi_station_connect();
@@ -180,11 +188,12 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 
 	os_strncpy((char*)stconf.ssid, essid, 32);
 	os_strncpy((char*)stconf.password, passwd, 64);
+	os_printf("Try to connect to AP %s pw %s\n", essid, passwd);
 
 	//Schedule disconnect/connect
 	os_timer_disarm(&reassTimer);
 	os_timer_setfn(&reassTimer, reassTimerCb, NULL);
-#if 0
+#if 1
 	os_timer_arm(&reassTimer, 1000, 0);
 
 	httpdRedirect(connData, "connecting.html");

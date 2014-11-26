@@ -36,7 +36,7 @@ int htoxl(int in) {
 size_t compressHeatshrink(char *in, int insize, char *out, int outsize, int level) {
 	char *inp=in;
 	char *outp=out;
-	int len;
+	size_t len;
 	int ws[]={5, 6, 8, 11, 13};
 	int ls[]={3, 3, 4, 4, 4};
 	HSE_poll_res pres;

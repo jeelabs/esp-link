@@ -41,6 +41,7 @@ HttpdBuiltInUrl builtInUrls[]={
 
 void user_init(void) {
 	stdoutInit();
+	os_printf("HTTPD EXAMPLE START\n");
 	ioInit();
 	httpdInit(builtInUrls, 80);
 	os_printf("\nReady\n");
