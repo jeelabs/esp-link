@@ -95,15 +95,6 @@ static void ICACHE_FLASH_ATTR wifiStartScan() {
 //	int x;
 	if (cgiWifiAps.scanInProgress) return;
 	cgiWifiAps.scanInProgress=1;
-#if 0
-	//Not sure if this is still needed.
-	x=wifi_station_get_connect_status();
-	if (x!=STATION_GOT_IP) {
-		//Unit probably is trying to connect to a bogus AP. This messes up scanning. Stop that.
-		os_printf("STA status = %d. Disconnecting STA...\n", x);
-		wifi_station_disconnect();
-	}
-#endif
 	wifi_station_scan(NULL, wifiScanDoneCb);
 }
 
@@ -144,13 +135,6 @@ int ICACHE_FLASH_ATTR cgiWiFiScan(HttpdConnData *connData) {
 
 //Temp store for new ap info.
 static struct station_config stconf;
-
-/*
-ToDo:
-- Thoroughly test this code
-- Simplify if possible. The cascaded delayed routines are probably not
-  needed anymore. I hope.
-*/
 
 
 //This routine is ran some time after a connection attempt to an access point. If
@@ -213,7 +197,6 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 //Set to 0 if you want to disable the actual reconnecting bit
 #if 1 
 	os_timer_arm(&reassTimer, 1000, 0);
-
 	httpdRedirect(connData, "connecting.html");
 #else
 	httpdRedirect(connData, "/wifi");

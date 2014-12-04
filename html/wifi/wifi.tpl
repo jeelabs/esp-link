@@ -10,6 +10,16 @@ function createInputForAp(ap) {
 	if (ap.essid=="" && ap.rssi==0) return;
 	var div=document.createElement("div");
 	div.id="apdiv";
+	var rssi=document.createElement("div");
+	var rssiVal=Math.floor(ap.rssi/5)*32;
+	rssi.className="icon";
+	rssi.style.backgroundPosition="0px "+rssiVal+"px";
+	var encrypt=document.createElement("div");
+	var encVal="-64"; //assume wpa/wpa2
+	if (ap.enc=="0") encVal="0"; //open
+	if (ap.enc=="1") encVal="-32"; //wep
+	encrypt.className="icon";
+	encrypt.style.backgroundPosition="32px "+encVal+"px";
 	var input=document.createElement("input");
 	input.type="radio";
 	input.name="essid";
@@ -18,8 +28,10 @@ function createInputForAp(ap) {
 	input.id="opt-"+ap.essid;
 	var label=document.createElement("label");
 	label.htmlFor="opt-"+ap.essid;
-	label.textContent=ap.essid+" (rssi "+ap.rssi+")";
+	label.textContent=ap.essid;
 	div.appendChild(input);
+	div.appendChild(rssi);
+	div.appendChild(encrypt);
 	div.appendChild(label);
 	return div;
 }

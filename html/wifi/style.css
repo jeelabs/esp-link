@@ -14,3 +14,11 @@ body {
 	margin: 0 auto;
 	padding: 20px
 }
+
+.icon {
+	background-image: url("icons.png");
+	background-color: transparent;
+	width: 32px;
+	height: 32px;
+	display: inline-block;
+}
