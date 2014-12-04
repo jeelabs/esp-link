@@ -210,13 +210,35 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 	//Schedule disconnect/connect
 	os_timer_disarm(&reassTimer);
 	os_timer_setfn(&reassTimer, reassTimerCb, NULL);
-#if 1 //Set to 0 if you want to disable the actual reconnecting bit
+//Set to 0 if you want to disable the actual reconnecting bit
+#if 1 
 	os_timer_arm(&reassTimer, 1000, 0);
 
 	httpdRedirect(connData, "connecting.html");
 #else
 	httpdRedirect(connData, "/wifi");
 #endif
+	return HTTPD_CGI_DONE;
+}
+
+//This cgi uses the routines above to connect to a specific access point with the
+//given ESSID using the given password.
+int ICACHE_FLASH_ATTR cgiWifiSetMode(HttpdConnData *connData) {
+	int len;
+	char buff[1024];
+	
+	if (connData->conn==NULL) {
+		//Connection aborted. Clean up.
+		return HTTPD_CGI_DONE;
+	}
+
+	len=httpdFindArg(connData->getArgs, "mode", buff, sizeof(buff));
+	if (len!=0) {
+		os_printf("cgiWifiSetMode: %s\n", buff);
+		wifi_set_opmode(atoi(buff));
+		system_restart();
+	}
+	httpdRedirect(connData, "/wifi");
 	return HTTPD_CGI_DONE;
 }
 
@@ -238,6 +260,13 @@ void ICACHE_FLASH_ATTR tplWlan(HttpdConnData *connData, char *token, void **arg)
 		os_strcpy(buff, (char*)stconf.ssid);
 	} else if (os_strcmp(token, "WiFiPasswd")==0) {
 		os_strcpy(buff, (char*)stconf.password);
+	} else if (os_strcmp(token, "WiFiapwarn")==0) {
+		x=wifi_get_opmode();
+		if (x==2) {
+			os_strcpy(buff, "<b>Can't scan in this mode.</b> Click <a href=\"setmode.cgi?mode=3\">here</a> to go to STA+AP mode.");
+		} else {
+			os_strcpy(buff, "Click <a href=\"setmode.cgi?mode=2\">here</a> to go to standalone AP mode.");
+		}
 	}
 	espconn_sent(connData->conn, (uint8 *)buff, os_strlen(buff));
 }
