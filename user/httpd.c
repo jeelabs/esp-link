@@ -1,4 +1,6 @@
-//Esp8266 http server - core routines
+/*
+Esp8266 http server - core routines
+*/
 
 /*
  * ----------------------------------------------------------------------------
@@ -32,7 +34,7 @@
 //This gets set at init time.
 static HttpdBuiltInUrl *builtInUrls;
 
-//Private data for httpd thing
+//Private data for http connection
 struct HttpdPriv {
 	char head[MAX_HEAD_LEN];
 	int headPos;
@@ -43,10 +45,11 @@ struct HttpdPriv {
 static HttpdPriv connPrivData[MAX_CONN];
 static HttpdConnData connData[MAX_CONN];
 
+//Listening connection data
 static struct espconn httpdConn;
 static esp_tcp httpdTcp;
 
-
+//Struct to keep extension->mime data in
 typedef struct {
 	const char *ext;
 	const char *mimetype;
@@ -72,7 +75,8 @@ const char ICACHE_FLASH_ATTR *httpdGetMimetype(char *url) {
 	char *ext=url+(strlen(url)-1);
 	while (ext!=url && *ext!='.') ext--;
 	if (*ext=='.') ext++;
-
+	
+	//ToDo: os_strcmp is case sensitive; we may want to do case-intensive matching here...
 	while (mimeTypes[i].ext!=NULL && os_strcmp(ext, mimeTypes[i].ext)!=0) i++;
 	return mimeTypes[i].mimetype;
 }
@@ -134,7 +138,8 @@ int httpdUrlDecode(char *val, int valLen, char *ret, int retLen) {
 //Find a specific arg in a string of get- or post-data.
 //Line is the string of post/get-data, arg is the name of the value to find. The
 //zero-terminated result is written in buff, with at most buffLen bytes used. The
-//function returns the length of the result, or -1 if the value wasn't found.
+//function returns the length of the result, or -1 if the value wasn't found. The 
+//returned string will be urldecoded already.
 int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLen) {
 	char *p, *e;
 	if (line==NULL) return 0;
@@ -160,7 +165,7 @@ int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLe
 void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code) {
 	char buff[128];
 	int l;
-	l=os_sprintf(buff, "HTTP/1.0 %d OK\r\nServer: esp8266-httpd/0.1\r\n", code);
+	l=os_sprintf(buff, "HTTP/1.0 %d OK\r\nServer: esp8266-httpd/"HTTPDVER"\r\n", code);
 	espconn_sent(conn->conn, (uint8 *)buff, l);
 }
 
@@ -177,7 +182,8 @@ void ICACHE_FLASH_ATTR httpdEndHeaders(HttpdConnData *conn) {
 	espconn_sent(conn->conn, (uint8 *)"\r\n", 2);
 }
 
-//ToDo: sprintf->snprintf everywhere
+//ToDo: sprintf->snprintf everywhere... esp doesn't have snprintf tho' :/
+//Redirect to the given URL.
 void ICACHE_FLASH_ATTR httpdRedirect(HttpdConnData *conn, char *newUrl) {
 	char buff[1024];
 	int l;
@@ -185,6 +191,7 @@ void ICACHE_FLASH_ATTR httpdRedirect(HttpdConnData *conn, char *newUrl) {
 	espconn_sent(conn->conn, (uint8 *)buff, l);
 }
 
+//Use this as a cgi function to redirect one url to another.
 int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData) {
 	if (connData->conn==NULL) {
 		//Connection aborted. Clean up.
@@ -195,7 +202,8 @@ int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData) {
 	return HTTPD_CGI_DONE;
 }
 
-
+//Callback called when the data on a socket has been successfully
+//sent.
 static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	int r;
 	HttpdConnData *conn=httpdFindConnData(arg);
@@ -216,6 +224,8 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 
 static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266-httpd/0.1\r\nContent-Type: text/plain\r\n\r\nNot Found.\r\n";
 
+//This is called when the headers have been received and the connection is ready to send
+//the result headers and data.
 static void ICACHE_FLASH_ATTR httpdSendResp(HttpdConnData *conn) {
 	int i=0;
 	int r;
@@ -241,6 +251,7 @@ static void ICACHE_FLASH_ATTR httpdSendResp(HttpdConnData *conn) {
 	conn->cgi=NULL; //mark for destruction
 }
 
+//Parse a line of header data and modify the connection data accordingly.
 static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 	int i;
 //	os_printf("Got header %s\n", h);
@@ -258,6 +269,7 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		*e=0; //terminate url part
 
 		os_printf("URL = %s\n", conn->url);
+		//Parse out the URL part before the GET parameters.
 		conn->getArgs=(char*)os_strstr(conn->url, "?");
 		if (conn->getArgs!=0) {
 			*conn->getArgs=0;
@@ -268,15 +280,20 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		}
 	} else if (os_strncmp(h, "Content-Length: ", 16)==0) {
 		i=0;
+		//Skip trailing spaces
 		while (h[i]!=' ') i++;
+		//Get POST data length
 		conn->postLen=atoi(h+i+1);
+		//Clamp if too big. Hmm, maybe we should error out instead?
 		if (conn->postLen>MAX_POST) conn->postLen=MAX_POST;
 		os_printf("Mallocced buffer for %d bytes of post data.\n", conn->postLen);
+		//Alloc the memory.
 		conn->postBuff=(char*)os_malloc(conn->postLen+1);
 		conn->priv->postPos=0;
 	}
 }
 
+//Callback called when there's data available on a socket.
 static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short len) {
 	int x;
 	char *p, *e;
@@ -285,7 +302,6 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 
 
 	for (x=0; x<len; x++) {
-
 		if (conn->priv->headPos!=-1) {
 			//This byte is a header byte.
 			if (conn->priv->headPos!=MAX_HEAD_LEN) conn->priv->head[conn->priv->headPos++]=data[x];

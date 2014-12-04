@@ -71,9 +71,12 @@ void ICACHE_FLASH_ATTR wifiScanDoneCb(void *arg, STATUS status) {
 	bss_link = (struct bss_info *)arg;
 	while (bss_link != NULL) {
 		if (n>=cgiWifiAps.noAps) {
+			//This means the bss_link changed under our nose. Shouldn't happen!
+			//Break because otherwise we will write in unallocated memory.
 			os_printf("Huh? I have more than the allocated %d aps!\n", cgiWifiAps.noAps);
 			break;
 		}
+		//Save the ap data.
 		cgiWifiAps.apData[n]=(ApData *)os_malloc(sizeof(ApData));
 		cgiWifiAps.apData[n]->rssi=bss_link->rssi;
 		cgiWifiAps.apData[n]->enc=bss_link->authmode;
@@ -92,14 +95,15 @@ static void ICACHE_FLASH_ATTR wifiStartScan() {
 //	int x;
 	if (cgiWifiAps.scanInProgress) return;
 	cgiWifiAps.scanInProgress=1;
-/*
+#if 0
+	//Not sure if this is still needed.
 	x=wifi_station_get_connect_status();
 	if (x!=STATION_GOT_IP) {
 		//Unit probably is trying to connect to a bogus AP. This messes up scanning. Stop that.
 		os_printf("STA status = %d. Disconnecting STA...\n", x);
 		wifi_station_disconnect();
 	}
-*/
+#endif
 	wifi_station_scan(NULL, wifiScanDoneCb);
 }
 
@@ -115,13 +119,16 @@ int ICACHE_FLASH_ATTR cgiWiFiScan(HttpdConnData *connData) {
 	httpdEndHeaders(connData);
 
 	if (cgiWifiAps.scanInProgress==1) {
+		//We're still scanning. Tell Javascript code that.
 		len=os_sprintf(buff, "{\n \"result\": { \n\"inProgress\": \"1\"\n }\n}\n");
 		espconn_sent(connData->conn, (uint8 *)buff, len);
 	} else {
+		//We have a scan result. Pass it on.
 		len=os_sprintf(buff, "{\n \"result\": { \n\"inProgress\": \"0\", \n\"APs\": [\n");
 		espconn_sent(connData->conn, (uint8 *)buff, len);
 		if (cgiWifiAps.apData==NULL) cgiWifiAps.noAps=0;
 		for (i=0; i<cgiWifiAps.noAps; i++) {
+			//Fill in json code for an access point
 			len=os_sprintf(buff, "{\"essid\": \"%s\", \"rssi\": \"%d\", \"enc\": \"%d\"}%s\n", 
 					cgiWifiAps.apData[i]->ssid, cgiWifiAps.apData[i]->rssi, 
 					cgiWifiAps.apData[i]->enc, (i==cgiWifiAps.noAps-1)?"":",");
@@ -129,6 +136,7 @@ int ICACHE_FLASH_ATTR cgiWiFiScan(HttpdConnData *connData) {
 		}
 		len=os_sprintf(buff, "]\n}\n}\n");
 		espconn_sent(connData->conn, (uint8 *)buff, len);
+		//Also start a new scan.
 		wifiStartScan();
 	}
 	return HTTPD_CGI_DONE;
@@ -136,6 +144,14 @@ int ICACHE_FLASH_ATTR cgiWiFiScan(HttpdConnData *connData) {
 
 //Temp store for new ap info.
 static struct station_config stconf;
+
+/*
+ToDo:
+- Thoroughly test this code
+- Simplify if possible. The cascaded delayed routines are probably not
+  needed anymore. I hope.
+*/
+
 
 //This routine is ran some time after a connection attempt to an access point. If
 //the connect succeeds, this gets the module in STA-only mode.
@@ -148,6 +164,7 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
 		system_restart();
 	} else {
 		os_printf("Connect fail. Not going into STA-only mode.\n");
+		//Maybe also pass this through on the webpage?
 	}
 }
 
@@ -193,7 +210,7 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 	//Schedule disconnect/connect
 	os_timer_disarm(&reassTimer);
 	os_timer_setfn(&reassTimer, reassTimerCb, NULL);
-#if 1
+#if 1 //Set to 0 if you want to disable the actual reconnecting bit
 	os_timer_arm(&reassTimer, 1000, 0);
 
 	httpdRedirect(connData, "connecting.html");

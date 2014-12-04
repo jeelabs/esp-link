@@ -81,6 +81,8 @@ a memory exception, crashing the program.
 
 //Copies len bytes over from dst to src, but does it using *only*
 //aligned 32-bit reads. Yes, it's no too optimized but it's short and sweet and it works.
+
+//ToDo: perhaps os_memcpy also does unaligned accesses?
 void ICACHE_FLASH_ATTR memcpyAligned(char *dst, char *src, int len) {
 	int x;
 	int w, b;
