@@ -11,7 +11,7 @@ function createInputForAp(ap) {
 	var div=document.createElement("div");
 	div.id="apdiv";
 	var rssi=document.createElement("div");
-	var rssiVal=Math.floor(ap.rssi/5)*32;
+	var rssiVal=-Math.floor(ap.rssi/5)*32;
 	rssi.className="icon";
 	rssi.style.backgroundPosition="0px "+rssiVal+"px";
 	var encrypt=document.createElement("div");
@@ -19,7 +19,7 @@ function createInputForAp(ap) {
 	if (ap.enc=="0") encVal="0"; //open
 	if (ap.enc=="1") encVal="-32"; //wep
 	encrypt.className="icon";
-	encrypt.style.backgroundPosition="32px "+encVal+"px";
+	encrypt.style.backgroundPosition="-32px "+encVal+"px";
 	var input=document.createElement("input");
 	input.type="radio";
 	input.name="essid";
