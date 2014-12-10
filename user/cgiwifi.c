@@ -21,6 +21,9 @@ Cgi/template routines for the /wifi url.
 #include "io.h"
 #include "espmissingincludes.h"
 
+//Enable this to disallow any changes in AP settings
+//#define DEMO_MODE
+
 //WiFi access point data
 typedef struct {
 	char ssid[32];
@@ -195,11 +198,11 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 	os_timer_disarm(&reassTimer);
 	os_timer_setfn(&reassTimer, reassTimerCb, NULL);
 //Set to 0 if you want to disable the actual reconnecting bit
-#if 1 
+#ifdef DEMO_MODE
+	httpdRedirect(connData, "/wifi");
+#else
 	os_timer_arm(&reassTimer, 1000, 0);
 	httpdRedirect(connData, "connecting.html");
-#else
-	httpdRedirect(connData, "/wifi");
 #endif
 	return HTTPD_CGI_DONE;
 }
@@ -218,8 +221,10 @@ int ICACHE_FLASH_ATTR cgiWifiSetMode(HttpdConnData *connData) {
 	len=httpdFindArg(connData->getArgs, "mode", buff, sizeof(buff));
 	if (len!=0) {
 		os_printf("cgiWifiSetMode: %s\n", buff);
+#ifndef DEMO_MODE
 		wifi_set_opmode(atoi(buff));
 		system_restart();
+#endif
 	}
 	httpdRedirect(connData, "/wifi");
 	return HTTPD_CGI_DONE;
