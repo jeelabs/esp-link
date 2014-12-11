@@ -1,5 +1,5 @@
 /*
-HTTP auth implementation.
+HTTP auth implementation. Only does basic authentication for now.
 */
 
 /*

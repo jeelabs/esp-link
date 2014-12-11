@@ -29,7 +29,7 @@ int myPassFn(HttpdConnData *connData, int no, char *user, int userLen, char *pas
 		os_strcpy(user, "admin");
 		os_strcpy(pass, "s3cr3t");
 		return 1;
-//Add more users this way
+//Add more users this way. Check against incrementing no for each user added.
 //	} else if (no==1) {
 //		os_strcpy(user, "user1");
 //		os_strcpy(pass, "something");
@@ -38,6 +38,17 @@ int myPassFn(HttpdConnData *connData, int no, char *user, int userLen, char *pas
 	return 0;
 }
 
+
+/*
+This is the main url->function dispatching data struct.
+In short, it's a struct with various URLs plus their handlers. The handlers can
+be 'standard' CGI functions you wrote, or 'special' CGIs requiring an argument.
+They can also be auth-functions. An asterisk will match any url starting with
+everything before the asterisks; "*" matches everything. The list will be
+handled top-down, so make sure to put more specific rules above the more
+general ones. Authorization things (like authBasic) act as a 'barrier' and
+should be placed above the URLs they protect.
+*/
 HttpdBuiltInUrl builtInUrls[]={
 	{"/", cgiRedirect, "/index.tpl"},
 	{"/flash.bin", cgiReadFlash, NULL},
@@ -62,6 +73,7 @@ HttpdBuiltInUrl builtInUrls[]={
 };
 
 
+//Main routine. Initialize stdout, the I/O and the webserver and we're done.
 void user_init(void) {
 	stdoutInit();
 	ioInit();

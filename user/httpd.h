@@ -9,6 +9,7 @@
 #define HTTPD_CGI_MORE 0
 #define HTTPD_CGI_DONE 1
 #define HTTPD_CGI_NOTFOUND 2
+#define HTTPD_CGI_AUTHENTICATED 2 //for now
 
 typedef struct HttpdPriv HttpdPriv;
 typedef struct HttpdConnData HttpdConnData;
