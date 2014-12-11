@@ -161,6 +161,34 @@ int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLe
 	return -1; //not found
 }
 
+//Get the value of a certain header in the HTTP client head
+int ICACHE_FLASH_ATTR httpdGetHeader(HttpdConnData *conn, char *header, char *ret, int retLen) {
+	char *p=conn->priv->head;
+	p=p+strlen(p)+1; //skip GET/POST part
+	p=p+strlen(p)+1; //skip HTTP part
+	while (p<(conn->priv->head+conn->priv->headPos)) {
+		while(*p<=32 && *p!=0) p++; //skip crap at start
+//		os_printf("Looking for %s, Header: '%s'\n", header, p);
+		//See if this is the header
+		if (os_strncmp(p, header, strlen(header))==0 && p[strlen(header)]==':') {
+			//Skip 'key:' bit of header line
+			p=p+strlen(header)+1;
+			//Skip past spaces after the colon
+			while(*p==' ') p++;
+			//Copy from p to end
+			while (*p!=0 && *p!='\r' && *p!='\n' && retLen>1) {
+				*ret++=*p++;
+				retLen--;
+			}
+			//Zero-terminate string
+			*ret=0;
+			//All done :)
+			return 1;
+		}
+		p+=strlen(p)+1; //Skip past end of string and \0 terminator
+	}
+	return 0;
+}
 
 //Start the response headers.
 void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code) {
