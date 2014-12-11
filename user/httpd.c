@@ -395,7 +395,11 @@ static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
 	int i;
 	for (i=0; i<MAX_CONN; i++) {
 		if (connData[i].conn!=NULL) {
-			if (connData[i].conn->state==ESPCONN_NONE || connData[i].conn->state==ESPCONN_CLOSE) {
+			//Why the >=ESPCONN_CLOSE and not ==? Well, seems the stack sometimes de-allocates
+			//espconns under our noses, especially when connections are interrupted. The memory
+			//is then used for something else, and we can use that to capture *most* of the
+			//disconnect cases.
+			if (connData[i].conn->state==ESPCONN_NONE || connData[i].conn->state>=ESPCONN_CLOSE) {
 				connData[i].conn=NULL;
 				if (connData[i].cgi!=NULL) connData[i].cgi(&connData[i]); //flush cgi data
 				httpdRetireConn(&connData[i]);
