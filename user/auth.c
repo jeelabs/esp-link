@@ -40,9 +40,9 @@ int ICACHE_FLASH_ATTR authBasic(HttpdConnData *connData) {
 	r=httpdGetHeader(connData, "Authorization", hdr, sizeof(hdr));
 	if (r && strncmp(hdr, "Basic", 5)==0) {
 		r=base64_decode(strlen(hdr)-6, hdr+6, sizeof(userpass), (unsigned char *)userpass);
-		if (r<0) r=0;
-		userpass[r]=0;
-		os_printf("Auth: %s\n", userpass);
+		if (r<0) r=0; //just clean out string on decode error
+		userpass[r]=0; //zero-terminate user:pass string
+//		os_printf("Auth: %s\n", userpass);
 		while (((AuthGetUserPw)(connData->cgiArg))(connData, no,
 				user, AUTH_MAX_USER_LEN, pass, AUTH_MAX_PASS_LEN)) {
 			//Check user/pass against auth header
@@ -53,7 +53,7 @@ int ICACHE_FLASH_ATTR authBasic(HttpdConnData *connData) {
 				//Authenticated. Yay!
 				return HTTPD_CGI_AUTHENTICATED;
 			}
-			no++;
+			no++; //Not authenticated with this user/pass. Check next user/pass combo.
 		}
 	}
 
@@ -63,6 +63,7 @@ int ICACHE_FLASH_ATTR authBasic(HttpdConnData *connData) {
 	httpdHeader(connData, "WWW-Authenticate", "Basic realm=\""HTTP_AUTH_REALM"\"");
 	httpdEndHeaders(connData);
 	espconn_sent(connData->conn, (uint8 *)forbidden, os_strlen(forbidden));
+	//Okay, all done.
 	return HTTPD_CGI_DONE;
 }
 
