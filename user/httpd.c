@@ -24,6 +24,7 @@ Esp8266 http server - core routines
 #include "io.h"
 #include "espfs.h"
 
+
 //Max length of request head
 #define MAX_HEAD_LEN 1024
 //Max amount of connections
@@ -231,8 +232,12 @@ static void ICACHE_FLASH_ATTR httpdSendResp(HttpdConnData *conn) {
 	int r;
 	//See if the url is somewhere in our internal url table.
 	while (builtInUrls[i].url!=NULL && conn->url!=NULL) {
+		int match=0;
 //		os_printf("%s == %s?\n", builtInUrls[i].url, conn->url);
-		if (os_strcmp(builtInUrls[i].url, conn->url)==0 || builtInUrls[i].url[0]=='*') {
+		if (os_strcmp(builtInUrls[i].url, conn->url)==0) match=1;
+		if (builtInUrls[i].url[os_strlen(builtInUrls[i].url)-1]=='*' &&
+				os_strncmp(builtInUrls[i].url, conn->url, os_strlen(builtInUrls[i].url)-1)==0) match=1;
+		if (match) {
 			os_printf("Is url index %d\n", i);
 			conn->cgiData=NULL;
 			conn->cgi=builtInUrls[i].cgiCb;
