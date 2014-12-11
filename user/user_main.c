@@ -19,6 +19,24 @@
 #include "cgi.h"
 #include "cgiwifi.h"
 #include "stdout.h"
+#include "auth.h"
+
+//Function that tells the authentication system what users/passwords live on the system.
+//This is disabled in the default build; if you want to try it, enable the authBasic line in
+//the builtInUrls below.
+int myPassFn(HttpdConnData *connData, int no, char *user, int userLen, char *pass, int passLen) {
+	if (no==0) {
+		os_strcpy(user, "admin");
+		os_strcpy(pass, "s3cr3t");
+		return 1;
+//Add more users this way
+//	} else if (no==1) {
+//		os_strcpy(user, "user1");
+//		os_strcpy(pass, "something");
+//		return 1;
+	}
+	return 0;
+}
 
 HttpdBuiltInUrl builtInUrls[]={
 	{"/", cgiRedirect, "/index.tpl"},
@@ -28,13 +46,16 @@ HttpdBuiltInUrl builtInUrls[]={
 	{"/led.cgi", cgiLed, NULL},
 
 	//Routines to make the /wifi URL and everything beneath it work.
+
+//Enable the line below to protect the WiFi configuration with an username/password combo.
+//	{"/wifi/*", authBasic, myPassFn},
+
 	{"/wifi", cgiRedirect, "/wifi/wifi.tpl"},
 	{"/wifi/", cgiRedirect, "/wifi/wifi.tpl"},
 	{"/wifi/wifiscan.cgi", cgiWiFiScan, NULL},
 	{"/wifi/wifi.tpl", cgiEspFsTemplate, tplWlan},
 	{"/wifi/connect.cgi", cgiWiFiConnect, NULL},
 	{"/wifi/setmode.cgi", cgiWifiSetMode, NULL},
-
 
 	{"*", cgiEspFsHook, NULL}, //Catch-all cgi function for the filesystem
 	{NULL, NULL, NULL}
