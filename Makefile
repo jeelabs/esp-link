@@ -143,8 +143,8 @@ firmware:
 
 flash: $(FW_FILE_1) $(FW_FILE_2)
 	$(Q) $(ESPTOOL) -cp $(ESPPORT) -cb $(ESPBAUD) -ca 0x00000 -cf firmware/0x00000.bin -v
-	$(Q) [ $(ESPDELAY) -ne 0 ] && echo "Please put the ESP in bootloader mode..."
-	$(Q) sleep $(ESPDELAY)
+	$(Q) [ $(ESPDELAY) -ne 0 ] && echo "Please put the ESP in bootloader mode..." || true
+	$(Q) sleep $(ESPDELAY) || true
 	$(Q) $(ESPTOOL) -cp $(ESPPORT) -cb $(ESPBAUD) -ca 0x40000 -cf firmware/0x40000.bin -v
 
 webpages.espfs: html/ html/wifi/ mkespfsimage/mkespfsimage
