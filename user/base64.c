@@ -53,7 +53,7 @@ int ICACHE_FLASH_ATTR base64_decode(size_t in_len, const char *in, size_t out_le
 		unsigned char ch;
 		if(isspace(in[ii])) continue;
 		if(in[ii]=='=') break; /* stop at = */
-		ch=base64dec_tab[(unsigned)in[ii]];
+		ch=base64dec_tab[(unsigned int)in[ii]];
 		if(ch==255) break; /* stop at a parse error */
 		v=(v<<6)|ch;
 		rem+=6;
