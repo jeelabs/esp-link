@@ -194,6 +194,8 @@ int ICACHE_FLASH_ATTR httpdGetHeader(HttpdConnData *conn, char *header, char *re
 void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code) {
 	char buff[128];
 	int l;
+	espconn_sent(conn->conn, (uint8 *)"Hello", 5);
+	espconn_sent(conn->conn, (uint8 *)"World", 5);
 	l=os_sprintf(buff, "HTTP/1.0 %d OK\r\nServer: esp8266-httpd/"HTTPDVER"\r\n", code);
 	espconn_sent(conn->conn, (uint8 *)buff, l);
 }
@@ -202,6 +204,7 @@ void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code) {
 void ICACHE_FLASH_ATTR httpdHeader(HttpdConnData *conn, const char *field, const char *val) {
 	char buff[256];
 	int l;
+
 	l=os_sprintf(buff, "%s: %s\r\n", field, val);
 	espconn_sent(conn->conn, (uint8 *)buff, l);
 }

@@ -1,6 +1,5 @@
 /* base64.c : base-64 / MIME encode/decode */
 /* PUBLIC DOMAIN - Jon Mayo - November 13, 2003 */
-#include "espmissingincludes.h"
 #include "c_types.h"
 #include <stdio.h>
 #include <stdint.h>

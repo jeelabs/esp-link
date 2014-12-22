@@ -9,14 +9,13 @@
  */
 
 
-#include "espmissingincludes.h"
 #include "c_types.h"
 #include "user_interface.h"
 #include "espconn.h"
 #include "mem.h"
 #include "osapi.h"
 #include "gpio.h"
-
+#include "espmissingincludes.h"
 
 #define LEDGPIO 2
 #define BTNGPIO 0
@@ -55,3 +54,4 @@ void ioInit() {
 	os_timer_setfn(&resetBtntimer, resetBtnTimerCb, NULL);
 	os_timer_arm(&resetBtntimer, 500, 1);
 }
+

@@ -20,8 +20,9 @@ flash as a binary. Also handles the hit counter on the main page.
 #include "httpd.h"
 #include "cgi.h"
 #include "io.h"
-#include "espmissingincludes.h"
 #include <ip_addr.h>
+#include "espmissingincludes.h"
+
 
 //cause I can't be bothered to write an ioGetLed()
 static char currLedState=0;
