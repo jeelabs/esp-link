@@ -62,7 +62,7 @@ void ICACHE_FLASH_ATTR tplLed(HttpdConnData *connData, char *token, void **arg) 
 			os_strcpy(buff, "off");
 		}
 	}
-	espconn_sent(connData->conn, (uint8 *)buff, os_strlen(buff));
+	httpdSend(connData, buff, -1);
 }
 
 static long hitCounter=0;
@@ -76,7 +76,7 @@ void ICACHE_FLASH_ATTR tplCounter(HttpdConnData *connData, char *token, void **a
 		hitCounter++;
 		os_sprintf(buff, "%ld", hitCounter);
 	}
-	espconn_sent(connData->conn, (uint8 *)buff, os_strlen(buff));
+	httpdSend(connData, buff, -1);
 }
 
 

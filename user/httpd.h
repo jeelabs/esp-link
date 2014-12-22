@@ -47,5 +47,6 @@ void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code);
 void ICACHE_FLASH_ATTR httpdHeader(HttpdConnData *conn, const char *field, const char *val);
 void ICACHE_FLASH_ATTR httpdEndHeaders(HttpdConnData *conn);
 int ICACHE_FLASH_ATTR httpdGetHeader(HttpdConnData *conn, char *header, char *ret, int retLen);
+int ICACHE_FLASH_ATTR httpdSend(HttpdConnData *conn, const char *data, int len);
 
 #endif

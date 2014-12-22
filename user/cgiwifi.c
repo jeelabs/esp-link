@@ -115,21 +115,21 @@ int ICACHE_FLASH_ATTR cgiWiFiScan(HttpdConnData *connData) {
 	if (cgiWifiAps.scanInProgress==1) {
 		//We're still scanning. Tell Javascript code that.
 		len=os_sprintf(buff, "{\n \"result\": { \n\"inProgress\": \"1\"\n }\n}\n");
-		espconn_sent(connData->conn, (uint8 *)buff, len);
+		httpdSend(connData, buff, len);
 	} else {
 		//We have a scan result. Pass it on.
 		len=os_sprintf(buff, "{\n \"result\": { \n\"inProgress\": \"0\", \n\"APs\": [\n");
-		espconn_sent(connData->conn, (uint8 *)buff, len);
+		httpdSend(connData, buff, len);
 		if (cgiWifiAps.apData==NULL) cgiWifiAps.noAps=0;
 		for (i=0; i<cgiWifiAps.noAps; i++) {
 			//Fill in json code for an access point
 			len=os_sprintf(buff, "{\"essid\": \"%s\", \"rssi\": \"%d\", \"enc\": \"%d\"}%s\n", 
 					cgiWifiAps.apData[i]->ssid, cgiWifiAps.apData[i]->rssi, 
 					cgiWifiAps.apData[i]->enc, (i==cgiWifiAps.noAps-1)?"":",");
-			espconn_sent(connData->conn, (uint8 *)buff, len);
+			httpdSend(connData, buff, len);
 		}
 		len=os_sprintf(buff, "]\n}\n}\n");
-		espconn_sent(connData->conn, (uint8 *)buff, len);
+		httpdSend(connData, buff, len);
 		//Also start a new scan.
 		wifiStartScan();
 	}
@@ -256,7 +256,7 @@ void ICACHE_FLASH_ATTR tplWlan(HttpdConnData *connData, char *token, void **arg)
 			os_strcpy(buff, "Click <a href=\"setmode.cgi?mode=2\">here</a> to go to standalone AP mode.");
 		}
 	}
-	espconn_sent(connData->conn, (uint8 *)buff, os_strlen(buff));
+	httpdSend(connData, buff, -1);
 }
 
 

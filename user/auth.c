@@ -62,7 +62,7 @@ int ICACHE_FLASH_ATTR authBasic(HttpdConnData *connData) {
 	httpdHeader(connData, "Content-Type", "text/plain");
 	httpdHeader(connData, "WWW-Authenticate", "Basic realm=\""HTTP_AUTH_REALM"\"");
 	httpdEndHeaders(connData);
-	espconn_sent(connData->conn, (uint8 *)forbidden, os_strlen(forbidden));
+	httpdSend(connData, forbidden, -1);
 	//Okay, all done.
 	return HTTPD_CGI_DONE;
 }

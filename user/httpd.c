@@ -31,6 +31,9 @@ Esp8266 http server - core routines
 #define MAX_CONN 8
 //Max post buffer len
 #define MAX_POST 1024
+//Max send buffer len
+#define MAX_SENDBUFF_LEN 2048
+
 
 //This gets set at init time.
 static HttpdBuiltInUrl *builtInUrls;
@@ -40,6 +43,8 @@ struct HttpdPriv {
 	char head[MAX_HEAD_LEN];
 	int headPos;
 	int postPos;
+	char *sendBuff;
+	int sendBuffLen;
 };
 
 //Connection pool
@@ -194,10 +199,8 @@ int ICACHE_FLASH_ATTR httpdGetHeader(HttpdConnData *conn, char *header, char *re
 void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code) {
 	char buff[128];
 	int l;
-	espconn_sent(conn->conn, (uint8 *)"Hello", 5);
-	espconn_sent(conn->conn, (uint8 *)"World", 5);
 	l=os_sprintf(buff, "HTTP/1.0 %d OK\r\nServer: esp8266-httpd/"HTTPDVER"\r\n", code);
-	espconn_sent(conn->conn, (uint8 *)buff, l);
+	httpdSend(conn, buff, l);
 }
 
 //Send a http header.
@@ -206,12 +209,12 @@ void ICACHE_FLASH_ATTR httpdHeader(HttpdConnData *conn, const char *field, const
 	int l;
 
 	l=os_sprintf(buff, "%s: %s\r\n", field, val);
-	espconn_sent(conn->conn, (uint8 *)buff, l);
+	httpdSend(conn, buff, l);
 }
 
 //Finish the headers.
 void ICACHE_FLASH_ATTR httpdEndHeaders(HttpdConnData *conn) {
-	espconn_sent(conn->conn, (uint8 *)"\r\n", 2);
+	httpdSend(conn, "\r\n", -1);
 }
 
 //ToDo: sprintf->snprintf everywhere... esp doesn't have snprintf tho' :/
@@ -220,7 +223,7 @@ void ICACHE_FLASH_ATTR httpdRedirect(HttpdConnData *conn, char *newUrl) {
 	char buff[1024];
 	int l;
 	l=os_sprintf(buff, "HTTP/1.1 302 Found\r\nLocation: %s\r\n\r\nMoved to %s\r\n", newUrl, newUrl);
-	espconn_sent(conn->conn, (uint8 *)buff, l);
+	httpdSend(conn, buff, l);
 }
 
 //Use this as a cgi function to redirect one url to another.
@@ -229,9 +232,28 @@ int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData) {
 		//Connection aborted. Clean up.
 		return HTTPD_CGI_DONE;
 	}
-
 	httpdRedirect(connData, (char*)connData->cgiArg);
 	return HTTPD_CGI_DONE;
+}
+
+
+//Add data to the send buffer. len is the length of the data. If len is -1
+//the data is seen as a C-string.
+//Returns 1 for success, 0 for out-of-memory.
+int ICACHE_FLASH_ATTR httpdSend(HttpdConnData *conn, const char *data, int len) {
+	if (len<0) len=strlen(data);
+	if (conn->priv->sendBuffLen+len>MAX_SENDBUFF_LEN) return 0;
+	os_memcpy(conn->priv->sendBuff+conn->priv->sendBuffLen, data, len);
+	conn->priv->sendBuffLen+=len;
+	return 1;
+}
+
+//Helper function to send any data in conn->priv->sendBuff
+static void ICACHE_FLASH_ATTR xmitSendBuff(HttpdConnData *conn) {
+	if (conn->priv->sendBuffLen!=0) {
+		espconn_sent(conn->conn, (uint8_t*)conn->priv->sendBuff, conn->priv->sendBuffLen);
+		conn->priv->sendBuffLen=0;
+	}
 }
 
 //Callback called when the data on a socket has been successfully
@@ -239,19 +261,25 @@ int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData) {
 static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	int r;
 	HttpdConnData *conn=httpdFindConnData(arg);
+	char sendBuff[MAX_SENDBUFF_LEN];
+
 //	os_printf("Sent callback on conn %p\n", conn);
 	if (conn==NULL) return;
+	conn->priv->sendBuff=sendBuff;
+	conn->priv->sendBuffLen=0;
+
 	if (conn->cgi==NULL) { //Marked for destruction?
 		os_printf("Conn %p is done. Closing.\n", conn->conn);
 		espconn_disconnect(conn->conn);
 		httpdRetireConn(conn);
-		return;
+		return; //No need to call xmitSendBuff.
 	}
 
 	r=conn->cgi(conn); //Execute cgi fn.
 	if (r==HTTPD_CGI_DONE) {
 		conn->cgi=NULL; //mark for destruction.
 	}
+	xmitSendBuff(conn);
 }
 
 static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266-httpd/0.1\r\nContent-Type: text/plain\r\n\r\nNot Found.\r\n";
@@ -283,7 +311,7 @@ static void ICACHE_FLASH_ATTR httpdSendResp(HttpdConnData *conn) {
 	}
 	//Can't find :/
 	os_printf("%s not found. 404!\n", conn->url);
-	espconn_sent(conn->conn, (uint8 *)httpNotFoundHeader, os_strlen(httpNotFoundHeader));
+	httpdSend(conn, httpNotFoundHeader, -1);
 	conn->cgi=NULL; //mark for destruction
 }
 
@@ -329,13 +357,16 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 	}
 }
 
+
 //Callback called when there's data available on a socket.
 static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short len) {
 	int x;
 	char *p, *e;
+	char sendBuff[MAX_SENDBUFF_LEN];
 	HttpdConnData *conn=httpdFindConnData(arg);
 	if (conn==NULL) return;
-
+	conn->priv->sendBuff=sendBuff;
+	conn->priv->sendBuffLen=0;
 
 	for (x=0; x<len; x++) {
 		if (conn->priv->headPos!=-1) {
@@ -371,10 +402,11 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 				os_printf("Post data: %s\n", conn->postBuff);
 				//Send the response.
 				httpdSendResp(conn);
-				return;
+				break;
 			}
 		}
 	}
+	xmitSendBuff(conn);
 }
 
 static void ICACHE_FLASH_ATTR httpdReconCb(void *arg, sint8 err) {

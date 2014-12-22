@@ -115,7 +115,7 @@ int ICACHE_FLASH_ATTR cgiEspFsTemplate(HttpdConnData *connData) {
 				//Inside ordinary text.
 				if (buff[x]=='%') {
 					//Send raw data up to now
-					if (sp!=0) espconn_sent(connData->conn, (uint8 *)e, sp);
+					if (sp!=0) httpdSend(connData, e, sp);
 					sp=0;
 					//Go collect token chars.
 					tpd->tokenPos=0;
@@ -127,7 +127,7 @@ int ICACHE_FLASH_ATTR cgiEspFsTemplate(HttpdConnData *connData) {
 					if (tpd->tokenPos==0) {
 						//This is the second % of a %% escape string.
 						//Send a single % and resume with the normal program flow.
-						espconn_sent(connData->conn, (uint8 *)"%", 1);
+						httpdSend(connData, "%", 1);
 					} else {
 						//This is an actual token.
 						tpd->token[tpd->tokenPos++]=0; //zero-terminate token
@@ -143,7 +143,7 @@ int ICACHE_FLASH_ATTR cgiEspFsTemplate(HttpdConnData *connData) {
 		}
 	}
 	//Send remaining bit.
-	if (sp!=0) espconn_sent(connData->conn, (uint8 *)e, sp);
+	if (sp!=0) httpdSend(connData, e, sp);
 	if (len!=1024) {
 		//We're done.
 		((TplCallback)(connData->cgiArg))(connData, NULL, &tpd->tplArg);
