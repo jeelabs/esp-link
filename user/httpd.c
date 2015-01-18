@@ -450,12 +450,12 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 	//Find empty conndata in pool
 	for (i=0; i<MAX_CONN; i++) if (connData[i].conn==NULL) break;
 	os_printf("Con req, conn=%p, pool slot %d\n", conn, i);
-	connData[i].priv=&connPrivData[i];
 	if (i==MAX_CONN) {
 		os_printf("Aiee, conn pool overflow!\n");
 		espconn_disconnect(conn);
 		return;
 	}
+	connData[i].priv=&connPrivData[i];
 	connData[i].conn=conn;
 	connData[i].priv->headPos=0;
 	connData[i].postBuff=NULL;
