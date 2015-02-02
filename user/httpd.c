@@ -369,12 +369,14 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 	conn->priv->sendBuffLen=0;
 
 	for (x=0; x<len; x++) {
-		if (conn->priv->headPos!=-1) {
+		if (conn->postLen<0) {
 			//This byte is a header byte.
 			if (conn->priv->headPos!=MAX_HEAD_LEN) conn->priv->head[conn->priv->headPos++]=data[x];
 			conn->priv->head[conn->priv->headPos]=0;
 			//Scan for /r/n/r/n
 			if (data[x]=='\n' && (char *)os_strstr(conn->priv->head, "\r\n\r\n")!=NULL) {
+				//Indicate we're done with the headers.
+				conn->postLen=0;
 				//Reset url data
 				conn->url=NULL;
 				//Find end of next header line
@@ -390,7 +392,6 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 				if (conn->postLen==0) {
 					httpdSendResp(conn);
 				}
-				conn->priv->headPos=-1; //Indicate we're done with the headers.
 			}
 		} else if (conn->priv->postPos!=-1 && conn->postLen!=0 && conn->priv->postPos <= conn->postLen) {
 			//This byte is a POST byte.
@@ -460,7 +461,7 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 	connData[i].priv->headPos=0;
 	connData[i].postBuff=NULL;
 	connData[i].priv->postPos=0;
-	connData[i].postLen=0;
+	connData[i].postLen=-1;
 
 	espconn_regist_recvcb(conn, httpdRecvCb);
 	espconn_regist_reconcb(conn, httpdReconCb);
