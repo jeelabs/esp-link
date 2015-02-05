@@ -66,6 +66,7 @@ typedef struct {
 static const MimeMap mimeTypes[]={
 	{"htm", "text/htm"},
 	{"html", "text/html"},
+	{"css", "text/css"},
 	{"js", "text/javascript"},
 	{"txt", "text/plain"},
 	{"jpg", "image/jpeg"},
