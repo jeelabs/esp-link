@@ -15,7 +15,7 @@ The Bad (aka: what can be improved)
  - Not built for speediness, although it's reasonable fast.
  - Built according to what I remember of the HTTP protocol, not according to the
    RFCs. Should work with most modern browsers, though.
- - No support for authentication or https.
+ - No support for https.
 
 The Ugly (aka: bugs, misbehaviour)
 - Possible buffer overflows (usually not remotely exploitable) due to no os_snprintf
@@ -35,14 +35,14 @@ BUILDING EVERYTHING
 
 For this, you need an environment that can compile ESP8266 firmware. Environments for this still
 are in flux at the moment, but I'm using a crosstool-ng gcc setup combined with the libs & includes
-from the ESP SDK and ESP VM. You probably also need an UNIX-slike system; I'm working on
+from the ESP SDK and ESP VM. You probably also need an UNIX-like system; I'm working on
 Debian Linux myself. 
 
 To manage the paths to all this, you can source a small shell fragment into your current session. For
 example, I source a file with these contents:
 export PATH=${PWD}/crosstool-NG/builds/xtensa-lx106-elf/bin:$PATH
 export XTENSA_TOOLS_ROOT=${PWD}/crosstool-NG/builds/xtensa-lx106-elf/bin
-export SDK_BASE=${PWD}/esp_iot_sdk_v0.9.2/
+export SDK_BASE=${PWD}/esp_iot_sdk_v0.9.5/
 export SDK_EXTRA_INCLUDES=${PWD}/esp_iot_sdk_novm_unpacked/usr/xtensa/XtDevTools/install/builds/RC-2010.1-win32/lx106/xtensa-elf/include/
 export ESPTOOL=${PWD}/esptool/esptool.py
 export ESPPORT=/dev/ttyUSB0
@@ -56,7 +56,6 @@ This project makes use of heatshrink, which is a git submodule. To fetch the cod
 cd esphttpd
 git submodule init
 git submodule update
-
 
 Now, build the code:
 make
@@ -82,6 +81,7 @@ espconn_sent(connData->conn, (uint8 *)buff, len);
 to
 httpdSend(connData, buff, len)
 please. The reason for this is that you can't do multiple espconn_sent calls serially anymore, so
-httpd needs to buffer the writes now.
+httpd needs to buffer the writes now. This is only needed in your own code; the code that comes
+with httpd already has this changed.
 
 
