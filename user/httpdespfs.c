@@ -47,6 +47,7 @@ int ICACHE_FLASH_ATTR cgiEspFsHook(HttpdConnData *connData) {
 		connData->cgiData=file;
 		httpdStartResponse(connData, 200);
 		httpdHeader(connData, "Content-Type", httpdGetMimetype(connData->url));
+		httpdHeader(connData, "Cache-Control", "max-age=3600, must-revalidate");
 		httpdEndHeaders(connData);
 		return HTTPD_CGI_MORE;
 	}
