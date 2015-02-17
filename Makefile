@@ -11,8 +11,9 @@
 BUILD_BASE	= build
 FW_BASE		= firmware
 
-# Base directory for the compiler
-XTENSA_TOOLS_ROOT ?= /opt/Espressif/crosstool-NG/builds/xtensa-lx106-elf/bin
+# Base directory for the compiler. Needs a / at the end; if not set it'll use the tools that are in
+# the PATH.
+XTENSA_TOOLS_ROOT ?= 
 
 #Extra Tensilica includes from the ESS VM
 SDK_EXTRA_INCLUDES ?= /opt/Espressif/include
@@ -66,9 +67,9 @@ FW_FILE_2	= 0x40000
 FW_FILE_2_ARGS	= -es .irom0.text $@ -ec
 
 # select which tools to use as compiler, librarian and linker
-CC		:= $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-gcc
-AR		:= $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-ar
-LD		:= $(XTENSA_TOOLS_ROOT)/xtensa-lx106-elf-gcc
+CC		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
+AR		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-ar
+LD		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
 
 
 

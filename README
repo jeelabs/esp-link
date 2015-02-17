@@ -34,20 +34,19 @@ allows you to control a LED that's connected to GPIO2.
 BUILDING EVERYTHING
 
 For this, you need an environment that can compile ESP8266 firmware. Environments for this still
-are in flux at the moment, but I'm using a crosstool-ng gcc setup combined with the libs & includes
-from the ESP SDK and ESP VM. You probably also need an UNIX-like system; I'm working on
-Debian Linux myself. 
+are in flux at the moment, but I'm using esp-open-sdk: https://github.com/pfalcon/esp-open-sdk .
+You probably also need an UNIX-like system; I'm working on Debian Linux myself. 
 
 To manage the paths to all this, you can source a small shell fragment into your current session. For
 example, I source a file with these contents:
-export PATH=${PWD}/crosstool-NG/builds/xtensa-lx106-elf/bin:$PATH
-export XTENSA_TOOLS_ROOT=${PWD}/crosstool-NG/builds/xtensa-lx106-elf/bin
-export SDK_BASE=${PWD}/esp_iot_sdk_v0.9.5/
-export SDK_EXTRA_INCLUDES=${PWD}/esp_iot_sdk_novm_unpacked/usr/xtensa/XtDevTools/install/builds/RC-2010.1-win32/lx106/xtensa-elf/include/
-export ESPTOOL=${PWD}/esptool/esptool.py
+export PATH=${PWD}/esp-open-sdk/xtensa-lx106-elf/bin:$PATH
+export SDK_BASE=${PWD}/esp-open-sdk/sdk
+export ESPTOOL=${PWD}/esptool/esptool
 export ESPPORT=/dev/ttyUSB0
+export ESPBAUD=460800
+
 Actual setup of the SDK and toolchain is out of the scope of this document, so I hope this helps you
-enough to set up your own if you haven't already.
+enough to set up your own if you haven't already. 
 
 If you have that, you can clone out the source code:
 git clone http://git.spritesserver.nl/esphttpd.git/
@@ -75,7 +74,7 @@ WRITING CODE FOR THE WEBSERVER
 the SDK works, this shouldn't be too hard :P
 
 
-CHANGE FROM SDK 0.9.3 (and earlier) TO SDK 0.9.4:
+CHANGE FROM SDK 0.9.3 (and earlier) TO SDK 0.9.4 (and later):
 Change all occurences of
 espconn_sent(connData->conn, (uint8 *)buff, len);
 to
