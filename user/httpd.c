@@ -283,7 +283,7 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	xmitSendBuff(conn);
 }
 
-static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266-httpd/0.1\r\nContent-Type: text/plain\r\n\r\nNot Found.\r\n";
+static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266-httpd/0.1\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\nNot Found.\r\n";
 
 //This is called when the headers have been received and the connection is ready to send
 //the result headers and data.
