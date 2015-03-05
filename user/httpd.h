@@ -11,6 +11,9 @@
 #define HTTPD_CGI_NOTFOUND 2
 #define HTTPD_CGI_AUTHENTICATED 2 //for now
 
+#define GET 1
+#define POST 2
+
 typedef struct HttpdPriv HttpdPriv;
 typedef struct HttpdConnData HttpdConnData;
 
@@ -19,6 +22,7 @@ typedef int (* cgiSendCallback)(HttpdConnData *connData);
 //A struct describing a http connection. This gets passed to cgi functions.
 struct HttpdConnData {
 	struct espconn *conn;
+	char requestType;
 	char *url;
 	char *getArgs;
 	const void *cgiArg;

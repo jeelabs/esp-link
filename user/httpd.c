@@ -319,8 +319,18 @@ static void ICACHE_FLASH_ATTR httpdSendResp(HttpdConnData *conn) {
 //Parse a line of header data and modify the connection data accordingly.
 static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 	int i;
-//	os_printf("Got header %s\n", h);
-	if (os_strncmp(h, "GET ", 4)==0 || os_strncmp(h, "POST ", 5)==0) {
+	char first_line = false;
+  // os_printf("Got header %s\n", h);
+
+	if (os_strncmp(h, "GET ", 4)==0){
+		conn->requestType = GET;
+		first_line = true;
+	}else if(os_strncmp(h, "POST ", 5)==0) {
+		conn->requestType = POST;
+		first_line = true;
+	}
+
+	if(first_line){
 		char *e;
 		
 		//Skip past the space after POST/GET
