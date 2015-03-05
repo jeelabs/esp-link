@@ -30,7 +30,7 @@ Esp8266 http server - core routines
 //Max amount of connections
 #define MAX_CONN 8
 //Max post buffer len
-#define MAX_POST 1024
+#define MAX_POST 1460
 //Max send buffer len
 #define MAX_SENDBUFF_LEN 2048
 
@@ -288,27 +288,15 @@ static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266
 //This is called when the headers have been received and the connection is ready to send
 //the result headers and data.
 static void ICACHE_FLASH_ATTR httpdSendResp(HttpdConnData *conn) {
-	int i=0;
 	int r;
-	//See if the url is somewhere in our internal url table.
-	while (builtInUrls[i].url!=NULL && conn->url!=NULL) {
-		int match=0;
-//		os_printf("%s == %s?\n", builtInUrls[i].url, conn->url);
-		if (os_strcmp(builtInUrls[i].url, conn->url)==0) match=1;
-		if (builtInUrls[i].url[os_strlen(builtInUrls[i].url)-1]=='*' &&
-				os_strncmp(builtInUrls[i].url, conn->url, os_strlen(builtInUrls[i].url)-1)==0) match=1;
-		if (match) {
-			os_printf("Is url index %d\n", i);
-			conn->cgiData=NULL;
-			conn->cgi=builtInUrls[i].cgiCb;
-			conn->cgiArg=builtInUrls[i].cgiArg;
-			r=conn->cgi(conn);
-			if (r!=HTTPD_CGI_NOTFOUND) {
-				if (r==HTTPD_CGI_DONE) conn->cgi=NULL;  //If cgi finishes immediately: mark conn for destruction.
-				return;
-			}
+
+	r=conn->cgi(conn);
+	if (r!=HTTPD_CGI_NOTFOUND) {
+		if (r==HTTPD_CGI_DONE){
+			conn->cgi=NULL;  //If cgi finishes immediately: mark conn for destruction.
+			xmitSendBuff(conn);
 		}
-		i++;
+		return;
 	}
 	//Can't find :/
 	os_printf("%s not found. 404!\n", conn->url);
@@ -353,17 +341,40 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		} else {
 			conn->getArgs=NULL;
 		}
+
+		i=0;
+		//See if the url is somewhere in our internal url table.
+		while (builtInUrls[i].url!=NULL && conn->url!=NULL) {
+			int match=0;
+	//		os_printf("%s == %s?\n", builtInUrls[i].url, conn->url);
+			if (os_strcmp(builtInUrls[i].url, conn->url)==0) match=1;
+			if (builtInUrls[i].url[os_strlen(builtInUrls[i].url)-1]=='*' &&
+					os_strncmp(builtInUrls[i].url, conn->url, os_strlen(builtInUrls[i].url)-1)==0) match=1;
+			if (match) {
+				os_printf("Is url index %d\n", i);
+				conn->cgiData=NULL;
+				conn->cgi=builtInUrls[i].cgiCb;
+				conn->cgiArg=builtInUrls[i].cgiArg;
+				conn->stream=builtInUrls[i].stream;
+				return;
+			}
+			i++;
+		}
 	} else if (os_strncmp(h, "Content-Length: ", 16)==0) {
 		i=0;
 		//Skip trailing spaces
 		while (h[i]!=' ') i++;
 		//Get POST data length
 		conn->postLen=atoi(h+i+1);
-		//Clamp if too big. Hmm, maybe we should error out instead?
-		if (conn->postLen>MAX_POST) conn->postLen=MAX_POST;
-		os_printf("Mallocced buffer for %d bytes of post data.\n", conn->postLen);
-		//Alloc the memory.
-		conn->postBuff=(char*)os_malloc(conn->postLen+1);
+		if(conn->stream){
+			conn->postBuff=(char*)os_malloc(MAX_POST+1);
+		}else{
+			//Clamp if too big. Hmm, maybe we should error out instead?
+			if (conn->postLen>MAX_POST) conn->postLen=MAX_POST;
+			os_printf("Mallocced buffer for %d bytes of post data.\n", conn->postLen);
+			//Alloc the memory.
+			conn->postBuff=(char*)os_malloc(conn->postLen+1);
+		}
 		conn->priv->postPos=0;
 	}
 }
@@ -372,6 +383,7 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 //Callback called when there's data available on a socket.
 static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short len) {
 	int x;
+	int r;
 	char *p, *e;
 	char sendBuff[MAX_SENDBUFF_LEN];
 	HttpdConnData *conn=httpdFindConnData(arg);
@@ -407,6 +419,7 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 		} else if (conn->priv->postPos!=-1 && conn->postLen!=0 && conn->priv->postPos <= conn->postLen) {
 			//This byte is a POST byte.
 			conn->postBuff[conn->priv->postPos++]=data[x];
+			conn->postReceived++;
 			if (conn->priv->postPos>=conn->postLen) {
 				//Received post stuff.
 				conn->postBuff[conn->priv->postPos]=0; //zero-terminate
@@ -418,7 +431,20 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 			}
 		}
 	}
-	xmitSendBuff(conn);
+
+	if(conn->priv->postPos > 0 && conn->stream){
+		conn->postBuff[conn->priv->postPos]=0; //zero-terminate
+		r=conn->cgi(conn);
+		if (r!=HTTPD_CGI_NOTFOUND) {
+			if (r==HTTPD_CGI_DONE){
+				conn->cgi=NULL;  //If cgi finishes mark conn for destruction.
+				xmitSendBuff(conn);
+			}
+		}
+		conn->priv->postPos = 0;
+	}else{
+		xmitSendBuff(conn);
+	}
 }
 
 static void ICACHE_FLASH_ATTR httpdReconCb(void *arg, sint8 err) {

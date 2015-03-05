@@ -102,3 +102,29 @@ int ICACHE_FLASH_ATTR cgiReadFlash(HttpdConnData *connData) {
 	if (*pos>=0x40200000+(512*1024)) return HTTPD_CGI_DONE; else return HTTPD_CGI_MORE;
 }
 
+
+//Cgi to allow user to upload a new espfs image
+int ICACHE_FLASH_ATTR updateWeb(HttpdConnData *connData) {
+	if (connData->conn==NULL) {
+		//Connection aborted. Clean up.
+		return HTTPD_CGI_DONE;
+	}
+	if(connData->requestType == GET){
+		httpdStartResponse(connData, 200);
+		httpdHeader(connData, "Content-Length", "135");
+		httpdEndHeaders(connData);
+		httpdSend(connData, "<html><body><form method=\"POST\" enctype=\"multipart/form-data\"><input type=\"file\" name=\"file\"><input type=\"submit\"></form></body></html>", 135);
+	}else if(connData->requestType == POST){
+		os_printf("postReceived: %d\r\n", connData->postReceived);
+		os_printf("postLen     : %d\r\n", connData->postLen);
+		os_printf("data size   : %d\r\n", strlen(connData->postBuff));
+		if(connData->postReceived >= connData->postLen){
+			httpdStartResponse(connData, 204);
+			return HTTPD_CGI_DONE;
+		}else{
+			return HTTPD_CGI_NOTDONE;
+		}
+	}
+	return HTTPD_CGI_DONE;
+}
+

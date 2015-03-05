@@ -8,8 +8,9 @@
 
 #define HTTPD_CGI_MORE 0
 #define HTTPD_CGI_DONE 1
-#define HTTPD_CGI_NOTFOUND 2
-#define HTTPD_CGI_AUTHENTICATED 2 //for now
+#define HTTPD_CGI_NOTDONE 2
+#define HTTPD_CGI_NOTFOUND 3
+#define HTTPD_CGI_AUTHENTICATED 4 //for now
 
 #define GET 1
 #define POST 2
@@ -30,7 +31,9 @@ struct HttpdConnData {
 	HttpdPriv *priv;
 	cgiSendCallback cgi;
 	int postLen;
+	int postReceived;
 	char *postBuff;
+	int stream;
 };
 
 //A struct describing an url. This is the main struct that's used to send different URL requests to
@@ -39,6 +42,7 @@ typedef struct {
 	const char *url;
 	cgiSendCallback cgiCb;
 	const void *cgiArg;
+	int stream;
 } HttpdBuiltInUrl;
 
 int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData);
