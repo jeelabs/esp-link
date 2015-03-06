@@ -376,6 +376,17 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 			conn->postBuff=(char*)os_malloc(conn->postLen+1);
 		}
 		conn->priv->postPos=0;
+	} else if (os_strncmp(h, "Content-Type: ", 14)==0) {
+		if(os_strstr(h, "multipart/form-data")){
+			// It's multipart form data so let's pull out the boundary for future use
+			char *b;
+			if((b = os_strstr(h, "boundary=")) != NULL){
+				conn->multipartBoundary = b + 7; // move the pointer 2 chars before boundary then fill them with dashes
+				conn->multipartBoundary[0] = '-';
+				conn->multipartBoundary[1] = '-';
+				os_printf("boundary = %s\n", conn->multipartBoundary);
+			}
+		}
 	}
 }
 
@@ -423,6 +434,7 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 			if (conn->priv->postPos>=conn->postLen) {
 				//Received post stuff.
 				conn->postBuff[conn->priv->postPos]=0; //zero-terminate
+				conn->postBuffLen = conn->priv->postPos;
 				conn->priv->postPos=-1;
 				os_printf("Post data: %s\n", conn->postBuff);
 				//Send the response.
@@ -434,6 +446,7 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 
 	if(conn->priv->postPos > 0 && conn->stream){
 		conn->postBuff[conn->priv->postPos]=0; //zero-terminate
+		conn->postBuffLen = conn->priv->postPos;
 		r=conn->cgi(conn);
 		if (r!=HTTPD_CGI_NOTFOUND) {
 			if (r==HTTPD_CGI_DONE){
