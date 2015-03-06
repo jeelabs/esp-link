@@ -28,6 +28,7 @@ struct HttpdConnData {
 	char *getArgs;
 	const void *cgiArg;
 	void *cgiData;
+	void *cgiPrivData; // Used for streaming handlers storing state between requests
 	char *multipartBoundary;
 	HttpdPriv *priv;
 	cgiSendCallback cgi;
