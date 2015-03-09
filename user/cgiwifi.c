@@ -231,11 +231,11 @@ int ICACHE_FLASH_ATTR cgiWifiSetMode(HttpdConnData *connData) {
 }
 
 //Template code for the WLAN page.
-void ICACHE_FLASH_ATTR tplWlan(HttpdConnData *connData, char *token, void **arg) {
+int ICACHE_FLASH_ATTR tplWlan(HttpdConnData *connData, char *token, void **arg) {
 	char buff[1024];
 	int x;
 	static struct station_config stconf;
-	if (token==NULL) return;
+	if (token==NULL) return HTTPD_CGI_DONE;
 	wifi_station_get_config(&stconf);
 
 	os_strcpy(buff, "Unknown");
@@ -257,6 +257,7 @@ void ICACHE_FLASH_ATTR tplWlan(HttpdConnData *connData, char *token, void **arg)
 		}
 	}
 	httpdSend(connData, buff, -1);
+	return HTTPD_CGI_DONE;
 }
 
 

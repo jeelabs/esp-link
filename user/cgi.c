@@ -50,9 +50,9 @@ int ICACHE_FLASH_ATTR cgiLed(HttpdConnData *connData) {
 
 
 //Template code for the led page.
-void ICACHE_FLASH_ATTR tplLed(HttpdConnData *connData, char *token, void **arg) {
+int ICACHE_FLASH_ATTR tplLed(HttpdConnData *connData, char *token, void **arg) {
 	char buff[128];
-	if (token==NULL) return;
+	if (token==NULL) return HTTPD_CGI_DONE;
 
 	os_strcpy(buff, "Unknown");
 	if (os_strcmp(token, "ledstate")==0) {
@@ -63,20 +63,22 @@ void ICACHE_FLASH_ATTR tplLed(HttpdConnData *connData, char *token, void **arg) 
 		}
 	}
 	httpdSend(connData, buff, -1);
+	return HTTPD_CGI_DONE;
 }
 
 static long hitCounter=0;
 
 //Template code for the counter on the index page.
-void ICACHE_FLASH_ATTR tplCounter(HttpdConnData *connData, char *token, void **arg) {
+int ICACHE_FLASH_ATTR tplCounter(HttpdConnData *connData, char *token, void **arg) {
 	char buff[128];
-	if (token==NULL) return;
+	if (token==NULL) return HTTPD_CGI_DONE;
 
 	if (os_strcmp(token, "counter")==0) {
 		hitCounter++;
 		os_sprintf(buff, "%ld", hitCounter);
 	}
 	httpdSend(connData, buff, -1);
+	return HTTPD_CGI_DONE;
 }
 
 
@@ -232,7 +234,7 @@ int ICACHE_FLASH_ATTR updateWeb(HttpdConnData *connData) {
 			if (connData->cgiPrivData!=NULL) os_free(connData->cgiPrivData);
 			return HTTPD_CGI_DONE;
 		}else{
-			return HTTPD_CGI_NOTDONE;
+			return HTTPD_CGI_MORE;
 		}
 	}
 	return HTTPD_CGI_DONE;

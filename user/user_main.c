@@ -50,27 +50,27 @@ general ones. Authorization things (like authBasic) act as a 'barrier' and
 should be placed above the URLs they protect.
 */
 HttpdBuiltInUrl builtInUrls[]={
-	{"/", cgiRedirect, "/index.tpl", FALSE},
-	{"/flash.bin", cgiReadFlash, NULL, FALSE},
-	{"/led.tpl", cgiEspFsTemplate, tplLed, FALSE},
-	{"/index.tpl", cgiEspFsTemplate, tplCounter, FALSE},
-	{"/led.cgi", cgiLed, NULL, FALSE},
-	{"/updateweb.cgi", updateWeb, NULL, TRUE},
+	{"/", cgiRedirect, "/index.tpl"},
+	{"/flash.bin", cgiReadFlash, NULL},
+	{"/led.tpl", cgiEspFsTemplate, tplLed},
+	{"/index.tpl", cgiEspFsTemplate, tplCounter},
+	{"/led.cgi", cgiLed, NULL},
+	{"/updateweb.cgi", updateWeb, NULL},
 
 	//Routines to make the /wifi URL and everything beneath it work.
 
 //Enable the line below to protect the WiFi configuration with an username/password combo.
-//	{"/wifi/*", authBasic, myPassFn, FALSE},
+//	{"/wifi/*", authBasic, myPassFn},
 
-	{"/wifi", cgiRedirect, "/wifi/wifi.tpl", FALSE},
-	{"/wifi/", cgiRedirect, "/wifi/wifi.tpl", FALSE},
-	{"/wifi/wifiscan.cgi", cgiWiFiScan, NULL, FALSE},
-	{"/wifi/wifi.tpl", cgiEspFsTemplate, tplWlan, FALSE},
-	{"/wifi/connect.cgi", cgiWiFiConnect, NULL, FALSE},
-	{"/wifi/setmode.cgi", cgiWifiSetMode, NULL, FALSE},
+	{"/wifi", cgiRedirect, "/wifi/wifi.tpl"},
+	{"/wifi/", cgiRedirect, "/wifi/wifi.tpl"},
+	{"/wifi/wifiscan.cgi", cgiWiFiScan, NULL},
+	{"/wifi/wifi.tpl", cgiEspFsTemplate, tplWlan},
+	{"/wifi/connect.cgi", cgiWiFiConnect, NULL},
+	{"/wifi/setmode.cgi", cgiWifiSetMode, NULL},
 
-	{"*", cgiEspFsHook, NULL, FALSE}, //Catch-all cgi function for the filesystem
-	{NULL, NULL, NULL, FALSE}
+	{"*", cgiEspFsHook, NULL}, //Catch-all cgi function for the filesystem
+	{NULL, NULL, NULL}
 };
 
 
