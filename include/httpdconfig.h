@@ -3,7 +3,8 @@
 #define EFS_HEATSHRINK
 
 //Pos of esp fs in flash
-#define ESPFS_POS 0x12000
+#define ESPFS_POS  0x12000
+#define ESPFS_SIZE 0x2E000
 
 //If you want, you can define a realm for the authentication system.
 //#define HTTP_AUTH_REALM "MyRealm"

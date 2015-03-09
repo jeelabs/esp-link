@@ -55,7 +55,7 @@ HttpdBuiltInUrl builtInUrls[]={
 	{"/led.tpl", cgiEspFsTemplate, tplLed},
 	{"/index.tpl", cgiEspFsTemplate, tplCounter},
 	{"/led.cgi", cgiLed, NULL},
-	{"/updateweb.cgi", updateWeb, NULL},
+	{"/updateweb.cgi", cgiUploadEspfs, NULL},
 
 	//Routines to make the /wifi URL and everything beneath it work.
 

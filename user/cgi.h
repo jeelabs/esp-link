@@ -7,6 +7,6 @@ int cgiLed(HttpdConnData *connData);
 int tplLed(HttpdConnData *connData, char *token, void **arg);
 int cgiReadFlash(HttpdConnData *connData);
 int tplCounter(HttpdConnData *connData, char *token, void **arg);
-int updateWeb(HttpdConnData *connData);
+int cgiUploadEspfs(HttpdConnData *connData);
 
 #endif
