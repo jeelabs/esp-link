@@ -16,6 +16,7 @@
 
 typedef struct HttpdPriv HttpdPriv;
 typedef struct HttpdConnData HttpdConnData;
+typedef struct HttpdPostData HttpdPostData;
 
 typedef int (* cgiSendCallback)(HttpdConnData *connData);
 
@@ -28,14 +29,19 @@ struct HttpdConnData {
 	const void *cgiArg;
 	void *cgiData;
 	void *cgiPrivData; // Used for streaming handlers storing state between requests
-	char *multipartBoundary;
 	HttpdPriv *priv;
 	cgiSendCallback cgi;
-	int postLen;
-	int postBuffSize; // The maximum length of the post buffer
-	int postBuffLen; // The amount of bytes in the current post buffer
-	int postReceived; // The total amount of bytes received so far
-	char *postBuff;
+	HttpdPostData *post;
+};
+
+//A struct describing the POST data sent inside the http connection.  This is used by the CGI functions
+struct HttpdPostData {
+	int len; // POST Content-Length
+	int buffSize; // The maximum length of the post buffer
+	int buffLen; // The amount of bytes in the current post buffer
+	int received; // The total amount of bytes received so far
+	char *buff; // Actual POST data buffer
+	char *multipartBoundary;
 };
 
 //A struct describing an url. This is the main struct that's used to send different URL requests to

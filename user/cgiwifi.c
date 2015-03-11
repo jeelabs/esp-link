@@ -187,8 +187,8 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 		return HTTPD_CGI_DONE;
 	}
 	
-	httpdFindArg(connData->postBuff, "essid", essid, sizeof(essid));
-	httpdFindArg(connData->postBuff, "passwd", passwd, sizeof(passwd));
+	httpdFindArg(connData->post->buff, "essid", essid, sizeof(essid));
+	httpdFindArg(connData->post->buff, "passwd", passwd, sizeof(passwd));
 
 	os_strncpy((char*)stconf.ssid, essid, 32);
 	os_strncpy((char*)stconf.password, passwd, 64);

@@ -49,6 +49,7 @@ struct HttpdPriv {
 //Connection pool
 static HttpdPriv connPrivData[MAX_CONN];
 static HttpdConnData connData[MAX_CONN];
+static HttpdPostData connPostData[MAX_CONN];
 
 //Listening connection data
 static struct espconn httpdConn;
@@ -99,8 +100,8 @@ static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
 
 //Retires a connection for re-use
 static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
-	if (conn->postBuff!=NULL) os_free(conn->postBuff);
-	conn->postBuff=NULL;
+	if (conn->post->buff!=NULL) os_free(conn->post->buff);
+	conn->post->buff=NULL;
 	conn->cgi=NULL;
 	conn->conn=NULL;
 }
@@ -362,27 +363,27 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		//Skip trailing spaces
 		while (h[i]!=' ') i++;
 		//Get POST data length
-		conn->postLen=atoi(h+i+1);
+		conn->post->len=atoi(h+i+1);
 
 		// Allocate the buffer
-		if(conn->postLen > MAX_POST){
+		if(conn->post->len > MAX_POST){
 			// we'll stream this in in chunks
-			conn->postBuffSize = MAX_POST;
+			conn->post->buffSize = MAX_POST;
 		}else{
-			conn->postBuffSize = conn->postLen;
+			conn->post->buffSize = conn->post->len;
 		}
-		os_printf("Mallocced buffer for %d + 1 bytes of post data.\n", conn->postBuffSize);
-		conn->postBuff=(char*)os_malloc(conn->postBuffSize + 1);
-		conn->postBuffLen=0;
+		os_printf("Mallocced buffer for %d + 1 bytes of post data.\n", conn->post->buffSize);
+		conn->post->buff=(char*)os_malloc(conn->post->buffSize + 1);
+		conn->post->buffLen=0;
 	} else if (os_strncmp(h, "Content-Type: ", 14)==0) {
 		if(os_strstr(h, "multipart/form-data")){
 			// It's multipart form data so let's pull out the boundary for future use
 			char *b;
 			if((b = os_strstr(h, "boundary=")) != NULL){
-				conn->multipartBoundary = b + 7; // move the pointer 2 chars before boundary then fill them with dashes
-				conn->multipartBoundary[0] = '-';
-				conn->multipartBoundary[1] = '-';
-				os_printf("boundary = %s\n", conn->multipartBoundary);
+				conn->post->multipartBoundary = b + 7; // move the pointer 2 chars before boundary then fill them with dashes
+				conn->post->multipartBoundary[0] = '-';
+				conn->post->multipartBoundary[1] = '-';
+				os_printf("boundary = %s\n", conn->post->multipartBoundary);
 			}
 		}
 	}
@@ -400,14 +401,14 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 	conn->priv->sendBuffLen=0;
 
 	for (x=0; x<len; x++) {
-		if (conn->postLen<0) {
+		if (conn->post->len<0) {
 			//This byte is a header byte.
 			if (conn->priv->headPos!=MAX_HEAD_LEN) conn->priv->head[conn->priv->headPos++]=data[x];
 			conn->priv->head[conn->priv->headPos]=0;
 			//Scan for /r/n/r/n
 			if (data[x]=='\n' && (char *)os_strstr(conn->priv->head, "\r\n\r\n")!=NULL) {
 				//Indicate we're done with the headers.
-				conn->postLen=0;
+				conn->post->len=0;
 				//Reset url data
 				conn->url=NULL;
 				//Find end of next header line
@@ -420,21 +421,20 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 					p=e+2;
 				}
 				//If we don't need to receive post data, we can send the response now.
-				if (conn->postLen==0) {
+				if (conn->post->len==0) {
 					httpdProcessRequest(conn);
 				}
 			}
-		} else if (conn->postLen!=0) {
+		} else if (conn->post->len!=0) {
 			//This byte is a POST byte.
-			conn->postBuff[conn->postBuffLen++]=data[x];
-			conn->postReceived++;
-			if (conn->postBuffLen >= conn->postBuffSize || conn->postReceived == conn->postLen) {
+			conn->post->buff[conn->post->buffLen++]=data[x];
+			conn->post->received++;
+			if (conn->post->buffLen >= conn->post->buffSize || conn->post->received == conn->post->len) {
 				//Received a chunk of post data
-				conn->postBuff[conn->postBuffLen]=0; //zero-terminate, in case the cgi handler knows it can use strings
-				//os_printf("Post data: %s\n", conn->postBuff);
+				conn->post->buff[conn->post->buffLen]=0; //zero-terminate, in case the cgi handler knows it can use strings
 				//Send the response.
 				httpdProcessRequest(conn);
-				conn->postBuffLen = 0;
+				conn->post->buffLen = 0;
 			}
 		}
 	}
@@ -489,9 +489,11 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 	connData[i].priv=&connPrivData[i];
 	connData[i].conn=conn;
 	connData[i].priv->headPos=0;
-	connData[i].postBuff=NULL;
-	connData[i].postBuffLen=0;
-	connData[i].postLen=-1;
+	connData[i].post=&connPostData[i];
+	connData[i].post->buff=NULL;
+	connData[i].post->buffLen=0;
+	connData[i].post->received=0;
+	connData[i].post->len=-1;
 
 	espconn_regist_recvcb(conn, httpdRecvCb);
 	espconn_regist_reconcb(conn, httpdReconCb);

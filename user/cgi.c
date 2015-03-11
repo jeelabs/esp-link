@@ -38,7 +38,7 @@ int ICACHE_FLASH_ATTR cgiLed(HttpdConnData *connData) {
 		return HTTPD_CGI_DONE;
 	}
 
-	len=httpdFindArg(connData->postBuff, "led", buff, sizeof(buff));
+	len=httpdFindArg(connData->post->buff, "led", buff, sizeof(buff));
 	if (len!=0) {
 		currLedState=atoi(buff);
 		ioLed(currLedState);
@@ -105,8 +105,6 @@ int ICACHE_FLASH_ATTR cgiReadFlash(HttpdConnData *connData) {
 	if (*pos>=0x40200000+(512*1024)) return HTTPD_CGI_DONE; else return HTTPD_CGI_MORE;
 }
 
-uint32_t postCounter = 0;
-
 int ICACHE_FLASH_ATTR cgiUploadEspfs(HttpdConnData *connData) {
 	if (connData->conn==NULL) {
 		//Connection aborted. Clean up.
@@ -114,11 +112,11 @@ int ICACHE_FLASH_ATTR cgiUploadEspfs(HttpdConnData *connData) {
 	}
 	SpiFlashOpResult ret;
 	int x;
-	uint32_t flashOff = ESPFS_POS;
-	uint32_t flashSize = ESPFS_SIZE;
+	int flashOff = ESPFS_POS;
+	int flashSize = ESPFS_SIZE;
 	
 	//If this is the first time, erase the flash sector
-	if (postCounter == 0){
+	if (connData->post->received == 0){
 		os_printf("Erasing flash at 0x%x...\n", flashOff);
 		// Which segment are we flashing?	
 		for (x=0; x<flashSize; x+=4096){
@@ -127,26 +125,16 @@ int ICACHE_FLASH_ATTR cgiUploadEspfs(HttpdConnData *connData) {
 		os_printf("Done erasing.\n");
 	}
 	
-	// Because we get sent 1k chunks until the end, if data is less than 1k, we pad it as it must be the end...right???
-	if (connData->postBuffSize==1024){
-		ret=spi_flash_write((flashOff + postCounter), (uint32 *)connData->postBuff, 1024);
-		os_printf("Flash return %d\n", ret);
-	} else {
-		// Think we can probably use postReceived to check if it's the last chunk and then pad the original postBuff to avoid allocating another 1k of memory
-		char *postBuff = (char*)os_zalloc(1024);
-                os_printf("Mallocced buffer of 1024 bytes of last chunk.\n");
-		os_memcpy(postBuff, connData->postBuff, connData->postBuffSize);
-		ret=spi_flash_write((flashOff + postCounter), (uint32 *)postBuff, 1024);
-		os_printf("Flash return %d\n", ret);
-	}
+	// The source should be 4byte aligned, so go ahead an flash whatever we have
+	ret=spi_flash_write((flashOff + connData->post->received), (uint32 *)connData->post->buff, connData->post->buffLen);
+	os_printf("Flash return %d\n", ret);
 	
 	// Count bytes for data
-	postCounter = postCounter + connData->postBuffSize;//connData->postBuff);
-	os_printf("Wrote %d bytes (%dB of %d)\n", connData->postBuffSize, postCounter, connData->postLen);//&connData->postBuff));
+	connData->post->received += connData->post->buffSize;//connData->postBuff);
+	os_printf("Wrote %d bytes (%dB of %d)\n", connData->post->buffSize, connData->post->received, connData->post->len);//&connData->postBuff));
 
-	if (postCounter == connData->postLen){
+	if (connData->post->received == connData->post->len){
 		httpdSend(connData, "Finished uploading", -1);
-		postCounter=0;
 		return HTTPD_CGI_DONE;
 	} else {
 		return HTTPD_CGI_MORE;
