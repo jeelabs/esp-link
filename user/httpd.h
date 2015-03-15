@@ -4,15 +4,15 @@
 #include <ip_addr.h>
 #include <espconn.h>
 
-#define HTTPDVER "0.2"
+#define HTTPDVER "0.3"
 
 #define HTTPD_CGI_MORE 0
 #define HTTPD_CGI_DONE 1
 #define HTTPD_CGI_NOTFOUND 2
-#define HTTPD_CGI_AUTHENTICATED 3 //for now
+#define HTTPD_CGI_AUTHENTICATED 3
 
-#define GET 1
-#define POST 2
+#define HTTPD_METHOD_GET 1
+#define HTTPD_METHOD_POST 2
 
 typedef struct HttpdPriv HttpdPriv;
 typedef struct HttpdConnData HttpdConnData;

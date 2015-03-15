@@ -310,10 +310,10 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
   // os_printf("Got header %s\n", h);
 
 	if (os_strncmp(h, "GET ", 4)==0){
-		conn->requestType = GET;
+		conn->requestType = HTTPD_METHOD_GET;
 		first_line = true;
 	}else if(os_strncmp(h, "POST ", 5)==0) {
-		conn->requestType = POST;
+		conn->requestType = HTTPD_METHOD_POST;
 		first_line = true;
 	}
 
