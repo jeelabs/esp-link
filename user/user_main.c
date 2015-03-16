@@ -18,6 +18,7 @@
 #include "httpdespfs.h"
 #include "cgi.h"
 #include "cgiwifi.h"
+#include "cgiflash.h"
 #include "stdout.h"
 #include "auth.h"
 
