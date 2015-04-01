@@ -173,10 +173,11 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 
 //Read len bytes from the given file into buff. Returns the actual amount of bytes read.
 int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
-	int flen;
+	int flen, fdlen;
 	if (fh==NULL) return 0;
 	//Cache file length.
 	memcpyAligned((char*)&flen, (char*)&fh->header->fileLenComp, 4);
+	memcpyAligned((char*)&fdlen, (char*)&fh->header->fileLenDecomp, 4);
 	//Do stuff depending on the way the file is compressed.
 	if (fh->decompressor==COMPRESS_NONE) {
 		int toRead;
@@ -195,24 +196,38 @@ int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 		char ebuff[16];
 		heatshrink_decoder *dec=(heatshrink_decoder *)fh->decompData;
 //		os_printf("Alloc %p\n", dec);
+		if (fh->posDecomp == fdlen) {
+			return 0;
+		}
+
+		// We must ensure that whole file is decompressed and written to output buffer.
+		// This means even when there is no input data (elen==0) try to poll decoder until
+		// posDecomp equals decompressed file length
+
 		while(decoded<len) {
 			//Feed data into the decompressor
 			//ToDo: Check ret val of heatshrink fns for errors
 			elen=flen-(fh->posComp - fh->posStart);
-			if (elen==0) return decoded; //file is read
 			if (elen>0) {
 				memcpyAligned(ebuff, fh->posComp, 16);
 				heatshrink_decoder_sink(dec, (uint8_t *)ebuff, (elen>16)?16:elen, &rlen);
 				fh->posComp+=rlen;
-				if (rlen==elen) {
-					heatshrink_decoder_finish(dec);
-				}
 			}
 			//Grab decompressed data and put into buff
 			heatshrink_decoder_poll(dec, (uint8_t *)buff, len-decoded, &rlen);
 			fh->posDecomp+=rlen;
 			buff+=rlen;
 			decoded+=rlen;
+
+//			os_printf("Elen %d rlen %d d %d pd %ld fdl %d\n",elen,rlen,decoded, fh->posDecomp, fdlen);
+
+			if (elen == 0) {
+				if (fh->posDecomp == fdlen) {
+//					os_printf("Decoder finish\n");
+					heatshrink_decoder_finish(dec);
+				}
+				return decoded;
+			}
 		}
 		return len;
 #endif
