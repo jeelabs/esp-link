@@ -30,7 +30,7 @@ TARGET		= httpd
 
 # which modules (subdirectories) of the project to include in compiling
 #MODULES		= driver user lwip/api lwip/app lwip/core lwip/core/ipv4 lwip/netif
-MODULES		= espfs user
+MODULES		= espfs httpd user
 EXTRA_INCDIR	= include \
 		. \
 		lib/heatshrink/
