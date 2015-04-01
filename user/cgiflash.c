@@ -12,15 +12,8 @@ Some flash handling cgi routines. Used for reading the existing flash and updati
  */
 
 
-#include <string.h>
-#include <osapi.h>
-#include "user_interface.h"
-#include "mem.h"
-#include "httpd.h"
+#include <esp8266.h>
 #include "cgiflash.h"
-#include "io.h"
-#include <ip_addr.h>
-#include "espmissingincludes.h"
 #include "espfs.h"
 
 

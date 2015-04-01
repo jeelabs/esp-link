@@ -12,14 +12,8 @@ Cgi/template routines for the /wifi url.
  */
 
 
-#include <string.h>
-#include <osapi.h>
-#include "user_interface.h"
-#include "mem.h"
-#include "httpd.h"
-#include "cgi.h"
-#include "io.h"
-#include "espmissingincludes.h"
+#include <esp8266.h>
+#include "cgiwifi.h"
 
 //Enable this to disallow any changes in AP settings
 //#define DEMO_MODE

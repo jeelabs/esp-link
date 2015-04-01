@@ -9,13 +9,7 @@
  */
 
 
-#include "c_types.h"
-#include "user_interface.h"
-#include "espconn.h"
-#include "mem.h"
-#include "osapi.h"
-#include "gpio.h"
-#include "espmissingincludes.h"
+#include <esp8266.h>
 
 #define LEDGPIO 2
 #define BTNGPIO 0
@@ -37,10 +31,10 @@ static void ICACHE_FLASH_ATTR resetBtnTimerCb(void *arg) {
 		resetCnt++;
 	} else {
 		if (resetCnt>=6) { //3 sec pressed
-			wifi_station_disconnect();
-			wifi_set_opmode(0x3); //reset to AP+STA mode
+			//wifi_station_disconnect();
+			//wifi_set_opmode(0x3); //reset to AP+STA mode
 			os_printf("Reset to AP mode. Restarting system...\n");
-			system_restart();
+			//system_restart();
 		}
 		resetCnt=0;
 	}

@@ -5,14 +5,8 @@
 
 #ifdef __ets__
 //esp build
-#define _STDLIB_H_
-#define _STRING_H_
-#define _STDDEF_H
 
-#include "espmissingincludes.h"
-#include "c_types.h"
-#include "mem.h"
-#include "osapi.h"
+#include <esp8266.h>
 
 #define memset(x,y,z) os_memset(x,y,z)
 #define memcpy(x,y,z) os_memcpy(x,y,z)

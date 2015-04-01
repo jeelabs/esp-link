@@ -1,10 +1,6 @@
 /* base64.c : base-64 / MIME encode/decode */
 /* PUBLIC DOMAIN - Jon Mayo - November 13, 2003 */
-#include "c_types.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <ctype.h>
+#include <esp8266.h>
 #include "base64.h"
 
 static const uint8_t base64dec_tab[256]= {

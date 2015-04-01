@@ -11,15 +11,9 @@ Connector to let httpd use the espfs filesystem to serve the files in it.
  * ----------------------------------------------------------------------------
  */
 
-#include "espmissingincludes.h"
-#include <string.h>
-#include <osapi.h>
-#include "c_types.h"
-#include "user_interface.h"
-#include "espconn.h"
-#include "mem.h"
-
+#include <esp8266.h>
 #include "httpdespfs.h"
+#include "espfs.h"
 
 
 //This is a catch-all cgi function. It takes the url passed to it, looks up the corresponding

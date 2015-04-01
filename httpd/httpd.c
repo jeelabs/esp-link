@@ -12,13 +12,7 @@ Esp8266 http server - core routines
  */
 
 
-#include "espmissingincludes.h"
-#include "c_types.h"
-#include "user_interface.h"
-#include "espconn.h"
-#include "mem.h"
-#include "osapi.h"
-
+#include <esp8266.h>
 #include "httpd.h"
 
 

@@ -12,17 +12,9 @@ HTTP auth implementation. Only does basic authentication for now.
  */
 
 
-#include <string.h>
-#include <osapi.h>
-#include "user_interface.h"
-#include "mem.h"
-#include "httpd.h"
-#include "cgi.h"
+#include <esp8266.h>
 #include "auth.h"
-#include "io.h"
 #include "base64.h"
-#include <ip_addr.h>
-#include "espmissingincludes.h"
 
 int ICACHE_FLASH_ATTR authBasic(HttpdConnData *connData) {
 	const char *forbidden="401 Forbidden.";
