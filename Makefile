@@ -19,11 +19,11 @@ XTENSA_TOOLS_ROOT ?=
 SDK_BASE	?= /opt/Espressif/ESP8266_SDK
 
 #Esptool.py path and port
-ESPTOOL		?= esptool
+ESPTOOL		?= esptool.py
 ESPPORT		?= /dev/ttyUSB0
 #ESPDELAY indicates seconds to wait between flashing the two binary images
 ESPDELAY	?= 3
-ESPBAUD		?= 115200
+ESPBAUD		?= 460800
 
 # name for the target project
 TARGET		= httpd
@@ -68,13 +68,6 @@ SDK_LIBDIR	= lib
 SDK_LDDIR	= ld
 SDK_INCDIR	= include include/json
 
-# we create two different files for uploading into the flash
-# these are the names and options to generate them
-FW_FILE_1	= 0x00000
-FW_FILE_1_ARGS	= -bo $@ -bs .text -bs .data -bs .rodata -bc -ec
-FW_FILE_2	= 0x40000
-FW_FILE_2_ARGS	= -es .irom0.text $@ -ec
-
 # select which tools to use as compiler, librarian and linker
 CC		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
 AR		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-ar
@@ -107,9 +100,6 @@ INCDIR	:= $(addprefix -I,$(SRC_DIR))
 EXTRA_INCDIR	:= $(addprefix -I,$(EXTRA_INCDIR))
 MODULE_INCDIR	:= $(addsuffix /include,$(INCDIR))
 
-FW_FILE_1	:= $(addprefix $(FW_BASE)/,$(FW_FILE_1).bin)
-FW_FILE_2	:= $(addprefix $(FW_BASE)/,$(FW_FILE_2).bin)
-
 V ?= $(VERBOSE)
 ifeq ("$(V)","1")
 Q :=
@@ -133,37 +123,29 @@ endef
 
 .PHONY: all checkdirs clean
 
-all: checkdirs $(TARGET_OUT) $(FW_FILE_1) $(FW_FILE_2)
-
-$(FW_FILE_1): $(TARGET_OUT) firmware
-	$(vecho) "FW $@"
-	$(Q) $(ESPTOOL) -eo $(TARGET_OUT) $(FW_FILE_1_ARGS)
-
-$(FW_FILE_2): $(TARGET_OUT) firmware
-	$(vecho) "FW $@"
-	$(Q) $(ESPTOOL) -eo $(TARGET_OUT) $(FW_FILE_2_ARGS)
+all: checkdirs $(TARGET_OUT) $(FW_BASE)
 
 $(TARGET_OUT): $(APP_AR)
 	$(vecho) "LD $@"
 	$(Q) $(LD) -L$(SDK_LIBDIR) $(LD_SCRIPT) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
 
+$(FW_BASE): $(TARGET_OUT)
+	$(vecho) "FW $@"
+	$(Q) mkdir -p $@
+	$(Q) $(ESPTOOL) elf2image $(TARGET_OUT) --output $@/
+
 $(APP_AR): $(OBJ)
 	$(vecho) "AR $@"
 	$(Q) $(AR) cru $@ $^
 
-checkdirs: $(BUILD_DIR) $(FW_BASE)
+checkdirs: $(BUILD_DIR)
 
 $(BUILD_DIR):
 	$(Q) mkdir -p $@
 
-firmware:
-	$(Q) mkdir -p $@
 
-flash: $(FW_FILE_1) $(FW_FILE_2)
-	$(Q) $(ESPTOOL) -cp $(ESPPORT) -cb $(ESPBAUD) -ca 0x00000 -cf firmware/0x00000.bin -v
-	$(Q) [ $(ESPDELAY) -ne 0 ] && echo "Please put the ESP in bootloader mode..." || true
-	$(Q) sleep $(ESPDELAY) || true
-	$(Q) $(ESPTOOL) -cp $(ESPPORT) -cb $(ESPBAUD) -ca 0x40000 -cf firmware/0x40000.bin -v
+flash: $(TARGET_OUT) $(FW_BASE)
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x00000 $(FW_BASE)/0x00000.bin 0x40000 $(FW_BASE)/0x40000.bin
 
 webpages.espfs: html/ html/wifi/ mkespfsimage/mkespfsimage
 ifeq ($(GZIP_COMPRESSION),"yes")
@@ -185,17 +167,16 @@ mkespfsimage/mkespfsimage: mkespfsimage/
 	make -C mkespfsimage
 
 htmlflash: webpages.espfs
-	if [ $$(stat -c '%s' webpages.espfs) -gt $$(( 0x2E000 )) ]; then echo "webpages.espfs too big!"; false; fi
-	$(ESPTOOL) -cp $(ESPPORT) -cb $(ESPBAUD) -ca 0x12000 -cf webpages.espfs -v
+	$(Q) if [ $$(stat -c '%s' webpages.espfs) -gt $$(( 0x2E000 )) ]; then echo "webpages.espfs too big!"; false; fi
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x12000 webpages.espfs
 
 clean:
 	$(Q) rm -f $(APP_AR)
 	$(Q) rm -f $(TARGET_OUT)
 	$(Q) find $(BUILD_BASE) -type f | xargs rm -f
 
-
-	$(Q) rm -f $(FW_FILE_1)
-	$(Q) rm -f $(FW_FILE_2)
 	$(Q) rm -rf $(FW_BASE)
+
+	$(Q) rm -f webpages.espfs
 
 $(foreach bdir,$(BUILD_DIR),$(eval $(call compile-objects,$(bdir))))
