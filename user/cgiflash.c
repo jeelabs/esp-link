@@ -21,7 +21,7 @@ Some flash handling cgi routines. Used for reading the existing flash and updati
 #include "io.h"
 #include <ip_addr.h>
 #include "espmissingincludes.h"
-#include "../include/httpdconfig.h"
+#include "espfs.h"
 
 
 //Cgi that reads the SPI flash. Assumes 512KByte flash.

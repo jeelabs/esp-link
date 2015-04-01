@@ -1,8 +1,6 @@
 #ifndef AUTH_H
 #define AUTH_H
 
-#include "httpdconfig.h"
-
 #ifndef HTTP_AUTH_REALM
 #define HTTP_AUTH_REALM "Protected"
 #endif

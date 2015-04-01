@@ -1,5 +1,5 @@
 
-CFLAGS=-I../lib/heatshrink -std=gnu99
+CFLAGS=-I../../lib/heatshrink -I.. -std=gnu99
 OBJS=main.o heatshrink_encoder.o
 TARGET=mkespfsimage
 

@@ -30,7 +30,7 @@ TARGET		= httpd
 
 # which modules (subdirectories) of the project to include in compiling
 #MODULES		= driver user lwip/api lwip/app lwip/core lwip/core/ipv4 lwip/netif
-MODULES		= driver user
+MODULES		= espfs user
 EXTRA_INCDIR	= include \
 		. \
 		lib/heatshrink/
@@ -147,7 +147,7 @@ $(BUILD_DIR):
 flash: $(TARGET_OUT) $(FW_BASE)
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x00000 $(FW_BASE)/0x00000.bin 0x40000 $(FW_BASE)/0x40000.bin
 
-webpages.espfs: html/ html/wifi/ mkespfsimage/mkespfsimage
+webpages.espfs: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
 ifeq ($(GZIP_COMPRESSION),"yes")
 	$(Q) rm -rf html_compressed;
 	$(Q) cp -r html html_compressed;
@@ -158,13 +158,13 @@ ifeq ($(COMPRESS_W_YUI),"yes")
 	$(Q) awk "BEGIN {printf \"YUI compression ratio was: %.2f%%\\n\", (`du -b -s html_compressed/ | sed 's/\([0-9]*\).*/\1/'`/`du -b -s html/ | sed 's/\([0-9]*\).*/\1/'`)*100}"
 endif
 	$(Q) cd html_compressed; find . -type f -regex ".*/.*\.\(html\|css\|js\)" -exec sh -c "gzip -n {}; mv {}.gz {}" \;; cd ..;
-	$(Q) cd html_compressed; find  | ../mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..;
+	$(Q) cd html_compressed; find  | ../espfs/mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..;
 	$(Q) awk "BEGIN {printf \"GZIP compression ratio was: %.2f%%\\n\", (`du -b -s html_compressed/ | sed 's/\([0-9]*\).*/\1/'`/`du -b -s html/ | sed 's/\([0-9]*\).*/\1/'`)*100}"
 else
-	$(Q) cd html; find | ../mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..
+	$(Q) cd html; find | ../espfs/mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..
 endif
-mkespfsimage/mkespfsimage: mkespfsimage/
-	make -C mkespfsimage
+espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
+	make -C espfs/mkespfsimage
 
 htmlflash: webpages.espfs
 	$(Q) if [ $$(stat -c '%s' webpages.espfs) -gt $$(( 0x2E000 )) ]; then echo "webpages.espfs too big!"; false; fi

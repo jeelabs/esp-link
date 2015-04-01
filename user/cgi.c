@@ -22,7 +22,6 @@ flash as a binary. Also handles the hit counter on the main page.
 #include "io.h"
 #include <ip_addr.h>
 #include "espmissingincludes.h"
-#include "../include/httpdconfig.h"
 
 
 //cause I can't be bothered to write an ioGetLed()

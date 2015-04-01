@@ -19,8 +19,6 @@ Connector to let httpd use the espfs filesystem to serve the files in it.
 #include "espconn.h"
 #include "mem.h"
 
-#include "httpd.h"
-#include "espfs.h"
 #include "httpdespfs.h"
 
 

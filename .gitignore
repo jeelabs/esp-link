@@ -1,8 +1,8 @@
 build/
 firmware/
-mkespfsimage/*.o
-mkespfsimage/mkespfsimage
+espfs/mkespfsimage/*.o
+espfs/mkespfsimage/mkespfsimage
 webpages.espfs
-espfstest/*.o
-espfstest/espfstest
+espfs/espfstest/*.o
+espfs/espfstest/espfstest
 *.DS_Store

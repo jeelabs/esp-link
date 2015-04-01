@@ -43,10 +43,11 @@ It's written for use with httpd, but doesn't need to be used as such.
 extern char* espFsData;
 #endif
 
-#include "../mkespfsimage/espfsformat.h"
+#include "espfsformat.h"
 #include "espfs.h"
-#include "httpdconfig.h"
-#ifdef EFS_HEATSHRINK
+
+#ifdef ESPFS_HEATSHRINK
+#include "heatshrink_config_custom.h"
 #include "heatshrink_decoder.h"
 #endif
 
@@ -83,6 +84,7 @@ a memory exception, crashing the program.
 //aligned 32-bit reads. Yes, it's no too optimized but it's short and sweet and it works.
 
 //ToDo: perhaps os_memcpy also does unaligned accesses?
+#ifdef __ets__
 void ICACHE_FLASH_ATTR memcpyAligned(char *dst, char *src, int len) {
 	int x;
 	int w, b;
@@ -96,6 +98,9 @@ void ICACHE_FLASH_ATTR memcpyAligned(char *dst, char *src, int len) {
 		dst++; src++;
 	}
 }
+#else
+#define memcpyAligned memcpy
+#endif
 
 
 //Open a file and return a pointer to the file desc struct.
@@ -142,7 +147,7 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 			r->posDecomp=0;
 			if (h.compression==COMPRESS_NONE) {
 				r->decompData=NULL;
-#ifdef EFS_HEATSHRINK
+#ifdef ESPFS_HEATSHRINK
 			} else if (h.compression==COMPRESS_HEATSHRINK) {
 				//File is compressed with Heatshrink.
 				char parm;
@@ -183,10 +188,10 @@ int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 		fh->posComp+=len;
 //		os_printf("Done reading %d bytes, pos=%x\n", len, fh->posComp);
 		return len;
-#ifdef EFS_HEATSHRINK
+#ifdef ESPFS_HEATSHRINK
 	} else if (fh->decompressor==COMPRESS_HEATSHRINK) {
 		int decoded=0;
-		unsigned int elen, rlen;
+		size_t elen, rlen;
 		char ebuff[16];
 		heatshrink_decoder *dec=(heatshrink_decoder *)fh->decompData;
 //		os_printf("Alloc %p\n", dec);
@@ -218,7 +223,7 @@ int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 //Close the file.
 void ICACHE_FLASH_ATTR espFsClose(EspFsFile *fh) {
 	if (fh==NULL) return;
-#ifdef EFS_HEATSHRINK
+#ifdef ESPFS_HEATSHRINK
 	if (fh->decompressor==COMPRESS_HEATSHRINK) {
 		heatshrink_decoder *dec=(heatshrink_decoder *)fh->decompData;
 		heatshrink_decoder_free(dec);
