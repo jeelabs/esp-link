@@ -61,7 +61,7 @@ HttpdBuiltInUrl builtInUrls[]={
 	//Routines to make the /wifi URL and everything beneath it work.
 
 //Enable the line below to protect the WiFi configuration with an username/password combo.
-	{"/wifi/*", authBasic, myPassFn},
+//	{"/wifi/*", authBasic, myPassFn},
 
 	{"/wifi", cgiRedirect, "/wifi/wifi.tpl"},
 	{"/wifi/", cgiRedirect, "/wifi/wifi.tpl"},
