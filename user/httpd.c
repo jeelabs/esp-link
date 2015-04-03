@@ -279,7 +279,7 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	if (r==HTTPD_CGI_DONE) {
 		conn->cgi=NULL; //mark for destruction.
 	}
-	if (r==HTTPD_CGI_NOTFOUND || HTTPD_CGI_AUTHENTICATED) {
+	if (r==HTTPD_CGI_NOTFOUND || r==HTTPD_CGI_AUTHENTICATED) {
 		os_printf("ERROR! CGI fn returns code %d after sending data! Bad CGI!\n", r);
 		conn->cgi=NULL; //mark for destruction.
 	}
@@ -290,19 +290,61 @@ static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266
 
 //This is called when the headers have been received and the connection is ready to send
 //the result headers and data.
+//We need to find the CGI function to call, call it, and dependent on what it returns either
+//find the next cgi function, wait till the cgi data is sent or close up the connection.
 static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
 	int r;
-
-	r=conn->cgi(conn);
-	if (r!=HTTPD_CGI_NOTFOUND) {
-		if (r==HTTPD_CGI_DONE) conn->cgi=NULL; //If cgi finishes immediately: mark conn for destruction.
-		xmitSendBuff(conn);
-	} else {
-		//Can't find :/
-		os_printf("%s not found. 404!\n", conn->url);
-		httpdSend(conn, httpNotFoundHeader, -1);
-		xmitSendBuff(conn);
-		conn->cgi=NULL; //mark for destruction
+	int i=0;
+	if (conn->url==NULL) {
+		os_printf("WtF? url = NULL\n");
+		return; //Shouldn't happen
+	}
+	//See if we can find a CGI that's happy to handle the request.
+	while (1) {
+		//Look up URL in the built-in URL table.
+		while (builtInUrls[i].url!=NULL) {
+			int match=0;
+			//See if there's a literal match
+			if (os_strcmp(builtInUrls[i].url, conn->url)==0) match=1;
+			//See if there's a wildcard match
+			if (builtInUrls[i].url[os_strlen(builtInUrls[i].url)-1]=='*' &&
+					os_strncmp(builtInUrls[i].url, conn->url, os_strlen(builtInUrls[i].url)-1)==0) match=1;
+			if (match) {
+				os_printf("Is url index %d\n", i);
+				conn->cgiData=NULL;
+				conn->cgi=builtInUrls[i].cgiCb;
+				conn->cgiArg=builtInUrls[i].cgiArg;
+				break;
+			}
+			i++;
+		}
+		if (builtInUrls[i].url==NULL) {
+			//Drat, we're at the end of the URL table. This usually shouldn't happen. Well, just
+			//generate a built-in 404 to handle this.
+			os_printf("%s not found. 404!\n", conn->url);
+			httpdSend(conn, httpNotFoundHeader, -1);
+			xmitSendBuff(conn);
+			conn->cgi=NULL; //mark for destruction
+			return;
+		}
+		
+		//Okay, we have a CGI function that matches the URL. See if it wants to handle the
+		//particular URL we're supposed to handle.
+		r=conn->cgi(conn);
+		if (r==HTTPD_CGI_MORE) {
+			//Yep, it's happy to do so and has more data to send.
+			xmitSendBuff(conn);
+			return;
+		} else if (r==HTTPD_CGI_DONE) {
+			//Yep, it's happy to do so and already is done sending data.
+			xmitSendBuff(conn);
+			conn->cgi=NULL; //mark conn for destruction
+			return;
+		} else if (r==HTTPD_CGI_NOTFOUND || r==HTTPD_CGI_AUTHENTICATED) {
+			//URL doesn't want to handle the request: either the data isn't found or there's no
+			//need to generate a login screen.
+			i++; //look at next url the next iteration of the loop.
+		}
 	}
 }
 
@@ -344,23 +386,6 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 			conn->getArgs=NULL;
 		}
 
-		i=0;
-		//See if the url is somewhere in our internal url table.
-		while (builtInUrls[i].url!=NULL && conn->url!=NULL) {
-			int match=0;
-	//		os_printf("%s == %s?\n", builtInUrls[i].url, conn->url);
-			if (os_strcmp(builtInUrls[i].url, conn->url)==0) match=1;
-			if (builtInUrls[i].url[os_strlen(builtInUrls[i].url)-1]=='*' &&
-					os_strncmp(builtInUrls[i].url, conn->url, os_strlen(builtInUrls[i].url)-1)==0) match=1;
-			if (match) {
-				os_printf("Is url index %d\n", i);
-				conn->cgiData=NULL;
-				conn->cgi=builtInUrls[i].cgiCb;
-				conn->cgiArg=builtInUrls[i].cgiArg;
-				return;
-			}
-			i++;
-		}
 	} else if (os_strncmp(h, "Content-Length: ", 16)==0) {
 		i=0;
 		//Skip trailing spaces
