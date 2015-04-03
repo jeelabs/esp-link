@@ -279,6 +279,10 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	if (r==HTTPD_CGI_DONE) {
 		conn->cgi=NULL; //mark for destruction.
 	}
+	if (r==HTTPD_CGI_NOTFOUND || HTTPD_CGI_AUTHENTICATED) {
+		os_printf("ERROR! CGI fn returns code %d after sending data! Bad CGI!\n", r);
+		conn->cgi=NULL; //mark for destruction.
+	}
 	xmitSendBuff(conn);
 }
 
