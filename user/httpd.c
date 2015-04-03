@@ -352,8 +352,7 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
 static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 	int i;
 	char first_line = false;
-  // os_printf("Got header %s\n", h);
-
+	
 	if (os_strncmp(h, "GET ", 4)==0) {
 		conn->requestType = HTTPD_METHOD_GET;
 		first_line = true;
@@ -386,12 +385,12 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 			conn->getArgs=NULL;
 		}
 
-	} else if (os_strncmp(h, "Content-Length: ", 16)==0) {
-		i=0;
+	} else if (os_strncmp(h, "Content-Length:", 15)==0) {
+		i=15;
 		//Skip trailing spaces
-		while (h[i]!=' ') i++;
+		while (h[i]==' ') i++;
 		//Get POST data length
-		conn->post->len=atoi(h+i+1);
+		conn->post->len=atoi(h+i);
 
 		// Allocate the buffer
 		if (conn->post->len > MAX_POST) {
@@ -428,25 +427,31 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 	conn->priv->sendBuff=sendBuff;
 	conn->priv->sendBuffLen=0;
 
+	//This is slightly evil/dirty: we abuse conn->post->len as a state variable for where in the http communications we are:
+	//<0 (-1): Post len unknown because we're still receiving headers
+	//==0: No post data
+	//>0: Need to receive post data
+	//ToDo: See if we can use something more elegant for this.
+
 	for (x=0; x<len; x++) {
 		if (conn->post->len<0) {
 			//This byte is a header byte.
 			if (conn->priv->headPos!=MAX_HEAD_LEN) conn->priv->head[conn->priv->headPos++]=data[x];
 			conn->priv->head[conn->priv->headPos]=0;
-			//Scan for /r/n/r/n
+			//Scan for /r/n/r/n. Receiving this indicate the headers end.
 			if (data[x]=='\n' && (char *)os_strstr(conn->priv->head, "\r\n\r\n")!=NULL) {
 				//Indicate we're done with the headers.
 				conn->post->len=0;
 				//Reset url data
 				conn->url=NULL;
-				//Find end of next header line
+				//Iterate over all received headers and parse them.
 				p=conn->priv->head;
 				while(p<(&conn->priv->head[conn->priv->headPos-4])) {
-					e=(char *)os_strstr(p, "\r\n");
-					if (e==NULL) break;
-					e[0]=0;
-					httpdParseHeader(p, conn);
-					p=e+2;
+					e=(char *)os_strstr(p, "\r\n"); //Find end of header line
+					if (e==NULL) break;			//Shouldn't happen.
+					e[0]=0;						//Zero-terminate header
+					httpdParseHeader(p, conn);	//and parse it.
+					p=e+2;						//Skip /r/n (now /0/n)
 				}
 				//If we don't need to receive post data, we can send the response now.
 				if (conn->post->len==0) {
