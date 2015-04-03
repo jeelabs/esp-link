@@ -451,15 +451,8 @@ static void ICACHE_FLASH_ATTR httpdReconCb(void *arg, sint8 err) {
 }
 
 static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
-#if 0
 	//The esp sdk passes through wrong arg here, namely the one of the *listening* socket.
-	//If it ever gets fixed, be sure to update the code in this snippet; it's probably out-of-date.
-	HttpdConnData *conn=httpdFindConnData(arg);
-	os_printf("Disconnected, conn=%p\n", conn);
-	if (conn==NULL) return;
-	conn->conn=NULL;
-	if (conn->cgi!=NULL) conn->cgi(conn); //flush cgi data
-#endif
+	//That is why we can't use (HttpdConnData)arg->sock here.
 	//Just look at all the sockets and kill the slot if needed.
 	int i;
 	for (i=0; i<MAX_CONN; i++) {
