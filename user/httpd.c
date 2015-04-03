@@ -94,8 +94,9 @@ static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
 	for (i=0; i<MAX_CONN; i++) {
 		if (connData[i].conn==(struct espconn *)arg) return &connData[i];
 	}
+	//Shouldn't happen.
 	os_printf("FindConnData: Huh? Couldn't find connection for %p\n", arg);
-	return NULL; //WtF?
+	return NULL;
 }
 
 //Retires a connection for re-use
@@ -174,7 +175,6 @@ int ICACHE_FLASH_ATTR httpdGetHeader(HttpdConnData *conn, char *header, char *re
 	p=p+strlen(p)+1; //skip HTTP part
 	while (p<(conn->priv->head+conn->priv->headPos)) {
 		while(*p<=32 && *p!=0) p++; //skip crap at start
-//		os_printf("Looking for %s, Header: '%s'\n", header, p);
 		//See if this is the header
 		if (os_strncmp(p, header, strlen(header))==0 && p[strlen(header)]==':') {
 			//Skip 'key:' bit of header line
@@ -264,7 +264,6 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	HttpdConnData *conn=httpdFindConnData(arg);
 	char sendBuff[MAX_SENDBUFF_LEN];
 
-//	os_printf("Sent callback on conn %p\n", conn);
 	if (conn==NULL) return;
 	conn->priv->sendBuff=sendBuff;
 	conn->priv->sendBuffLen=0;
@@ -294,7 +293,7 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
 	if (r!=HTTPD_CGI_NOTFOUND) {
 		if (r==HTTPD_CGI_DONE) conn->cgi=NULL; //If cgi finishes immediately: mark conn for destruction.
 		xmitSendBuff(conn);
-	}else{
+	} else {
 		//Can't find :/
 		os_printf("%s not found. 404!\n", conn->url);
 		httpdSend(conn, httpNotFoundHeader, -1);
@@ -309,15 +308,15 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 	char first_line = false;
   // os_printf("Got header %s\n", h);
 
-	if (os_strncmp(h, "GET ", 4)==0){
+	if (os_strncmp(h, "GET ", 4)==0) {
 		conn->requestType = HTTPD_METHOD_GET;
 		first_line = true;
-	}else if(os_strncmp(h, "POST ", 5)==0) {
+	} else if (os_strncmp(h, "POST ", 5)==0) {
 		conn->requestType = HTTPD_METHOD_POST;
 		first_line = true;
 	}
 
-	if(first_line){
+	if (first_line) {
 		char *e;
 		
 		//Skip past the space after POST/GET
@@ -366,20 +365,20 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		conn->post->len=atoi(h+i+1);
 
 		// Allocate the buffer
-		if(conn->post->len > MAX_POST){
+		if (conn->post->len > MAX_POST) {
 			// we'll stream this in in chunks
 			conn->post->buffSize = MAX_POST;
-		}else{
+		} else {
 			conn->post->buffSize = conn->post->len;
 		}
 		os_printf("Mallocced buffer for %d + 1 bytes of post data.\n", conn->post->buffSize);
 		conn->post->buff=(char*)os_malloc(conn->post->buffSize + 1);
 		conn->post->buffLen=0;
 	} else if (os_strncmp(h, "Content-Type: ", 14)==0) {
-		if(os_strstr(h, "multipart/form-data")){
+		if (os_strstr(h, "multipart/form-data")) {
 			// It's multipart form data so let's pull out the boundary for future use
 			char *b;
-			if((b = os_strstr(h, "boundary=")) != NULL){
+			if ((b = os_strstr(h, "boundary=")) != NULL) {
 				conn->post->multipartBoundary = b + 7; // move the pointer 2 chars before boundary then fill them with dashes
 				conn->post->multipartBoundary[0] = '-';
 				conn->post->multipartBoundary[1] = '-';
@@ -449,7 +448,7 @@ static void ICACHE_FLASH_ATTR httpdReconCb(void *arg, sint8 err) {
 
 static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
 #if 0
-	//Stupid esp sdk passes through wrong arg here, namely the one of the *listening* socket.
+	//The esp sdk passes through wrong arg here, namely the one of the *listening* socket.
 	//If it ever gets fixed, be sure to update the code in this snippet; it's probably out-of-date.
 	HttpdConnData *conn=httpdFindConnData(arg);
 	os_printf("Disconnected, conn=%p\n", conn);
@@ -501,7 +500,7 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 	espconn_regist_sentcb(conn, httpdSentCb);
 }
 
-
+//Httpd initialization routine. Call this to kick off webserver functionality.
 void ICACHE_FLASH_ATTR httpdInit(HttpdBuiltInUrl *fixedUrls, int port) {
 	int i;
 
