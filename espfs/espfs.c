@@ -73,7 +73,7 @@ Accessing the flash through the mem emulation at 0x40200000 is a bit hairy: All 
 a memory exception, crashing the program.
 */
 
-EspFsInitResult espFsInit(void *flashAddress) {
+EspFsInitResult ICACHE_FLASH_ATTR espFsInit(void *flashAddress) {
 	// base address must be aligned to 4 bytes
 	if (((int)flashAddress & 3) != 0) {
 		return ESPFS_INIT_RESULT_BAD_ALIGN;
