@@ -22,6 +22,7 @@ int main(int argc, char **argv) {
 	char buff[128];
 	EspFsFile *ef;
 	off_t size;
+	EspFsInitResult ir;
 
 	if (argc!=3) {
 		printf("Usage: %s espfs-image file\nExpands file from the espfs-image archive.\n", argv[0]);
@@ -37,6 +38,12 @@ int main(int argc, char **argv) {
 	espFsData=mmap(NULL, size, PROT_READ, MAP_SHARED, f, 0);
 	if (espFsData==MAP_FAILED) {
 		perror("mmap");
+		exit(1);
+	}
+
+	ir=espFsInit(espFsData);
+	if (ir != ESPFS_INIT_RESULT_OK) {
+		printf("Couldn't init espfs filesystem (code %d)\n", ir);
 		exit(1);
 	}
 

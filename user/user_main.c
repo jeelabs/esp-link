@@ -19,6 +19,7 @@
 #include "cgiflash.h"
 #include "stdout.h"
 #include "auth.h"
+#include "espfs.h"
 
 //Function that tells the authentication system what users/passwords live on the system.
 //This is disabled in the default build; if you want to try it, enable the authBasic line in
@@ -73,10 +74,14 @@ HttpdBuiltInUrl builtInUrls[]={
 };
 
 
-//Main routine. Initialize stdout, the I/O and the webserver and we're done.
+//Main routine. Initialize stdout, the I/O, filesystem and the webserver and we're done.
 void user_init(void) {
 	stdoutInit();
 	ioInit();
+
+	// 0x40200000 is the base address for spi flash memory mapping, 0x12000 is the position
+	// where image is written in flash
+	espFsInit((void*)(0x40200000 + 0x12000));
 	httpdInit(builtInUrls, 80);
 	os_printf("\nReady\n");
 }

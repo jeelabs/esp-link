@@ -35,7 +35,6 @@ It's written for use with httpd, but doesn't need to be used as such.
 #define os_strcpy strcpy
 #define os_printf printf
 #define ICACHE_FLASH_ATTR
-extern char* espFsData;
 #endif
 
 #include "espfsformat.h"
@@ -46,7 +45,7 @@ extern char* espFsData;
 #include "heatshrink_decoder.h"
 #endif
 
-
+static char* espFsData = NULL;
 
 
 struct EspFsFile {
@@ -74,6 +73,22 @@ Accessing the flash through the mem emulation at 0x40200000 is a bit hairy: All 
 a memory exception, crashing the program.
 */
 
+EspFsInitResult espFsInit(void *flashAddress) {
+	// base address must be aligned to 4 bytes
+	if (((int)flashAddress & 3) != 0) {
+		return ESPFS_INIT_RESULT_BAD_ALIGN;
+	}
+
+	// check if there is valid header at address
+	EspFsHeader testHeader;
+	os_memcpy(&testHeader, flashAddress, sizeof(EspFsHeader));
+	if (testHeader.magic != ESPFS_MAGIC) {
+		return ESPFS_INIT_RESULT_NO_IMAGE;
+	}
+
+	espFsData = (char *)flashAddress;
+	return ESPFS_INIT_RESULT_OK;
+}
 
 //Copies len bytes over from dst to src, but does it using *only*
 //aligned 32-bit reads. Yes, it's no too optimized but it's short and sweet and it works.
@@ -100,11 +115,11 @@ void ICACHE_FLASH_ATTR memcpyAligned(char *dst, char *src, int len) {
 
 //Open a file and return a pointer to the file desc struct.
 EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
-#ifdef __ets__
-	char *p=(char *)(ESPFS_POS+0x40200000);
-#else
+	if (espFsData == NULL) {
+		os_printf("Call espFsInit first!\n");
+		return NULL;
+	}
 	char *p=espFsData;
-#endif
 	char *hpos;
 	char namebuf[256];
 	EspFsHeader h;
@@ -116,7 +131,7 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 		hpos=p;
 		//Grab the next file header.
 		os_memcpy(&h, p, sizeof(EspFsHeader));
-		if (h.magic!=0x73665345) {
+		if (h.magic!=ESPFS_MAGIC) {
 			os_printf("Magic mismatch. EspFS image broken.\n");
 			return NULL;
 		}

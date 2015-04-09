@@ -18,6 +18,7 @@ with the FLAG_LASTFILE flag set.
 #define FLAG_LASTFILE (1<<0)
 #define COMPRESS_NONE 0
 #define COMPRESS_HEATSHRINK 1
+#define ESPFS_MAGIC 0x73665345
 
 typedef struct {
 	int32_t magic;
