@@ -80,7 +80,11 @@ CC		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
 AR		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-ar
 LD		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
 
-
+# If COMPRESS_W_YUI is set to "yes" then the static css and js files will be compressed with yui-compressor
+# http://yui.github.io/yuicompressor/
+#Disabled by default.
+#COMPRESS_W_YUI = "yes"
+YUI-COMPRESSOR ?= /usr/bin/yui-compressor
 
 ####
 #### no user configurable options below here
@@ -165,6 +169,12 @@ webpages.espfs: html/ html/wifi/ mkespfsimage/mkespfsimage
 ifeq ($(GZIP_COMPRESSION),"yes")
 	$(Q) rm -rf html_compressed;
 	$(Q) cp -r html html_compressed;
+ifeq ($(COMPRESS_W_YUI),"yes")
+	$(Q) echo "Compression assets with yui-compressor. This may take a while..."
+	$(Q) for file in `find html_compressed -type f -name "*.js"`; do $(YUI-COMPRESSOR) --type js $$file -o $$file; done
+	$(Q) for file in `find html_compressed -type f -name "*.css"`; do $(YUI-COMPRESSOR) --type css $$file -o $$file; done
+	$(Q) awk "BEGIN {printf \"YUI compression ratio was: %.2f%%\\n\", (`du -b -s html_compressed/ | sed 's/\([0-9]*\).*/\1/'`/`du -b -s html/ | sed 's/\([0-9]*\).*/\1/'`)*100}"
+endif
 	$(Q) cd html_compressed; find . -type f -regex ".*/.*\.\(html\|css\|js\)" -exec sh -c "gzip -n {}; mv {}.gz {}" \;; cd ..;
 	$(Q) cd html_compressed; find  | ../mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..;
 	$(Q) awk "BEGIN {printf \"GZIP compression ratio was: %.2f%%\\n\", (`du -b -s html_compressed/ | sed 's/\([0-9]*\).*/\1/'`/`du -b -s html/ | sed 's/\([0-9]*\).*/\1/'`)*100}"
