@@ -31,6 +31,9 @@ int ICACHE_FLASH_ATTR cgiEspFsHook(HttpdConnData *connData) {
 	EspFsFile *file=connData->cgiData;
 	int len;
 	char buff[1024];
+#ifdef GZIP_COMPRESSION
+	const char *gzipSendResult = NULL;
+#endif
 	
 	if (connData->conn==NULL) {
 		//Connection aborted. Clean up.
@@ -47,6 +50,14 @@ int ICACHE_FLASH_ATTR cgiEspFsHook(HttpdConnData *connData) {
 		connData->cgiData=file;
 		httpdStartResponse(connData, 200);
 		httpdHeader(connData, "Content-Type", httpdGetMimetype(connData->url));
+#ifdef GZIP_COMPRESSION
+		gzipSendResult = sendGZIPEncodingIfNeeded(connData);
+		if (gzipSendResult != NULL) {
+			httpdEndHeaders(connData);
+			httpdSend(connData, gzipSendResult, os_strlen(gzipSendResult));
+			return HTTPD_CGI_DONE;
+		}
+#endif
 		httpdHeader(connData, "Cache-Control", "max-age=3600, must-revalidate");
 		httpdEndHeaders(connData);
 		return HTTPD_CGI_MORE;

@@ -38,6 +38,20 @@ EXTRA_INCDIR	= include \
 # libraries used in this project, mainly provided by the SDK
 LIBS		= c gcc hal phy pp net80211 wpa main lwip
 
+# If GZIP_COMPRESSION is set to "yes" then the static css, js, and html files will be compressed with gzip before added to the espfs image
+# and will be served with gzip Content-Encoding header.
+# This could speed up the downloading of these files, but might break compatibility with older web browsers not supporting gzip encoding
+# because Accept-Encoding is simply ignored. Enable this option if you have large static files to serve (for e.g. JQuery, Twitter bootstrap)
+# By default only js, css and html files are compressed.
+# If you have text based static files with different extensions what you want to serve compressed then you will need to add the extension to the following places:
+# - Add the extension to this Makefile at the webpages.espfs target to the find command
+# - Add the extension to the gzippedFileTypes array in the user/httpd.c file
+#
+# Adding JPG or PNG files (and any other compressed formats) is not recommended, because GZIP compression does not works effectively on compressed files.
+
+#Static gzipping is disabled by default.
+#GZIP_COMPRESSION = "yes"
+
 # compiler flags using during compilation of source files
 CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
 		-nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH \
@@ -101,6 +115,10 @@ Q := @
 vecho := @echo
 endif
 
+ifeq ($(GZIP_COMPRESSION),"yes")
+CFLAGS		+= -DGZIP_COMPRESSION
+endif
+
 vpath %.c $(SRC_DIR)
 
 define compile-objects
@@ -144,8 +162,15 @@ flash: $(FW_FILE_1) $(FW_FILE_2)
 	$(Q) $(ESPTOOL) -cp $(ESPPORT) -cb $(ESPBAUD) -ca 0x40000 -cf firmware/0x40000.bin -v
 
 webpages.espfs: html/ html/wifi/ mkespfsimage/mkespfsimage
-	cd html; find . | ../mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..
-
+ifeq ($(GZIP_COMPRESSION),"yes")
+	$(Q) rm -rf html_compressed;
+	$(Q) cp -r html html_compressed;
+	$(Q) cd html_compressed; find . -type f -regex ".*/.*\.\(html\|css\|js\)" -exec sh -c "gzip -n {}; mv {}.gz {}" \;; cd ..;
+	$(Q) cd html_compressed; find  | ../mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..;
+	$(Q) awk "BEGIN {printf \"GZIP compression ratio was: %.2f%%\\n\", (`du -b -s html_compressed/ | sed 's/\([0-9]*\).*/\1/'`/`du -b -s html/ | sed 's/\([0-9]*\).*/\1/'`)*100}"
+else
+	$(Q) cd html; find | ../mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..
+endif
 mkespfsimage/mkespfsimage: mkespfsimage/
 	make -C mkespfsimage
 
