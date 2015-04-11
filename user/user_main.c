@@ -79,9 +79,9 @@ void user_init(void) {
 	stdoutInit();
 	ioInit();
 
-	// 0x40200000 is the base address for spi flash memory mapping, 0x12000 is the position
-	// where image is written in flash
-	espFsInit((void*)(0x40200000 + 0x12000));
+	// 0x40200000 is the base address for spi flash memory mapping, ESPFS_POS is the position
+	// where image is written in flash that is defined in Makefile.
+	espFsInit((void*)(0x40200000 + ESPFS_POS));
 	httpdInit(builtInUrls, 80);
 	os_printf("\nReady\n");
 }
