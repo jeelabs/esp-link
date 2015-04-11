@@ -8,12 +8,15 @@
 #include <sys/mman.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include "espfs.h"
 #include "espfsformat.h"
 
 //Heatshrink
+#ifdef ESPFS_HEATSHRINK
 #include "heatshrink_common.h"
 #include "heatshrink_config.h"
 #include "heatshrink_encoder.h"
+#endif
 
 
 //Routines to convert host format to the endianness used in the xtensa
@@ -33,6 +36,7 @@ int htoxl(int in) {
 	return *((int *)r);
 }
 
+#ifdef ESPFS_HEATSHRINK
 size_t compressHeatshrink(char *in, int insize, char *out, int outsize, int level) {
 	char *inp=in;
 	char *outp=out;
@@ -77,6 +81,7 @@ size_t compressHeatshrink(char *in, int insize, char *out, int outsize, int leve
 	heatshrink_encoder_free(enc);
 	return r;
 }
+#endif
 
 int handleFile(int f, char *name, int compression, int level) {
 	char *fdat, *cdat;
@@ -93,9 +98,11 @@ int handleFile(int f, char *name, int compression, int level) {
 	if (compression==COMPRESS_NONE) {
 		csize=size;
 		cdat=fdat;
+#ifdef ESPFS_HEATSHRINK
 	} else if (compression==COMPRESS_HEATSHRINK) {
 		cdat=malloc(size*2);
 		csize=compressHeatshrink(fdat, size, cdat, size*2, level);
+#endif
 	} else {
 		fprintf(stderr, "Unknown compression - %d\n", compression);
 		exit(1);
@@ -151,15 +158,21 @@ int main(int argc, char **argv) {
 	int serr;
 	int rate;
 	int err=0;
-	int compType=1; //default compression type - heatshrink
+	int compType;  //default compression type - heatshrink
 	int compLvl=-1;
+
+#ifdef ESPFS_HEATSHRINK
+	compType = COMPRESS_HEATSHRINK;
+#else
+	compType = COMPRESS_NONE;
+#endif
 
 	for (x=1; x<argc; x++) {
 		if (strcmp(argv[x], "-c")==0 && argc>=x-2) {
-			compType=atoi(argv[x=1]);
+			compType=atoi(argv[x+1]);
 			x++;
 		} else if (strcmp(argv[x], "-l")==0 && argc>=x-2) {
-			compLvl=atoi(argv[x=1]);
+			compLvl=atoi(argv[x+1]);
 			if (compLvl<1 || compLvl>9) err=1;
 			x++;
 		} else {
@@ -170,8 +183,13 @@ int main(int argc, char **argv) {
 	if (err) {
 		fprintf(stderr, "%s - Program to create espfs images\n", argv[0]);
 		fprintf(stderr, "Usage: \nfind | %s [-c compressor] [-l compression_level] > out.espfs\n", argv[0]);
-		fprintf(stderr, "Compressors:\n0 - None\n1 - Heatshrink(defautl\n");
-		fprintf(stderr, "Compression level: 1 is worst but low RAM usage, higher is better compression \nbut uses more ram on decompression. -1 = compressors default.\n");
+		fprintf(stderr, "Compressors:\n");
+#ifdef ESPFS_HEATSHRINK
+		fprintf(stderr, "0 - None\n1 - Heatshrink(default)\n");
+#else
+		fprintf(stderr, "0 - None(default)\n");
+#endif
+		fprintf(stderr, "\nCompression level: 1 is worst but low RAM usage, higher is better compression \nbut uses more ram on decompression. -1 = compressors default.\n");
 		exit(0);
 	}
 
