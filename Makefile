@@ -16,6 +16,7 @@
 #GZIP_COMPRESSION = "yes"
 
 # If COMPRESS_W_YUI is set to "yes" then the static css and js files will be compressed with yui-compressor
+# This option works only when GZIP_COMPRESSION is set to "yes"
 # http://yui.github.io/yuicompressor/
 #Disabled by default.
 #COMPRESS_W_YUI = "yes"
@@ -191,9 +192,11 @@ clean:
 	$(Q) rm -f $(APP_AR)
 	$(Q) rm -f $(TARGET_OUT)
 	$(Q) find $(BUILD_BASE) -type f | xargs rm -f
-	$(Q) rm -rf mkespfsimage
+	$(Q) make -C espfs/mkespfsimage/ clean
 	$(Q) rm -rf $(FW_BASE)
-
 	$(Q) rm -f webpages.espfs
+ifeq ($(GZIP_COMPRESSION),"yes")
+	$(Q) rm -rf html_compressed
+endif
 
 $(foreach bdir,$(BUILD_DIR),$(eval $(call compile-objects,$(bdir))))
