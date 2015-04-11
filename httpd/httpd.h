@@ -56,9 +56,6 @@ int httpdUrlDecode(char *val, int valLen, char *ret, int retLen);
 int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLen);
 void ICACHE_FLASH_ATTR httpdInit(HttpdBuiltInUrl *fixedUrls, int port);
 const char *httpdGetMimetype(char *url);
-#ifdef GZIP_COMPRESSION
-const char* sendGZIPEncodingIfNeeded(HttpdConnData *connData);
-#endif
 void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code);
 void ICACHE_FLASH_ATTR httpdHeader(HttpdConnData *conn, const char *field, const char *val);
 void ICACHE_FLASH_ATTR httpdEndHeaders(HttpdConnData *conn);

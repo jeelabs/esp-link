@@ -166,18 +166,17 @@ flash: $(TARGET_OUT) $(FW_BASE)
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x00000 $(FW_BASE)/0x00000.bin 0x40000 $(FW_BASE)/0x40000.bin
 
 webpages.espfs: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
-ifeq ($(GZIP_COMPRESSION),"yes")
+ifeq ($(COMPRESS_W_YUI),"yes")
 	$(Q) rm -rf html_compressed;
 	$(Q) cp -r html html_compressed;
-ifeq ($(COMPRESS_W_YUI),"yes")
 	$(Q) echo "Compression assets with yui-compressor. This may take a while..."
 	$(Q) for file in `find html_compressed -type f -name "*.js"`; do $(YUI-COMPRESSOR) --type js $$file -o $$file; done
 	$(Q) for file in `find html_compressed -type f -name "*.css"`; do $(YUI-COMPRESSOR) --type css $$file -o $$file; done
 	$(Q) awk "BEGIN {printf \"YUI compression ratio was: %.2f%%\\n\", (`du -b -s html_compressed/ | sed 's/\([0-9]*\).*/\1/'`/`du -b -s html/ | sed 's/\([0-9]*\).*/\1/'`)*100}"
-endif
-	$(Q) cd html_compressed; find . -type f -regex ".*/.*\.\(html\|css\|js\)" -exec sh -c "gzip -n {}; mv {}.gz {}" \;; cd ..;
+
+# mkespfsimage will compress html, css and js files with gzip by default if enabled
+# override with -g cmdline parameter
 	$(Q) cd html_compressed; find  | ../espfs/mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..;
-	$(Q) awk "BEGIN {printf \"GZIP compression ratio was: %.2f%%\\n\", (`du -b -s html_compressed/ | sed 's/\([0-9]*\).*/\1/'`/`du -b -s html/ | sed 's/\([0-9]*\).*/\1/'`)*100}"
 else
 	$(Q) cd html; find | ../espfs/mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..
 endif
@@ -196,7 +195,7 @@ clean:
 	$(Q) make -C espfs/mkespfsimage/ clean
 	$(Q) rm -rf $(FW_BASE)
 	$(Q) rm -f webpages.espfs
-ifeq ($(GZIP_COMPRESSION),"yes")
+ifeq ($(COMPRESS_W_YUI),"yes")
 	$(Q) rm -rf html_compressed
 endif
 

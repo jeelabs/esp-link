@@ -66,19 +66,6 @@ static const MimeMap mimeTypes[]={
 	{NULL, "text/html"}, //default value
 };
 
-// The static files with the following extensions from the HTML folder will be compressed and served with GZIP compression
-// Add any other file types you want compressed here (and don't forget to modify the Makefile too)
-#ifdef GZIP_COMPRESSION
-static const char * gzippedFileTypes[] = {
-	"js",
-	"html",
-	"css",
-	NULL
-};
-
-static const char gzipNonSupportedMessage[] = "<html><head></head><body>Your browser does not accept gzip-compressed data.</body></html>";
-#endif
-
 //Returns a static char* to a mime type for a given url to a file.
 const char ICACHE_FLASH_ATTR *httpdGetMimetype(char *url) {
 	int i=0;
@@ -91,39 +78,6 @@ const char ICACHE_FLASH_ATTR *httpdGetMimetype(char *url) {
 	while (mimeTypes[i].ext!=NULL && os_strcmp(ext, mimeTypes[i].ext)!=0) i++;
 	return mimeTypes[i].mimetype;
 }
-
-
-#ifdef GZIP_COMPRESSION
-//Sends Content-encoding header if the requested file was GZIP compressed
-//If the client does not sent the Accept-encoding, send out a static html message.
-const char* sendGZIPEncodingIfNeeded(HttpdConnData *connData) {
-	int i=0;
-	char acceptEncodingBuffer[64];
-	//Go find the extension
-	char *ext=connData->url+(strlen(connData->url)-1);
-	while (ext!=connData->url && *ext!='.') ext--;
-	if (*ext=='.') ext++;
-	
-	//ToDo: os_strcmp is case sensitive; we may want to do case-intensive matching here...
-	while (gzippedFileTypes[i]!=NULL) {
-		if (os_strcmp(ext, gzippedFileTypes[i])==0) {
-			//when serving gzipped files check the browser's  "Accept-Encoding" header
-			//if the client does not advertises that he accepts GZIP send a warning message (telnet users for e.g.)
-			httpdGetHeader(connData, "Accept-Encoding", acceptEncodingBuffer, 64);
-			if (os_strstr(acceptEncodingBuffer, "gzip") == NULL) {
-				//No Accept-Encoding: gzip header present
-				return gzipNonSupportedMessage;
-			} else {
-				httpdHeader(connData, "Content-Encoding", "gzip");
-				return NULL;
-			}
-		}
-		i++;
-	}
-	return NULL;
-}
-#endif
-
 
 //Looks up the connData info for a specific esp connection
 static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
