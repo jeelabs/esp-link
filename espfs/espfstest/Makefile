@@ -1,4 +1,4 @@
-CFLAGS=-I../../lib/heatshrink -I.. -std=gnu99 
+CFLAGS=-I../../lib/heatshrink -I.. -std=gnu99 -DESPFS_HEATSHRINK
 
 espfstest: main.o espfs.o heatshrink_decoder.o
 	$(CC) -o $@ $^
