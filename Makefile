@@ -13,19 +13,19 @@
 # Adding JPG or PNG files (and any other compressed formats) is not recommended, because GZIP compression does not works effectively on compressed files.
 
 #Static gzipping is disabled by default.
-#GZIP_COMPRESSION = "yes"
+GZIP_COMPRESSION ?= "no"
 
 # If COMPRESS_W_YUI is set to "yes" then the static css and js files will be compressed with yui-compressor
 # This option works only when GZIP_COMPRESSION is set to "yes"
 # http://yui.github.io/yuicompressor/
 #Disabled by default.
-#COMPRESS_W_YUI = "yes"
+COMPRESS_W_YUI ?= "no"
 YUI-COMPRESSOR ?= /usr/bin/yui-compressor
 
 #If USE_HEATSHRINK is set to "yes" then the espfs files will be compressed with Heatshrink and decompressed
 #on the fly while reading the file. Because the decompression is done in the esp8266, it does not require
 #any support in the browser.
-USE_HEATSHRINK = "yes"
+USE_HEATSHRINK ?= "yes"
 
 #Position and maximum length of espfs in flash memory
 ESPFS_POS = 0x12000
@@ -181,8 +181,9 @@ endif
 else
 	$(Q) cd html; find | ../espfs/mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..
 endif
+
 espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
-	make -C espfs/mkespfsimage
+	make -C espfs/mkespfsimage USE_HEATSHRINK=$(USE_HEATSHRINK) GZIP_COMPRESSION=$(GZIP_COMPRESSION)
 
 htmlflash: webpages.espfs
 	$(Q) if [ $$(stat -c '%s' webpages.espfs) -gt $$(( $(ESPFS_SIZE) )) ]; then echo "webpages.espfs too big!"; false; fi
