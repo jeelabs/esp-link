@@ -112,6 +112,17 @@ void ICACHE_FLASH_ATTR memcpyAligned(char *dst, char *src, int len) {
 #define memcpyAligned memcpy
 #endif
 
+// Returns flags of opened file.
+int ICACHE_FLASH_ATTR espFsFlags(EspFsFile *fh) {
+	if (fh == NULL) {
+		os_printf("File handle not ready\n");
+		return -1;
+	}
+
+	int8_t flags;
+	memcpyAligned((char*)&flags, (char*)&fh->header->flags, 1);
+	return (int)flags;
+}
 
 //Open a file and return a pointer to the file desc struct.
 EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
