@@ -127,7 +127,7 @@ CFLAGS		+= -DGZIP_COMPRESSION
 endif
 
 ifeq ($(USE_HEATSHRINK),"yes")
-CFLAGS		+= -DEFS_HEATSHRINK
+CFLAGS		+= -DESPFS_HEATSHRINK
 endif
 
 vpath %.c $(SRC_DIR)

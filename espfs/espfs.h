@@ -1,8 +1,9 @@
 #ifndef ESPFS_H
 #define ESPFS_H
 
-//Define this if you want to be able to use Heatshrink-compressed espfs images.
-#define ESPFS_HEATSHRINK
+// This define is done in Makefile. If you do not use default Makefile, uncomment
+// to be able to use Heatshrink-compressed espfs images.
+//#define ESPFS_HEATSHRINK
 
 typedef enum {
 	ESPFS_INIT_RESULT_OK,
