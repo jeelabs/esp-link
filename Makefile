@@ -1,11 +1,38 @@
-# tnx to mamalala
-# Changelog
-# Changed the variables to include the header file directory
-# Added global var for the XTENSA tool root
+
+# --------------- esphttpd config options ---------------
+
+# If GZIP_COMPRESSION is set to "yes" then the static css, js, and html files will be compressed with gzip before added to the espfs image
+# and will be served with gzip Content-Encoding header.
+# This could speed up the downloading of these files, but might break compatibility with older web browsers not supporting gzip encoding
+# because Accept-Encoding is simply ignored. Enable this option if you have large static files to serve (for e.g. JQuery, Twitter bootstrap)
+# By default only js, css and html files are compressed.
+# If you have text based static files with different extensions what you want to serve compressed then you will need to add the extension to the following places:
+# - Add the extension to this Makefile at the webpages.espfs target to the find command
+# - Add the extension to the gzippedFileTypes array in the user/httpd.c file
 #
-# This make file still needs some work.
-#
-#
+# Adding JPG or PNG files (and any other compressed formats) is not recommended, because GZIP compression does not works effectively on compressed files.
+
+#Static gzipping is disabled by default.
+#GZIP_COMPRESSION = "yes"
+
+# If COMPRESS_W_YUI is set to "yes" then the static css and js files will be compressed with yui-compressor
+# http://yui.github.io/yuicompressor/
+#Disabled by default.
+#COMPRESS_W_YUI = "yes"
+YUI-COMPRESSOR ?= /usr/bin/yui-compressor
+
+#If USE_HEATSHRINK is set to "yes" then the espfs files will be compressed with Heatshrink and decompressed
+#on the fly while reading the file. Because the decompression is done in the esp8266, it does not require
+#any support in the browser.
+USE_HEATSHRINK = "yes"
+
+#Position and maximum length of espfs in flash memory
+ESPFS_POS = 0x12000
+ESPFS_SIZE = 0x2E000
+
+# -------------- End of esphttpd config options -------------
+
+
 # Output directors to store intermediate compiled files
 # relative to the project directory
 BUILD_BASE	= build
@@ -28,6 +55,9 @@ ESPBAUD		?= 460800
 # name for the target project
 TARGET		= httpd
 
+
+
+
 # which modules (subdirectories) of the project to include in compiling
 #MODULES		= driver user lwip/api lwip/app lwip/core lwip/core/ipv4 lwip/netif
 MODULES		= espfs httpd user
@@ -38,24 +68,12 @@ EXTRA_INCDIR	= include \
 # libraries used in this project, mainly provided by the SDK
 LIBS		= c gcc hal phy pp net80211 wpa main lwip
 
-# If GZIP_COMPRESSION is set to "yes" then the static css, js, and html files will be compressed with gzip before added to the espfs image
-# and will be served with gzip Content-Encoding header.
-# This could speed up the downloading of these files, but might break compatibility with older web browsers not supporting gzip encoding
-# because Accept-Encoding is simply ignored. Enable this option if you have large static files to serve (for e.g. JQuery, Twitter bootstrap)
-# By default only js, css and html files are compressed.
-# If you have text based static files with different extensions what you want to serve compressed then you will need to add the extension to the following places:
-# - Add the extension to this Makefile at the webpages.espfs target to the find command
-# - Add the extension to the gzippedFileTypes array in the user/httpd.c file
-#
-# Adding JPG or PNG files (and any other compressed formats) is not recommended, because GZIP compression does not works effectively on compressed files.
 
-#Static gzipping is disabled by default.
-#GZIP_COMPRESSION = "yes"
 
 # compiler flags using during compilation of source files
 CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
 		-nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH -D_STDINT_H \
-		-Wno-address
+		-Wno-address -DESPFS_POS=$(ESPFS_POS) -DESPFS_SIZE=$(ESPFS_SIZE)
 
 # linker flags used to generate the main object file
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static
@@ -73,11 +91,6 @@ CC		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
 AR		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-ar
 LD		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
 
-# If COMPRESS_W_YUI is set to "yes" then the static css and js files will be compressed with yui-compressor
-# http://yui.github.io/yuicompressor/
-#Disabled by default.
-#COMPRESS_W_YUI = "yes"
-YUI-COMPRESSOR ?= /usr/bin/yui-compressor
 
 ####
 #### no user configurable options below here
@@ -111,6 +124,10 @@ endif
 
 ifeq ($(GZIP_COMPRESSION),"yes")
 CFLAGS		+= -DGZIP_COMPRESSION
+endif
+
+ifeq ($(USE_HEATSHRINK),"yes")
+CFLAGS		+= -DEFS_HEATSHRINK
 endif
 
 vpath %.c $(SRC_DIR)
@@ -167,14 +184,14 @@ espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 	make -C espfs/mkespfsimage
 
 htmlflash: webpages.espfs
-	$(Q) if [ $$(stat -c '%s' webpages.espfs) -gt $$(( 0x2E000 )) ]; then echo "webpages.espfs too big!"; false; fi
-	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x12000 webpages.espfs
+	$(Q) if [ $$(stat -c '%s' webpages.espfs) -gt $$(( $(ESPFS_SIZE) )) ]; then echo "webpages.espfs too big!"; false; fi
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash $(ESPFS_POS) webpages.espfs
 
 clean:
 	$(Q) rm -f $(APP_AR)
 	$(Q) rm -f $(TARGET_OUT)
 	$(Q) find $(BUILD_BASE) -type f | xargs rm -f
-
+	$(Q) rm -rf mkespfsimage
 	$(Q) rm -rf $(FW_BASE)
 
 	$(Q) rm -f webpages.espfs
