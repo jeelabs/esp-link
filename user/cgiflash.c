@@ -48,7 +48,7 @@ int ICACHE_FLASH_ATTR cgiUploadEspfs(HttpdConnData *connData) {
 	if(connData->post->len > ESPFS_SIZE){
 		// The uploaded file is too large
 		os_printf("ESPFS file too large\n");
-		httpdSend(connData, "HTTP/1.0 500 Internal Server Error\r\nServer: esp8266-httpd/0.3\r\nContent-Type: text/plain\r\nContent-Length: 24\r\n\r\nESPFS image loo large.\r\n", -1);
+		httpdSend(connData, "HTTP/1.0 500 Internal Server Error\r\nServer: esp8266-httpd/0.3\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 24\r\n\r\nESPFS image loo large.\r\n", -1);
 		return HTTPD_CGI_DONE;
 	}
 	
