@@ -13,19 +13,19 @@
 # Adding JPG or PNG files (and any other compressed formats) is not recommended, because GZIP compression does not works effectively on compressed files.
 
 #Static gzipping is disabled by default.
-GZIP_COMPRESSION ?= "no"
+GZIP_COMPRESSION ?= no
 
 # If COMPRESS_W_YUI is set to "yes" then the static css and js files will be compressed with yui-compressor
 # This option works only when GZIP_COMPRESSION is set to "yes"
 # http://yui.github.io/yuicompressor/
 #Disabled by default.
-COMPRESS_W_YUI ?= "no"
+COMPRESS_W_YUI ?= no
 YUI-COMPRESSOR ?= /usr/bin/yui-compressor
 
 #If USE_HEATSHRINK is set to "yes" then the espfs files will be compressed with Heatshrink and decompressed
 #on the fly while reading the file. Because the decompression is done in the esp8266, it does not require
 #any support in the browser.
-USE_HEATSHRINK ?= "yes"
+USE_HEATSHRINK ?= yes
 
 #Position and maximum length of espfs in flash memory
 ESPFS_POS = 0x12000
@@ -123,11 +123,11 @@ Q := @
 vecho := @echo
 endif
 
-ifeq ($(GZIP_COMPRESSION),"yes")
+ifeq ("$(GZIP_COMPRESSION)","yes")
 CFLAGS		+= -DGZIP_COMPRESSION
 endif
 
-ifeq ($(USE_HEATSHRINK),"yes")
+ifeq ("$(USE_HEATSHRINK)","yes")
 CFLAGS		+= -DESPFS_HEATSHRINK
 endif
 
@@ -139,7 +139,7 @@ $1/%.o: %.c
 	$(Q) $(CC) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CFLAGS)  -c $$< -o $$@
 endef
 
-.PHONY: all checkdirs clean
+.PHONY: all checkdirs clean webpages.espfs
 
 all: checkdirs $(TARGET_OUT) $(FW_BASE)
 
@@ -166,7 +166,7 @@ flash: $(TARGET_OUT) $(FW_BASE)
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x00000 $(FW_BASE)/0x00000.bin 0x40000 $(FW_BASE)/0x40000.bin
 
 webpages.espfs: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
-ifeq ($(COMPRESS_W_YUI),"yes")
+ifeq ("$(COMPRESS_W_YUI)","yes")
 	$(Q) rm -rf html_compressed;
 	$(Q) cp -r html html_compressed;
 	$(Q) echo "Compression assets with yui-compressor. This may take a while..."
@@ -182,7 +182,7 @@ else
 endif
 
 espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
-	make -C espfs/mkespfsimage USE_HEATSHRINK=$(USE_HEATSHRINK) GZIP_COMPRESSION=$(GZIP_COMPRESSION)
+	$(Q) $(MAKE) -C espfs/mkespfsimage USE_HEATSHRINK="$(USE_HEATSHRINK)" GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
 
 htmlflash: webpages.espfs
 	$(Q) if [ $$(stat -c '%s' webpages.espfs) -gt $$(( $(ESPFS_SIZE) )) ]; then echo "webpages.espfs too big!"; false; fi
@@ -195,7 +195,7 @@ clean:
 	$(Q) make -C espfs/mkespfsimage/ clean
 	$(Q) rm -rf $(FW_BASE)
 	$(Q) rm -f webpages.espfs
-ifeq ($(COMPRESS_W_YUI),"yes")
+ifeq ("$(COMPRESS_W_YUI)","yes")
 	$(Q) rm -rf html_compressed
 endif
 
