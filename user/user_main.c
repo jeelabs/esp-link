@@ -75,6 +75,12 @@ HttpdBuiltInUrl builtInUrls[]={
 };
 
 
+static ETSTimer prHeapTimer;
+
+static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
+	os_printf("Heap: %ld\n", (unsigned long)system_get_free_heap_size());
+}
+
 //Main routine. Initialize stdout, the I/O, filesystem and the webserver and we're done.
 void user_init(void) {
 	stdoutInit();
@@ -84,5 +90,8 @@ void user_init(void) {
 	// where image is written in flash that is defined in Makefile.
 	espFsInit((void*)(0x40200000 + ESPFS_POS));
 	httpdInit(builtInUrls, 80);
+	os_timer_disarm(&prHeapTimer);
+	os_timer_setfn(&prHeapTimer, prHeapTimerCb, NULL);
+	os_timer_arm(&prHeapTimer, 3000, 1);
 	os_printf("\nReady\n");
 }

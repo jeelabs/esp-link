@@ -179,6 +179,7 @@ int ICACHE_FLASH_ATTR cgiEspFsTemplate(HttpdConnData *connData) {
 		//We're done.
 		((TplCallback)(connData->cgiArg))(connData, NULL, &tpd->tplArg);
 		espFsClose(tpd->file);
+		os_free(tpd);
 		return HTTPD_CGI_DONE;
 	} else {
 		//Ok, till next time.
