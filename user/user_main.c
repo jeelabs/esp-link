@@ -21,6 +21,8 @@
 #include "auth.h"
 #include "espfs.h"
 
+//#define SHOW_HEAP_USE
+
 //Function that tells the authentication system what users/passwords live on the system.
 //This is disabled in the default build; if you want to try it, enable the authBasic line in
 //the builtInUrls below.
@@ -75,11 +77,13 @@ HttpdBuiltInUrl builtInUrls[]={
 };
 
 
+#ifdef SHOW_HEAP_USE
 static ETSTimer prHeapTimer;
 
 static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
 	os_printf("Heap: %ld\n", (unsigned long)system_get_free_heap_size());
 }
+#endif
 
 //Main routine. Initialize stdout, the I/O, filesystem and the webserver and we're done.
 void user_init(void) {
@@ -90,8 +94,10 @@ void user_init(void) {
 	// where image is written in flash that is defined in Makefile.
 	espFsInit((void*)(0x40200000 + ESPFS_POS));
 	httpdInit(builtInUrls, 80);
+#ifdef SHOW_HEAP_USE
 	os_timer_disarm(&prHeapTimer);
 	os_timer_setfn(&prHeapTimer, prHeapTimerCb, NULL);
 	os_timer_arm(&prHeapTimer, 3000, 1);
+#endif
 	os_printf("\nReady\n");
 }
