@@ -107,9 +107,31 @@ static void ICACHE_FLASH_ATTR wifiStartScan() {
 //scan for access points and if available will return the result of an earlier scan.
 //The result is embedded in a bit of JSON parsed by the javascript in wifi.tpl.
 int ICACHE_FLASH_ATTR cgiWiFiScan(HttpdConnData *connData) {
+	int pos=(int)connData->cgiData;
 	int len;
-	int i;
 	char buff[1024];
+
+	if (!cgiWifiAps.scanInProgress && pos!=0) {
+		//Fill in json code for an access point
+		if (pos-1<cgiWifiAps.noAps) {
+			len=os_sprintf(buff, "{\"essid\": \"%s\", \"rssi\": \"%d\", \"enc\": \"%d\"}%s\n", 
+					cgiWifiAps.apData[pos-1]->ssid, cgiWifiAps.apData[pos-1]->rssi, 
+					cgiWifiAps.apData[pos-1]->enc, (pos-1==cgiWifiAps.noAps-1)?"":",");
+			httpdSend(connData, buff, len);
+		}
+		pos++;
+		if ((pos-1)>=cgiWifiAps.noAps) {
+			len=os_sprintf(buff, "]\n}\n}\n");
+			httpdSend(connData, buff, len);
+			//Also start a new scan.
+			wifiStartScan();
+			return HTTPD_CGI_DONE;
+		} else {
+			connData->cgiData=(void*)pos;
+			return HTTPD_CGI_MORE;
+		}
+	}
+
 	httpdStartResponse(connData, 200);
 	httpdHeader(connData, "Content-Type", "text/json");
 	httpdEndHeaders(connData);
@@ -118,24 +140,15 @@ int ICACHE_FLASH_ATTR cgiWiFiScan(HttpdConnData *connData) {
 		//We're still scanning. Tell Javascript code that.
 		len=os_sprintf(buff, "{\n \"result\": { \n\"inProgress\": \"1\"\n }\n}\n");
 		httpdSend(connData, buff, len);
+		return HTTPD_CGI_DONE;
 	} else {
 		//We have a scan result. Pass it on.
 		len=os_sprintf(buff, "{\n \"result\": { \n\"inProgress\": \"0\", \n\"APs\": [\n");
 		httpdSend(connData, buff, len);
 		if (cgiWifiAps.apData==NULL) cgiWifiAps.noAps=0;
-		for (i=0; i<cgiWifiAps.noAps; i++) {
-			//Fill in json code for an access point
-			len=os_sprintf(buff, "{\"essid\": \"%s\", \"rssi\": \"%d\", \"enc\": \"%d\"}%s\n", 
-					cgiWifiAps.apData[i]->ssid, cgiWifiAps.apData[i]->rssi, 
-					cgiWifiAps.apData[i]->enc, (i==cgiWifiAps.noAps-1)?"":",");
-			httpdSend(connData, buff, len);
-		}
-		len=os_sprintf(buff, "]\n}\n}\n");
-		httpdSend(connData, buff, len);
-		//Also start a new scan.
-		wifiStartScan();
+		connData->cgiData=(void *)1;
+		return HTTPD_CGI_MORE;
 	}
-	return HTTPD_CGI_DONE;
 }
 
 //Temp store for new ap info.
