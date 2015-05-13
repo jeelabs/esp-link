@@ -57,6 +57,7 @@ APPGEN_TOOL	?= gen_appbin.py
 ESP_SPI_SIZE				?= 0  # 0->512KB
 ESP_FLASH_MODE 			?= 0  # 0->QIO
 ESP_FLASH_FREQ_DIV	?= 0  # 0->40Mhz
+ESP_FLASH_MAX				?= 241664 # max bin file for 512KB flash: 236KB
 
 
 
@@ -181,16 +182,18 @@ firmware/user1.bin: $(USER1_OUT)
 	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER1_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE)
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
+	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
+	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
 
-firmware/user2.bin: $(USER1_OUT)
+firmware/user2.bin: $(USER2_OUT)
 	$(Q) $(OBJCP) --only-section .text -O binary $(USER2_OUT) eagle.app.v6.text.bin
 	$(Q) $(OBJCP) --only-section .data -O binary $(USER2_OUT) eagle.app.v6.data.bin
 	$(Q) $(OBJCP) --only-section .rodata -O binary $(USER2_OUT) eagle.app.v6.rodata.bin
 	$(Q) $(OBJCP) --only-section .irom0.text -O binary $(USER2_OUT) eagle.app.v6.irom0text.bin
-	ls -ls eagle*bin
 	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER2_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE)
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
+	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
 
 
 $(APP_AR): $(OBJ)
@@ -223,19 +226,19 @@ endif
 	$(Q) cd build; $(OBJCP) -I binary -O elf32-xtensa-le -B xtensa --rename-section .data=.espfs \
 			espfs.img espfs_img.o; cd ..
 
-# edit the loader script to add the espfs section to the end of irom with a 4KB alignment to
-# allow the section to be reflashed at runtime, if you run tight in space you could change the
-# alignment to 4 and forego the reflash capability
+# edit the loader script to add the espfs section to the end of irom with a 4 byte alignment.
 # we also adjust the sizes of the segments 'cause we need more irom0
+# in the end the only thing that matters wrt size is that the whole shebang fits into the
+# 236KB available (in a 512KB flash)
 build/eagle.esphttpd.v6.ld: $(SDK_LDDIR)/eagle.app.v6.ld
-	sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4096);' -e 'a *(.espfs)' -e '}'  \
+	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 	    $(SDK_LDDIR)/eagle.app.v6.ld >$@
 build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld
-	sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4096);' -e 'a *(.espfs)' -e '}'  \
+	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/2B000/32000/' \
 	    $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld >$@
 build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld
-	sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4096);' -e 'a *(.espfs)' -e '}'  \
+	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/2B000/32000/' \
 	    $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
 
