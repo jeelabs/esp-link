@@ -5,9 +5,9 @@ Some flash handling cgi routines. Used for reading the existing flash and updati
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
- * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain 
- * this notice you can do whatever you want with this stuff. If we meet some day, 
- * and you think this stuff is worth it, you can buy me a beer in return. 
+ * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain
+ * this notice you can do whatever you want with this stuff. If we meet some day,
+ * and you think this stuff is worth it, you can buy me a beer in return.
  * ----------------------------------------------------------------------------
  */
 
@@ -45,13 +45,15 @@ int ICACHE_FLASH_ATTR cgiUploadEspfs(HttpdConnData *connData) {
 		//Connection aborted. Clean up.
 		return HTTPD_CGI_DONE;
 	}
+	/* TODO: fix this check so it calculates the end of the irom segment minus the start of the espfs
 	if(connData->post->len > ESPFS_SIZE){
 		// The uploaded file is too large
 		os_printf("ESPFS file too large\n");
 		httpdSend(connData, "HTTP/1.0 500 Internal Server Error\r\nServer: esp8266-httpd/0.3\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 24\r\n\r\nESPFS image loo large.\r\n", -1);
 		return HTTPD_CGI_DONE;
 	}
-	
+	*/
+
 	// The source should be 4byte aligned, so go ahead and flash whatever we have
 	int address = ESPFS_POS + connData->post->received - connData->post->buffLen;
 	if(address % SPI_FLASH_SEC_SIZE == 0){

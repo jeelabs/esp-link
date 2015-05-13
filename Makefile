@@ -27,10 +27,6 @@ YUI-COMPRESSOR ?= /usr/bin/yui-compressor
 #any support in the browser.
 USE_HEATSHRINK ?= yes
 
-#Position and maximum length of espfs in flash memory
-ESPFS_POS = 0x12000
-ESPFS_SIZE = 0x2E000
-
 # -------------- End of esphttpd config options -------------
 
 
@@ -80,7 +76,7 @@ CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static
 
 # linker script used for the above linkier step
-LD_SCRIPT	= eagle.app.v6.ld
+LD_SCRIPT	:= eagle.esphttpd.v6.ld
 
 # various paths from the SDK used in this project
 SDK_LIBDIR	= lib
@@ -91,6 +87,8 @@ SDK_INCDIR	= include include/json
 CC		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
 AR		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-ar
 LD		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
+OBJCP := $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objcopy
+OBJDP := $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objdump
 
 
 ####
@@ -100,15 +98,17 @@ SRC_DIR		:= $(MODULES)
 BUILD_DIR	:= $(addprefix $(BUILD_BASE)/,$(MODULES))
 
 SDK_LIBDIR	:= $(addprefix $(SDK_BASE)/,$(SDK_LIBDIR))
+SDK_LDDIR 	:= $(addprefix $(SDK_BASE)/,$(SDK_LDDIR))
 SDK_INCDIR	:= $(addprefix -I$(SDK_BASE)/,$(SDK_INCDIR))
 
 SRC		:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.c))
-OBJ		:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC))
+OBJ		:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC)) $(BUILD_BASE)/espfs_img.o
 LIBS		:= $(addprefix -l,$(LIBS))
 APP_AR		:= $(addprefix $(BUILD_BASE)/,$(TARGET)_app.a)
 TARGET_OUT	:= $(addprefix $(BUILD_BASE)/,$(TARGET).out)
 
-LD_SCRIPT	:= $(addprefix -T$(SDK_BASE)/$(SDK_LDDIR)/,$(LD_SCRIPT))
+#LD_SCRIPT	:= $(addprefix -T$(SDK_BASE)/$(SDK_LDDIR)/,$(LD_SCRIPT))
+LD_SCRIPT := -Tbuild/$(LD_SCRIPT)
 
 INCDIR	:= $(addprefix -I,$(SRC_DIR))
 EXTRA_INCDIR	:= $(addprefix -I,$(EXTRA_INCDIR))
@@ -143,9 +143,10 @@ endef
 
 all: checkdirs $(TARGET_OUT) $(FW_BASE)
 
-$(TARGET_OUT): $(APP_AR)
+$(TARGET_OUT): $(APP_AR) build/eagle.esphttpd.v6.ld
 	$(vecho) "LD $@"
 	$(Q) $(LD) -L$(SDK_LIBDIR) $(LD_SCRIPT) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
+	$(Q) $(OBJDP) -x $(TARGET_OUT) | egrep espfs_img
 
 $(FW_BASE): $(TARGET_OUT)
 	$(vecho) "FW $@"
@@ -165,7 +166,7 @@ $(BUILD_DIR):
 flash: $(TARGET_OUT) $(FW_BASE)
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x00000 $(FW_BASE)/0x00000.bin 0x40000 $(FW_BASE)/0x40000.bin
 
-webpages.espfs: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
+$(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
 ifeq ("$(COMPRESS_W_YUI)","yes")
 	$(Q) rm -rf html_compressed;
 	$(Q) cp -r html html_compressed;
@@ -173,23 +174,27 @@ ifeq ("$(COMPRESS_W_YUI)","yes")
 	$(Q) for file in `find html_compressed -type f -name "*.js"`; do $(YUI-COMPRESSOR) --type js $$file -o $$file; done
 	$(Q) for file in `find html_compressed -type f -name "*.css"`; do $(YUI-COMPRESSOR) --type css $$file -o $$file; done
 	$(Q) awk "BEGIN {printf \"YUI compression ratio was: %.2f%%\\n\", (`du -b -s html_compressed/ | sed 's/\([0-9]*\).*/\1/'`/`du -b -s html/ | sed 's/\([0-9]*\).*/\1/'`)*100}"
-
-# mkespfsimage will compress html, css and js files with gzip by default if enabled
-# override with -g cmdline parameter
-	$(Q) cd html_compressed; find  | ../espfs/mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..;
+  # mkespfsimage will compress html, css and js files with gzip by default if enabled
+  # override with -g cmdline parameter
+	$(Q) cd html_compressed; find  | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..;
 else
-	$(Q) cd html; find | ../espfs/mkespfsimage/mkespfsimage > ../webpages.espfs; cd ..
+	$(Q) cd html; find . \! -name \*- | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..
 endif
+	$(Q) cd build; $(OBJCP) -I binary -O elf32-xtensa-le -B xtensa --rename-section .data=.espfs \
+			espfs.img espfs_img.o; cd ..
+
+# edit the loader script to add the espfs section to the end of irom with a 4KB alignment to
+# allow the section to be reflashed at runtime, if you run tight in space you could change the
+# alignment to 4 and forego the reflash capability
+build/eagle.esphttpd.v6.ld: $(SDK_LDDIR)/eagle.app.v6.ld
+	sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4096);' -e 'a *(.espfs)' -e '}'  \
+	    $(SDK_LDDIR)/eagle.app.v6.ld >$@
 
 blankflash:
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x7E000 $(SDK_BASE)/bin/blank.bin
 
 espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 	$(Q) $(MAKE) -C espfs/mkespfsimage USE_HEATSHRINK="$(USE_HEATSHRINK)" GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
-
-htmlflash: webpages.espfs
-	$(Q) if [ $$(stat -c '%s' webpages.espfs) -gt $$(( $(ESPFS_SIZE) )) ]; then echo "webpages.espfs too big!"; false; fi
-	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash $(ESPFS_POS) webpages.espfs
 
 clean:
 	$(Q) rm -f $(APP_AR)

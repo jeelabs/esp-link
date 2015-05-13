@@ -85,14 +85,21 @@ static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
 }
 #endif
 
+// address of espfs binary blob
+extern uint8_t _binary_espfs_img_start;
+
 //Main routine. Initialize stdout, the I/O, filesystem and the webserver and we're done.
 void user_init(void) {
 	stdoutInit();
 	ioInit();
+	os_delay_us(10000L);
+	os_printf("\n\nInitializing esphttpd\n");
 
 	// 0x40200000 is the base address for spi flash memory mapping, ESPFS_POS is the position
 	// where image is written in flash that is defined in Makefile.
-	espFsInit((void*)(0x40200000 + ESPFS_POS));
+	//EspFsInitResult res = espFsInit((void*)(0x40200000 + ESPFS_POS));
+	EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
+	os_printf("espFsInit(0x%08lx) returned %d\n", (uint32_t)&_binary_espfs_img_start, res);
 	httpdInit(builtInUrls, 80);
 #ifdef SHOW_HEAP_USE
 	os_timer_disarm(&prHeapTimer);
