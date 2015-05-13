@@ -52,6 +52,11 @@ ESPBAUD		?= 460800
 # name for the target project
 TARGET		= httpd
 
+# espressif tool to concatenate sections for OTA upload using bootloader v1.2+
+APPGEN_TOOL	?= gen_appbin.py
+ESP_SPI_SIZE				?= 0  # 0->512KB
+ESP_FLASH_MODE 			?= 0  # 0->QIO
+ESP_FLASH_FREQ_DIV	?= 0  # 0->40Mhz
 
 
 
@@ -75,13 +80,16 @@ CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-
 # linker flags used to generate the main object file
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static
 
-# linker script used for the above linkier step
-LD_SCRIPT	:= eagle.esphttpd.v6.ld
+# linker script used for the above linker step
+LD_SCRIPT 	:= build/eagle.esphttpd.v6.ld
+LD_SCRIPT1	:= build/eagle.esphttpd1.v6.ld
+LD_SCRIPT2	:= build/eagle.esphttpd2.v6.ld
 
 # various paths from the SDK used in this project
-SDK_LIBDIR	= lib
-SDK_LDDIR	= ld
-SDK_INCDIR	= include include/json
+SDK_LIBDIR		= lib
+SDK_LDDIR			= ld
+SDK_INCDIR		= include include/json
+SDK_TOOLSDIR	= tools
 
 # select which tools to use as compiler, librarian and linker
 CC		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
@@ -100,15 +108,16 @@ BUILD_DIR	:= $(addprefix $(BUILD_BASE)/,$(MODULES))
 SDK_LIBDIR	:= $(addprefix $(SDK_BASE)/,$(SDK_LIBDIR))
 SDK_LDDIR 	:= $(addprefix $(SDK_BASE)/,$(SDK_LDDIR))
 SDK_INCDIR	:= $(addprefix -I$(SDK_BASE)/,$(SDK_INCDIR))
+SDK_TOOLS		:= $(addprefix $(SDK_BASE)/,$(SDK_TOOLSDIR))
+APPGEN_TOOL	:= $(addprefix $(SDK_TOOLS)/,$(APPGEN_TOOL))
 
 SRC		:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.c))
 OBJ		:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC)) $(BUILD_BASE)/espfs_img.o
 LIBS		:= $(addprefix -l,$(LIBS))
 APP_AR		:= $(addprefix $(BUILD_BASE)/,$(TARGET)_app.a)
 TARGET_OUT	:= $(addprefix $(BUILD_BASE)/,$(TARGET).out)
-
-#LD_SCRIPT	:= $(addprefix -T$(SDK_BASE)/$(SDK_LDDIR)/,$(LD_SCRIPT))
-LD_SCRIPT := -Tbuild/$(LD_SCRIPT)
+USER1_OUT 	:= $(addprefix $(BUILD_BASE)/,$(TARGET).user1.out)
+USER2_OUT 	:= $(addprefix $(BUILD_BASE)/,$(TARGET).user2.out)
 
 INCDIR	:= $(addprefix -I,$(SRC_DIR))
 EXTRA_INCDIR	:= $(addprefix -I,$(EXTRA_INCDIR))
@@ -141,17 +150,48 @@ endef
 
 .PHONY: all checkdirs clean webpages.espfs
 
-all: checkdirs $(TARGET_OUT) $(FW_BASE)
+all: checkdirs $(FW_BASE) firmware/user1.bin firmware/user2.bin
 
-$(TARGET_OUT): $(APP_AR) build/eagle.esphttpd.v6.ld
+$(TARGET_OUT): $(APP_AR) $(LD_SCRIPT)
 	$(vecho) "LD $@"
-	$(Q) $(LD) -L$(SDK_LIBDIR) $(LD_SCRIPT) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
-	$(Q) $(OBJDP) -x $(TARGET_OUT) | egrep espfs_img
+	$(Q) $(LD) -L$(SDK_LIBDIR) -T$(LD_SCRIPT) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
+	$(OBJDP) -x $(TARGET_OUT) | egrep '(espfs_img)'
+
+$(USER1_OUT): $(APP_AR) $(LD_SCRIPT1)
+	$(vecho) "LD $@"
+	$(Q) $(LD) -L$(SDK_LIBDIR) -T$(LD_SCRIPT1) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
+#	$(Q) $(OBJDP) -x $(TARGET_OUT) | egrep espfs_img
+
+$(USER2_OUT): $(APP_AR) $(LD_SCRIPT2)
+	$(vecho) "LD $@"
+	$(Q) $(LD) -L$(SDK_LIBDIR) -T$(LD_SCRIPT2) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
+#	$(Q) $(OBJDP) -x $(TARGET_OUT) | egrep espfs_img
 
 $(FW_BASE): $(TARGET_OUT)
 	$(vecho) "FW $@"
 	$(Q) mkdir -p $@
 	$(Q) $(ESPTOOL) elf2image $(TARGET_OUT) --output $@/
+
+firmware/user1.bin: $(USER1_OUT)
+	$(Q) $(OBJCP) --only-section .text -O binary $(USER1_OUT) eagle.app.v6.text.bin
+	$(Q) $(OBJCP) --only-section .data -O binary $(USER1_OUT) eagle.app.v6.data.bin
+	$(Q) $(OBJCP) --only-section .rodata -O binary $(USER1_OUT) eagle.app.v6.rodata.bin
+	$(Q) $(OBJCP) --only-section .irom0.text -O binary $(USER1_OUT) eagle.app.v6.irom0text.bin
+	ls -ls eagle*bin
+	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER1_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE)
+	$(Q) rm -f eagle.app.v6.*.bin
+	$(Q) mv eagle.app.flash.bin $@
+
+firmware/user2.bin: $(USER1_OUT)
+	$(Q) $(OBJCP) --only-section .text -O binary $(USER2_OUT) eagle.app.v6.text.bin
+	$(Q) $(OBJCP) --only-section .data -O binary $(USER2_OUT) eagle.app.v6.data.bin
+	$(Q) $(OBJCP) --only-section .rodata -O binary $(USER2_OUT) eagle.app.v6.rodata.bin
+	$(Q) $(OBJCP) --only-section .irom0.text -O binary $(USER2_OUT) eagle.app.v6.irom0text.bin
+	ls -ls eagle*bin
+	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER2_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE)
+	$(Q) rm -f eagle.app.v6.*.bin
+	$(Q) mv eagle.app.flash.bin $@
+
 
 $(APP_AR): $(OBJ)
 	$(vecho) "AR $@"
@@ -186,9 +226,18 @@ endif
 # edit the loader script to add the espfs section to the end of irom with a 4KB alignment to
 # allow the section to be reflashed at runtime, if you run tight in space you could change the
 # alignment to 4 and forego the reflash capability
+# we also adjust the sizes of the segments 'cause we need more irom0
 build/eagle.esphttpd.v6.ld: $(SDK_LDDIR)/eagle.app.v6.ld
 	sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4096);' -e 'a *(.espfs)' -e '}'  \
 	    $(SDK_LDDIR)/eagle.app.v6.ld >$@
+build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld
+	sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4096);' -e 'a *(.espfs)' -e '}'  \
+			-e '/^  irom0_0_seg/ s/2B000/32000/' \
+	    $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld >$@
+build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld
+	sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4096);' -e 'a *(.espfs)' -e '}'  \
+			-e '/^  irom0_0_seg/ s/2B000/32000/' \
+	    $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
 
 blankflash:
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x7E000 $(SDK_BASE)/bin/blank.bin
