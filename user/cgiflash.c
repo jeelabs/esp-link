@@ -39,37 +39,89 @@ int ICACHE_FLASH_ATTR cgiReadFlash(HttpdConnData *connData) {
 	if (*pos>=0x40200000+(512*1024)) return HTTPD_CGI_DONE; else return HTTPD_CGI_MORE;
 }
 
-//Cgi that allows the ESPFS image to be replaced via http POST
-int ICACHE_FLASH_ATTR cgiUploadEspfs(HttpdConnData *connData) {
+// Return which firmware needs to be uploaded next
+int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
 	if (connData->conn==NULL) {
 		//Connection aborted. Clean up.
 		return HTTPD_CGI_DONE;
 	}
-	/* TODO: fix this check so it calculates the end of the irom segment minus the start of the espfs
-	if(connData->post->len > ESPFS_SIZE){
-		// The uploaded file is too large
-		os_printf("ESPFS file too large\n");
-		httpdSend(connData, "HTTP/1.0 500 Internal Server Error\r\nServer: esp8266-httpd/0.3\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 24\r\n\r\nESPFS image loo large.\r\n", -1);
+
+	uint8 id = system_upgrade_userbin_check();
+	httpdStartResponse(connData, 200);
+	httpdHeader(connData, "Content-Type", "text/plain");
+	httpdEndHeaders(connData);
+	httpdSend(connData, (id == 1 ? "user1.bin" : "user2.bin"), -1);
+	os_printf("Next firmware: user%d.bin\n", 1-id);
+
+	return HTTPD_CGI_DONE;
+}
+
+//Cgi that allows the firmware to be replaced via http POST
+int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
+	if (connData->conn==NULL) {
+		//Connection aborted. Clean up.
 		return HTTPD_CGI_DONE;
 	}
-	*/
 
-	// The source should be 4byte aligned, so go ahead and flash whatever we have
-	int address = ESPFS_POS + connData->post->received - connData->post->buffLen;
+	if(connData->post->len > FIRMWARE_SIZE){
+		// The uploaded file is too large
+		os_printf("Firmware image too large\n");
+		httpdStartResponse(connData, 400);
+		httpdHeader(connData, "Content-Type", "text/plain");
+		httpdEndHeaders(connData);
+		httpdSend(connData, "Firmware image loo large.\r\n", -1);
+		return HTTPD_CGI_DONE;
+	}
+
+	uint8 id = system_upgrade_userbin_check();
+
+	int address;
+	if (id == 1) {
+		address = 4*1024; // start after 4KB boot partition
+	} else {
+		// 4KB boot, firmware1, 16KB user param, 4KB reserved
+		address = 4*1024 + FIRMWARE_SIZE + 16*1024 + 4*1024;
+	}
+	address += connData->post->received - connData->post->buffLen;
+
 	if(address % SPI_FLASH_SEC_SIZE == 0){
 		// We need to erase this block
-		os_printf("Erasing flash at %d\n", address/SPI_FLASH_SEC_SIZE);
+		os_printf("Erasing flash at 0x%05x (id=%d)\n", address, 2-id);
 		spi_flash_erase_sector(address/SPI_FLASH_SEC_SIZE);
 	}
+
 	// Write the data
-	os_printf("Writing at: 0x%x\n", address);
+	os_printf("Writing %d bytes at 0x%05x (%d of %d)\n", connData->post->buffSize, address,
+			connData->post->received, connData->post->len);
 	spi_flash_write(address, (uint32 *)connData->post->buff, connData->post->buffLen);
-	os_printf("Wrote %d bytes (%dB of %d)\n", connData->post->buffSize, connData->post->received, connData->post->len);//&connData->postBuff));
 
 	if (connData->post->received == connData->post->len){
-		httpdSend(connData, "Finished uploading", -1);
+		// TODO: verify the firmware (is there a checksum or something???)
+		httpdStartResponse(connData, 200);
+		httpdEndHeaders(connData);
 		return HTTPD_CGI_DONE;
 	} else {
 		return HTTPD_CGI_MORE;
 	}
 }
+
+// Handle request to reboot into the new firmware
+int ICACHE_FLASH_ATTR cgiRebootFirmware(HttpdConnData *connData) {
+	if (connData->conn==NULL) {
+		//Connection aborted. Clean up.
+		return HTTPD_CGI_DONE;
+	}
+
+	// TODO: sanity-check that the 'next' partition actually contains something that looks like
+	// valid firmware
+
+	// This hsould probably be forked into a separate task that waits a second to let the
+	// current HTTP request finish...
+	system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
+	system_upgrade_reboot();
+	httpdStartResponse(connData, 200);
+	httpdEndHeaders(connData);
+	return HTTPD_CGI_DONE;
+}
+
+

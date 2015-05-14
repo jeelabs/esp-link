@@ -18,7 +18,7 @@ been loaded <b>%counter%</b> times.
 
 <p>And because we're on the Internets now, here are the required pictures of cats:<br />
 <!--img src="cats/cross-eyed-cat.jpg"><br /-->
-<img src="cats/junge-katze-iv.jpg"><br />
+<img src="cats/junge-katze-iv_01.jpg"><br />
 <!--img src="cats/kitten-loves-toy.jpg"><br /-->
 </p>
 </div>

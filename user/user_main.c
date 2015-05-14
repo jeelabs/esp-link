@@ -53,11 +53,13 @@ should be placed above the URLs they protect.
 */
 HttpdBuiltInUrl builtInUrls[]={
 	{"/", cgiRedirect, "/index.tpl"},
-	{"/flash.bin", cgiReadFlash, NULL},
+	{"/flash/download", cgiReadFlash, NULL},
+	{"/flash/next", cgiGetFirmwareNext, NULL},
+	{"/flash/upload", cgiUploadFirmware, NULL},
+	{"/flash/reboot", cgiRebootFirmware, NULL},
 	{"/led.tpl", cgiEspFsTemplate, tplLed},
 	{"/index.tpl", cgiEspFsTemplate, tplCounter},
 	{"/led.cgi", cgiLed, NULL},
-	{"/updateweb.cgi", cgiUploadEspfs, NULL},
 
 	//Routines to make the /wifi URL and everything beneath it work.
 

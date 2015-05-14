@@ -12,6 +12,7 @@
 #include <gpio.h>
 #include <mem.h>
 #include <osapi.h>
+#include <upgrade.h>
 #include <user_interface.h>
 
 #include "espmissingincludes.h"

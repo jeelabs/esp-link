@@ -76,7 +76,7 @@ LIBS		= c gcc hal phy pp net80211 wpa main lwip
 # compiler flags using during compilation of source files
 CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
 		-nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH -D_STDINT_H \
-		-Wno-address -DESPFS_POS=$(ESPFS_POS) -DESPFS_SIZE=$(ESPFS_SIZE)
+		-Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX)
 
 # linker flags used to generate the main object file
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static
@@ -235,11 +235,11 @@ build/eagle.esphttpd.v6.ld: $(SDK_LDDIR)/eagle.app.v6.ld
 	    $(SDK_LDDIR)/eagle.app.v6.ld >$@
 build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
-			-e '/^  irom0_0_seg/ s/2B000/32000/' \
+			-e '/^  irom0_0_seg/ s/2B000/38000/' \
 	    $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld >$@
 build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
-			-e '/^  irom0_0_seg/ s/2B000/32000/' \
+			-e '/^  irom0_0_seg/ s/2B000/38000/' \
 	    $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
 
 blankflash:
