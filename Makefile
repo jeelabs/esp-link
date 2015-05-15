@@ -58,6 +58,7 @@ ESP_SPI_SIZE				?= 0  # 0->512KB
 ESP_FLASH_MODE 			?= 0  # 0->QIO
 ESP_FLASH_FREQ_DIV	?= 0  # 0->40Mhz
 ESP_FLASH_MAX				?= 241664 # max bin file for 512KB flash: 236KB
+ESP_HOSTNAME        ?= esp8266
 
 
 
@@ -205,6 +206,8 @@ checkdirs: $(BUILD_DIR)
 $(BUILD_DIR):
 	$(Q) mkdir -p $@
 
+wiflash: all
+	./wiflash $(ESP_HOSTNAME) firmware/user1.bin firmware/user2.bin
 
 flash: $(TARGET_OUT) $(FW_BASE)
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x00000 $(FW_BASE)/0x00000.bin 0x40000 $(FW_BASE)/0x40000.bin
