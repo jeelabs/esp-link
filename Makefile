@@ -35,12 +35,11 @@ USE_HEATSHRINK ?= yes
 BUILD_BASE	= build
 FW_BASE		= firmware
 
-# Base directory for the compiler. Needs a / at the end; if not set it'll use the tools that are in
-# the PATH.
-XTENSA_TOOLS_ROOT ?= 
+# Base directory for the compiler. Needs a / at the end;
+XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 
-# base directory of the ESP8266 SDK package, absolute
-SDK_BASE	?= /opt/Espressif/ESP8266_SDK
+# Base directory of the ESP8266 SDK package, absolute
+SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.0.1)
 
 #Esptool.py path and port
 ESPTOOL		?= esptool.py
