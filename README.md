@@ -7,7 +7,9 @@ LPC800-series ARM microcontrollers via the ESP8266.
 
 The firmware includes a tiny HTTP server based on
 [esphttpd](http://www.esp8266.com/viewforum.php?f=34)
-with a simple web interface.
+with a simple web interface, many thanks to Jeroen Domburg for making it available!
+
+*WARNING: this project is still in development, don't expect it to work for you*
 
 Hardware info
 -------------
