@@ -9,7 +9,7 @@ The firmware includes a tiny HTTP server based on
 [esphttpd](http://www.esp8266.com/viewforum.php?f=34)
 with a simple web interface, many thanks to Jeroen Domburg for making it available!
 
-*WARNING: this project is still in development, don't expect it to work for you*
+_WARNING: this project is still in development, don't expect it to work for you_
 
 Hardware info
 -------------
@@ -21,6 +21,7 @@ The expected connections are:
 - GPIO13: connect to ISP of LPC/ARM microcontroller (not used with Arduino/AVR)
 - GPIO0: optionally connect green "conn" LED to 3.3V (indicates wifi status)
 - GPIO2: optionally connect yellow "ser" LED to 3.3V (indicates serial activity)
+
 If you are using an FTDI connector, GPIO12 goes to DTR and GPIO13 goes to CTS
 
 Initial flashing
@@ -68,30 +69,24 @@ in the first place. You can then connect to the network and reconfigure the stat
 Building the firmware
 ---------------------
 The firmware has been built using the [esp-open-sdk](https://github.com/pfalcon/esp-open-sdk)
+on a Linux system. Create an esp8266 directory, place the esp-open-sdk into that directory.
+Download the Espressif SDK (1.0.1) and also expland it into the esp8266 directory. Then clone
+this repository there as well. This way the relative paths in the Makefile will work. If you
+choose a different directory structure look at hte Makefile for the appropriate environment
+variables to define. (I have not used the esptool for flashing, so I don't know whether what's
+in the Makefile for that works or not.)
 
-You probably also need an UNIX-like system.
-
-To manage the paths to all this, you can source a small shell fragment into your current session. For
-example, I source a file with these contents:
-export PATH=${PWD}/esp-open-sdk/xtensa-lx106-elf/bin:$PATH
-export SDK_BASE=${PWD}/esp-open-sdk/sdk
-export ESPTOOL=${PWD}/esptool/esptool
-export ESPPORT=/dev/ttyUSB0
-export ESPBAUD=460800
-
-Actual setup of the SDK and toolchain is out of the scope of this document, so I hope this helps you
-enough to set up your own if you haven't already. 
-
-If you have that, you can clone out the source code:
-git clone http://github.com/jeelabs/esp-link
+In order to OTA-update the esp8266 you should "export ESP_HOSTNAME=..." with the hostname or
+IP address of your module.
 
 This project makes use of heatshrink, which is a git submodule. To fetch the code:
+```
 cd esphttpd
 git submodule init
 git submodule update
+```
 
-Now, build the code:
-make
+Now, build the code: `make`
 
 Flashing the firmware
 ---------------------
