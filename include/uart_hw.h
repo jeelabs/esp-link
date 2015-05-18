@@ -6,6 +6,7 @@
 
 #ifndef UART_REGISTER_H_INCLUDED
 #define UART_REGISTER_H_INCLUDED
+
 #define REG_UART_BASE( i )  (0x60000000+(i)*0xf00)
 //version value:32'h062000
 
@@ -125,12 +126,17 @@
 
 #define UART_DATE( i )                          (REG_UART_BASE( i ) + 0x78)
 #define UART_ID( i )                            (REG_UART_BASE( i ) + 0x7C)
-#endif // UART_REGISTER_H_INCLUDED
 
 #define RX_BUFF_SIZE    256
 #define TX_BUFF_SIZE    100
 #define UART0   0
 #define UART1   1
+
+//calc bit 0..5 for  UART_CONF0 register
+#define CALC_UARTMODE(data_bits,parity,stop_bits) \
+	(((parity == NONE_BITS) ? 0x0 : (UART_PARITY_EN | (parity & UART_PARITY))) | \
+	((stop_bits & UART_STOP_BIT_NUM) << UART_STOP_BIT_NUM_S) | \
+	((data_bits & UART_BIT_NUM) << UART_BIT_NUM_S))
 
 typedef enum {
     FIVE_BITS = 0x0,
@@ -181,6 +187,15 @@ typedef enum {
 } RcvMsgBuffState;
 
 typedef struct {
+    uint32     RcvBuffSize;
+    uint8     *pRcvMsgBuff;
+    uint8     *pWritePos;
+    uint8     *pReadPos;
+    uint8      TrigLvl; //JLU: may need to pad
+    RcvMsgBuffState  BuffState;
+} RcvMsgBuff;
+
+typedef struct {
     uint32   TrxBuffSize;
     uint8   *pTrxBuff;
 } TrxMsgBuff;
@@ -193,3 +208,18 @@ typedef enum {
     RCV_ESC_CHAR,
 } RcvMsgState;
 
+typedef struct {
+    UartBautRate 	     baut_rate;
+    UartBitsNum4Char  data_bits;
+    UartExistParity      exist_parity;
+    UartParityMode 	    parity;
+    UartStopBitsNum   stop_bits;
+    UartFlowCtrl         flow_ctrl;
+    RcvMsgBuff          rcv_buff;
+    TrxMsgBuff           trx_buff;
+    RcvMsgState        rcv_state;
+    int                      received;
+    int                      buff_uart_no;  //indicate which uart use tx/rx buffer
+} UartDevice;
+
+#endif // UART_REGISTER_H_INCLUDED

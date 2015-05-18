@@ -1,5 +1,5 @@
-ESP8266 - Bridge
-================
+ESP-LINK
+========
 
 This firmware implements a transparent bridge between Wifi and serial using an ESP8266 module.
 It also provides support for flash-programming Arduino/AVR microcontrollers as well as
@@ -36,9 +36,9 @@ Wifi configuration
 After you have serially flashed the module it will create a wifi access point (AP) with an
 SSID of the form `ESP_012ABC` where 012ABC is a piece of the module's MAC address.
 Using a laptop, phone, or tablet connect to this SSID and then open a browser pointed at
-http://192.168.0.1, you should them see the esp8266-bridge web site.
+http://192.168.0.1, you should them see the esp-link web site.
 
-Now configure the wifi. The typical desired configuration is for the esp-bridge to be a
+Now configure the wifi. The typical desired configuration is for the esp-link to be a
 station on your local wifi network so can communicate with it from all your computers.
 
 To make this happen, navigate to the wifi page and hit the "change to STA+AP mode" button.
@@ -48,16 +48,16 @@ reconnect to the ESP_123ABC wifi network and refres the wifi settings page.
 At this point you should see a list of detected networks on the web page and you can select
 yours. Enter a password if your network is secure (recommended...) and hit the connect button.
 
-You should now see that the esp-bridge has connected to your network and it should show you
+You should now see that the esp-link has connected to your network and it should show you
 its IP address. Write it down and then follow the provided link (you may have to switch your
 laptop, phone, or tablet back to your network before you can actually connect).
 
-At this point the esp-bridge will have switched to STA mode and be just a station on your
+At this point the esp-link will have switched to STA mode and be just a station on your
 wifi network. These settings are stored in flash and thereby remembered through resets and
 power cycles. They are also remembered when you flash new firmware. Only flashing `blank.bin`
 as indicated above will reset the wifi settings.
 
-There is a fail-safe, which is that after a reset (need details) the esp-bridge will revert
+There is a fail-safe, which is that after a reset (need details) the esp-link will revert
 back to AP+STA mode and thus both present its ESP_012ABC-style network and try to connect to
 the requested network, which will presumably not work or it wouldn't be in fail-safe mode
 in the first place. You can then connect to the network and reconfigure the station part.
@@ -81,7 +81,7 @@ Actual setup of the SDK and toolchain is out of the scope of this document, so I
 enough to set up your own if you haven't already. 
 
 If you have that, you can clone out the source code:
-git clone http://github.com/jeelabs/esp-bridge
+git clone http://github.com/jeelabs/esp-link
 
 This project makes use of heatshrink, which is a git submodule. To fetch the code:
 cd esphttpd
@@ -95,7 +95,7 @@ Flashing the firmware
 ---------------------
 This firmware supports over-the-air (OTA) flashing, so you do not have to deal with serial
 flashing again after the initial one! The recommended way to flash is to use `make wiflash`,
-which assumes that you set ESP_HOSTNAME to the hostname or IP address of your esp-bridge.
+which assumes that you set ESP_HOSTNAME to the hostname or IP address of your esp-link
 
 The flashing, restart, and re-associating with your wireless network takes about 15 seconds
 and is fully automatic. The 512KB flash are divided into two 236KB partitions allowing for new

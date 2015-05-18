@@ -3,9 +3,9 @@
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
- * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain 
- * this notice you can do whatever you want with this stuff. If we meet some day, 
- * and you think this stuff is worth it, you can buy me a beer in return. 
+ * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain
+ * this notice you can do whatever you want with this stuff. If we meet some day,
+ * and you think this stuff is worth it, you can buy me a beer in return.
  * ----------------------------------------------------------------------------
  */
 
@@ -20,6 +20,12 @@
 #include "stdout.h"
 #include "auth.h"
 #include "espfs.h"
+#include "uart.h"
+#include "serbridge.h"
+#include "status.h"
+#define MCU_RESET 12
+#define MCU_ISP   13
+#include <gpio.h>
 
 //#define SHOW_HEAP_USE
 
@@ -88,25 +94,34 @@ static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
 #endif
 
 // address of espfs binary blob
-extern uint8_t _binary_espfs_img_start;
+extern uint32_t _binary_espfs_img_start;
 
 //Main routine. Initialize stdout, the I/O, filesystem and the webserver and we're done.
 void user_init(void) {
-	stdoutInit();
-	ioInit();
+	// init gpio pins used to reset&reprogram attached microcontrollers
+	gpio_init();
+	GPIO_OUTPUT_SET(MCU_ISP, 1);
+	GPIO_OUTPUT_SET(MCU_RESET, 0);
+	// init UART
+	uart_init(BIT_RATE_115200, BIT_RATE_115200);
+	// say hello (leave some time to cause break in TX after boot loader's msg
 	os_delay_us(10000L);
-	os_printf("\n\nInitializing esphttpd\n");
-
-	// 0x40200000 is the base address for spi flash memory mapping, ESPFS_POS is the position
-	// where image is written in flash that is defined in Makefile.
-	//EspFsInitResult res = espFsInit((void*)(0x40200000 + ESPFS_POS));
+	os_printf("\n\nInitializing esp-link\n");
+	// Status LEDs
+	statusInit();
+	// init the flash filesystem with the html stuff
+	os_delay_us(100000L);
 	EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
 	os_printf("espFsInit(0x%08lx) returned %d\n", (uint32_t)&_binary_espfs_img_start, res);
+	// mount the http handlers
 	httpdInit(builtInUrls, 80);
+	// init the wifi-serial transparent bridge (port 23)
+	serbridgeInit(23);
+	uart_add_recv_cb(&serbridgeUartCb);
 #ifdef SHOW_HEAP_USE
 	os_timer_disarm(&prHeapTimer);
 	os_timer_setfn(&prHeapTimer, prHeapTimerCb, NULL);
 	os_timer_arm(&prHeapTimer, 3000, 1);
 #endif
-	os_printf("\nReady\n");
+	os_printf("** esp-link ready\n");
 }

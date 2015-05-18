@@ -1,5 +1,5 @@
-<html><head><title>WiFi connection</title>
-<link rel="stylesheet" type="text/css" href="style.css">
+<html><head><title>WiFi connection - ESP Link</title>
+<link rel="stylesheet" type="text/css" href="/style.css">
 <script type="text/javascript" src="140medley.min.js"></script>
 <script type="text/javascript">
 
@@ -12,13 +12,13 @@ function createInputForAp(ap) {
 	div.id="apdiv";
 	var rssi=document.createElement("div");
 	var rssiVal=-Math.floor(ap.rssi/51)*32;
-	rssi.className="icon";
+	rssi.className="lock-icon";
 	rssi.style.backgroundPosition="0px "+rssiVal+"px";
 	var encrypt=document.createElement("div");
 	var encVal="-64"; //assume wpa/wpa2
 	if (ap.enc=="0") encVal="0"; //open
 	if (ap.enc=="1") encVal="-32"; //wep
-	encrypt.className="icon";
+	encrypt.className="lock-icon";
 	encrypt.style.backgroundPosition="-32px "+encVal+"px";
 	var input=document.createElement("input");
 	input.type="radio";
@@ -74,6 +74,9 @@ window.onload=function(e) {
 </head>
 <body>
 <div id="main">
+<p><a href="/index.tpl">Home</a> | Wifi | Serial | <a href="/led.tpl">LED</a></p>
+
+<h1>ESP Link - Wifi Configuration</h1>
 <p>
 Current WiFi mode: %WiFiMode%
 </p>

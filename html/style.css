@@ -2,10 +2,11 @@
 body {
 	background-color: #404040;
 	font-family: sans-serif;
+	font-color: #663300;
 }
 
 #main {
-	background-color: #d0d0FF;
+	background-color: #FFFFCC;
 	-moz-border-radius: 5px;
 	-webkit-border-radius: 5px;
 	border-radius: 5px;
@@ -15,3 +16,10 @@ body {
 	padding: 20px
 }
 
+.lock-icon {
+	background-image: url("/wifi/icons.png");
+	background-color: transparent;
+	width: 32px;
+	height: 32px;
+	display: inline-block;
+}
