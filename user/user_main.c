@@ -23,6 +23,7 @@
 #include "uart.h"
 #include "serbridge.h"
 #include "status.h"
+#include "console.h"
 #define MCU_RESET 12
 #define MCU_ISP   13
 #include <gpio.h>
@@ -66,6 +67,7 @@ HttpdBuiltInUrl builtInUrls[]={
 	{"/led.tpl", cgiEspFsTemplate, tplLed},
 	{"/index.tpl", cgiEspFsTemplate, tplCounter},
 	{"/led.cgi", cgiLed, NULL},
+	{"/console.tpl", cgiEspFsTemplate, tplConsole},
 
 	//Routines to make the /wifi URL and everything beneath it work.
 
@@ -124,4 +126,5 @@ void user_init(void) {
 	os_timer_arm(&prHeapTimer, 3000, 1);
 #endif
 	os_printf("** esp-link ready\n");
+	consoleInit();
 }

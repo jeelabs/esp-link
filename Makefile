@@ -64,9 +64,7 @@ ESP_HOSTNAME        ?= esp8266
 # which modules (subdirectories) of the project to include in compiling
 #MODULES		= driver user lwip/api lwip/app lwip/core lwip/core/ipv4 lwip/netif
 MODULES		= espfs httpd user serial
-EXTRA_INCDIR	= include \
-		. \
-		lib/heatshrink/
+EXTRA_INCDIR	= include . lib/heatshrink/
 
 # libraries used in this project, mainly provided by the SDK
 LIBS		= c gcc hal phy pp net80211 wpa main lwip

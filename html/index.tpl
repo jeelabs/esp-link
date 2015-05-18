@@ -5,7 +5,9 @@
 <body>
 <div id="main">
 <p><a href="/index.tpl">Home</a> | <a href="/wifi/wifi.tpl">Wifi</a> |
-   Serial | <a href="/led.tpl">LED</a> | <a href="/help.tpl">Help</a></p>
+   Serial | <a href="/led.tpl">LED</a> | <a href="/help.tpl">Help</a> |
+	 <a href="/console.tpl">Console</a>
+</p>
 
 <h1>ESP Link</h1>
 <p>
