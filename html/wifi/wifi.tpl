@@ -28,7 +28,7 @@ function createInputForAp(ap) {
 	input.id="opt-"+ap.essid;
 	var label=document.createElement("label");
 	label.htmlFor="opt-"+ap.essid;
-	label.textContent=ap.essid;
+	label.textContent=ap.essid+" ("+ap.rssi+")";
 	div.appendChild(input);
 	div.appendChild(rssi);
 	div.appendChild(encrypt);
@@ -78,7 +78,8 @@ window.onload=function(e) {
 
 <h1>ESP Link - Wifi Configuration</h1>
 <p>
-Current WiFi mode: %WiFiMode%
+Current WiFi mode: %WiFiMode%<br>
+Current network: %currSsid%
 </p>
 <p>
 Note: %WiFiapwarn%

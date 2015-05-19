@@ -125,8 +125,8 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 	}
 
 	// Write the data
-	os_printf("Writing %d bytes at 0x%05x (%d of %d)\n", connData->post->buffSize, address,
-			connData->post->received, connData->post->len);
+	//os_printf("Writing %d bytes at 0x%05x (%d of %d)\n", connData->post->buffSize, address,
+	//		connData->post->received, connData->post->len);
 	spi_flash_write(address, (uint32 *)connData->post->buff, connData->post->buffLen);
 
 	if (connData->post->received == connData->post->len){

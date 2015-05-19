@@ -13,6 +13,8 @@ void ICACHE_FLASH_ATTR uart_init(UartBautRate uart0_br, UartBautRate uart1_br);
 // Transmit a buffer of characters on UART0
 void ICACHE_FLASH_ATTR uart0_tx_buffer(char *buf, uint16 len);
 
+void ICACHE_FLASH_ATTR uart0_write_char(char c);
+
 // Add a receive callback function, this is called on the uart receive task each time a chunk
 // of bytes are received. A small number of callbacks can be added and they are all called
 // with all new characters.

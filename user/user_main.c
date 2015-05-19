@@ -111,8 +111,9 @@ void user_init(void) {
 	os_printf("\n\nInitializing esp-link\n");
 	// Status LEDs
 	statusInit();
+	// Wifi
+	wifiInit();
 	// init the flash filesystem with the html stuff
-	os_delay_us(100000L);
 	EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
 	os_printf("espFsInit(0x%08lx) returned %d\n", (uint32_t)&_binary_espfs_img_start, res);
 	// mount the http handlers

@@ -100,7 +100,9 @@ while true; do
 	esac
 done
 
-res=`curl -s -XPOST --data-binary "@$fw" "http://$hostname/flash/upload"`
+silent=-s
+[[ -n "$verbose" ]] && silent=
+res=`curl $silent -XPOST --data-binary "@$fw" "http://$hostname/flash/upload"`
 if [[ $? != 0 ]]; then
 	echo "Error flashing $fw" >&2
 	exit 1

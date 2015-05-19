@@ -1,4 +1,5 @@
 #include <esp8266.h>
+#include "uart.h"
 #include "console.h"
 
 // Web console for the esp8266 to replace outputting to uart1.
@@ -30,6 +31,7 @@ console_read(void) {
 
 static void ICACHE_FLASH_ATTR
 console_write_char(char c) {
+	uart0_write_char(c);
 	if (c == '\n') console_write('\r');
 	console_write(c);
 }

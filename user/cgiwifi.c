@@ -5,9 +5,9 @@ Cgi/template routines for the /wifi url.
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
- * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain 
- * this notice you can do whatever you want with this stuff. If we meet some day, 
- * and you think this stuff is worth it, you can buy me a beer in return. 
+ * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain
+ * this notice you can do whatever you want with this stuff. If we meet some day,
+ * and you think this stuff is worth it, you can buy me a beer in return.
  * ----------------------------------------------------------------------------
  */
 
@@ -48,8 +48,9 @@ static ETSTimer resetTimer;
 void ICACHE_FLASH_ATTR wifiScanDoneCb(void *arg, STATUS status) {
 	int n;
 	struct bss_info *bss_link = (struct bss_info *)arg;
-	os_printf("wifiScanDoneCb %d\n", status);
+
 	if (status!=OK) {
+		os_printf("wifiScanDoneCb status=%d\n", status);
 		cgiWifiAps.scanInProgress=0;
 		return;
 	}
@@ -114,8 +115,8 @@ int ICACHE_FLASH_ATTR cgiWiFiScan(HttpdConnData *connData) {
 	if (!cgiWifiAps.scanInProgress && pos!=0) {
 		//Fill in json code for an access point
 		if (pos-1<cgiWifiAps.noAps) {
-			len=os_sprintf(buff, "{\"essid\": \"%s\", \"rssi\": \"%d\", \"enc\": \"%d\"}%s\n", 
-					cgiWifiAps.apData[pos-1]->ssid, cgiWifiAps.apData[pos-1]->rssi, 
+			len=os_sprintf(buff, "{\"essid\": \"%s\", \"rssi\": \"%d\", \"enc\": \"%d\"}%s\n",
+					cgiWifiAps.apData[pos-1]->ssid, cgiWifiAps.apData[pos-1]->rssi,
 					cgiWifiAps.apData[pos-1]->enc, (pos-1==cgiWifiAps.noAps-1)?"":",");
 			httpdSend(connData, buff, len);
 		}
@@ -158,16 +159,23 @@ static struct station_config stconf;
 //the connect succeeds, this gets the module in STA-only mode.
 static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
 	int x=wifi_station_get_connect_status();
+	int m = wifi_get_opmode();
 	if (x==STATION_GOT_IP) {
 		//Go to STA mode. This needs a reset, so do that.
-		os_printf("Got IP. Going into STA mode..\n");
-		wifi_set_opmode(1);
-		system_restart();
+		connTryStatus=CONNTRY_SUCCESS;
+		if (m != 1) {
+			os_printf("Got IP. Going into STA mode..\n");
+			wifi_set_opmode(1);
+		}
 	} else {
 		connTryStatus=CONNTRY_FAIL;
-		os_printf("Connect fail. Not going into STA-only mode.\n");
+		if (m != 3) {
+			os_printf("Connect fail. Going into STA+AP mode..\n");
+			wifi_set_opmode(3);
+		}
 		//Maybe also pass this through on the webpage?
 	}
+	os_timer_arm(&resetTimer, 15000, 0);
 }
 
 
@@ -180,14 +188,28 @@ static void ICACHE_FLASH_ATTR reassTimerCb(void *arg) {
 	os_printf("Try to connect to AP....\n");
 	wifi_station_disconnect();
 	wifi_station_set_config(&stconf);
-	wifi_station_connect();
+	//wifi_station_connect();
 	x=wifi_get_opmode();
 	connTryStatus=CONNTRY_WORKING;
-	if (x!=1) {
+	if (x == 1) {
 		//Schedule disconnect/connect
 		os_timer_disarm(&resetTimer);
 		os_timer_setfn(&resetTimer, resetTimerCb, NULL);
 		os_timer_arm(&resetTimer, 15000, 0); //time out after 15 secs of trying to connect
+	}
+}
+
+
+// Init the wireless, which consists of setting a timer if we expect to connect to an AP
+// so we can revert to STA+AP mode if we can't connect.
+void ICACHE_FLASH_ATTR wifiInit() {
+	int x=wifi_get_opmode();
+	os_printf("Wifi init, mode=%d\n", x);
+	if (x == 1) {
+		// STA-only mode, reset into STA+AP after a timeout
+		os_timer_disarm(&resetTimer);
+		os_timer_setfn(&resetTimer, resetTimerCb, NULL);
+		os_timer_arm(&resetTimer, 15000, 0);
 	}
 }
 
@@ -198,12 +220,12 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 	char essid[128];
 	char passwd[128];
 	static ETSTimer reassTimer;
-	
+
 	if (connData->conn==NULL) {
 		//Connection aborted. Clean up.
 		return HTTPD_CGI_DONE;
 	}
-	
+
 	httpdFindArg(connData->post->buff, "essid", essid, sizeof(essid));
 	httpdFindArg(connData->post->buff, "passwd", passwd, sizeof(passwd));
 
@@ -218,7 +240,7 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 #ifdef DEMO_MODE
 	httpdRedirect(connData, "/wifi");
 #else
-	os_timer_arm(&reassTimer, 500, 0);
+	os_timer_arm(&reassTimer, 1000, 0);
 	httpdRedirect(connData, "connecting.html");
 #endif
 	return HTTPD_CGI_DONE;
@@ -229,7 +251,7 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 int ICACHE_FLASH_ATTR cgiWiFiSetMode(HttpdConnData *connData) {
 	int len;
 	char buff[1024];
-	
+
 	if (connData->conn==NULL) {
 		//Connection aborted. Clean up.
 		return HTTPD_CGI_DONE;
@@ -237,15 +259,24 @@ int ICACHE_FLASH_ATTR cgiWiFiSetMode(HttpdConnData *connData) {
 
 	len=httpdFindArg(connData->getArgs, "mode", buff, sizeof(buff));
 	if (len!=0) {
-		os_printf("cgiWifiSetMode: %s\n", buff);
+		int m = atoi(buff);
+		os_printf("Switching to wifi mode %d\n", m);
 #ifndef DEMO_MODE
-		wifi_set_opmode(atoi(buff));
-		system_restart();
+		wifi_set_opmode(m);
+		if (m == 1) {
+			// STA-only mode, reset into STA+AP after a timeout
+			os_timer_disarm(&resetTimer);
+			os_timer_setfn(&resetTimer, resetTimerCb, NULL);
+			os_timer_arm(&resetTimer, 15000, 0);
+		}
 #endif
 	}
 	httpdRedirect(connData, "/wifi");
 	return HTTPD_CGI_DONE;
 }
+
+char *connStatuses[] = { "idle", "connecting", "wrong password", "AP not found",
+                         "failed", "success" };
 
 int ICACHE_FLASH_ATTR cgiWiFiConnStatus(HttpdConnData *connData) {
 	char buff[1024];
@@ -255,23 +286,26 @@ int ICACHE_FLASH_ATTR cgiWiFiConnStatus(HttpdConnData *connData) {
 	httpdStartResponse(connData, 200);
 	httpdHeader(connData, "Content-Type", "text/json");
 	httpdEndHeaders(connData);
-	if (connTryStatus==CONNTRY_IDLE) {
-		len=os_sprintf(buff, "{\n \"status\": \"idle\"\n }\n");
-	} else if (connTryStatus==CONNTRY_WORKING || connTryStatus==CONNTRY_SUCCESS) {
-		if (st==STATION_GOT_IP) {
-			wifi_get_ip_info(0, &info);
-			len=os_sprintf(buff, "{\n \"status\": \"success\",\n \"ip\": \"%d.%d.%d.%d\" }\n", 
-				(info.ip.addr>>0)&0xff, (info.ip.addr>>8)&0xff, 
-				(info.ip.addr>>16)&0xff, (info.ip.addr>>24)&0xff);
+
+	len = os_sprintf(buff, "{\"status\": \"")-1;
+	if (st > 0 && st < sizeof(connStatuses)) {
+		len += os_sprintf(buff+len, "%s", connStatuses[st])-1;
+	} else {
+		len += os_sprintf(buff+len, "unknown")-1;
+	}
+	if (st == STATION_GOT_IP) {
+		wifi_get_ip_info(0, &info);
+		len+=os_sprintf(buff, "\", \"ip\": \"%d.%d.%d.%d\" }\n",
+			(info.ip.addr>>0)&0xff, (info.ip.addr>>8)&0xff,
+			(info.ip.addr>>16)&0xff, (info.ip.addr>>24)&0xff);
+		if (connTryStatus==CONNTRY_WORKING || connTryStatus==CONNTRY_SUCCESS) {
 			//Reset into AP-only mode sooner.
 			os_timer_disarm(&resetTimer);
 			os_timer_setfn(&resetTimer, resetTimerCb, NULL);
 			os_timer_arm(&resetTimer, 1000, 0);
-		} else {
-			len=os_sprintf(buff, "{\n \"status\": \"working\"\n }\n");
 		}
 	} else {
-		len=os_sprintf(buff, "{\n \"status\": \"fail\"\n }\n");
+		len+=os_sprintf(buff, "\" }\n");
 	}
 
 	httpdSend(connData, buff, len);
@@ -298,10 +332,16 @@ int ICACHE_FLASH_ATTR tplWlan(HttpdConnData *connData, char *token, void **arg) 
 		os_strcpy(buff, (char*)stconf.password);
 	} else if (os_strcmp(token, "WiFiapwarn")==0) {
 		x=wifi_get_opmode();
-		if (x==2) {
+		switch (x) {
+		case 1:
+			os_strcpy(buff, "Click <a href=\"setmode.cgi?mode=3\">here</a> to go to STA+AP mode.");
+			break;
+		case 2:
 			os_strcpy(buff, "<b>Can't scan in this mode.</b> Click <a href=\"setmode.cgi?mode=3\">here</a> to go to STA+AP mode.");
-		} else {
-			os_strcpy(buff, "Click <a href=\"setmode.cgi?mode=2\">here</a> to go to standalone AP mode.");
+			break;
+		case 3:
+			os_strcpy(buff, "Click <a href=\"setmode.cgi?mode=1\">here</a> to go to STA mode.");
+			break;
 		}
 	}
 	httpdSend(connData, buff, -1);

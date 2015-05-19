@@ -5,9 +5,9 @@ Esp8266 http server - core routines
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
- * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain 
- * this notice you can do whatever you want with this stuff. If we meet some day, 
- * and you think this stuff is worth it, you can buy me a beer in return. 
+ * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain
+ * this notice you can do whatever you want with this stuff. If we meet some day,
+ * and you think this stuff is worth it, you can buy me a beer in return.
  * ----------------------------------------------------------------------------
  */
 
@@ -73,7 +73,7 @@ const char ICACHE_FLASH_ATTR *httpdGetMimetype(char *url) {
 	char *ext=url+(strlen(url)-1);
 	while (ext!=url && *ext!='.') ext--;
 	if (*ext=='.') ext++;
-	
+
 	//ToDo: os_strcmp is case sensitive; we may want to do case-intensive matching here...
 	while (mimeTypes[i].ext!=NULL && os_strcmp(ext, mimeTypes[i].ext)!=0) i++;
 	return mimeTypes[i].mimetype;
@@ -137,19 +137,19 @@ int httpdUrlDecode(char *val, int valLen, char *ret, int retLen) {
 //Find a specific arg in a string of get- or post-data.
 //Line is the string of post/get-data, arg is the name of the value to find. The
 //zero-terminated result is written in buff, with at most buffLen bytes used. The
-//function returns the length of the result, or -1 if the value wasn't found. The 
+//function returns the length of the result, or -1 if the value wasn't found. The
 //returned string will be urldecoded already.
 int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLen) {
 	char *p, *e;
 	if (line==NULL) return 0;
 	p=line;
 	while(p!=NULL && *p!='\n' && *p!='\r' && *p!=0) {
-		os_printf("findArg: %s\n", p);
+		//os_printf("findArg: %s\n", p);
 		if (os_strncmp(p, arg, os_strlen(arg))==0 && p[strlen(arg)]=='=') {
 			p+=os_strlen(arg)+1; //move p to start of value
 			e=(char*)os_strstr(p, "&");
 			if (e==NULL) e=p+os_strlen(p);
-			os_printf("findArg: val %s len %d\n", p, (e-p));
+			//os_printf("findArg: val %s len %d\n", p, (e-p));
 			return httpdUrlDecode(p, (e-p), buff, buffLen);
 		}
 		p=(char*)os_strstr(p, "&");
@@ -260,7 +260,7 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	conn->priv->sendBuffLen=0;
 
 	if (conn->cgi==NULL) { //Marked for destruction?
-		os_printf("Conn %p is done. Closing.\n", conn->conn);
+		//os_printf("Conn %p is done. Closing.\n", conn->conn);
 		espconn_disconnect(conn->conn);
 		httpdRetireConn(conn);
 		return; //No need to call xmitSendBuff.
@@ -301,7 +301,7 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
 			if (builtInUrls[i].url[os_strlen(builtInUrls[i].url)-1]=='*' &&
 					os_strncmp(builtInUrls[i].url, conn->url, os_strlen(builtInUrls[i].url)-1)==0) match=1;
 			if (match) {
-				os_printf("Is url index %d\n", i);
+				//os_printf("Is url index %d\n", i);
 				conn->cgiData=NULL;
 				conn->cgi=builtInUrls[i].cgiCb;
 				conn->cgiArg=builtInUrls[i].cgiArg;
@@ -318,7 +318,7 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
 			conn->cgi=NULL; //mark for destruction
 			return;
 		}
-		
+
 		//Okay, we have a CGI function that matches the URL. See if it wants to handle the
 		//particular URL we're supposed to handle.
 		r=conn->cgi(conn);
@@ -343,7 +343,7 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
 static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 	int i;
 	char first_line = false;
-	
+
 	if (os_strncmp(h, "GET ", 4)==0) {
 		conn->requestType = HTTPD_METHOD_GET;
 		first_line = true;
@@ -354,7 +354,7 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 
 	if (first_line) {
 		char *e;
-		
+
 		//Skip past the space after POST/GET
 		i=0;
 		while (h[i]!=' ') i++;
@@ -365,7 +365,7 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		if (e==NULL) return; //wtf?
 		*e=0; //terminate url part
 
-		os_printf("URL = %s\n", conn->url);
+		os_printf("%s %s\n", HTTPD_METHOD_GET?"GET":"POST", conn->url);
 		//Parse out the URL part before the GET parameters.
 		conn->getArgs=(char*)os_strstr(conn->url, "?");
 		if (conn->getArgs!=0) {
@@ -497,7 +497,7 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 	int i;
 	//Find empty conndata in pool
 	for (i=0; i<MAX_CONN; i++) if (connData[i].conn==NULL) break;
-	os_printf("Con req, conn=%p, pool slot %d\n", conn, i);
+	//os_printf("Con req, conn=%p, pool slot %d\n", conn, i);
 	if (i==MAX_CONN) {
 		os_printf("Aiee, conn pool overflow!\n");
 		espconn_disconnect(conn);
