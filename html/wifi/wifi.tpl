@@ -79,7 +79,7 @@ window.onload=function(e) {
 <h1>ESP Link - Wifi Configuration</h1>
 <p>
 Current WiFi mode: %WiFiMode%<br>
-Current network: %currSsid%
+Current network: %currSsid% Status: %currStatus% Phy:%currPhy%
 </p>
 <p>
 Note: %WiFiapwarn%

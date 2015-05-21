@@ -3,6 +3,8 @@
 
 #include "httpd.h"
 
+enum { wifiIsDisconnected, wifiIsConnected, wifiGotIP };
+
 int cgiWiFiScan(HttpdConnData *connData);
 int tplWlan(HttpdConnData *connData, char *token, void **arg);
 int cgiWiFi(HttpdConnData *connData);

@@ -31,7 +31,7 @@ console_read(void) {
 
 static void ICACHE_FLASH_ATTR
 console_write_char(char c) {
-	uart0_write_char(c);
+	//uart0_write_char(c);
 	if (c == '\n') console_write('\r');
 	console_write(c);
 }

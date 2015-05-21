@@ -50,11 +50,14 @@ uart_config(uint8 uart_no)
 		PIN_PULLDWN_DIS(PERIPHS_IO_MUX_GPIO2_U);
 		PIN_PULLUP_DIS(PERIPHS_IO_MUX_GPIO2_U);
   } else {
-    /* rcv_buff size if 0x100 */
+    /* rcv_buff size is 0x100 */
     ETS_UART_INTR_ATTACH(uart0_rx_intr_handler,  &(UartDev.rcv_buff));
-    PIN_PULLUP_DIS(PERIPHS_IO_MUX_U0TXD_U);
+    PIN_PULLUP_DIS (PERIPHS_IO_MUX_U0TXD_U);
+    PIN_PULLDWN_DIS(PERIPHS_IO_MUX_U0TXD_U);
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_U0TXD);
-    PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, FUNC_U0RTS);
+    PIN_PULLUP_DIS (PERIPHS_IO_MUX_U0RXD_U);
+    PIN_PULLDWN_DIS(PERIPHS_IO_MUX_U0RXD_U);
+    PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0RXD_U, 0); // FUNC_U0RXD==0
   }
 
   uart_div_modify(uart_no, UART_CLK_FREQ / (UartDev.baut_rate));
