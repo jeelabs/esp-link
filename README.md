@@ -77,7 +77,7 @@ You should then see a list of detected networks on the web page and you can sele
 yours. Enter a password if your network is secure (recommended...) and hit the connect button.
 
 You should now see that the esp-link has connected to your network and it should show you
-its IP address. _Write it down_ (due to a bug ou won't see it anymore after this) and then
+its IP address. _Write it down_ (due to a bug you won't see it anymore after this) and then
 follow the provided link (you will have to switch your
 laptop, phone, or tablet back to your network before you can actually connect).
 
@@ -101,7 +101,7 @@ If you choose a different directory structure look at the Makefile for the appro
 variables to define. (I have not used the esptool for flashing, so I don't know whether what's
 in the Makefile for that works or not.)
 
-In order to OTA-update the esp8266 you should "export ESP_HOSTNAME=..." with the hostname or
+In order to OTA-update the esp8266 you should `export ESP_HOSTNAME=...` with the hostname or
 IP address of your module.
 
 This project makes use of heatshrink, which is a git submodule. To fetch the code:
@@ -141,4 +141,22 @@ Serial bridge and connections to Arduino, AVR, ARM, LPC microcontrollers
 ------------------------------------------------------------------------
 In order to connect through the esp-link to a microcontroller use port 23. For example,
 on linux you can use `nc esp-hostname 23` or `telnet esp-hostname 23`.
+
+You can reprogram an Arduino / AVR microcontroller by pointing avrdude at port 23. Instead of
+specifying a serial port of the form /dev/ttyUSB0 use `net:esp-hostname:23` (where `esp-hostname`
+is either the hostname of your esp-link or its IP address). The esp-link detects that avrdude
+starts its connection with a flash synchronization sequence and sends a reset to the AVR
+microcontroller so it can switch into flash programming mode.
+
+You can reprogram NXP's LPC800-series ARM processors as well by pointing your programmer
+similarly at the esp-link's port 23. For example, if you are using
+https://github.com/jeelabs/embello/tree/master/tools/uploader a command line like
+`uploader -s -w esp-link:23 build/firmware.bin` should do the trick.
+The way it works is that esp-link detects that the uploader starts its connection with the
+flash synchronization sequence `?\r\n` and issues the appropriate "ISP" and reset sequence
+to the microcontroller to start the flash programming.
+
+Note that multiple connections to port 23 can be made simultaneously. The esp-link will
+intermix characters received on all these connections onto the serial TX and it will
+broadcast incoming characters from the serial RX to all connections. Use with caution...
 
