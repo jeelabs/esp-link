@@ -25,7 +25,7 @@ static void ICACHE_FLASH_ATTR ledTimerCb(void *v) {
 		ledState = 1-ledState;
 		time = ledState ? 2900 : 100;
 	} else if (wifiState == wifiIsConnected) {
-		// connecting, go on/off every second
+		// waiting for DHCP, go on/off every second
 		ledState = 1 - ledState;
 		time = 1000;
 	} else {

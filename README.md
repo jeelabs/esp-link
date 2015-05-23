@@ -40,22 +40,23 @@ Wifi configuration overview
 The end state is to have the esp8266 join your pre-existing wifi network as a pure station.
 However, in order to get there the esp8266 will start out as an access point and you'll have
 to join its network to configure it. The short version is:
-1. the esp-link creates a wifi access point
-2. your laptop joins as a station and you configure the esp-link wifi with your network info
-   by pointing your browser at `http://192.168.4.1/`
-3. the esp-link joins your network while continuing to also be an access point ("AP+STA")
-4. the esp-link succeeds in connecting and shuts down its own access point
-5. if the esp-link looses your network it brings up its access point again
+ 1. the esp-link creates a wifi access point
+ 2. your laptop joins as a station and you configure the esp-link wifi with your network info
+    by pointing your browser at `http://192.168.4.1/`
+ 3. the esp-link joins your network while continuing to also be an access point ("AP+STA")
+ 4. the esp-link succeeds in connecting and shuts down its own access point
+ 5. if the esp-link looses your network it brings up its access point again
 
 LED indicators
 --------------
 Assuming the above LED configuration, the green LED will show the wifi status as follows:
-- Very short flash once a second: not connected to a network (but it shold present its own AP)
+- Very short flash once a second: not connected to a network and running as AP+STA
+- Very short flash once every two seconds: not connected to a network and running as AP-only
 - Even on/off at 1HZ: connected to your network but no IP address (waiting for DHCP)
 - Steady on with very short off every 3 seconds: connected to your network with an IP address
   (esp-link shuts down its AP after 15 seconds)
 
-The yellow LED will blink briefly ever time serial data is sent or received by the esp-link.
+The yellow LED will blink briefly every time serial data is sent or received by the esp-link.
 (This does not function yet.)
 
 Wifi configuration details
@@ -63,10 +64,10 @@ Wifi configuration details
 After you have serially flashed the module it will create a wifi access point (AP) with an
 SSID of the form `ESP_012ABC` where 012ABC is a piece of the module's MAC address.
 Using a laptop, phone, or tablet connect to this SSID and then open a browser pointed at
-http://192.168.4.1, you should then see the esp-link web site.
+`http://192.168.4.1/`, you should then see the esp-link web site.
 
 Now configure the wifi. The desired configuration is for the esp-link to be a
-station on your local wifi network so can communicate with it from all your computers.
+station on your local wifi network so you can communicate with it from all your computers.
 
 To make this happen, navigate to the wifi page and you should see the esp-link scan
 for available networks.
@@ -76,7 +77,8 @@ You should then see a list of detected networks on the web page and you can sele
 yours. Enter a password if your network is secure (recommended...) and hit the connect button.
 
 You should now see that the esp-link has connected to your network and it should show you
-its IP address. Write it down and then follow the provided link (you may have to switch your
+its IP address. _Write it down_ (due to a bug ou won't see it anymore after this) and then
+follow the provided link (you will have to switch your
 laptop, phone, or tablet back to your network before you can actually connect).
 
 At this point the esp-link will have switched to STA mode and be just a station on your
@@ -84,18 +86,18 @@ wifi network. These settings are stored in flash and thereby remembered through 
 power cycles. They are also remembered when you flash new firmware. Only flashing `blank.bin`
 as indicated above will reset the wifi settings.
 
-There is a fail-safe, which is that after a reset (need details) the esp-link will revert
-back to AP+STA mode and thus both present its ESP_012ABC-style network and try to connect to
-the requested network, which will presumably not work or it wouldn't be in fail-safe mode
-in the first place. You can then connect to the network and reconfigure the station part.
+There is a fail-safe, which is that after a reset or a configuration change, if the esp-link
+cannot connect to your network it will revert back to AP+STA mode after 15 seconds and thus
+both present its `ESP_012ABC`-style network and continue trying to reconnect to the requested network.
+You can then connect to the esp-link's AP and reconfigure the station part.
 
 Building the firmware
 ---------------------
 The firmware has been built using the [esp-open-sdk](https://github.com/pfalcon/esp-open-sdk)
-on a Linux system. Create an esp8266 directory, place the esp-open-sdk into that directory.
-Download the Espressif SDK (1.0.1) and also expland it into the esp8266 directory. Then clone
-this repository there as well. This way the relative paths in the Makefile will work. If you
-choose a different directory structure look at hte Makefile for the appropriate environment
+on a Linux system. Create an esp8266 directory, install the esp-open-sdk into a sub-directory.
+Download the Espressif SDK (1.0.1) and also expand it into a sub-directory. Then clone
+this repository into a third sub-directory.  This way the relative paths in the Makefile will work.
+If you choose a different directory structure look at the Makefile for the appropriate environment
 variables to define. (I have not used the esptool for flashing, so I don't know whether what's
 in the Makefile for that works or not.)
 
@@ -104,20 +106,20 @@ IP address of your module.
 
 This project makes use of heatshrink, which is a git submodule. To fetch the code:
 ```
-cd esphttpd
+cd esp-link
 git submodule init
 git submodule update
 ```
 
-Now, build the code: `make`
+Now, build the code: `make` in the top-level of esp-link.
 
 Flashing the firmware
 ---------------------
 This firmware supports over-the-air (OTA) flashing, so you do not have to deal with serial
 flashing again after the initial one! The recommended way to flash is to use `make wiflash`
-if you are also building the firmware or else `./wiflash.sh` if you are downloading binary
-firmware versions,
-`make wiflash` assumes that you set ESP_HOSTNAME to the hostname or IP address of your esp-link.
+if you are also building the firmware.
+If you are downloading firmware binaries use `./wiflash.sh`.
+`make wiflash` assumes that you set `ESP_HOSTNAME` to the hostname or IP address of your esp-link.
 
 The flashing, restart, and re-associating with your wireless network takes about 15 seconds
 and is fully automatic. The 512KB flash are divided into two 236KB partitions allowing for new
@@ -129,3 +131,14 @@ If you are downloading the binary versions of the firmware (links forthcoming) y
 both `user1.bin` and `user2.bin` handy and run `wiflash.sh <esp-hostname> user1.bin user2.bin`.
 This will query the esp-link for which file it needs, upload the file, and then reconnect to
 ensure all is well.
+
+Note that when you flash the firmware the wifi settings are all preserved so the esp-link should
+reconnect to your network within a few seconds and the whole flashing process should take 15-30
+from beginning to end. If you need to clear the wifi settings you need to reflash the `blank.bin`
+using the serial port.
+
+Serial bridge and connections to Arduino, AVR, ARM, LPC microcontrollers
+------------------------------------------------------------------------
+In order to connect through the esp-link to a microcontroller use port 23. For example,
+on linux you can use `nc esp-hostname 23` or `telnet esp-hostname 23`.
+
