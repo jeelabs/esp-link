@@ -95,6 +95,9 @@ static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
 }
 #endif
 
+void user_rf_pre_init(void) {
+}
+
 // address of espfs binary blob
 extern uint32_t _binary_espfs_img_start;
 
