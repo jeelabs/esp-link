@@ -329,18 +329,16 @@ int ICACHE_FLASH_ATTR cgiWiFiConnStatus(HttpdConnData *connData) {
 	httpdHeader(connData, "Content-Type", "text/json");
 	httpdEndHeaders(connData);
 
-	len = os_sprintf(buff, "{\"status\": \"");
-	if (st > 0 && st < sizeof(connStatuses)) {
-		len += os_sprintf(buff+len, connStatuses[st]);
-	} else {
-		len += os_sprintf(buff+len, "unknown");
-	}
+	len = os_sprintf(buff, "{\"status\": \"%s\"",
+			st > 0 && st < sizeof(connStatuses) ? connStatuses[st] : "unknown");
+
 	if (wifiReason != 0) {
-		len += os_sprintf(buff+len, " -- %s", wifiGetReason());
+		len += os_sprintf(buff+len, ", \"reason\": \"%s\"", wifiGetReason());
 	}
+
 	if (st == STATION_GOT_IP) {
 		wifi_get_ip_info(0, &info);
-		len+=os_sprintf(buff+len, "\", \"ip\": \"%d.%d.%d.%d\" }\n",
+		len+=os_sprintf(buff+len, ", \"ip\": \"%d.%d.%d.%d\"",
 			(info.ip.addr>>0)&0xff, (info.ip.addr>>8)&0xff,
 			(info.ip.addr>>16)&0xff, (info.ip.addr>>24)&0xff);
 		if (wifi_get_opmode() != 1) {
@@ -349,9 +347,9 @@ int ICACHE_FLASH_ATTR cgiWiFiConnStatus(HttpdConnData *connData) {
 			os_timer_setfn(&resetTimer, resetTimerCb, NULL);
 			os_timer_arm(&resetTimer, 1000, 0);
 		}
-	} else {
-		len+=os_sprintf(buff+len, "\" }\n");
 	}
+
+	len+=os_sprintf(buff+len, "}\n");
 
 	buff[len] = 0;
 	os_printf("  -> %s\n", buff);

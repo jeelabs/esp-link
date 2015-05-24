@@ -147,6 +147,12 @@ static void ICACHE_FLASH_ATTR serbridgeDisconCb(void *arg) {
 		if (connData[i].conn != NULL &&
 		   (connData[i].conn->state == ESPCONN_NONE || connData[i].conn->state == ESPCONN_CLOSE))
 		{
+			if (connData[i].conn_mode == cmAVR) {
+				// send reset to arduino/ARM
+				GPIO_OUTPUT_SET(MCU_RESET, 0);
+				os_delay_us(100L);
+				GPIO_OUTPUT_SET(MCU_RESET, 1);
+			}
 			connData[i].conn = NULL;
 		}
 	}
