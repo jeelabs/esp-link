@@ -205,8 +205,9 @@ the allotted 172KB of irom0_0. To fix the problem the build process modifies the
 (see the `build/eagle.esphttpd1.v6.ld` target in the Makefile) to increase the irom0_0 segment
 to 224KB (a somewhat arbitrary value). This doesn't mean that there will be 224KB of irom0_0
 in flash, it just means that that's the maximum the linker will put there without giving an error.
-In the end what has to fit into the magic 236KB is the sum of the initialized data, the iram1_0
-segment, and the irom0_0 segment, and the dram0_0 and iram1_0 segments can't exceed what's specified
+In the end what has to fit into the magic 236KB is the sum of the actual initialized data,
+the actually used iram1_0 segment, and the irom0_0 segment.
+In addition, the dram0_0 and iram1_0 segments can't exceed what's specified
 in the loader script 'cause those are the limitations of the processor.
 
 Now that you hopefully understand the above you can understand the line printed by the Makefile
@@ -216,6 +217,7 @@ when linking the firmware, which looks something like:
 ```
 Here 241664 is 236KB and 218592 is the size of what's getting flashed, so you can tell that you have
 another 22KB to spend (modulo some 4KB flash segment rounding).
+(Note that user2.bin has exactly the same size, so the Makefile doesn't print its info.)
 The Makefile also prints a few more details:
 ```
 ls -ls eagle*bin
