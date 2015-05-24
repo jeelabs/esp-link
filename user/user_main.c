@@ -64,8 +64,8 @@ HttpdBuiltInUrl builtInUrls[]={
 	{"/flash/next", cgiGetFirmwareNext, NULL},
 	{"/flash/upload", cgiUploadFirmware, NULL},
 	{"/flash/reboot", cgiRebootFirmware, NULL},
-	{"/led.tpl", cgiEspFsTemplate, tplLed},
 	{"/index.tpl", cgiEspFsTemplate, tplCounter},
+	{"/help.tpl", cgiEspFsTemplate, tplCounter},
 	{"/led.cgi", cgiLed, NULL},
 	{"/console.tpl", cgiEspFsTemplate, tplConsole},
 

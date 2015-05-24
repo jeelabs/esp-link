@@ -7,13 +7,52 @@ body {
 
 #main {
 	background-color: #FFFFCC;
-	-moz-border-radius: 5px;
-	-webkit-border-radius: 5px;
-	border-radius: 5px;
+	-moz-border-radius: 10px;
+	-webkit-border-radius: 10px;
+	border-radius: 10px;
 	border: 2px solid #000000;
 	width: 800px;
 	margin: 0 auto;
 	padding: 20px
+}
+
+h1 {
+	margin-top: 0;
+	font-size: 2.4em;
+}
+h1 .esp {
+	font-size: 3em;
+}
+
+#topnav {
+	background-color: #CC9966;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border-radius: 5px;
+	border: 0px solid #000000;
+	padding: 10px;
+	margin-left: auto;
+	margin-right: auto;
+	color: #ffff99;
+}
+#topnav a {
+	color: #ffff99;
+	font-weight: bold;
+	font-stretch: expanded;
+}
+
+pre.console {
+	background-color: #663300;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border-radius: 5px;
+	border: 0px solid #000000;
+	color: #66ff66;
+	padding: 5px;
+}
+
+pre.console a {
+	color: #66ff66;
 }
 
 .lock-icon {

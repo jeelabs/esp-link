@@ -74,9 +74,8 @@ window.onload=function(e) {
 </head>
 <body>
 <div id="main">
-<p><a href="/index.tpl">Home</a> | Wifi | Serial | <a href="/led.tpl">LED</a></p>
-
-<h1>ESP Link - Wifi Configuration</h1>
+<div id="topnav">%topnav%</div>
+<h1><span class="esp">esp</span> link - Wifi Configuration</h1>
 <p>
 Current WiFi mode: %WiFiMode%<br>
 Current network: %currSsid% Status: %currStatus% Phy:%currPhy%

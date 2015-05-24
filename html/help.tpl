@@ -4,10 +4,8 @@
 </head>
 <body>
 <div id="main">
-<p><a href="/index.tpl">Home</a> | <a href="/wifi/wifi.tpl">Wifi</a> |
-   Serial | <a href="/led.tpl">LED</a></p>
-
-<h1>ESP Link Help</h1>
+<div id="topnav">%topnav%</div>
+<h1><span class="esp">esp</span> link - Help</h1>
 
 The ESP Link functions in two wifi modes: Station+AccessPoint (STA+AP) and Station (STA).
 In the STA+AP mode it presents a network called esp8266 that you can connect to using the

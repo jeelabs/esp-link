@@ -3,8 +3,9 @@
 </head>
 <body>
 <div id="main">
-<h1>ESP Link - Debug Console</h1>
-<pre>
+<div id="topnav">%topnav%</div>
+<h1><span class="esp">esp</span> link - Debug Console</h1>
+<pre class="console">
 %console%
 </pre>
 </div>

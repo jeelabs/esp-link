@@ -6,9 +6,9 @@ flash as a binary. Also handles the hit counter on the main page.
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
- * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain 
- * this notice you can do whatever you want with this stuff. If we meet some day, 
- * and you think this stuff is worth it, you can buy me a beer in return. 
+ * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain
+ * this notice you can do whatever you want with this stuff. If we meet some day,
+ * and you think this stuff is worth it, you can buy me a beer in return.
  * ----------------------------------------------------------------------------
  */
 
@@ -25,7 +25,7 @@ static char currLedState=0;
 int ICACHE_FLASH_ATTR cgiLed(HttpdConnData *connData) {
 	int len;
 	char buff[1024];
-	
+
 	if (connData->conn==NULL) {
 		//Connection aborted. Clean up.
 		return HTTPD_CGI_DONE;
@@ -55,6 +55,8 @@ int ICACHE_FLASH_ATTR tplLed(HttpdConnData *connData, char *token, void **arg) {
 		} else {
 			os_strcpy(buff, "off");
 		}
+	} else if (os_strcmp(token, "topnav")==0) {
+		printNav(buff);
 	}
 	httpdSend(connData, buff, -1);
 	return HTTPD_CGI_DONE;
@@ -64,13 +66,33 @@ static long hitCounter=0;
 
 //Template code for the counter on the index page.
 int ICACHE_FLASH_ATTR tplCounter(HttpdConnData *connData, char *token, void **arg) {
-	char buff[128];
+	char buff[256];
 	if (token==NULL) return HTTPD_CGI_DONE;
 
-	if (os_strcmp(token, "counter")==0) {
+	if (os_strcmp(token, "topnav")==0) {
+		printNav(buff);
+	} else if (os_strcmp(token, "counter")==0) {
 		hitCounter++;
 		os_sprintf(buff, "%ld", hitCounter);
 	}
 	httpdSend(connData, buff, -1);
 	return HTTPD_CGI_DONE;
+}
+
+static char *navLinks[][2] = {
+	{ "Home", "/index.tpl" }, { "Wifi", "/wifi/wifi.tpl" }, { "Serial", "/index.tpl" },
+	{ "Esp log", "/console.tpl" }, { "Help", "/help.tpl" },
+	{ 0, 0 },
+};
+
+// Print the navigation links into the buffer and return the length of what got added
+int ICACHE_FLASH_ATTR printNav(char *buff) {
+	int len = 0;
+	for (uint8_t i=0; navLinks[i][0] != NULL; i++) {
+		if (i > 0) buff[len++] = '|';
+		//os_printf("nav %d: %s -> %s\n", i, navLinks[i][0], navLinks[i][1]);
+		len += os_sprintf(buff+len, " <a href=\"%s\">%s</a> ", navLinks[i][1], navLinks[i][0]);
+	}
+	//os_printf("nav: %s\n", buff);
+	return len;
 }

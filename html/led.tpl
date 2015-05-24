@@ -3,7 +3,8 @@
 </head>
 <body>
 <div id="main">
-<h1>ESP Link - LED test</h1>
+<div id="topnav">%topnav%</div>
+<h1><span class="esp">esp</span> link - LED test</h1>
 <p>
 If there's a LED connected to GPIO2, it's now %ledstate%. You can change that using the buttons below.
 </p>

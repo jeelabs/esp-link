@@ -14,6 +14,7 @@ Cgi/template routines for the /wifi url.
 
 #include <esp8266.h>
 #include "cgiwifi.h"
+#include "cgi.h"
 #include "status.h"
 
 //Enable this to disallow any changes in AP settings
@@ -397,6 +398,8 @@ int ICACHE_FLASH_ATTR tplWlan(HttpdConnData *connData, char *token, void **arg) 
 			os_strcpy(buff, "Click <a href=\"setmode.cgi?mode=1\">here</a> to go to STA mode.");
 			break;
 		}
+	} else if (os_strcmp(token, "topnav")==0) {
+		printNav(buff);
 	}
 	httpdSend(connData, buff, -1);
 	return HTTPD_CGI_DONE;
