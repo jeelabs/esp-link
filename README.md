@@ -9,8 +9,6 @@ The firmware includes a tiny HTTP server based on
 [esphttpd](http://www.esp8266.com/viewforum.php?f=34)
 with a simple web interface, many thanks to Jeroen Domburg for making it available!
 
-_WARNING: this project is still in development, don't expect it to work for you_
-
 Hardware info
 -------------
 This firmware is designed for esp8266 modules which have most ESP I/O pins available.
@@ -28,7 +26,7 @@ Initial flashing
 ----------------
 (This is not necessary if you receive one of the jn-esp or esp-bridge modules.)
 If you want to simply flash the provided firmware binary, you can download the latest
-[release](/jeelabs/esp-link/releases) and use your favorite
+[release](https://github.com/jeelabs/esp-link/releases) and use your favorite
 ESP8266 flashing tool to flash the following:
 - `boot_v1.3(b3).bin` to 0x00000
 - `blank.bin` to 0x7e000
