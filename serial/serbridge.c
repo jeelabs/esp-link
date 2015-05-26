@@ -8,6 +8,7 @@
 
 #include "uart.h"
 #include "serbridge.h"
+#include "console.h"
 
 #if 1
 // GPIO for esp-03 module with gpio12->reset, gpio13->isp, gpio2->"ser" LED
@@ -290,11 +291,12 @@ static void ICACHE_FLASH_ATTR serbridgeConnectCb(void *arg) {
 // callback with a buffer of characters that have arrived on the uart
 void ICACHE_FLASH_ATTR
 serbridgeUartCb(char *buf, int length) {
+		// push the buffer into the microcontroller console
+		for (int i=0; i<length; i++)
+			console_write_char(buf[i]);
 		// push the buffer into each open connection
-		int s = 0;
 		for (int i = 0; i < MAX_CONN; ++i) {
 			if (connData[i].conn) {
-				s++;
 				espbuffsend(&connData[i], buf, length);
 			}
 		}
@@ -314,10 +316,10 @@ void ICACHE_FLASH_ATTR serbridgeInit(int port) {
 
 	PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, FUNC_GPIO12);
 	PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U , FUNC_GPIO13);
-	GPIO_OUTPUT_SET(MCU_ISP, 1);
-	GPIO_OUTPUT_SET(MCU_RESET, 0);
+	//GPIO_OUTPUT_SET(MCU_ISP, 1);
+	//GPIO_OUTPUT_SET(MCU_RESET, 0);
 #ifdef MCU_LED
-	//GPIO_OUTPUT_SET(MCU_LED, 1);
+	GPIO_OUTPUT_SET(MCU_LED, 1);
 #endif
 
 	espconn_regist_connectcb(&serbridgeConn, serbridgeConnectCb);

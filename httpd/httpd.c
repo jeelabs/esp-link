@@ -63,6 +63,7 @@ static const MimeMap mimeTypes[]={
 	{"jpg", "image/jpeg"},
 	{"jpeg", "image/jpeg"},
 	{"png", "image/png"},
+	{"tpl", "text/html; charset=UTF-8"},
 	{NULL, "text/html"}, //default value
 };
 
@@ -214,7 +215,7 @@ void ICACHE_FLASH_ATTR httpdEndHeaders(HttpdConnData *conn) {
 void ICACHE_FLASH_ATTR httpdRedirect(HttpdConnData *conn, char *newUrl) {
 	char buff[1024];
 	int l;
-	l=os_sprintf(buff, "HTTP/1.1 302 Found\r\nServer: esp8266-httpd/"HTTPDVER"\r\nConnection: close\r\nLocation: %s\r\n\r\nMoved to %s\r\n", newUrl, newUrl);
+	l=os_sprintf(buff, "HTTP/1.0 302 Found\r\nServer: esp8266-httpd/"HTTPDVER"\r\nConnection: close\r\nLocation: %s\r\n\r\nRedirecting to %s\r\n", newUrl, newUrl);
 	httpdSend(conn, buff, l);
 }
 

@@ -15,7 +15,6 @@ flash as a binary. Also handles the hit counter on the main page.
 
 #include <esp8266.h>
 #include "cgi.h"
-#include "io.h"
 
 
 //cause I can't be bothered to write an ioGetLed()
@@ -34,7 +33,7 @@ int ICACHE_FLASH_ATTR cgiLed(HttpdConnData *connData) {
 	len=httpdFindArg(connData->post->buff, "led", buff, sizeof(buff));
 	if (len!=0) {
 		currLedState=atoi(buff);
-		ioLed(currLedState);
+		//ioLed(currLedState);
 	}
 
 	httpdRedirect(connData, "led.tpl");
@@ -82,8 +81,8 @@ int ICACHE_FLASH_ATTR tplCounter(HttpdConnData *connData, char *token, void **ar
 }
 
 static char *navLinks[][2] = {
-	{ "Home", "/index.tpl" }, { "Wifi", "/wifi/wifi.tpl" }, { "Serial", "/index.tpl" },
-	{ "Esp log", "/console.tpl" }, { "Help", "/help.tpl" },
+	{ "Home", "/index.tpl" }, { "Wifi", "/wifi/wifi.tpl" }, { "\xC2\xB5""C Console", "/console.tpl" },
+	{ "Esp log", "/log.tpl" }, { "Help", "/help.tpl" },
 	{ 0, 0 },
 };
 

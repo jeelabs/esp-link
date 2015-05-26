@@ -12,18 +12,17 @@
 
 #include <esp8266.h>
 #include "httpd.h"
-#include "io.h"
 #include "httpdespfs.h"
 #include "cgi.h"
 #include "cgiwifi.h"
 #include "cgiflash.h"
-#include "stdout.h"
 #include "auth.h"
 #include "espfs.h"
 #include "uart.h"
 #include "serbridge.h"
 #include "status.h"
 #include "console.h"
+#include "log.h"
 #define MCU_RESET 12
 #define MCU_ISP   13
 #include <gpio.h>
@@ -60,13 +59,13 @@ should be placed above the URLs they protect.
 */
 HttpdBuiltInUrl builtInUrls[]={
 	{"/", cgiRedirect, "/index.tpl"},
-	{"/flash/download", cgiReadFlash, NULL},
+	{"/flash/read", cgiReadFlash, NULL},
 	{"/flash/next", cgiGetFirmwareNext, NULL},
 	{"/flash/upload", cgiUploadFirmware, NULL},
 	{"/flash/reboot", cgiRebootFirmware, NULL},
 	{"/index.tpl", cgiEspFsTemplate, tplCounter},
 	{"/help.tpl", cgiEspFsTemplate, tplCounter},
-	{"/led.cgi", cgiLed, NULL},
+	{"/log.tpl", cgiEspFsTemplate, tplLog},
 	{"/console.tpl", cgiEspFsTemplate, tplConsole},
 
 	//Routines to make the /wifi URL and everything beneath it work.
@@ -105,8 +104,8 @@ extern uint32_t _binary_espfs_img_start;
 void user_init(void) {
 	// init gpio pins used to reset&reprogram attached microcontrollers
 	gpio_init();
-	GPIO_OUTPUT_SET(MCU_ISP, 1);
-	GPIO_OUTPUT_SET(MCU_RESET, 0);
+	// put MCU into reset in case it interferes with serial-programming of the esp8266
+	//GPIO_OUTPUT_SET(MCU_RESET, 0);
 	// init UART
 	uart_init(BIT_RATE_115200, BIT_RATE_115200);
 	// say hello (leave some time to cause break in TX after boot loader's msg
@@ -130,5 +129,5 @@ void user_init(void) {
 	os_timer_arm(&prHeapTimer, 3000, 1);
 #endif
 	os_printf("** esp-link ready\n");
-	consoleInit();
+	logInit();
 }

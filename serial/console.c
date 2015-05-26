@@ -26,7 +26,7 @@ console_write(char c) {
 static char ICACHE_FLASH_ATTR
 console_prev(void) {
 	if (console_wr == console_rd) return 0;
-	return console_buf[(console_wr-1+BUF_MAX)%BUF_MAX];
+	return console_buf[(console_wr+1+BUF_MAX)%BUF_MAX];
 }
 
 void ICACHE_FLASH_ATTR

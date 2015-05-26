@@ -100,7 +100,7 @@ while true; do
 	esac
 done
 
-silent=-s
+#silent=-s
 [[ -n "$verbose" ]] && silent=
 res=`curl $silent -XPOST --data-binary "@$fw" "http://$hostname/flash/upload"`
 if [[ $? != 0 ]]; then

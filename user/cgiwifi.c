@@ -16,7 +16,7 @@ Cgi/template routines for the /wifi url.
 #include "cgiwifi.h"
 #include "cgi.h"
 #include "status.h"
-#include "console.h"
+#include "log.h"
 
 //Enable this to disallow any changes in AP settings
 //#define DEMO_MODE
@@ -239,17 +239,15 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
 			wifi_set_opmode(1);
 			os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
 		}
-		os_printf("Turning off uart console\n");
-		os_delay_us(4*1000L); // time for uart to flush
-		console_uart(false);
+		log_uart(false);
 		// no more resetTimer at this point, gotta use physical reset to recover if in trouble
 	} else {
 		if (m != 3) {
 			os_printf("Wifi connect failed. Going into STA+AP mode..\n");
 			wifi_set_opmode(3);
 		}
-		console_uart(true);
-		os_printf("Enabling/continuing uart console\n");
+		log_uart(true);
+		os_printf("Enabling/continuing uart log\n");
 		os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
 	}
 }
