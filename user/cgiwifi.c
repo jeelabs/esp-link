@@ -406,8 +406,9 @@ int ICACHE_FLASH_ATTR tplWlan(HttpdConnData *connData, char *token, void **arg) 
 			os_strcpy(buff, "Click <a href=\"setmode.cgi?mode=1\">here</a> to go to STA mode.");
 			break;
 		}
-	} else if (os_strcmp(token, "topnav")==0) {
-		printNav(buff);
+	} else if (os_strcmp(token, "head")==0) {
+		printHead(connData);
+		buff[0] = 0;
 	}
 	httpdSend(connData, buff, -1);
 	return HTTPD_CGI_DONE;

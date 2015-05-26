@@ -67,7 +67,6 @@ log_write_char(char c) {
 int ICACHE_FLASH_ATTR
 tplLog(HttpdConnData *connData, char *token, void **arg) {
 	if (token==NULL) return HTTPD_CGI_DONE;
-	char buff[256];
 
 	if (os_strcmp(token, "log") == 0) {
 		if (log_wr > log_rd) {
@@ -76,9 +75,8 @@ tplLog(HttpdConnData *connData, char *token, void **arg) {
 			httpdSend(connData, log_buf+log_rd, BUF_MAX-log_rd);
 			httpdSend(connData, log_buf, log_wr);
 		}
-	} else if (os_strcmp(token, "topnav")==0) {
-		printNav(buff);
-		httpdSend(connData, buff, -1);
+	} else if (os_strcmp(token, "head")==0) {
+		printHead(connData);
 	} else {
 		httpdSend(connData, "Unknown\n", -1);
 	}
