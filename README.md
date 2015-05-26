@@ -27,18 +27,20 @@ If you are using an FTDI connector, GPIO12 goes to DTR and GPIO13 goes to CTS
 Initial flashing
 ----------------
 (This is not necessary if you receive one of the jn-esp or esp-bridge modules.)
-If you want to simply flash the provided firmware binary, you can use your favorite
-ESP8266 flashing tool and flash the following:
-- `boot_v1.3(b3).bin` from the official `esp_iot_sdk_v1.0.1` to 0x00000
-- `blank.bin` from the official SDK to 0x7e000
-- `./firmware/user1.bin` to 0x01000
+If you want to simply flash the provided firmware binary, you can download the latest
+[release](/jeelabs/esp-link/releases) and use your favorite
+ESP8266 flashing tool to flash the following:
+- `boot_v1.3(b3).bin` to 0x00000
+- `blank.bin` to 0x7e000
+- `user1.bin` to 0x01000
 Note that the firmware assumes a 512KB flash chip, which most of the esp-01 thru esp-11
 modules appear to have.
 
 Wifi configuration overview
 ------------------
-The end state is to have the esp8266 join your pre-existing wifi network as a pure station.
-However, in order to get there the esp8266 will start out as an access point and you'll have
+For proper operation the end state the esp-link needs to arrive at is to have it
+join your pre-existing wifi network as a pure station.
+However, in order to get there the esp-link will start out as an access point and you'll have
 to join its network to configure it. The short version is:
  1. the esp-link creates a wifi access point
  2. your laptop joins as a station and you configure the esp-link wifi with your network info
