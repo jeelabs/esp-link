@@ -104,7 +104,7 @@ uart_config(uint8 uart_no)
  * Parameters   : uint8 TxChar - character to tx
  * Returns      : OK
 *******************************************************************************/
-static STATUS
+STATUS
 uart_tx_one_char(uint8 uart, uint8 c)
 {
 	//Wait until there is room in the FIFO
@@ -124,13 +124,13 @@ uart_tx_one_char(uint8 uart, uint8 c)
 void ICACHE_FLASH_ATTR
 uart1_write_char(char c)
 {
-	if (c == '\n') uart_tx_one_char(UART1, '\r');
+	//if (c == '\n') uart_tx_one_char(UART1, '\r');
 	uart_tx_one_char(UART1, c);
 }
 void ICACHE_FLASH_ATTR
 uart0_write_char(char c)
 {
-	if (c == '\n') uart_tx_one_char(UART0, '\r');
+	//if (c == '\n') uart_tx_one_char(UART0, '\r');
 	uart_tx_one_char(UART0, c);
 }
 /******************************************************************************
@@ -184,6 +184,10 @@ uart0_rx_intr_handler(void *para)
   if(UART_FRM_ERR_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_FRM_ERR_INT_ST))
   {
     os_printf("FRM_ERR\r\n");
+    //clear rx and tx fifo
+    SET_PERI_REG_MASK(UART_CONF0(uart_no), UART_RXFIFO_RST);
+    CLEAR_PERI_REG_MASK(UART_CONF0(uart_no), UART_RXFIFO_RST);
+		// reset interrupt
     WRITE_PERI_REG(UART_INT_CLR(uart_no), UART_FRM_ERR_INT_CLR);
   }
 

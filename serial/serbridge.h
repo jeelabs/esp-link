@@ -20,6 +20,7 @@ enum connModes {
 	cmARM,             // ARM (LPC8xx) programming
 	cmEcho,            // simply echo characters (used for debugging latency)
 	cmCommand,         // AT command mode
+  cmTelnet,          // use telnet escape sequences for programming mode
 };
 
 struct serbridgeConnData {
@@ -28,7 +29,7 @@ struct serbridgeConnData {
 	char           *txbuffer;   // buffer for the data to send
 	uint16         txbufferlen; // length of data in txbuffer
 	bool           readytosend; // true, if txbuffer can send by espconn_sent
-	uint8          skip_chars;  // number of chars to skip from uart, used in Arduino reset sequence
+  uint8_t        telnet_state;
 };
 
 void ICACHE_FLASH_ATTR serbridgeInit(int port);

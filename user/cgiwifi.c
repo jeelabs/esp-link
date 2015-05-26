@@ -16,6 +16,7 @@ Cgi/template routines for the /wifi url.
 #include "cgiwifi.h"
 #include "cgi.h"
 #include "status.h"
+#include "console.h"
 
 //Enable this to disallow any changes in AP settings
 //#define DEMO_MODE
@@ -32,6 +33,8 @@ static char *wifiReasons[] = {
 	"ie_in_4way_differs", "group_cipher_invalid", "pairwise_cipher_invalid", "akmp_invalid",
 	"unsupp_rsn_ie_version", "invalid_rsn_ie_cap", "802_1x_auth_failed", "cipher_suite_rejected",
 	"beacon_timeout", "no_ap_found" };
+
+static char *wifiMode[] = { 0, "STA", "AP", "AP+STA" };
 
 static char* ICACHE_FLASH_ATTR wifiGetReason(void) {
 	if (wifiReason <= 24) return wifiReasons[wifiReason];
@@ -226,8 +229,8 @@ static ETSTimer resetTimer;
 //the connect succeeds, this gets the module in STA-only mode.
 static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
 	int x = wifi_station_get_connect_status();
-	int m = wifi_get_opmode();
-	os_printf("Wifi check: mode=%d status=%d\n", m, x);
+	int m = wifi_get_opmode() & 0x3;
+	os_printf("Wifi check: mode=%s status=%d\n", wifiMode[m], x);
 
 	if (x == STATION_GOT_IP) {
 		if (m != 1) {
@@ -236,9 +239,17 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
 			wifi_set_opmode(1);
 			os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
 		}
-	} else if (m != 3) {
-		os_printf("Wifi connect failed. Going into STA+AP mode..\n");
-		wifi_set_opmode(3);
+		os_printf("Turning off uart console\n");
+		os_delay_us(4*1000L); // time for uart to flush
+		console_uart(false);
+		// no more resetTimer at this point, gotta use physical reset to recover if in trouble
+	} else {
+		if (m != 3) {
+			os_printf("Wifi connect failed. Going into STA+AP mode..\n");
+			wifi_set_opmode(3);
+		}
+		console_uart(true);
+		os_printf("Enabling/continuing uart console\n");
 		os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
 	}
 }
@@ -369,10 +380,8 @@ int ICACHE_FLASH_ATTR tplWlan(HttpdConnData *connData, char *token, void **arg) 
 
 	os_strcpy(buff, "Unknown");
 	if (os_strcmp(token, "WiFiMode")==0) {
-		x=wifi_get_opmode();
-		if (x==1) os_strcpy(buff, "Client");
-		if (x==2) os_strcpy(buff, "SoftAP");
-		if (x==3) os_strcpy(buff, "STA+AP");
+		x = wifi_get_opmode() & 0x3;
+		os_strcpy(buff, wifiMode[x]);
 	} else if (os_strcmp(token, "currSsid")==0) {
 		os_strcpy(buff, (char*)stconf.ssid);
 	} else if (os_strcmp(token, "currStatus")==0) {
@@ -409,15 +418,13 @@ int ICACHE_FLASH_ATTR tplWlan(HttpdConnData *connData, char *token, void **arg) 
 // Init the wireless, which consists of setting a timer if we expect to connect to an AP
 // so we can revert to STA+AP mode if we can't connect.
 void ICACHE_FLASH_ATTR wifiInit() {
-	int x = wifi_get_opmode();
-	os_printf("Wifi init, mode=%d\n", x);
+	int x = wifi_get_opmode() & 0x3;
+	os_printf("Wifi init, mode=%s\n", wifiMode[x]);
 	wifi_set_phy_mode(2);
 	wifi_set_event_handler_cb(wifiHandleEventCb);
-	if (x == 1) {
-		// STA-only mode, reset into STA+AP after a timeout
-		os_timer_disarm(&resetTimer);
-		os_timer_setfn(&resetTimer, resetTimerCb, NULL);
-		os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
-	}
+	// check on the wifi in a few seconds to see whether we need to switch mode
+	os_timer_disarm(&resetTimer);
+	os_timer_setfn(&resetTimer, resetTimerCb, NULL);
+	os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
 }
 

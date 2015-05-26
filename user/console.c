@@ -10,6 +10,20 @@
 #define BUF_MAX (1024)
 static char console_buf[BUF_MAX];
 static int console_wr, console_rd;
+static bool console_no_uart; // start out printing to uart
+static bool console_newline; // at start of a new line
+
+void ICACHE_FLASH_ATTR
+console_uart(bool enable) {
+	if (!enable && !console_no_uart) {
+		os_printf("Turning OFF uart console\n");
+		os_delay_us(4*1000L); // time for uart to flush
+		console_no_uart = !enable;
+	} else if (enable && console_no_uart) {
+		console_no_uart = !enable;
+		os_printf("Turning ON uart console\n");
+	}
+}
 
 static void ICACHE_FLASH_ATTR
 console_write(char c) {
@@ -34,7 +48,17 @@ console_read(void) {
 
 static void ICACHE_FLASH_ATTR
 console_write_char(char c) {
-	uart0_write_char(c);
+	// Uart output unless disabled
+	if (!console_no_uart) {
+		if (console_newline) {
+			uart0_write_char('>');
+			uart0_write_char(' ');
+			console_newline = false;
+		}
+		uart0_write_char(c);
+		console_newline = c == '\n';
+	}
+	// Store in console buffer
 	if (c == '\n') console_write('\r');
 	console_write(c);
 }

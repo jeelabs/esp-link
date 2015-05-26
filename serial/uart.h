@@ -14,6 +14,7 @@ void ICACHE_FLASH_ATTR uart_init(UartBautRate uart0_br, UartBautRate uart1_br);
 void ICACHE_FLASH_ATTR uart0_tx_buffer(char *buf, uint16 len);
 
 void ICACHE_FLASH_ATTR uart0_write_char(char c);
+STATUS uart_tx_one_char(uint8 uart, uint8 c);
 
 // Add a receive callback function, this is called on the uart receive task each time a chunk
 // of bytes are received. A small number of callbacks can be added and they are all called

@@ -69,7 +69,9 @@ int ICACHE_FLASH_ATTR tplCounter(HttpdConnData *connData, char *token, void **ar
 	char buff[256];
 	if (token==NULL) return HTTPD_CGI_DONE;
 
-	if (os_strcmp(token, "topnav")==0) {
+	if (printSysInfo(buff, token) > 0) {
+		// awesome...
+	} else if (os_strcmp(token, "topnav")==0) {
 		printNav(buff);
 	} else if (os_strcmp(token, "counter")==0) {
 		hitCounter++;
@@ -96,3 +98,27 @@ int ICACHE_FLASH_ATTR printNav(char *buff) {
 	//os_printf("nav: %s\n", buff);
 	return len;
 }
+
+#define TOKEN(x) (os_strcmp(token, x) == 0)
+
+// Handle system information variables and print their value, returns the number of
+// characters appended to buff
+int ICACHE_FLASH_ATTR printSysInfo(char *buff, char *token) {
+	if (TOKEN("si_chip_id")) {
+		return os_sprintf(buff, "0x%x", system_get_chip_id());
+	} else if (TOKEN("si_freeheap")) {
+		return os_sprintf(buff, "%dKB", system_get_free_heap_size()/1024);
+	} else if (TOKEN("si_uptime")) {
+		uint32 t = system_get_time() / 1000000; // in seconds
+		return os_sprintf(buff, "%dd%dh%dm%ds", t/(24*3600), (t/(3600))%24, (t/60)%60, t%60);
+	} else if (TOKEN("si_boot_version")) {
+		return os_sprintf(buff, "%d", system_get_boot_version());
+	} else if (TOKEN("si_boot_address")) {
+		return os_sprintf(buff, "0x%x", system_get_userbin_addr());
+	} else if (TOKEN("si_cpu_freq")) {
+		return os_sprintf(buff, "%dMhz", system_get_cpu_freq());
+	} else {
+		return 0;
+	}
+}
+

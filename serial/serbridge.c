@@ -89,6 +89,96 @@ static void ICACHE_FLASH_ATTR serbridgeSentCb(void *arg) {
 	sendtxbuffer(conn); // send possible new data in txbuffer
 }
 
+// Telnet protocol characters
+#define IAC        255  // escape
+#define WILL       251  // negotiation
+#define SB         250  // subnegotiation begin
+#define SE         240  // subnegotiation end
+#define ComPortOpt  44  // COM port options
+#define SetControl   5  // Set control lines
+#define DTR_ON       8  // used here to reset microcontroller
+#define DTR_OFF      9
+#define RTS_ON      11  // used here to signal ISP (in-system-programming) to uC
+#define RTS_OFF     12
+
+// telnet state machine states
+enum { TN_normal, TN_iac, TN_will, TN_start, TN_end, TN_comPort, TN_setControl };
+
+// process a buffer-full on a telnet connection and return the ending telnet state
+static uint8_t ICACHE_FLASH_ATTR
+telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
+{
+	for (int i=0; i<len; i++) {
+		uint8_t c = inBuf[i];
+		switch (state) {
+		default:
+		case TN_normal:
+			if (c == IAC) state = TN_iac; // escape char: see what's next
+			else uart0_write_char(c);     // regular char
+			break;
+		case TN_iac:
+			switch (c) {
+			case IAC:                     // second escape -> write one to outbuf and go normal again
+				state = TN_normal;
+				uart0_write_char(c);
+				break;
+			case WILL:                    // negotiation
+				state = TN_will;
+				break;
+			case SB:                      // command sequence begin
+				state = TN_start;
+				break;
+			case SE:                      // command sequence end
+				state = TN_normal;
+				break;
+			default:                      // not sure... let's ignore
+				uart0_write_char(IAC);
+				uart0_write_char(c);
+			}
+			break;
+		case TN_will:
+			state = TN_normal;            // yes, we do COM port options, let's go back to normal
+			break;
+		case TN_start:                  // in command seq, now comes the type of cmd
+			if (c == ComPortOpt) state = TN_comPort;
+			else state = TN_end;          // an option we don't know, skip 'til the end seq
+			break;
+		case TN_end:                    // wait for end seq
+			if (c == IAC) state = TN_iac; // simple wait to accept end or next escape seq
+			break;
+		case TN_comPort:
+			if (c == SetControl) state = TN_setControl;
+			else state = TN_end;
+			break;
+		case TN_setControl:             // switch control line and delay a tad
+			switch (c) {
+			case DTR_ON:
+				os_printf("MCU reset\n");
+				GPIO_OUTPUT_SET(MCU_RESET, 0);
+				os_delay_us(100L);
+				break;
+			case DTR_OFF:
+				GPIO_OUTPUT_SET(MCU_RESET, 1);
+				os_delay_us(100L);
+				break;
+			case RTS_ON:
+				os_printf("MCU ISP\n");
+				GPIO_OUTPUT_SET(MCU_ISP, 0);
+				os_delay_us(100L);
+				break;
+			case RTS_OFF:
+				GPIO_OUTPUT_SET(MCU_ISP, 1);
+				os_delay_us(100L);
+				break;
+			}
+			state = TN_end;
+			break;
+		}
+	}
+	return state;
+}
+
+
 // Receive callback
 static void ICACHE_FLASH_ATTR serbridgeRecvCb(void *arg, char *data, unsigned short len) {
 	serbridgeConnData *conn = serbridgeFindConnData(arg);
@@ -108,25 +198,38 @@ static void ICACHE_FLASH_ATTR serbridgeRecvCb(void *arg, char *data, unsigned sh
 				(len == 2 && strncmp(data, "?\n", 2) == 0) ||
 				(len == 3 && strncmp(data, "?\r\n", 3) == 0)) {
 			os_printf("MCU Reset=%d ISP=%d\n", MCU_RESET, MCU_ISP);
+			os_delay_us(2*1000L); // time for os_printf to happen
 			// send reset to arduino/ARM
 			GPIO_OUTPUT_SET(MCU_RESET, 0);
 			os_delay_us(100L);
 			GPIO_OUTPUT_SET(MCU_ISP, 0);
-			os_delay_us(1000L);
+			os_delay_us(100L);
 			GPIO_OUTPUT_SET(MCU_RESET, 1);
 			os_delay_us(100L);
 			GPIO_OUTPUT_SET(MCU_ISP, 1);
 			os_delay_us(1000L);
-			//uart0_tx_buffer(data, len);
-			//conn->skip_chars = 2;
 			conn->conn_mode = cmAVR;
-			//return;
+
+
+		// If the connection starts with a telnet negotiation we will do telnet
+		} else if (len >= 3 && strncmp(data, (char[]){IAC, WILL, ComPortOpt}, 3) == 0) {
+			conn->conn_mode = cmTelnet;
+			conn->telnet_state = TN_normal;
+			// note that the three negotiation chars will be gobbled-up by telnetUnwrap
+			os_printf("telnet mode\n");
+
+		// looks like a plain-vanilla connection!
 		} else {
 			conn->conn_mode = cmTransparent;
 		}
 	}
 
-	uart0_tx_buffer(data, len);
+	// write the buffer to the uart
+	if (conn->conn_mode == cmTelnet) {
+		conn->telnet_state = telnetUnwrap((uint8_t *)data, len, conn->telnet_state);
+	} else {
+		uart0_tx_buffer(data, len);
+	}
 }
 
 // Error callback (it's really poorly named, it's not a "connection reconnected" callback,
@@ -175,7 +278,7 @@ static void ICACHE_FLASH_ATTR serbridgeConnectCb(void *arg) {
 	connData[i].conn=conn;
 	connData[i].txbufferlen = 0;
 	connData[i].readytosend = true;
-	connData[i].skip_chars = 0;
+	connData[i].telnet_state = 0;
 	connData[i].conn_mode = cmInit;
 
 	espconn_regist_recvcb(conn, serbridgeRecvCb);
@@ -192,14 +295,7 @@ serbridgeUartCb(char *buf, int length) {
 		for (int i = 0; i < MAX_CONN; ++i) {
 			if (connData[i].conn) {
 				s++;
-				if (connData[i].skip_chars == 0) {
-					espbuffsend(&connData[i], buf, length);
-				} else if (connData[i].skip_chars >= length) {
-					connData[i].skip_chars -= length;
-				} else { // connData[i].skip_chars < length
-					espbuffsend(&connData[i], buf+connData[i].skip_chars, length-connData[i].skip_chars);
-					connData[i].skip_chars = 0;
-				}
+				espbuffsend(&connData[i], buf, length);
 			}
 		}
 }
