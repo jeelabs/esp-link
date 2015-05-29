@@ -5,7 +5,7 @@
 
 static ETSTimer ledTimer;
 
-void ICACHE_FLASH_ATTR setLed(int on) {
+static void ICACHE_FLASH_ATTR setLed(int on) {
 	// LED is active-low
 	if (on) {
 		gpio_output_set(0, (1<<LEDGPIO), (1<<LEDGPIO), 0);

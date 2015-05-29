@@ -41,7 +41,7 @@ tplConsole(HttpdConnData *connData, char *token, void **arg) {
 	if (token==NULL) return HTTPD_CGI_DONE;
 
 	if (os_strcmp(token, "console") == 0) {
-		if (console_wr > console_rd) {
+		if (console_wr < console_rd) {
 			httpdSend(connData, console_buf+console_rd, console_wr-console_rd);
 		} else if (console_rd != console_wr) {
 			httpdSend(connData, console_buf+console_rd, BUF_MAX-console_rd);

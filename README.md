@@ -31,6 +31,7 @@ ESP8266 flashing tool to flash the following:
 - `boot_v1.3(b3).bin` to 0x00000
 - `blank.bin` to 0x7e000
 - `user1.bin` to 0x01000
+
 Note that the firmware assumes a 512KB flash chip, which most of the esp-01 thru esp-11
 modules appear to have.
 
