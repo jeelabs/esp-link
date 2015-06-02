@@ -9,15 +9,16 @@ Installing esptool.py
 
 On Linux I am using [esptool.py](https://github.com/themadinventor/esptool) to flash the esp8266.
 If you're a little python challenged (like I am) then the following install instructions might help:
- - Install ez_setup with the following two commands:
-   `wget https://bootstrap.pypa.io/ez_setup.py`
-	 `python ez_setup.py`
-	 I believe this will do something reasonable if you already have it (quite likely).
+ - Install ez_setup with the following two commands (I believe this will do something reasonable if you already have it):
+
+        wget https://bootstrap.pypa.io/ez_setup.py
+        python ez_setup.py
  - Install esptool.py:
-   `git clone https://github.com/themadinventor/esptool.git`
-	 `python setup.py install`
-	 `cd ..`
-	 `esptool.py -h`
+
+        git clone https://github.com/themadinventor/esptool.git
+        python setup.py install
+        cd ..
+        esptool.py -h
 
 Flashing esp-link
 -----------------
