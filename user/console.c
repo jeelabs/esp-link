@@ -6,20 +6,27 @@
 // Microcontroller console capturing the last 1024 characters received on the uart so
 // they can be shown on a web page
 
+// Buffer to hold concole contents.
+// Invariants:
+// - console_rd==console_wr <=> buffer empty
+// - *console_rd == next char to read
+// - *console_wr == next char to write
+// - 0 <= console_xx < BUF_MAX
+// - (console_wr+1)%BUF_MAX) == console_rd <=> buffer full
 #define BUF_MAX (1024)
 static char console_buf[BUF_MAX];
 static int console_wr, console_rd;
-static int console_pos; // offset since reset of console_rd position
+static int console_pos; // offset since reset of buffer
 
 static void ICACHE_FLASH_ATTR
 console_write(char c) {
-	int wr = (console_wr+1)%BUF_MAX;
-	if (wr == console_rd) {
+	console_buf[console_wr] = c;
+	console_wr = (console_wr+1) % BUF_MAX;
+	if (console_wr == console_rd) {
+		// full, we write anyway and loose the oldest char
 		console_rd = (console_rd+1) % BUF_MAX; // full, eat first char
 		console_pos++;
 	}
-	console_buf[console_wr] = c;
-	console_wr = wr;
 }
 
 // return previous character in console, 0 if at start
@@ -41,11 +48,13 @@ tplConsole(HttpdConnData *connData, char *token, void **arg) {
 	if (token==NULL) return HTTPD_CGI_DONE;
 
 	if (os_strcmp(token, "console") == 0) {
-		if (console_wr < console_rd) {
+		if (console_wr > console_rd) {
 			httpdSend(connData, console_buf+console_rd, console_wr-console_rd);
 		} else if (console_rd != console_wr) {
 			httpdSend(connData, console_buf+console_rd, BUF_MAX-console_rd);
 			httpdSend(connData, console_buf, console_wr);
+		} else {
+			httpdSend(connData, "<buffer empty>", -1);
 		}
 	} else if (os_strcmp(token, "head")==0) {
 		printHead(connData);

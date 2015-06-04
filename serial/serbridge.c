@@ -8,19 +8,10 @@
 
 #include "uart.h"
 #include "serbridge.h"
+#include "serled.h"
 #include "console.h"
 
-#if 1
-// GPIO for esp-03 module with gpio12->reset, gpio13->isp, gpio2->"ser" LED
-#define MCU_RESET 12
-#define MCU_ISP   13
-#define MCU_LED    2
-#else
-// GPIO for esp-01 module with gpio0->reset, gpio2->isp
-#define MCU_RESET  0
-#define MCU_ISP    2
-#undef MCU_LED
-#endif
+static uint8_t mcu_reset_pin, mcu_isp_pin;
 
 static struct espconn serbridgeConn;
 static esp_tcp serbridgeTcp;
@@ -88,6 +79,8 @@ static void ICACHE_FLASH_ATTR serbridgeSentCb(void *arg) {
 	//os_printf("%d ST\n", system_get_time());
 	conn->readytosend = true;
 	sendtxbuffer(conn); // send possible new data in txbuffer
+
+	serledFlash(50); // short blink on serial LED
 }
 
 // Telnet protocol characters
@@ -154,21 +147,21 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
 		case TN_setControl:             // switch control line and delay a tad
 			switch (c) {
 			case DTR_ON:
-				os_printf("MCU reset\n");
-				GPIO_OUTPUT_SET(MCU_RESET, 0);
+				os_printf("MCU reset gpio%d\n", mcu_reset_pin);
+				GPIO_OUTPUT_SET(mcu_reset_pin, 0);
 				os_delay_us(100L);
 				break;
 			case DTR_OFF:
-				GPIO_OUTPUT_SET(MCU_RESET, 1);
+				GPIO_OUTPUT_SET(mcu_reset_pin, 1);
 				os_delay_us(100L);
 				break;
 			case RTS_ON:
-				os_printf("MCU ISP\n");
-				GPIO_OUTPUT_SET(MCU_ISP, 0);
+				os_printf("MCU ISP gpio%d\n", mcu_isp_pin);
+				GPIO_OUTPUT_SET(mcu_isp_pin, 0);
 				os_delay_us(100L);
 				break;
 			case RTS_OFF:
-				GPIO_OUTPUT_SET(MCU_ISP, 1);
+				GPIO_OUTPUT_SET(mcu_isp_pin, 1);
 				os_delay_us(100L);
 				break;
 			}
@@ -198,16 +191,16 @@ static void ICACHE_FLASH_ATTR serbridgeRecvCb(void *arg, char *data, unsigned sh
 		if ((len == 2 && strncmp(data, "0 ", 2) == 0) ||
 				(len == 2 && strncmp(data, "?\n", 2) == 0) ||
 				(len == 3 && strncmp(data, "?\r\n", 3) == 0)) {
-			os_printf("MCU Reset=%d ISP=%d\n", MCU_RESET, MCU_ISP);
+			os_printf("MCU Reset=%d ISP=%d\n", mcu_reset_pin, mcu_isp_pin);
 			os_delay_us(2*1000L); // time for os_printf to happen
 			// send reset to arduino/ARM
-			GPIO_OUTPUT_SET(MCU_RESET, 0);
+			GPIO_OUTPUT_SET(mcu_reset_pin, 0);
 			os_delay_us(100L);
-			GPIO_OUTPUT_SET(MCU_ISP, 0);
+			GPIO_OUTPUT_SET(mcu_isp_pin, 0);
 			os_delay_us(100L);
-			GPIO_OUTPUT_SET(MCU_RESET, 1);
+			GPIO_OUTPUT_SET(mcu_reset_pin, 1);
 			os_delay_us(100L);
-			GPIO_OUTPUT_SET(MCU_ISP, 1);
+			GPIO_OUTPUT_SET(mcu_isp_pin, 1);
 			os_delay_us(1000L);
 			conn->conn_mode = cmAVR;
 
@@ -231,6 +224,8 @@ static void ICACHE_FLASH_ATTR serbridgeRecvCb(void *arg, char *data, unsigned sh
 	} else {
 		uart0_tx_buffer(data, len);
 	}
+
+	serledFlash(50); // short blink on serial LED
 }
 
 // Error callback (it's really poorly named, it's not a "connection reconnected" callback,
@@ -253,9 +248,9 @@ static void ICACHE_FLASH_ATTR serbridgeDisconCb(void *arg) {
 		{
 			if (connData[i].conn_mode == cmAVR) {
 				// send reset to arduino/ARM
-				GPIO_OUTPUT_SET(MCU_RESET, 0);
+				GPIO_OUTPUT_SET(mcu_reset_pin, 0);
 				os_delay_us(100L);
-				GPIO_OUTPUT_SET(MCU_RESET, 1);
+				GPIO_OUTPUT_SET(mcu_reset_pin, 1);
 			}
 			connData[i].conn = NULL;
 		}
@@ -303,7 +298,7 @@ serbridgeUartCb(char *buf, int length) {
 }
 
 // Start transparent serial bridge TCP server on specified port (typ. 23)
-void ICACHE_FLASH_ATTR serbridgeInit(int port) {
+void ICACHE_FLASH_ATTR serbridgeInit(int port, uint8_t reset_pin, uint8_t isp_pin) {
 	int i;
 	for (i = 0; i < MAX_CONN; i++) {
 		connData[i].conn = NULL;
@@ -314,13 +309,14 @@ void ICACHE_FLASH_ATTR serbridgeInit(int port) {
 	serbridgeTcp.local_port = port;
 	serbridgeConn.proto.tcp = &serbridgeTcp;
 
-	PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, FUNC_GPIO12);
-	PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U , FUNC_GPIO13);
-	//GPIO_OUTPUT_SET(MCU_ISP, 1);
-	//GPIO_OUTPUT_SET(MCU_RESET, 0);
-#ifdef MCU_LED
-	GPIO_OUTPUT_SET(MCU_LED, 1);
-#endif
+	mcu_reset_pin = reset_pin;
+	mcu_isp_pin = isp_pin;
+	// set both pins to 1 so we don't cause a reset
+	GPIO_OUTPUT_SET(mcu_isp_pin, 1);
+	GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+	// switch pin mux to make these pins GPIO pins
+	makeGpio(mcu_reset_pin);
+	makeGpio(mcu_isp_pin);
 
 	espconn_regist_connectcb(&serbridgeConn, serbridgeConnectCb);
 	espconn_accept(&serbridgeConn);

@@ -27,6 +27,7 @@ static char* ICACHE_FLASH_ATTR check_header(void *buf) {
 	return NULL;
 }
 
+#if 0
 //===== Cgi that reads the SPI flash. Assumes 512KByte flash.
 int ICACHE_FLASH_ATTR cgiReadFlash(HttpdConnData *connData) {
 	int *pos=(int *)&connData->cgiData;
@@ -48,6 +49,7 @@ int ICACHE_FLASH_ATTR cgiReadFlash(HttpdConnData *connData) {
 	*pos+=1024;
 	if (*pos>=0x40200000+(512*1024)) return HTTPD_CGI_DONE; else return HTTPD_CGI_MORE;
 }
+#endif
 
 //===== Cgi to query which firmware needs to be uploaded next
 int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {

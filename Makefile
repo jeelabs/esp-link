@@ -1,3 +1,63 @@
+#
+# Makefile for esp-link - https://github.com/jeelabs/esp-link
+#
+# Start by setting the directories for the toolchain a few lines down
+# the default target will build the firmware images
+# `make flash` will flash the esp serially
+# `make wiflash` will flash the esp over wifi
+# `VERBOSE=1 make ...` will print debug info
+# `ESP_HOSTNAME=my.esp.example.com make wiflash` is an easy way to override a variable
+#
+# Makefile heavily adapted to esp-link and wireless flashing by Thorsten von Eicken
+# Original from esphttpd and others...
+
+# --------------- toolchain configuration ---------------
+
+# Base directory for the compiler. Needs a / at the end.
+# Typically you'll install https://github.com/pfalcon/esp-open-sdk
+XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
+
+# Base directory of the ESP8266 SDK package, absolute
+# Typically you'll download from Espressif's BBS, http://bbs.espressif.com/viewforum.php?f=5
+SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.1.0)
+
+# Esptool.py path and port, only used for 1-time serial flashing
+# Typically you'll use https://github.com/themadinventor/esptool
+ESPTOOL		?= $(abspath ../esptool/esptool.py)
+ESPPORT		?= /dev/ttyUSB0
+ESPBAUD		?= 460800
+
+# --------------- chipset configuration   ---------------
+
+ESP_SPI_SIZE        ?= 0      # 0->512KB
+ESP_FLASH_MODE      ?= 0      # 0->QIO
+ESP_FLASH_FREQ_DIV  ?= 0      # 0->40Mhz
+ESP_FLASH_MAX       ?= 241664 # max bin file for 512KB flash: 236KB
+
+# hostname or IP address for wifi flashing
+ESP_HOSTNAME        ?= esp8266
+
+# The pin assignments below are used when the settings in flash are invalid, they
+# can be changed via the web interface
+# GPIO pin used to reset attached microcontroller, acative low
+MCU_RESET_PIN       ?= 12
+# GPIO pin used with reset to reprogram MCU (ISP=in-system-programming, unused with AVRs), active low
+MCU_ISP_PIN         ?= 13
+# GPIO pin used for "connectivity" LED, active low
+LED_CONN_PIN        ?= 0
+# GPIO pin used for "serial activity" LED, active low
+LED_SERIAL_PIN      ?= 2
+
+# --------------- esp-link version        ---------------
+
+# This queries git to produce a version string like "esp-link v0.9.0 2015-06-01 34bc76"
+# If you don't have a proper git checkout or are on windows, then simply swap for the constant
+VERSION := "esp-link custom version"
+DATE    := $(shell date '+%F %T')
+BRANCH  := $(shell git rev-parse --abbrev-ref HEAD)
+SHA     := $(shell if git diff --quiet HEAD; then git symbolic-ref HEAD | cut -d"/" -f 3; \
+	else echo "development"; fi)
+VERSION := esp-link - $(BRANCH) - $(DATE) - $(SHA)
 
 # --------------- esphttpd config options ---------------
 
@@ -30,54 +90,33 @@ YUI-COMPRESSOR ?= /usr/bin/yui-compressor
 # Because the decompression is done in the esp8266, it does not require any support in the browser.
 USE_HEATSHRINK ?= yes
 
-# -------------- End of esphttpd config options -------------
-
+# -------------- End of config options -------------
 
 # Output directors to store intermediate compiled files
 # relative to the project directory
 BUILD_BASE	= build
 FW_BASE		= firmware
 
-# Base directory for the compiler. Needs a / at the end;
-XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
-
-# Base directory of the ESP8266 SDK package, absolute
-SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.1.0)
-
-#Esptool.py path and port
-ESPTOOL		?= esptool.py
-ESPPORT		?= /dev/ttyUSB0
-#ESPDELAY indicates seconds to wait between flashing the two binary images
-ESPDELAY	?= 3
-ESPBAUD		?= 460800
-
 # name for the target project
 TARGET		= httpd
 
 # espressif tool to concatenate sections for OTA upload using bootloader v1.2+
 APPGEN_TOOL	?= gen_appbin.py
-ESP_SPI_SIZE				?= 0  # 0->512KB
-ESP_FLASH_MODE 			?= 0  # 0->QIO
-ESP_FLASH_FREQ_DIV	?= 0  # 0->40Mhz
-ESP_FLASH_MAX				?= 241664 # max bin file for 512KB flash: 236KB
-ESP_HOSTNAME        ?= esp8266
-
-
 
 # which modules (subdirectories) of the project to include in compiling
-#MODULES		= driver user lwip/api lwip/app lwip/core lwip/core/ipv4 lwip/netif
 MODULES		= espfs httpd user serial
 EXTRA_INCDIR	= include . lib/heatshrink/
 
 # libraries used in this project, mainly provided by the SDK
 LIBS		= c gcc hal phy pp net80211 wpa main lwip
 
-
-
 # compiler flags using during compilation of source files
 CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
 		-nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH -D_STDINT_H \
-		-Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX)
+		-Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX) \
+		-DMCU_RESET_PIN=$(MCU_RESET_PIN) -DMCU_ISP_PIN=$(MCU_ISP_PIN) \
+		-DLED_CONN_PIN=$(LED_CONN_PIN) -DLED_SERIAL_PIN=$(LED_SERIAL_PIN) \
+		"-DVERSION=$(VERSION)"
 
 # linker flags used to generate the main object file
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static
@@ -101,8 +140,6 @@ OBJCP := $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objcopy
 OBJDP := $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objdump
 
 
-####
-#### no user configurable options below here
 ####
 SRC_DIR		:= $(MODULES)
 BUILD_DIR	:= $(addprefix $(BUILD_BASE)/,$(MODULES))
@@ -152,7 +189,12 @@ endef
 
 .PHONY: all checkdirs clean webpages.espfs
 
-all: checkdirs $(FW_BASE) firmware/user1.bin firmware/user2.bin
+all: echo_version checkdirs $(FW_BASE) firmware/user1.bin firmware/user2.bin
+
+echo_version:
+	@echo VERSION: $(VERSION)
+
+user/version.h:
 
 $(TARGET_OUT): $(APP_AR) $(LD_SCRIPT)
 	$(vecho) "LD $@"
@@ -209,8 +251,10 @@ $(BUILD_DIR):
 wiflash: all
 	./wiflash $(ESP_HOSTNAME) firmware/user1.bin firmware/user2.bin
 
-flash: $(TARGET_OUT) $(FW_BASE)
-	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x00000 $(FW_BASE)/0x00000.bin 0x40000 $(FW_BASE)/0x40000.bin
+flash: all
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash \
+	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
+	  0x7E000 $(SDK_BASE)/bin/blank.bin
 
 $(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
 ifeq ("$(COMPRESS_W_YUI)","yes")
@@ -245,11 +289,15 @@ build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld
 			-e '/^  irom0_0_seg/ s/2B000/38000/' \
 	    $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
 
-blankflash:
-	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x7E000 $(SDK_BASE)/bin/blank.bin
-
 espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 	$(Q) $(MAKE) -C espfs/mkespfsimage USE_HEATSHRINK="$(USE_HEATSHRINK)" GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
+
+release: all
+	$(Q) rm -rf release; mkdir -p release/esp-link
+	$(Q) cp firmware/user1.bin firmware/user2.bin $(SDK_BASE)/bin/blank.bin \
+		   "$(SDK_BASE)/bin/boot_v1.4(b1).bin" wiflash release/esp-link
+	$(Q) tar zcf esp-link.tgz -C release esp-link
+	$(Q) rm -rf release
 
 clean:
 	$(Q) rm -f $(APP_AR)

@@ -21,6 +21,7 @@
 #include "uart.h"
 #include "serbridge.h"
 #include "status.h"
+#include "serled.h"
 #include "console.h"
 #include "log.h"
 #define MCU_RESET 12
@@ -59,7 +60,7 @@ should be placed above the URLs they protect.
 */
 HttpdBuiltInUrl builtInUrls[]={
 	{"/", cgiRedirect, "/index.tpl"},
-	{"/flash/read", cgiReadFlash, NULL},
+	//{"/flash/read", cgiReadFlash, NULL},
 	{"/flash/next", cgiGetFirmwareNext, NULL},
 	{"/flash/upload", cgiUploadFirmware, NULL},
 	{"/flash/reboot", cgiRebootFirmware, NULL},
@@ -110,9 +111,12 @@ void user_init(void) {
 	uart_init(BIT_RATE_115200, BIT_RATE_115200);
 	// say hello (leave some time to cause break in TX after boot loader's msg
 	os_delay_us(10000L);
-	os_printf("\n\nInitializing esp-link\n");
+# define VERS_STR_STR(V) #V
+# define VERS_STR(V) VERS_STR_STR(V)
+	os_printf("\n\nInitializing esp-link\n" VERS_STR(VERSION) "\n");
 	// Status LEDs
-	statusInit();
+	statusInit(LED_CONN_PIN);
+	serledInit(LED_SERIAL_PIN);
 	// Wifi
 	wifiInit();
 	// init the flash filesystem with the html stuff
@@ -121,7 +125,7 @@ void user_init(void) {
 	// mount the http handlers
 	httpdInit(builtInUrls, 80);
 	// init the wifi-serial transparent bridge (port 23)
-	serbridgeInit(23);
+	serbridgeInit(23, MCU_RESET_PIN, MCU_ISP_PIN);
 	uart_add_recv_cb(&serbridgeUartCb);
 #ifdef SHOW_HEAP_USE
 	os_timer_disarm(&prHeapTimer);

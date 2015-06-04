@@ -82,7 +82,7 @@ while true; do
 	next=`curl -m 10 $v -s "http://$hostname/flash/next"`
 	if [[ $? != 0 ]]; then
 		echo "Error retrieving http://$hostname/flash/next" >&2
-		break
+		exit 1
 	fi
 	case "$next" in
 	user1.bin)
@@ -94,8 +94,8 @@ while true; do
 		fw="$user2"
 		break;;
 	*)
-	  echo "Cannot parse result of retrieving http://$hostname/flash/next" >&2
-		sleep 2
+	  echo "Error retrieving or parsing http://$hostname/flash/next" >&2
+		exit 1
 		;;
 	esac
 done

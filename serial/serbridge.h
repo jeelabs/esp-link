@@ -32,7 +32,7 @@ struct serbridgeConnData {
   uint8_t        telnet_state;
 };
 
-void ICACHE_FLASH_ATTR serbridgeInit(int port);
+void ICACHE_FLASH_ATTR serbridgeInit(int port, uint8_t reset_pin, uint8_t isp_pin);
 void ICACHE_FLASH_ATTR serbridgeUartCb(char *buf, int len);
 
 #endif /* __SER_BRIDGE_H__ */

@@ -167,6 +167,8 @@ uart0_sendStr(const char *str)
 	}
 }
 
+static bool rx_bad; // set to true on framing error to avoid printing errors continuously
+
 /******************************************************************************
  * FunctionName : uart0_rx_intr_handler
  * Description  : Internal used function
@@ -183,23 +185,25 @@ uart0_rx_intr_handler(void *para)
 
   if(UART_FRM_ERR_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_FRM_ERR_INT_ST))
   {
-    os_printf("FRM_ERR\r\n");
+    if (!rx_bad) os_printf("FRM_ERR\n");
+    rx_bad = true;
     //clear rx and tx fifo
     SET_PERI_REG_MASK(UART_CONF0(uart_no), UART_RXFIFO_RST);
     CLEAR_PERI_REG_MASK(UART_CONF0(uart_no), UART_RXFIFO_RST);
-		// reset interrupt
+    // reset interrupt
     WRITE_PERI_REG(UART_INT_CLR(uart_no), UART_FRM_ERR_INT_CLR);
   }
 
   if(UART_RXFIFO_FULL_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_RXFIFO_FULL_INT_ST))
   {
-    //os_printf("fifo full\r\n");
+    //os_printf("fifo fullr\n");
     ETS_UART_INTR_DISABLE();
 
     system_os_post(recvTaskPrio, 0, 0);
   }
   else if(UART_RXFIFO_TOUT_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_RXFIFO_TOUT_INT_ST))
   {
+    rx_bad = false;
     ETS_UART_INTR_DISABLE();
     //os_printf("stat:%02X",*(uint8 *)UART_INT_ENA(uart_no));
     system_os_post(recvTaskPrio, 0, 0);

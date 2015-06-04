@@ -3,6 +3,7 @@
   <div id="main">
     <div class="header">
       <h1><span class="esp">esp</span> link</h1>
+		  <h2>%version%</h2>
     </div>
 
     <div class="content">

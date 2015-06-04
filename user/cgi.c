@@ -74,6 +74,10 @@ int ICACHE_FLASH_ATTR tplCounter(HttpdConnData *connData, char *token, void **ar
 	} else if (os_strcmp(token, "head")==0) {
 		printHead(connData);
 		buff[0] = 0;
+	} else if (os_strcmp(token, "version")==0) {
+#   define VERS_STR_STR(V) #V
+#   define VERS_STR(V) VERS_STR_STR(V)
+		os_sprintf(buff, "%s", VERS_STR(VERSION));
 	} else if (os_strcmp(token, "counter")==0) {
 		hitCounter++;
 		os_sprintf(buff, "%ld", hitCounter);

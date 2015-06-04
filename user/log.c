@@ -7,6 +7,7 @@
 // The web log has a 1KB circular in-memory buffer which os_printf prints into and
 // the HTTP handler simply displays the buffer content on a web page.
 
+// see consolse.c for invariants (same here)
 #define BUF_MAX (1024)
 static char log_buf[BUF_MAX];
 static int log_wr, log_rd;
@@ -27,11 +28,10 @@ log_uart(bool enable) {
 
 static void ICACHE_FLASH_ATTR
 log_write(char c) {
-	int wr = (log_wr+1)%BUF_MAX;
-	if (wr == log_rd)
-		log_rd = (log_rd+1) % BUF_MAX; // full, eat first char
 	log_buf[log_wr] = c;
-	log_wr = wr;
+	log_wr = (log_wr+1) % BUF_MAX;
+	if (log_wr == log_rd)
+		log_rd = (log_rd+1) % BUF_MAX; // full, eat first char
 }
 
 #if 0
@@ -74,6 +74,8 @@ tplLog(HttpdConnData *connData, char *token, void **arg) {
 		} else if (log_rd != log_wr) {
 			httpdSend(connData, log_buf+log_rd, BUF_MAX-log_rd);
 			httpdSend(connData, log_buf, log_wr);
+		} else {
+			httpdSend(connData, "<buffer empty>", -1);
 		}
 	} else if (os_strcmp(token, "head")==0) {
 		printHead(connData);
