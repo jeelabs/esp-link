@@ -55,7 +55,7 @@ LED_SERIAL_PIN      ?= 2
 VERSION := "esp-link custom version"
 DATE    := $(shell date '+%F %T')
 BRANCH  := $(shell git rev-parse --abbrev-ref HEAD)
-SHA     := $(shell if git diff --quiet HEAD; then git symbolic-ref HEAD | cut -d"/" -f 3; \
+SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | cut -d"/" -f 3; \
 	else echo "development"; fi)
 VERSION := esp-link - $(BRANCH) - $(DATE) - $(SHA)
 
@@ -193,8 +193,6 @@ all: echo_version checkdirs $(FW_BASE) firmware/user1.bin firmware/user2.bin
 
 echo_version:
 	@echo VERSION: $(VERSION)
-
-user/version.h:
 
 $(TARGET_OUT): $(APP_AR) $(LD_SCRIPT)
 	$(vecho) "LD $@"
