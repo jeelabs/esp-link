@@ -52,12 +52,12 @@ LED_SERIAL_PIN      ?= 2
 
 # This queries git to produce a version string like "esp-link v0.9.0 2015-06-01 34bc76"
 # If you don't have a proper git checkout or are on windows, then simply swap for the constant
-VERSION := "esp-link custom version"
+#VERSION ?= "esp-link custom version"
 DATE    := $(shell date '+%F %T')
-BRANCH  := $(shell git rev-parse --abbrev-ref HEAD)
+BRANCH  := $(shell git describe --tags)
 SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | cut -d"/" -f 3; \
 	else echo "development"; fi)
-VERSION := esp-link - $(BRANCH) - $(DATE) - $(SHA)
+VERSION ?="esp-link $(BRANCH) - $(DATE) - \#$(SHA)"
 
 # --------------- esphttpd config options ---------------
 
