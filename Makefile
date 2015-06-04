@@ -52,6 +52,8 @@ LED_SERIAL_PIN      ?= 2
 
 # This queries git to produce a version string like "esp-link v0.9.0 2015-06-01 34bc76"
 # If you don't have a proper git checkout or are on windows, then simply swap for the constant
+# Steps to release: create release on github, git pull, git describe --tags to verify you're
+# on the release tag, make release, upload esp-link.tgz into the release files
 #VERSION ?= "esp-link custom version"
 DATE    := $(shell date '+%F %T')
 BRANCH  := $(shell git describe --tags)
