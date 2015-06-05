@@ -101,6 +101,8 @@ int ICACHE_FLASH_ATTR printNav(char *buff) {
 				" <li class=\"pure-menu-item\"><a href=\"%s\" class=\"pure-menu-link\">%s</a></li>",
 				navLinks[i][1], navLinks[i][0]);
 	}
+	len += os_sprintf(buff+len, " <li class=\"pure-menu-item\">%dKB</li>",
+			system_get_free_heap_size()/1024);
 	//os_printf("nav(%d): %s\n", len, buff);
 	return len;
 }
@@ -110,7 +112,6 @@ void ICACHE_FLASH_ATTR printHead(HttpdConnData *connData) {
 
 	struct EspFsFile *file = espFsOpen("/head.tpl");
 	if (file == NULL) {
-		espFsClose(file);
 		os_printf("Header file 'head.tpl' not found\n");
 		return;
 	}
@@ -136,6 +137,7 @@ void ICACHE_FLASH_ATTR printHead(HttpdConnData *connData) {
 			httpdSend(connData, buff, len);
 		}
 	}
+	espFsClose(file);
 }
 
 #define TOKEN(x) (os_strcmp(token, x) == 0)

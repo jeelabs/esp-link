@@ -59,7 +59,7 @@ DATE    := $(shell date '+%F %T')
 BRANCH  := $(shell git describe --tags)
 SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | cut -d"/" -f 3; \
 	else echo "development"; fi)
-VERSION ?="esp-link $(BRANCH) - $(DATE) - \#$(SHA)"
+VERSION ?=esp-link $(BRANCH) - $(DATE) - $(SHA)
 
 # --------------- esphttpd config options ---------------
 

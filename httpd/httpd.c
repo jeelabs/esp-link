@@ -23,7 +23,7 @@ Esp8266 http server - core routines
 //Max post buffer len
 #define MAX_POST 1024
 //Max send buffer len
-#define MAX_SENDBUFF_LEN 2048
+#define MAX_SENDBUFF_LEN 2600
 
 
 //This gets set at init time.
@@ -235,7 +235,10 @@ int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData) {
 //Returns 1 for success, 0 for out-of-memory.
 int ICACHE_FLASH_ATTR httpdSend(HttpdConnData *conn, const char *data, int len) {
 	if (len<0) len=strlen(data);
-	if (conn->priv->sendBuffLen+len>MAX_SENDBUFF_LEN) return 0;
+	if (conn->priv->sendBuffLen+len>MAX_SENDBUFF_LEN) {
+		os_printf("ERROR! httpdSend full (%d of %d)\n", conn->priv->sendBuffLen, MAX_SENDBUFF_LEN);
+		return 0;
+	}
 	os_memcpy(conn->priv->sendBuff+conn->priv->sendBuffLen, data, len);
 	conn->priv->sendBuffLen+=len;
 	return 1;
@@ -244,7 +247,10 @@ int ICACHE_FLASH_ATTR httpdSend(HttpdConnData *conn, const char *data, int len) 
 //Helper function to send any data in conn->priv->sendBuff
 static void ICACHE_FLASH_ATTR xmitSendBuff(HttpdConnData *conn) {
 	if (conn->priv->sendBuffLen!=0) {
-		espconn_sent(conn->conn, (uint8_t*)conn->priv->sendBuff, conn->priv->sendBuffLen);
+		sint8 status = espconn_sent(conn->conn, (uint8_t*)conn->priv->sendBuff, conn->priv->sendBuffLen);
+		if (status != 0) {
+			os_printf("ERROR! espconn_sent returned %d\n", status);
+		}
 		conn->priv->sendBuffLen=0;
 	}
 }
@@ -517,6 +523,8 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 	espconn_regist_reconcb(conn, httpdReconCb);
 	espconn_regist_disconcb(conn, httpdDisconCb);
 	espconn_regist_sentcb(conn, httpdSentCb);
+
+	espconn_set_opt(conn, ESPCONN_REUSEADDR|ESPCONN_NODELAY);
 }
 
 //Httpd initialization routine. Call this to kick off webserver functionality.
