@@ -19,7 +19,7 @@ Esp8266 http server - core routines
 //Max length of request head
 #define MAX_HEAD_LEN 1024
 //Max amount of connections
-#define MAX_CONN 8
+#define MAX_CONN 4
 //Max post buffer len
 #define MAX_POST 1024
 //Max send buffer len
@@ -543,4 +543,5 @@ void ICACHE_FLASH_ATTR httpdInit(HttpdBuiltInUrl *fixedUrls, int port) {
 	os_printf("Httpd init, conn=%p\n", &httpdConn);
 	espconn_regist_connectcb(&httpdConn, httpdConnectCb);
 	espconn_accept(&httpdConn);
+	espconn_tcp_set_max_con_allow(&httpdConn, MAX_CONN);
 }

@@ -281,6 +281,8 @@ static void ICACHE_FLASH_ATTR serbridgeConnectCb(void *arg) {
 	espconn_regist_reconcb(conn, serbridgeReconCb);
 	espconn_regist_disconcb(conn, serbridgeDisconCb);
 	espconn_regist_sentcb(conn, serbridgeSentCb);
+
+	espconn_set_opt(conn, ESPCONN_REUSEADDR|ESPCONN_NODELAY);
 }
 
 // callback with a buffer of characters that have arrived on the uart
@@ -320,5 +322,6 @@ void ICACHE_FLASH_ATTR serbridgeInit(int port, uint8_t reset_pin, uint8_t isp_pi
 
 	espconn_regist_connectcb(&serbridgeConn, serbridgeConnectCb);
 	espconn_accept(&serbridgeConn);
+	espconn_tcp_set_max_con_allow(&serbridgeConn, MAX_CONN);
 	espconn_regist_time(&serbridgeConn, SER_BRIDGE_TIMEOUT, 0);
 }

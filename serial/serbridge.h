@@ -5,7 +5,7 @@
 #include <c_types.h>
 #include <espconn.h>
 
-#define MAX_CONN 5
+#define MAX_CONN 4
 #define SER_BRIDGE_TIMEOUT 28799
 
 //Max send buffer len
