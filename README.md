@@ -9,6 +9,12 @@ The firmware includes a tiny HTTP server based on
 [esphttpd](http://www.esp8266.com/viewforum.php?f=34)
 with a simple web interface, many thanks to Jeroen Domburg for making it available!
 
+Eye Candy
+---------
+These screen shots show the Wifi configuration page and the esp firmware's log
+<img src="https://cloud.githubusercontent.com/assets/39480/8001003/2528fdd4-0b16-11e5-98c9-c2419740b439.png" width="45%">
+<img src="https://cloud.githubusercontent.com/assets/39480/8001004/2738debe-0b16-11e5-8340-eb31e1e378e3.png" width="45%">
+
 Hardware info
 -------------
 This firmware is designed for esp8266 modules which have most ESP I/O pins available.
