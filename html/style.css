@@ -68,6 +68,10 @@ body {
 	color: #888;
 }
 
+.button-primary {
+	background-color: #99f;
+}
+
 /* Text console */
 pre.console {
 	background-color: #663300;
