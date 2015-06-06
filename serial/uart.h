@@ -21,4 +21,6 @@ STATUS uart_tx_one_char(uint8 uart, uint8 c);
 // with all new characters.
 void ICACHE_FLASH_ATTR uart_add_recv_cb(UartRecv_cb cb);
 
+void ICACHE_FLASH_ATTR uart0_baud(int rate);
+
 #endif /* __UART_H__ */

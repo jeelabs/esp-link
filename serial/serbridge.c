@@ -172,6 +172,13 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
 	return state;
 }
 
+void ICACHE_FLASH_ATTR serbridgeReset() {
+	os_printf("MCU reset gpio%d\n", mcu_reset_pin);
+	GPIO_OUTPUT_SET(mcu_reset_pin, 0);
+	os_delay_us(100L);
+	GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+}
+
 
 // Receive callback
 static void ICACHE_FLASH_ATTR serbridgeRecvCb(void *arg, char *data, unsigned short len) {

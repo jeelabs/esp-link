@@ -68,7 +68,9 @@ HttpdBuiltInUrl builtInUrls[]={
 	{"/help.tpl", cgiEspFsTemplate, tplCounter},
 	{"/log.tpl", cgiEspFsTemplate, tplLog},
 	{"/console.tpl", cgiEspFsTemplate, tplConsole},
-	{"/console", ajaxConsole, NULL},
+	{"/console/reset", ajaxConsoleReset, NULL},
+	{"/console/baud", ajaxConsoleBaud, NULL},
+	{"/console/text", ajaxConsole, NULL},
 
 	//Routines to make the /wifi URL and everything beneath it work.
 

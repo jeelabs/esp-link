@@ -9,12 +9,12 @@
       <p>The Microcontroller console shows the last 1024 characters
          received from UART0, to which a microcontroller is typically attached.</p>
       <p>
-        <a class="pure-button button-primary" href="#">Reset µC</a>
+        <a id="reset-button" class="pure-button button-primary" href="#">Reset µC</a>
         &nbsp;Baud:
-        <a href="#" class="pure-button">57600</a>
-        <a href="#" class="pure-button">115200</a>
-        <a href="#" class="pure-button">230400</a>
-        <a href="#" class="pure-button">460800</a>
+        <a id="57600-button" href="#" class="pure-button">57600</a>
+        <a id="115200-button" href="#" class="pure-button">115200</a>
+        <a id="230400-button" href="#" class="pure-button">230400</a>
+        <a id="460800-button" href="#" class="pure-button">460800</a>
       </p>
       <pre class="console" id="console"></pre>
     </div>
@@ -36,14 +36,14 @@
 
         if(xhr.status !== 200) {
           //console.log("handleEv error cb");
-          errCb(xhr);
+          if (errCb != null) errCb(xhr);
           return;
         }
 
         // all is well  
         if(xhr.readyState === 4) {
           //console.log("handleEv success cb");
-          okCb(xhr, JSON.parse(xhr.responseText));
+          if (okCb != null) okCb(xhr, JSON.parse(xhr.responseText));
         }
       } catch(e) {return;}
     }
@@ -59,7 +59,7 @@
       el.innerHTML = "";
     }
     window.setTimeout(function() {
-      loadJSON("/console?start=" + el.textEnd, updateText, retryLoad);
+      loadJSON("/console/text?start=" + el.textEnd, updateText, retryLoad);
     }, delay);
   }
 
@@ -87,8 +87,28 @@
     fetchText(1000);
   }
 
+  function baudButton(baud) {
+    document.getElementById(""+baud+"-button").addEventListener("click", function(e) {
+      console.log("switching to", baud, "baud");
+      e.preventDefault();
+      loadJSON("/console/baud?rate="+baud);
+    });
+  }
+
   window.onload = function() {
     fetchText(100);
+
+    document.getElementById("reset-button").addEventListener("click", function(e) {
+      el = document.getElementById("console");
+      e.preventDefault();
+      //console.log("reset click");
+      el.innerHTML = "";
+      loadJSON("/console/reset");
+    });
+    baudButton(57600);
+    baudButton(115200);
+    baudButton(230400);
+    baudButton(460800);
   }
 </script>
 </body></html>

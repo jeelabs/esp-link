@@ -237,6 +237,11 @@ uart_recvTask(os_event_t *events)
 	ETS_UART_INTR_ENABLE();
 }
 
+void ICACHE_FLASH_ATTR
+uart0_baud(int rate) {
+  uart_div_modify(UART0, UART_CLK_FREQ / rate);
+}
+
 /******************************************************************************
  * FunctionName : uart_init
  * Description  : user interface for init uart

@@ -1,6 +1,8 @@
 #include <esp8266.h>
 #include "uart.h"
 #include "cgi.h"
+#include "uart.h"
+#include "serbridge.h"
 #include "console.h"
 
 // Microcontroller console capturing the last 1024 characters received on the uart so
@@ -47,6 +49,30 @@ jsonHeader(HttpdConnData *connData, int code) {
 	httpdStartResponse(connData, code);
 	httpdHeader(connData, "Content-Type", "application/json");
 	httpdEndHeaders(connData);
+}
+
+int ICACHE_FLASH_ATTR
+ajaxConsoleReset(HttpdConnData *connData) {
+	jsonHeader(connData, 200);
+	serbridgeReset();
+	return HTTPD_CGI_DONE;
+}
+
+int ICACHE_FLASH_ATTR
+ajaxConsoleBaud(HttpdConnData *connData) {
+	char buff[2048];
+	int len;
+	len = httpdFindArg(connData->getArgs, "rate", buff, sizeof(buff));
+	if (len > 0) {
+		int rate = atoi(buff);
+		if (rate >= 9600 && rate <= 1000000) {
+			jsonHeader(connData, 200);
+			uart0_baud(rate);
+			return HTTPD_CGI_DONE;
+		}
+	}
+	jsonHeader(connData, 400);
+	return HTTPD_CGI_DONE;
 }
 
 int ICACHE_FLASH_ATTR
