@@ -38,7 +38,7 @@ ESP8266 flashing tool to flash the following:
 - `blank.bin` to 0x7e000
 - `user1.bin` to 0x01000
 
-Note that the firmware assumes a 512KB flash chip, which most of the esp-01 thru esp-11
+Note that the firmware assumes at least a 512KB flash chip, which most of the esp-01 thru esp-12
 modules appear to have.
 
 Wifi configuration overview
