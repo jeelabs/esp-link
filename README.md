@@ -1,6 +1,8 @@
 ESP-LINK
 ========
 
+[![Join the chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jeelabs/esp-link?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 This firmware implements a transparent bridge between Wifi and serial using an ESP8266 module.
 It also provides support for flash-programming Arduino/AVR microcontrollers as well as
 LPC800-series ARM microcontrollers via the ESP8266.
