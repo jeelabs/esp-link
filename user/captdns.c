@@ -1,5 +1,22 @@
 #include <esp8266.h>
 
+/*
+ * ----------------------------------------------------------------------------
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain 
+ * this notice you can do whatever you want with this stuff. If we meet some day, 
+ * and you think this stuff is worth it, you can buy me a beer in return. 
+ * ----------------------------------------------------------------------------
+ */
+
+
+/*
+This is a 'captive portal' DNS server: it basically replies with a fixed IP for any and all DNS
+queries. This can be used to send mobile phones, tablets etc which connect to the ESP in 
+AP mode directly to the internal webserver.
+*/
+
+
 typedef struct __attribute__ ((packed)) {
 	uint16_t id;
 	uint8_t flags;
@@ -72,7 +89,7 @@ static void ICACHE_FLASH_ATTR setn32(void *pp, int32_t n) {
 	*p++=(n&0xff);
 }
 
-static uint16_t ntohs(uint16_t *in) {
+static uint16_t ICACHE_FLASH_ATTR ntohs(uint16_t *in) {
 	char *p=(char*)in;
 	return ((p[0]<<8)&0xff00)|(p[1]&0xff);
 }
@@ -111,7 +128,7 @@ static char* ICACHE_FLASH_ATTR labelToStr(char *packet, char *labelPtr, int pack
 }
 
 
-char *strToLabel(char *str, char *label, int maxLen) {
+static char ICACHE_FLASH_ATTR *strToLabel(char *str, char *label, int maxLen) {
 	char *len=label; //ptr to len byte
 	char *p=label+1; //ptr to next label byte to be written
 	while (1) {
