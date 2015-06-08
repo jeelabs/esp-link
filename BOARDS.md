@@ -16,6 +16,7 @@ If you're a little python challenged (like I am) then the following install inst
  - Install esptool.py:
 
         git clone https://github.com/themadinventor/esptool.git
+        cd esptool
         python setup.py install
         cd ..
         esptool.py -h
