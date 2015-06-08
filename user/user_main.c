@@ -101,3 +101,7 @@ void user_init(void) {
 #endif
 	os_printf("\nReady\n");
 }
+
+void user_rf_pre_init() {
+	//Not needed, but some SDK versions want this defined.
+}

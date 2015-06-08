@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <c_types.h>
 #include <ets_sys.h>
+#include <eagle_soc.h>
 
 //Missing function prototypes in include folders. Gcc will warn on these if we don't define 'em anywhere.
 //MOST OF THESE ARE GUESSED! but they seem to swork and shut up the compiler.
@@ -40,8 +41,20 @@ void vPortFree(void *ptr);
 void *vPortMalloc(size_t xWantedSize);
 uint8 wifi_get_opmode(void);
 uint32 system_get_time();
-int os_random();
 int rand(void);
 void ets_bzero(void *s, size_t n);
 void ets_delay_us(int ms);
+
+
+//Standard PIN_FUNC_SELECT gives a warning. Replace by a non-warning one.
+#ifdef PIN_FUNC_SELECT
+#undef PIN_FUNC_SELECT
+#define PIN_FUNC_SELECT(PIN_NAME, FUNC)  do { \
+    WRITE_PERI_REG(PIN_NAME,   \
+                                (READ_PERI_REG(PIN_NAME) \
+                                     &  (~(PERIPHS_IO_MUX_FUNC<<PERIPHS_IO_MUX_FUNC_S)))  \
+                                     |( (((FUNC&BIT2)<<2)|(FUNC&0x3))<<PERIPHS_IO_MUX_FUNC_S) );  \
+    } while (0)
+#endif
+
 #endif
