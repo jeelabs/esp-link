@@ -50,7 +50,10 @@ typedef struct __attribute__ ((packed)) {
 	//after: rdata
 } DnsResourceFooter;
 
-
+typedef struct __attribute__ ((packed)) {
+	uint16_t prio;
+	uint16_t weight;
+} DnsUriHdr;
 
 
 #define FLAG_QR (1<<7)
@@ -68,9 +71,11 @@ typedef struct __attribute__ ((packed)) {
 #define QTYPE_MINFO 14
 #define QTYPE_MX 15
 #define QTYPE_TXT 16
+#define QTYPE_URI 256
 
 #define QCLASS_IN 1
 #define QCLASS_ANY 255
+#define QCLASS_URI 256
 
 
 //Function to put unaligned 16-bit network values
@@ -95,7 +100,7 @@ static uint16_t ICACHE_FLASH_ATTR ntohs(uint16_t *in) {
 }
 
 
-//Parses a label.
+//Parses a label into a C-string containing a dotted 
 //Returns pointer to start of next fields in packet
 static char* ICACHE_FLASH_ATTR labelToStr(char *packet, char *labelPtr, int packetSz, char *res, int resMaxLen) {
 	int i, j, k;
@@ -128,6 +133,7 @@ static char* ICACHE_FLASH_ATTR labelToStr(char *packet, char *labelPtr, int pack
 }
 
 
+//Converts a dotted hostname to the weird label form dns uses.
 static char ICACHE_FLASH_ATTR *strToLabel(char *str, char *label, int maxLen) {
 	char *len=label; //ptr to len byte
 	char *p=label+1; //ptr to next label byte to be written
@@ -148,7 +154,7 @@ static char ICACHE_FLASH_ATTR *strToLabel(char *str, char *label, int maxLen) {
 }
 
 
-
+//Receive a DNS packet and maybe send a response back
 static void ICACHE_FLASH_ATTR captdnsRecv(void* arg, char *pusrdata, unsigned short length) {
 	struct espconn *conn=(struct espconn *)arg;
 	char buff[512];
@@ -159,8 +165,8 @@ static void ICACHE_FLASH_ATTR captdnsRecv(void* arg, char *pusrdata, unsigned sh
 	DnsHeader *hdr=(DnsHeader*)p;
 	DnsHeader *rhdr=(DnsHeader*)&reply[0];
 	p+=sizeof(DnsHeader);
-	os_printf("DNS packet: id 0x%X flags 0x%X rcode 0x%X qcnt %d ancnt %d nscount %d arcount %d len %d\n", 
-		ntohs(&hdr->id), hdr->flags, hdr->rcode, ntohs(&hdr->qdcount), ntohs(&hdr->ancount), ntohs(&hdr->nscount), ntohs(&hdr->arcount), length);
+//	os_printf("DNS packet: id 0x%X flags 0x%X rcode 0x%X qcnt %d ancnt %d nscount %d arcount %d len %d\n", 
+//		ntohs(&hdr->id), hdr->flags, hdr->rcode, ntohs(&hdr->qdcount), ntohs(&hdr->ancount), ntohs(&hdr->nscount), ntohs(&hdr->arcount), length);
 	//Some sanity checks:
 	if (length>512) return; 									//Packet is longer than DNS implementation allows
 	if (length<sizeof(DnsHeader)) return; 						//Packet is too short
@@ -175,7 +181,7 @@ static void ICACHE_FLASH_ATTR captdnsRecv(void* arg, char *pusrdata, unsigned sh
 		if (p==NULL) return;
 		DnsQuestionFooter *qf=(DnsQuestionFooter*)p;
 		p+=sizeof(DnsQuestionFooter);
-		os_printf("Q %d (type 0x%X class 0x%X) for %s\n", i, ntohs(&qf->type), ntohs(&qf->class), buff);
+		os_printf("DNS: Q (type 0x%X class 0x%X) for %s\n", ntohs(&qf->type), ntohs(&qf->class), buff);
 		if (ntohs(&qf->type)==QTYPE_A) {
 			//They want to know the IPv4 address of something.
 			//Build the response.
@@ -187,14 +193,17 @@ static void ICACHE_FLASH_ATTR captdnsRecv(void* arg, char *pusrdata, unsigned sh
 			setn16(&rf->class, QCLASS_IN);
 			setn32(&rf->ttl, 1);
 			setn16(&rf->rdlength, 4); //IPv4 addr is 4 bytes;
-			*rend++=192; //hardcoded :X
-			*rend++=168;
-			*rend++=4;
-			*rend++=1;
+			//Grab the current IP of the softap interface
+			struct ip_info info;
+			wifi_get_ip_info(SOFTAP_IF, &info);
+			*rend++=ip4_addr1(&info.ip);
+			*rend++=ip4_addr2(&info.ip);
+			*rend++=ip4_addr3(&info.ip);
+			*rend++=ip4_addr4(&info.ip);
 			setn16(&rhdr->ancount, ntohs(&rhdr->ancount)+1);
-			os_printf("Added A rec to resp. Resp len is %d\n", (rend-reply));
+//			os_printf("Added A rec to resp. Resp len is %d\n", (rend-reply));
 		} else if (ntohs(&qf->type)==QTYPE_NS) {
-			//Give ns server. Basically is whatever.
+			//Give ns server. Basically can be whatever we want because it'll get resolved to our IP later anyway.
 			rend=strToLabel(buff, rend, sizeof(reply)-(rend-reply)); //Add the label
 			DnsResourceFooter *rf=(DnsResourceFooter *)rend;
 			rend+=sizeof(DnsResourceFooter);
@@ -207,9 +216,27 @@ static void ICACHE_FLASH_ATTR captdnsRecv(void* arg, char *pusrdata, unsigned sh
 			*rend++='s';
 			*rend++=0;
 			setn16(&rhdr->ancount, ntohs(&rhdr->ancount)+1);
-			os_printf("Added NS rec to resp. Resp len is %d\n", (rend-reply));
+//			os_printf("Added NS rec to resp. Resp len is %d\n", (rend-reply));
+		} else if (ntohs(&qf->type)==QTYPE_URI) {
+			//Give uri to us
+			rend=strToLabel(buff, rend, sizeof(reply)-(rend-reply)); //Add the label
+			DnsResourceFooter *rf=(DnsResourceFooter *)rend;
+			rend+=sizeof(DnsResourceFooter);
+			DnsUriHdr *uh=(DnsUriHdr *)rend;
+			rend+=sizeof(DnsUriHdr);
+			setn16(&rf->type, QTYPE_URI);
+			setn16(&rf->class, QCLASS_URI);
+			setn16(&rf->ttl, 1);
+			setn16(&rf->rdlength, 4+16);
+			setn16(&uh->prio, 10);
+			setn16(&uh->weight, 1);
+			memcpy(rend, "http://esp.local", 16);
+			rend+=16;
+			setn16(&rhdr->ancount, ntohs(&rhdr->ancount)+1);
+//			os_printf("Added NS rec to resp. Resp len is %d\n", (rend-reply));
 		}
 	}
+	//Send the response
 	espconn_sent(conn, (uint8*)reply, rend-reply);
 }
 
