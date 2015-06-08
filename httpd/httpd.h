@@ -27,6 +27,7 @@ struct HttpdConnData {
 	const void *cgiArg;
 	void *cgiData;
 	void *cgiPrivData; // Used for streaming handlers storing state between requests
+	char *hostName;
 	HttpdPriv *priv;
 	cgiSendCallback cgi;
 	HttpdPostData *post;
@@ -51,6 +52,7 @@ typedef struct {
 } HttpdBuiltInUrl;
 
 int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData);
+int ICACHE_FLASH_ATTR cgiCheckHostname(HttpdConnData *connData);
 void ICACHE_FLASH_ATTR httpdRedirect(HttpdConnData *conn, char *newUrl);
 int httpdUrlDecode(char *val, int valLen, char *ret, int retLen);
 int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLen);

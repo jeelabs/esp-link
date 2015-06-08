@@ -228,6 +228,23 @@ int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData) {
 	return HTTPD_CGI_DONE;
 }
 
+//This CGI function redirects to a fixed url of http://[hostname]/ if hostname field of request isn't
+//already that hostname. Use this in combination with a DNS server that redirects everything to the
+//ESP in order to load a HTML page as soon as a phone connects to the ESP.
+int ICACHE_FLASH_ATTR cgiCheckHostname(HttpdConnData *connData) {
+	char buff[1024];
+	if (connData->conn==NULL) {
+		//Connection aborted. Clean up.
+		return HTTPD_CGI_DONE;
+	}
+	//Check hostname; pass on if the same
+	if (connData->hostName==NULL || os_strcmp(connData->hostName, (char*)connData->cgiArg)==0) return HTTPD_CGI_NOTFOUND;
+	//Not the same. Redirect to real hostname.
+	os_sprintf(buff, "http://%s/", (char*)connData->cgiArg);
+	os_printf("Redirecting to hostname url %s\n", buff);
+	httpdRedirect(connData, buff);
+	return HTTPD_CGI_DONE;
+}
 
 //Add data to the send buffer. len is the length of the data. If len is -1
 //the data is seen as a C-string.
@@ -347,6 +364,10 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 	if (os_strncmp(h, "GET ", 4)==0) {
 		conn->requestType = HTTPD_METHOD_GET;
 		first_line = true;
+	} else if (os_strncmp(h, "Host:", 5)==0) {
+		i=5;
+		while (h[i]==' ') i++;
+		conn->hostName=&h[i];
 	} else if (os_strncmp(h, "POST ", 5)==0) {
 		conn->requestType = HTTPD_METHOD_POST;
 		first_line = true;
@@ -453,6 +474,7 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 			//This byte is a POST byte.
 			conn->post->buff[conn->post->buffLen++]=data[x];
 			conn->post->received++;
+			conn->hostName=NULL;
 			if (conn->post->buffLen >= conn->post->buffSize || conn->post->received == conn->post->len) {
 				//Received a chunk of post data
 				conn->post->buff[conn->post->buffLen]=0; //zero-terminate, in case the cgi handler knows it can use strings
@@ -511,6 +533,7 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 	connData[i].post->buffLen=0;
 	connData[i].post->received=0;
 	connData[i].post->len=-1;
+	connData[i].hostName=NULL;
 
 	espconn_regist_recvcb(conn, httpdRecvCb);
 	espconn_regist_reconcb(conn, httpdReconCb);
