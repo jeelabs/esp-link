@@ -20,6 +20,7 @@
 #include "stdout.h"
 #include "auth.h"
 #include "espfs.h"
+#include "captdns.h"
 
 //#define SHOW_HEAP_USE
 
@@ -89,6 +90,8 @@ static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
 void user_init(void) {
 	stdoutInit();
 	ioInit();
+	captdnsInit();
+
 
 	// 0x40200000 is the base address for spi flash memory mapping, ESPFS_POS is the position
 	// where image is written in flash that is defined in Makefile.
