@@ -39,12 +39,17 @@ int ICACHE_FLASH_ATTR cgiReadFlash(HttpdConnData *connData) {
 	if (*pos>=0x40200000+(512*1024)) return HTTPD_CGI_DONE; else return HTTPD_CGI_MORE;
 }
 
+
 //Cgi that allows the ESPFS image to be replaced via http POST
 int ICACHE_FLASH_ATTR cgiUploadEspfs(HttpdConnData *connData) {
+//Now esphttpd is a lib and doesn't know ESPFS_POS/ESPFS_SIZE, this does not work anymore. ToDo: Find some way
+//to reinstate it?
+#if 0
 	if (connData->conn==NULL) {
 		//Connection aborted. Clean up.
 		return HTTPD_CGI_DONE;
 	}
+
 	if(connData->post->len > ESPFS_SIZE){
 		// The uploaded file is too large
 		os_printf("ESPFS file too large\n");
@@ -63,6 +68,7 @@ int ICACHE_FLASH_ATTR cgiUploadEspfs(HttpdConnData *connData) {
 	os_printf("Writing at: 0x%x\n", address);
 	spi_flash_write(address, (uint32 *)connData->post->buff, connData->post->buffLen);
 	os_printf("Wrote %d bytes (%dB of %d)\n", connData->post->buffSize, connData->post->received, connData->post->len);//&connData->postBuff));
+#endif
 
 	if (connData->post->received == connData->post->len){
 		httpdSend(connData, "Finished uploading", -1);

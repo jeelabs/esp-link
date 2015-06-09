@@ -9,8 +9,8 @@
  * ----------------------------------------------------------------------------
  */
 
-
 #include <esp8266.h>
+#include <uart_hw.h>
 
 static void ICACHE_FLASH_ATTR stdoutUartTxd(char c) {
 	//Wait until there is room in the FIFO
