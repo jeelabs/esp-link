@@ -7,3 +7,4 @@ espfs/espfstest/*.o
 espfs/espfstest/espfstest
 *.DS_Store
 html_compressed/
+libwebpages-espfs.a

@@ -21,6 +21,7 @@
 #include "auth.h"
 #include "espfs.h"
 #include "captdns.h"
+#include "webpages-espfs.h"
 
 //The example can print out the heap use every 3 seconds. You can use this to catch memory leaks.
 //#define SHOW_HEAP_USE
@@ -105,7 +106,11 @@ void user_init(void) {
 
 	// 0x40200000 is the base address for spi flash memory mapping, ESPFS_POS is the position
 	// where image is written in flash that is defined in Makefile.
+#ifdef ESPFS_POS
 	espFsInit((void*)(0x40200000 + ESPFS_POS));
+#else
+	espFsInit((void*)(webpages_espfs_start));
+#endif
 	httpdInit(builtInUrls, 80);
 #ifdef SHOW_HEAP_USE
 	os_timer_disarm(&prHeapTimer);

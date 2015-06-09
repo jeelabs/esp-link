@@ -50,6 +50,7 @@ SDK_INCDIR	= include include/json
 CC		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
 AR		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-ar
 LD		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
+OBJCOPY		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objcopy
 
 
 
@@ -95,7 +96,7 @@ endef
 
 .PHONY: all checkdirs clean webpages.espfs
 
-all: checkdirs $(LIB) webpages.espfs
+all: checkdirs $(LIB) webpages.espfs libwebpages-espfs.a
 
 
 $(LIB): $(OBJ)
@@ -124,8 +125,17 @@ else
 	$(Q) cd ../html; find | $(THISDIR)/espfs/mkespfsimage/mkespfsimage > $(THISDIR)/webpages.espfs; cd ..
 endif
 
+libwebpages-espfs.a: webpages.espfs
+	$(Q) $(OBJCOPY) -I binary -O elf32-xtensa-le -B xtensa --rename-section .data=.irom0.literal \
+		--redefine-sym _binary_webpages_espfs_start=webpages_espfs_start \
+		--redefine-sym _binary_webpages_espfs_end=webpages_espfs_end \
+		--redefine-sym _binary_webpages_espfs_size=webpages_espfs_size \
+		webpages.espfs build/webpages.espfs.o
+	$(Q) $(AR) cru $@ build/webpages.espfs.o
+
 espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 	$(Q) $(MAKE) -C espfs/mkespfsimage USE_HEATSHRINK="$(USE_HEATSHRINK)" GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
+	$(Q) $(AR) cru $@ $^
 
 clean:
 	$(Q) rm -f $(LIB)

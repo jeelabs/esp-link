@@ -20,9 +20,10 @@ ESPDELAY	?= 3
 ESPBAUD		?= 460800
 
 #Position and maximum length of espfs in flash memory
-ESPFS_POS = 0x12000
-ESPFS_SIZE = 0x2E000
-
+#This can be undefined. In this case the webpages will be linked in into the
+#file.
+#ESPFS_POS = 0x12000
+#ESPFS_SIZE = 0x2E000
 
 
 # name for the target project
@@ -35,12 +36,14 @@ MODULES		= user
 EXTRA_INCDIR	= include libesphttpd/include
 
 # libraries used in this project, mainly provided by the SDK
-LIBS		= c gcc hal phy pp net80211 wpa main lwip esphttpd
+LIBS		= c gcc hal phy pp net80211 wpa main lwip
+#Add in esphttpd lib
+LIBS += esphttpd
 
 # compiler flags using during compilation of source files
 CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
 		-nostdlib -mlongcalls -mtext-section-literals  -D__ets__ -DICACHE_FLASH -D_STDINT_H \
-		-Wno-address -DESPFS_POS=$(ESPFS_POS) -DESPFS_SIZE=$(ESPFS_SIZE)
+		-Wno-address
 
 # linker flags used to generate the main object file
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static
@@ -95,6 +98,14 @@ endif
 
 ifeq ("$(USE_HEATSHRINK)","yes")
 CFLAGS		+= -DESPFS_HEATSHRINK
+endif
+
+ifeq ("$(ESPFS_POS)","")
+#No hardcoded espfs position: link it in with the binaries.
+LIBS += -lwebpages-espfs
+else
+#Pass espfs position to rest of code
+CFLAGS += -DESPFS_POS=$(ESPFS_POS) -DESPFS_SIZE=$(ESPFS_SIZE)
 endif
 
 vpath %.c $(SRC_DIR)
