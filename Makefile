@@ -124,7 +124,7 @@ libesphttpd/Makefile:
 libesphttpd: libesphttpd/Makefile
 	$(Q) make -C libesphttpd
 
-$(TARGET_OUT): $(APP_AR) libesphttpd
+$(TARGET_OUT): $(APP_AR)
 	$(vecho) "LD $@"
 	$(Q) $(LD) -Llibesphttpd -L$(SDK_LIBDIR) $(LD_SCRIPT) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
 
@@ -133,9 +133,9 @@ $(FW_BASE): $(TARGET_OUT)
 	$(Q) mkdir -p $@
 	$(Q) $(ESPTOOL) elf2image $(TARGET_OUT) --output $@/
 
-$(APP_AR): $(OBJ)
+$(APP_AR):  libesphttpd $(OBJ)
 	$(vecho) "AR $@"
-	$(Q) $(AR) cru $@ $^
+	$(Q) $(AR) cru $@ $(OBJ)
 
 checkdirs: $(BUILD_DIR)
 
