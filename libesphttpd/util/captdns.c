@@ -11,9 +11,10 @@
 
 
 /*
-This is a 'captive portal' DNS server: it basically replies with a fixed IP for any and all DNS
-queries. This can be used to send mobile phones, tablets etc which connect to the ESP in 
-AP mode directly to the internal webserver.
+This is a 'captive portal' DNS server: it basically replies with a fixed IP (in this case:
+the one of the SoftAP interface of this ESP module) for any and all DNS queries. This can 
+be used to send mobile phones, tablets etc which connect to the ESP in AP mode directly to
+the internal webserver.
 */
 
 

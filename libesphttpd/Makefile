@@ -2,7 +2,7 @@
 # Directory the Makefile is in. Please don't include other Makefiles before this.
 THISDIR:=$(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-#Include httpd config from lower level
+#Include httpd config from lower level, if it exists
 -include ../esphttpdconfig.mk
 
 
@@ -29,11 +29,10 @@ SDK_BASE	?= /opt/Espressif/ESP8266_SDK
 LIB		= libesphttpd.a
 
 # which modules (subdirectories) of the project to include in compiling
-#MODULES		= driver user lwip/api lwip/app lwip/core lwip/core/ipv4 lwip/netif
 MODULES		= espfs core util
 EXTRA_INCDIR	= ./include \
-		. \
-		lib/heatshrink/
+					. \
+					lib/heatshrink/
 
 
 # compiler flags using during compilation of source files
@@ -44,15 +43,13 @@ CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-
 # various paths from the SDK used in this project
 SDK_LIBDIR	= lib
 SDK_LDDIR	= ld
-SDK_INCDIR	= include include/json
+SDK_INCDIR	= include
 
 # select which tools to use as compiler, librarian and linker
 CC		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
 AR		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-ar
 LD		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
-OBJCOPY		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objcopy
-
-
+OBJCOPY	:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objcopy
 
 ####
 #### no user configurable options below here
@@ -117,7 +114,6 @@ ifeq ("$(COMPRESS_W_YUI)","yes")
 	$(Q) for file in `find html_compressed -type f -name "*.js"`; do $(YUI-COMPRESSOR) --type js $$file -o $$file; done
 	$(Q) for file in `find html_compressed -type f -name "*.css"`; do $(YUI-COMPRESSOR) --type css $$file -o $$file; done
 	$(Q) awk "BEGIN {printf \"YUI compression ratio was: %.2f%%\\n\", (`du -b -s html_compressed/ | sed 's/\([0-9]*\).*/\1/'`/`du -b -s ../html/ | sed 's/\([0-9]*\).*/\1/'`)*100}"
-
 # mkespfsimage will compress html, css and js files with gzip by default if enabled
 # override with -g cmdline parameter
 	$(Q) cd html_compressed; find  | $(THISDIR)/espfs/mkespfsimage/mkespfsimage > $(THISDIR)/webpages.espfs; cd ..;
@@ -135,7 +131,6 @@ libwebpages-espfs.a: webpages.espfs
 
 espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 	$(Q) $(MAKE) -C espfs/mkespfsimage USE_HEATSHRINK="$(USE_HEATSHRINK)" GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
-	$(Q) $(AR) cru $@ $^
 
 clean:
 	$(Q) rm -f $(LIB)

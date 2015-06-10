@@ -1,5 +1,3 @@
-
-
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
@@ -9,6 +7,11 @@
  * ----------------------------------------------------------------------------
  */
 
+/*
+This is example code for the esphttpd library. It's a small-ish demo showing off 
+the server, including WiFi connection management capabilities, some IO and
+some pictures of cats.
+*/
 
 #include <esp8266.h>
 #include "httpd.h"
@@ -27,7 +30,7 @@
 //#define SHOW_HEAP_USE
 
 //The example can act as a captive portal, that is, if someone connects their phone to the access
-//point, it will automatically 
+//point, it will automatically load up the main page on most phones/tablets.
 #define CAPTIVE_PORTAL
 
 //Function that tells the authentication system what users/passwords live on the system.
@@ -47,6 +50,12 @@ int myPassFn(HttpdConnData *connData, int no, char *user, int userLen, char *pas
 	return 0;
 }
 
+#ifdef ESPFS_POS
+CgiUploadEspfsParams espfsParams={
+	.espFsPos=ESPFS_POS,
+	.espFsSize=ESPFS_SIZE
+};
+#endif
 
 /*
 This is the main url->function dispatching data struct.
@@ -67,8 +76,9 @@ HttpdBuiltInUrl builtInUrls[]={
 	{"/led.tpl", cgiEspFsTemplate, tplLed},
 	{"/index.tpl", cgiEspFsTemplate, tplCounter},
 	{"/led.cgi", cgiLed, NULL},
-	{"/updateweb.cgi", cgiUploadEspfs, NULL},
-
+#ifdef ESPFS_POS
+	{"/updateweb.cgi", cgiUploadEspfs, &espfsParams},
+#endif
 	//Routines to make the /wifi URL and everything beneath it work.
 
 //Enable the line below to protect the WiFi configuration with an username/password combo.
@@ -99,11 +109,9 @@ static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
 void user_init(void) {
 	stdoutInit();
 	ioInit();
-
 #ifdef CAPTIVE_PORTAL
 	captdnsInit();
 #endif
-
 	// 0x40200000 is the base address for spi flash memory mapping, ESPFS_POS is the position
 	// where image is written in flash that is defined in Makefile.
 #ifdef ESPFS_POS

@@ -1,4 +1,8 @@
-
+#Position and maximum length of espfs in flash memory. This can be undefined. In this case 
+#the webpages will be linked in into the executable file. If this is defined, please do a 
+#'make htmlflash' to flash the espfs into the ESPs memory.
+ESPFS_POS = 0x12000
+ESPFS_SIZE = 0x2E000
 
 # Output directors to store intermediate compiled files
 # relative to the project directory
@@ -19,19 +23,11 @@ ESPPORT		?= /dev/ttyUSB0
 ESPDELAY	?= 3
 ESPBAUD		?= 460800
 
-#Position and maximum length of espfs in flash memory
-#This can be undefined. In this case the webpages will be linked in into the
-#file.
-#ESPFS_POS = 0x12000
-#ESPFS_SIZE = 0x2E000
-
 
 # name for the target project
 TARGET		= httpd
 
-
 # which modules (subdirectories) of the project to include in compiling
-#MODULES		= driver user lwip/api lwip/app lwip/core lwip/core/ipv4 lwip/netif
 MODULES		= user
 EXTRA_INCDIR	= include libesphttpd/include
 
@@ -104,7 +100,7 @@ ifeq ("$(ESPFS_POS)","")
 #No hardcoded espfs position: link it in with the binaries.
 LIBS += -lwebpages-espfs
 else
-#Pass espfs position to rest of code
+#Hardcoded espfs location: Pass espfs position to rest of code
 CFLAGS += -DESPFS_POS=$(ESPFS_POS) -DESPFS_SIZE=$(ESPFS_SIZE)
 endif
 
