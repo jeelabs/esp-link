@@ -1,3 +1,0 @@
-[submodule "lib/heatshrink"]
-	path = libesphttpd/lib/heatshrink
-	url = https://github.com/atomicobject/heatshrink.git
