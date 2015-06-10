@@ -29,10 +29,6 @@ some pictures of cats.
 //The example can print out the heap use every 3 seconds. You can use this to catch memory leaks.
 //#define SHOW_HEAP_USE
 
-//The example can act as a captive portal, that is, if someone connects their phone to the access
-//point, it will automatically load up the main page on most phones/tablets.
-#define CAPTIVE_PORTAL
-
 //Function that tells the authentication system what users/passwords live on the system.
 //This is disabled in the default build; if you want to try it, enable the authBasic line in
 //the builtInUrls below.
@@ -68,9 +64,7 @@ general ones. Authorization things (like authBasic) act as a 'barrier' and
 should be placed above the URLs they protect.
 */
 HttpdBuiltInUrl builtInUrls[]={
-#ifdef CAPTIVE_PORTAL
-	{"*", cgiCheckHostname, "esp8266.local"},
-#endif
+	{"*", cgiRedirectApClientToHostname, "esp8266.local"},
 	{"/", cgiRedirect, "/index.tpl"},
 	{"/flash.bin", cgiReadFlash, NULL},
 	{"/led.tpl", cgiEspFsTemplate, tplLed},
@@ -109,9 +103,8 @@ static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
 void user_init(void) {
 	stdoutInit();
 	ioInit();
-#ifdef CAPTIVE_PORTAL
 	captdnsInit();
-#endif
+
 	// 0x40200000 is the base address for spi flash memory mapping, ESPFS_POS is the position
 	// where image is written in flash that is defined in Makefile.
 #ifdef ESPFS_POS

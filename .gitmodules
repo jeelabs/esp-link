@@ -1,3 +1,4 @@
 [submodule "libesphttpd"]
 	path = libesphttpd
-	url = http://git.spritesserver.nl/libesphttpd.git/
+#	url = http://git.spritesserver.nl/libesphttpd.git/
+	url = ssh://git@spritesmods.com:/opt/git/libesphttpd.git
