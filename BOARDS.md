@@ -13,18 +13,13 @@ Next to the buttons it is marked "TvE2015 esp-ftdi".
 It comes preloaded with the latest version of esp-link.
 
 Power: the on-board MCP1825S-33 regulator can provide 500mA and is good from about 3.6v to 6v.
-Connect power either to the 3-pin connector (gnd in center, 5v towards the esp module), or to
-the FTDI connector (GND marked, next to the buttons, 5V 3rd pin).
+Connect power either to the 3-pin connector (GND in center, 5v towards the esp module), or to
+the FTDI connector (GND marked next to the buttons, 5V on 3rd pin).
 
 On power-up you should see the green LED on for ~1 second (the yellow should go on too, but
-the firmware may not be configured correctly). After that it should blink according to the
+the firmware may not be configured correctly). After that the green should blink according to the
 patterns described in the README's LED indicators section. Follow the Wifi configuration details
 section thereafter.
-
-Reflashing the esp-bridge serially: you should not need to do this, use the over-the-air
-reflashing by running `make wiflash`. If you do need to reflash serially, connect TX of a
-USB BUB to RX of the esp-bridge and RX to TX (i.e. cross-over). Hold the flash button down
-and briefly press the rest button. Then run esptool.py.as described below.
 
 To connect a JeeNode to the esp-bridge to flash it or debug it, plug it into the FTDI
 port flipped-over, i.e. the component side of the JeeNode will be on the bottom and the
@@ -42,6 +37,11 @@ line is as follows:
 If you're using "edam's Arduino makefile" then you can simply set `SERIALDEV=net:bbb:2000` in your
 sketch's Makefile.
 
+Reflashing the esp-bridge serially: you should not need to do this, use the over-the-air
+reflashing by running `make wiflash`. If you do need to reflash serially, connect TX of a
+USB BUB to RX of the esp-bridge and RX to TX (i.e. cross-over). Hold the flash button down
+and briefly press the reset button. Then run esptool.py.as described below.
+
 jn-esp
 -------
 
@@ -50,8 +50,12 @@ and a JeePort (also marked). On the bottom it is marked "JN-ESP-V2".
 It comes preloaded with the latest version of esp-link.
 
 Power: the on-board MCP1825S-33 regulator can provide 500mA and is good from about 3.6v to 6v.
-Connect power either to the FTDI connector (GND and 5V marked on bottom) or to the
-JeePort (GND next to "reg-out" jumper and 5V marked P on bottom).
+Connect power to the FTDI connector (GND and 5V marked on bottom).
+
+On power-up you should see the green LED on for ~1 second (the yellow should go on too, but
+the firmware may not be configured correctly). After that the green should blink according to the
+patterns described in the README's LED indicators section. Follow the Wifi configuration details
+section thereafter.
 
 To program the LPC824 point the Embello uploader at port 23. Something like:
 ```
@@ -85,11 +89,21 @@ The pseudo-ftdi connector has the following pin-out:
  - 5: LPC824 P10/SCL
  - 6: LCP824 P23/A3/C4
 
-If you need to serially reflash the jnp-esp there are SMD pads for an FTDI connector on the
+The JeePort connector has the following pin-out:
+ - 1: LPC824 SWDIO/P2 (not 5v unlike JeeNodes!)
+ - 2: LPC824 P14/A2/C3
+ - 3: GND
+ - 4: 3.3V (reg output)
+ - 5: LPC824 P13/A10
+ - 6: LPC824 SWCLK/P2
+
+Reflashing the jn-esp serially: you should not need to do this, use the over-the-air
+reflashing by running `make wiflash`.
+If you do need to serially reflash the jn-esp there are SMD pads for an FTDI connector on the
 bottom below the esp-03 module. GND is marked. The best is to solder a right-angle
 connector to it such that the pins point up (i.e. to the component side). You can then
-hook-up a USB-BUB. I recommend jumpering the flash pin (next to GND) to GND and you need to
-hook the reste pin (6) to the USB-BUB's DTR (should happen automatically). RX&TX also go
+hook-up a USB-BUB. I recommend jumpering the flash pin (next to GND) to GND and to
+hook the reset pin (6) to the USB-BUB's DTR (should happen automatically). RX&TX also go
 straight through).
 
 Serial flashing
