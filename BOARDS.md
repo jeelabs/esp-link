@@ -24,8 +24,7 @@ section thereafter.
 Reflashing the esp-bridge serially: you should not need to do this, use the over-the-air
 reflashing by running `make wiflash`. If you do need to reflash serially, connect TX of a
 USB BUB to RX of the esp-bridge and RX to TX (i.e. cross-over). Hold the flash button down
-and briefly press the rest button. Then run esptool.py.as described below. (Note that a USB-BUB
-will not generally power the esp-03, you need to feed 5v separately.)
+and briefly press the rest button. Then run esptool.py.as described below.
 
 To connect a JeeNode to the esp-bridge to flash it or debug it, plug it into the FTDI
 port flipped-over, i.e. the component side of the JeeNode will be on the bottom and the
@@ -91,8 +90,7 @@ bottom below the esp-03 module. GND is marked. The best is to solder a right-ang
 connector to it such that the pins point up (i.e. to the component side). You can then
 hook-up a USB-BUB. I recommend jumpering the flash pin (next to GND) to GND and you need to
 hook the reste pin (6) to the USB-BUB's DTR (should happen automatically). RX&TX also go
-straight through). Note that your USB-BUB will not be able to power the esp-03, you will
-need to feed 5v separately.
+straight through).
 
 Serial flashing
 ---------------
