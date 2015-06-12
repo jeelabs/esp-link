@@ -21,7 +21,7 @@ the firmware may not be configured correctly). After that the green should blink
 patterns described in the README's LED indicators section. Follow the Wifi configuration details
 section thereafter.
 
-To connect a JeeNode to the esp-bridge to flash it or debug it, plug it into the FTDI
+To connect a JeeNode to the esp-bridge to flash the AVR or debug it, plug it into the FTDI
 port flipped-over, i.e. the component side of the JeeNode will be on the bottom and the
 components of the esp-bridge will be on the top. (Yes, the FTDI port should have been reversed
 on the esp-bridge...)
@@ -37,8 +37,11 @@ line is as follows:
 If you're using "edam's Arduino makefile" then you can simply set `SERIALDEV=net:bbb:2000` in your
 sketch's Makefile.
 
-Reflashing the esp-bridge serially: you should not need to do this, use the over-the-air
-reflashing by running `make wiflash`. If you do need to reflash serially, connect TX of a
+To program an LPC processor using the JeeLabs uploader. follow the instructions below for the jn-esp.
+
+Reflashing the esp-bridge itself (as opposed to the attached uController):
+_you should not need to do this!_, in general use the over-the-air reflashing by downloading the latest release.
+If you cannot reflash over-the-air and need to reflash serially, connect TX of a
 USB BUB to RX of the esp-bridge and RX to TX (i.e. cross-over). Hold the flash button down
 and briefly press the reset button. Then run esptool.py.as described below.
 
@@ -57,7 +60,8 @@ the firmware may not be configured correctly). After that the green should blink
 patterns described in the README's LED indicators section. Follow the Wifi configuration details
 section thereafter.
 
-To program the LPC824 point the Embello uploader at port 23. Something like:
+To program the LPC824 _ensure that you have a recent version of the Embello uploader_
+and point the Embello uploader at port 23. Something like:
 ```
 uploader -w -t -s 192.168.0.92:23 build/firmware.bin
 ```
@@ -97,10 +101,10 @@ The JeePort connector has the following pin-out:
  - 5: LPC824 P13/A10
  - 6: LPC824 SWCLK/P2
 
-Reflashing the jn-esp serially: you should not need to do this, use the over-the-air
-reflashing by running `make wiflash`.
-If you do need to serially reflash the jn-esp there are SMD pads for an FTDI connector on the
-bottom below the esp-03 module. GND is marked. The best is to solder a right-angle
+Reflashing the jn-esp's esp8266 itself (as opposed to the attached uController):
+_you should not need to do this!_, in general use the over-the-air reflashing by downloading the latest release.
+If you cannot reflash over-the-air and need to reflash serially, there are SMD pads for an FTDI connector on the
+bottom of the PCB below the esp-03 module. GND is marked. The best is to solder a right-angle
 connector to it such that the pins point up (i.e. to the component side). You can then
 hook-up a USB-BUB. I recommend jumpering the flash pin (next to GND) to GND and to
 hook the reset pin (6) to the USB-BUB's DTR (should happen automatically). RX&TX also go
