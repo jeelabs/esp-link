@@ -1,5 +1,3 @@
-%head%
-
   <div id="main">
     <div class="header">
       <h1><span class="esp">esp</span> link - Microcontroller Console</h1>
@@ -22,88 +20,29 @@
 </div>
 
 <script src="ui.js"></script>
+<script type="text/javascript">console_url = "/console/text"</script>
+<script src="console.js"></script>
 <script type="text/javascript">
-  function loadJSON(url, okCb, errCb) {
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = handleEv;
-
-    function handleEv() {
-      try {
-        //console.log("handleEv", xhr.readyState);
-        if(xhr.readyState < 4) {
-          return;
-        }
-
-        if(xhr.status !== 200) {
-          //console.log("handleEv error cb");
-          if (errCb != null) errCb(xhr);
-          return;
-        }
-
-        // all is well  
-        if(xhr.readyState === 4) {
-          //console.log("handleEv success cb");
-          if (okCb != null) okCb(xhr, JSON.parse(xhr.responseText));
-        }
-      } catch(e) {return;}
-    }
-
-    xhr.open('GET', url, true);
-    xhr.send('');
-  }
-
-  function fetchText(delay) {
-    el = document.getElementById("console");
-    if (el.textEnd == undefined) {
-      el.textEnd = 0;
-      el.innerHTML = "";
-    }
-    window.setTimeout(function() {
-      loadJSON("/console/text?start=" + el.textEnd, updateText, retryLoad);
-    }, delay);
-  }
-
-  function updateText(xhr, resp) {
-    el = document.getElementById("console");
-
-    delay = 3000;
-    if (el == null || resp == null) {
-      //console.log("updateText got null response? xhr=", xhr);
-    } else if (resp.len == 0) {
-      //console.log("updateText got no new text");
-    } else {
-      console.log("updateText got", resp.len, "chars at", resp.start);
-      if (resp.start > el.textEnd) {
-        el.innerHTML = el.innerHTML.concat("\r\n<missing lines\r\n");
-      }
-      el.innerHTML = el.innerHTML.concat(resp.text);
-      el.textEnd = resp.start + resp.len;
-      delay = 500;
-    }
-    fetchText(delay);
-  }
-
-  function retryLoad(xhr) {
-    fetchText(1000);
-  }
-
   function baudButton(baud) {
-    document.getElementById(""+baud+"-button").addEventListener("click", function(e) {
-      console.log("switching to", baud, "baud");
+    $("#"+baud+"-button").addEventListener("click", function(e) {
       e.preventDefault();
-      loadJSON("/console/baud?rate="+baud);
+      ajaxSpin('GET', "/console/baud?rate="+baud,
+        function(resp) { showNotification("" + baud + " baud set"); },
+        function(s, st) { showWarning("Error setting baud rate: ", st); }
+      );
     });
   }
 
   window.onload = function() {
     fetchText(100);
 
-    document.getElementById("reset-button").addEventListener("click", function(e) {
-      el = document.getElementById("console");
+    $("#reset-button").addEventListener("click", function(e) {
       e.preventDefault();
-      //console.log("reset click");
-      el.innerHTML = "";
-      loadJSON("/console/reset");
+      $("#console").innerHTML = "";
+      ajaxSpin('GET', "/console/reset",
+        function(resp) { showNotification("uC reset"); },
+        function(s, st) { showWarning("Error resetting uC"); }
+      );
     });
     baudButton(57600);
     baudButton(115200);

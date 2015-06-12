@@ -5,6 +5,6 @@
 
 void logInit(void);
 void ICACHE_FLASH_ATTR log_uart(bool enable);
-int tplLog(HttpdConnData *connData, char *token, void **arg);
+int ICACHE_FLASH_ATTR ajaxLog(HttpdConnData *connData);
 
 #endif

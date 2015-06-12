@@ -44,13 +44,6 @@ console_write_char(char c) {
 	console_write(c);
 }
 
-void ICACHE_FLASH_ATTR
-jsonHeader(HttpdConnData *connData, int code) {
-	httpdStartResponse(connData, code);
-	httpdHeader(connData, "Content-Type", "application/json");
-	httpdEndHeaders(connData);
-}
-
 int ICACHE_FLASH_ATTR
 ajaxConsoleReset(HttpdConnData *connData) {
 	jsonHeader(connData, 200);
@@ -116,31 +109,6 @@ ajaxConsole(HttpdConnData *connData) {
 	}
 	os_strcpy(buff+len, "\"}"); len+=2;
 	httpdSend(connData, buff, len);
-	return HTTPD_CGI_DONE;
-}
-
-//===== Display a web page with the console
-int ICACHE_FLASH_ATTR
-tplConsole(HttpdConnData *connData, char *token, void **arg) {
-	if (token==NULL) return HTTPD_CGI_DONE;
-
-/*
-	if (os_strcmp(token, "console") == 0) {
-		if (console_wr > console_rd) {
-			httpdSend(connData, console_buf+console_rd, console_wr-console_rd);
-		} else if (console_rd != console_wr) {
-			httpdSend(connData, console_buf+console_rd, BUF_MAX-console_rd);
-			httpdSend(connData, console_buf, console_wr);
-		} else {
-			httpdSend(connData, "<buffer empty>", -1);
-		}
-	} else if (os_strcmp(token, "head")==0) {
-*/
-	if (os_strcmp(token, "head")==0) {
-		printHead(connData);
-	} else {
-		httpdSend(connData, "Unknown\n", -1);
-	}
 	return HTTPD_CGI_DONE;
 }
 

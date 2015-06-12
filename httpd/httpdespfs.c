@@ -15,6 +15,7 @@ Connector to let httpd use the espfs filesystem to serve the files in it.
 #include "httpdespfs.h"
 #include "espfs.h"
 #include "espfsformat.h"
+#include "cgi.h"
 
 // The static files marked with FLAG_GZIP are compressed and will be served with GZIP compression.
 // If the client does not advertise that he accepts GZIP send following warning message (telnet users for e.g.)
@@ -87,6 +88,72 @@ int ICACHE_FLASH_ATTR cgiEspFsHook(HttpdConnData *connData) {
 }
 
 
+//cgiEspFsHtml is a simple HTML file that gets prefixed by head.tpl
+int ICACHE_FLASH_ATTR cgiEspFsHtml(HttpdConnData *connData) {
+  EspFsFile *file = connData->cgiData;
+	char buff[2048];
+
+	if (connData->conn==NULL) {
+		// Connection aborted. Clean up.
+		if (file != NULL) espFsClose(file);
+		return HTTPD_CGI_DONE;
+	}
+
+	// The first time around we send the head template in one go and we open the file
+	if (file == NULL) {
+		int status = 200;
+		// open file, return error on failure
+		file = espFsOpen("/head.tpl");
+		if (file == NULL) {
+			os_strcpy(buff, "Header file 'head.tpl' not found\n");
+			os_printf(buff);
+			status = 500;
+		} else {
+			// read file and return it
+			int len = espFsRead(file, buff, sizeof(buff));
+			if (len == sizeof(buff)) {
+				os_strcpy(buff, "Header file 'head.tpl' too large!\n");
+				os_printf(buff);
+				status = 500;
+			}
+			// open the real file for next time around
+			file = espFsOpen(connData->url);
+			if (file == NULL) {
+				os_strcpy(buff, connData->url);
+				os_strcat(buff, " not found\n");
+				os_printf(buff);
+				status = 404;
+			} else {
+				connData->cgiData = file;
+				httpdStartResponse(connData, 200);
+				httpdHeader(connData, "Content-Type", "text/html; charset=UTF-8");
+				httpdEndHeaders(connData);
+				httpdSend(connData, buff, len);
+				printGlobalJSON(connData);
+				return HTTPD_CGI_MORE;
+			}
+		}
+		// error response
+		httpdStartResponse(connData, status);
+		httpdHeader(connData, "text/plain", "text/html; charset=UTF-8");
+		httpdEndHeaders(connData);
+		httpdSend(connData, buff, -1);
+		return HTTPD_CGI_DONE;
+	}
+
+	// The second time around send actual file
+	int len = espFsRead(file, buff, sizeof(buff));
+	httpdSend(connData, buff, len);
+	if (len == sizeof(buff)) {
+		return HTTPD_CGI_MORE;
+	} else {
+		connData->cgiData = NULL;
+		espFsClose(file);
+		return HTTPD_CGI_DONE;
+	}
+}
+
+#if 0
 //cgiEspFsTemplate can be used as a template.
 
 typedef struct {
@@ -186,4 +253,5 @@ int ICACHE_FLASH_ATTR cgiEspFsTemplate(HttpdConnData *connData) {
 		return HTTPD_CGI_MORE;
 	}
 }
+#endif
 

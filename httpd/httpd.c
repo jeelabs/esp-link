@@ -19,7 +19,7 @@ Esp8266 http server - core routines
 //Max length of request head
 #define MAX_HEAD_LEN 1024
 //Max amount of connections
-#define MAX_CONN 4
+#define MAX_CONN 6
 //Max post buffer len
 #define MAX_POST 1024
 //Max send buffer len
@@ -56,7 +56,7 @@ typedef struct {
 //add it here.
 static const MimeMap mimeTypes[]={
 	{"htm", "text/htm"},
-	{"html", "text/html"},
+	{"html", "text/html; charset=UTF-8"},
 	{"css", "text/css"},
 	{"js", "text/javascript"},
 	{"txt", "text/plain"},

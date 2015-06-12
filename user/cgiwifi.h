@@ -6,7 +6,7 @@
 enum { wifiIsDisconnected, wifiIsConnected, wifiGotIP };
 
 int cgiWiFiScan(HttpdConnData *connData);
-int tplWlan(HttpdConnData *connData, char *token, void **arg);
+int cgiWifiInfo(HttpdConnData *connData);
 int cgiWiFi(HttpdConnData *connData);
 int cgiWiFiConnect(HttpdConnData *connData);
 int cgiWiFiSetMode(HttpdConnData *connData);

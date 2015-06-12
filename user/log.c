@@ -11,6 +11,7 @@
 #define BUF_MAX (1024)
 static char log_buf[BUF_MAX];
 static int log_wr, log_rd;
+static int log_pos;
 static bool log_no_uart; // start out printing to uart
 static bool log_newline; // at start of a new line
 
@@ -30,8 +31,10 @@ static void ICACHE_FLASH_ATTR
 log_write(char c) {
 	log_buf[log_wr] = c;
 	log_wr = (log_wr+1) % BUF_MAX;
-	if (log_wr == log_rd)
+	if (log_wr == log_rd) {
 		log_rd = (log_rd+1) % BUF_MAX; // full, eat first char
+		log_pos++;
+	}
 }
 
 #if 0
@@ -63,25 +66,47 @@ log_write_char(char c) {
 	log_write(c);
 }
 
-//===== Display a web page with the log
 int ICACHE_FLASH_ATTR
-tplLog(HttpdConnData *connData, char *token, void **arg) {
-	if (token==NULL) return HTTPD_CGI_DONE;
+ajaxLog(HttpdConnData *connData) {
+	char buff[2048];
+	int len; // length of text in buff
+	int log_len = (log_wr+BUF_MAX-log_rd) % BUF_MAX; // num chars in log_buf
+	int start = 0; // offset onto log_wr to start sending out chars
 
-	if (os_strcmp(token, "log") == 0) {
-		if (log_wr > log_rd) {
-			httpdSend(connData, log_buf+log_rd, log_wr-log_rd);
-		} else if (log_rd != log_wr) {
-			httpdSend(connData, log_buf+log_rd, BUF_MAX-log_rd);
-			httpdSend(connData, log_buf, log_wr);
+	jsonHeader(connData, 200);
+
+	// figure out where to start in buffer based on URI param
+	len = httpdFindArg(connData->getArgs, "start", buff, sizeof(buff));
+	if (len > 0) {
+		start = atoi(buff);
+		if (start < log_pos) {
+			start = 0;
+		} else if (start >= log_pos+log_len) {
+			start = log_len;
 		} else {
-			httpdSend(connData, "<buffer empty>", -1);
+			start = start - log_pos;
 		}
-	} else if (os_strcmp(token, "head")==0) {
-		printHead(connData);
-	} else {
-		httpdSend(connData, "Unknown\n", -1);
 	}
+
+	// start outputting
+	len = os_sprintf(buff, "{\"len\":%d, \"start\":%d, \"text\": \"",
+			log_len-start, log_pos+start);
+
+	int rd = (log_rd+start) % BUF_MAX;
+	while (len < 2040 && rd != log_wr) {
+		uint8_t c = log_buf[rd];
+		if (c == '\\' || c == '"') {
+			buff[len++] = '\\';
+			buff[len++] = c;
+		} else if (c < ' ') {
+			len += os_sprintf(buff+len, "\\u%04x", c);
+		} else {
+			buff[len++] = c;
+		}
+		rd = (rd + 1) % BUF_MAX;
+	}
+	os_strcpy(buff+len, "\"}"); len+=2;
+	httpdSend(connData, buff, len);
 	return HTTPD_CGI_DONE;
 }
 
