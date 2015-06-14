@@ -82,7 +82,7 @@ HttpdBuiltInUrl builtInUrls[]={
 	{"/wifi/", cgiRedirect, "/wifi/wifi.tpl"},
 	{"/wifi/wifi.tpl", cgiEspFsHtml, NULL},
 	{"/wifi/info", cgiWifiInfo, NULL},
-	{"/wifi/wifiscan", cgiWiFiScan, NULL},
+	{"/wifi/scan", cgiWiFiScan, NULL},
 	{"/wifi/connect", cgiWiFiConnect, NULL},
 	{"/wifi/connstatus", cgiWiFiConnStatus, NULL},
 	{"/wifi/setmode", cgiWiFiSetMode, NULL},
@@ -122,6 +122,7 @@ void user_init(void) {
 	// Status LEDs
 	statusInit(LED_CONN_PIN);
 	serledInit(LED_SERIAL_PIN);
+	logInit();
 	// Wifi
 	wifiInit();
 	// init the flash filesystem with the html stuff
@@ -138,5 +139,4 @@ void user_init(void) {
 	os_timer_arm(&prHeapTimer, 3000, 1);
 #endif
 	os_printf("** esp-link ready\n");
-	logInit();
 }

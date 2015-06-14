@@ -21,6 +21,7 @@ typedef int (* cgiSendCallback)(HttpdConnData *connData);
 //A struct describing a http connection. This gets passed to cgi functions.
 struct HttpdConnData {
 	struct espconn *conn;
+	uint32 startTime;
 	char requestType;
 	char *url;
 	char *getArgs;

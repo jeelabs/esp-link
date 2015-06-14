@@ -93,6 +93,10 @@ static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
 
 //Retires a connection for re-use
 static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
+	uint32 dt = conn->startTime;
+	if (dt > 0) dt = (system_get_time() - dt)/1000;
+	os_printf("Closed %p, took %ums, heap=%ld\n", conn->conn, dt,
+			(unsigned long)system_get_free_heap_size());
 	if (conn->post->buff!=NULL) os_free(conn->post->buff);
 	conn->post->buff=NULL;
 	conn->cgi=NULL;
@@ -192,7 +196,8 @@ int ICACHE_FLASH_ATTR httpdGetHeader(HttpdConnData *conn, char *header, char *re
 void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code) {
 	char buff[128];
 	int l;
-	l=os_sprintf(buff, "HTTP/1.0 %d OK\r\nServer: esp8266-httpd/"HTTPDVER"\r\nConnection: close\r\n", code);
+	char *status = code < 400 ? "OK" : "ERROR";
+	l = os_sprintf(buff, "HTTP/1.0 %d %s\r\nServer: esp-link\r\nConnection: close\r\n", code, status);
 	httpdSend(conn, buff, l);
 }
 
@@ -215,7 +220,7 @@ void ICACHE_FLASH_ATTR httpdEndHeaders(HttpdConnData *conn) {
 void ICACHE_FLASH_ATTR httpdRedirect(HttpdConnData *conn, char *newUrl) {
 	char buff[1024];
 	int l;
-	l=os_sprintf(buff, "HTTP/1.0 302 Found\r\nServer: esp8266-httpd/"HTTPDVER"\r\nConnection: close\r\nLocation: %s\r\n\r\nRedirecting to %s\r\n", newUrl, newUrl);
+	l=os_sprintf(buff, "HTTP/1.0 302 Found\r\nServer: esp8266-link\r\nConnection: close\r\nLocation: %s\r\n\r\nRedirecting to %s\r\n", newUrl, newUrl);
 	httpdSend(conn, buff, l);
 }
 
@@ -372,7 +377,12 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		if (e==NULL) return; //wtf?
 		*e=0; //terminate url part
 
-		os_printf("%s %s\n", HTTPD_METHOD_GET?"GET":"POST", conn->url);
+		os_printf("%s %s (%p) %d.%d.%d.%d:%d\n",
+				conn->requestType == HTTPD_METHOD_GET ? "GET" : "POST",
+				conn->url, conn->conn,
+				conn->conn->proto.tcp->remote_ip[0], conn->conn->proto.tcp->remote_ip[1],
+				conn->conn->proto.tcp->remote_ip[2], conn->conn->proto.tcp->remote_ip[3],
+				conn->conn->proto.tcp->remote_port);
 		//Parse out the URL part before the GET parameters.
 		conn->getArgs=(char*)os_strstr(conn->url, "?");
 		if (conn->getArgs!=0) {
@@ -471,13 +481,6 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 	}
 }
 
-static void ICACHE_FLASH_ATTR httpdReconCb(void *arg, sint8 err) {
-	HttpdConnData *conn=httpdFindConnData(arg);
-	os_printf("ReconCb\n");
-	if (conn==NULL) return;
-	//Yeah... No idea what to do here. ToDo: figure something out.
-}
-
 static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
 	//The esp sdk passes through wrong arg here, namely the one of the *listening* socket.
 	//That is why we can't use (HttpdConnData)arg->sock here.
@@ -490,12 +493,18 @@ static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
 			//is then used for something else, and we can use that to capture *most* of the
 			//disconnect cases.
 			if (connData[i].conn->state==ESPCONN_NONE || connData[i].conn->state>=ESPCONN_CLOSE) {
-				connData[i].conn=NULL;
 				if (connData[i].cgi!=NULL) connData[i].cgi(&connData[i]); //flush cgi data
 				httpdRetireConn(&connData[i]);
 			}
 		}
 	}
+}
+
+// Callback indicating a failure in the connection. "Recon" is probably intended in the sense
+// of "you need to reconnect". Sigh...
+static void ICACHE_FLASH_ATTR httpdReconCb(void *arg, sint8 err) {
+	os_printf("Connection %p died, err=%d\n", arg, err);
+	httpdDisconCb(arg); // no different from close...
 }
 
 
@@ -518,6 +527,7 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 	connData[i].post->buffLen=0;
 	connData[i].post->received=0;
 	connData[i].post->len=-1;
+	connData[i].startTime = system_get_time();
 
 	espconn_regist_recvcb(conn, httpdRecvCb);
 	espconn_regist_reconcb(conn, httpdReconCb);

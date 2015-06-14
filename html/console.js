@@ -1,11 +1,16 @@
-function fetchText(delay) {
+function fetchText(delay, repeat) {
   el = $("#console");
   if (el.textEnd == undefined) {
     el.textEnd = 0;
     el.innerHTML = "";
   }
   window.setTimeout(function() {
-    ajaxJson('GET', console_url + "?start=" + el.textEnd, updateText, retryLoad);
+    ajaxJson('GET', console_url + "?start=" + el.textEnd,
+      function(resp) {
+        var dly = updateText(resp);
+        if (repeat) fetchText(dly, repeat);
+      },
+      function() { retryLoad(repeat); });
   }, delay);
 }
 
@@ -22,9 +27,9 @@ function updateText(resp) {
     el.textEnd = resp.start + resp.len;
     delay = 500;
   }
-  fetchText(delay);
+  return delay;
 }
 
-function retryLoad() {
-  fetchText(1000);
+function retryLoad(repeat) {
+  fetchText(1000, repeat);
 }

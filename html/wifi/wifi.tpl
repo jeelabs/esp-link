@@ -6,23 +6,27 @@
     <div class="content pure-g">
       <div class="pure-u-12-24"><div class="card">
         <h1>Wifi State</h2>
-        <table class="pure-table pure-table-horizontal"><tbody>
+        <div id="wifi-spinner" class="spinner spinner-small"></div>
+        <table id="wifi-table" class="pure-table pure-table-horizontal" hidden><tbody>
         <tr><td>WiFi mode</td><td id="wifi-mode"></td></tr>
         <tr><td>Configured network</td><td id="wifi-ssid"></td></tr>
         <tr><td>Wifi status</td><td id="wifi-status"></td></tr>
+        <tr><td>Wifi address</td><td id="wifi-ip"></td></tr>
         <tr><td>Wifi rssi</td><td id="wifi-rssi"></td></tr>
         <tr><td>Wifi phy</td><td id="wifi-phy"></td></tr>
+        <tr><td>Wifi MAC</td><td id="wifi-mac"></td></tr>
         <tr><td colspan="2" id="wifi-warn"></td></tr>
         </tbody> </table>
       </div></div>
       <div class="pure-u-12-24"><div class="card">
         <h1>Wifi Association</h2>
+        <p id="reconnect" style="color: #600" hidden></p>
         <form action="#" id="wifiform" class="pure-form pure-form-stacked">
         <!--form name="wifiform" action="connect.cgi" method="post"-->
           <legend>To connect to a WiFi network, please select one of the detected networks,
              enter the password, and hit the connect button...</legend>
           <label>Network SSID</label>
-          <div id="aps">Scanning...</div>
+          <div id="aps">Scanning... <div class="spinner spinner-small"></div></div>
           <label>WiFi password, if applicable:</label>
           <input id="wifi-passwd" type="text" name="passwd" placeholder="password">
           <button id="connect-button" type="submit" class="pure-button button-primary">Connect!</button>
@@ -83,95 +87,128 @@ function getSelectedEssid() {
   return currAp;
 }
 
-var scan_xhr = j();
-function scanAPs() {
-  scan_xhr.open("GET", "wifiscan");
-  scan_xhr.onreadystatechange = function() {
-    if (scan_xhr.readyState == 4 && scan_xhr.status >= 200 && scan_xhr.status < 300) {
-      var data = JSON.parse(scan_xhr.responseText);
+var scanTimeout = null;
+
+function scanResult() {
+  ajaxJson('GET', "scan", function(data) {
       currAp = getSelectedEssid();
       if (data.result.inProgress == "0" && data.result.APs.length > 1) {
         $("#aps").innerHTML = "";
+        var n = 0;
         for (var i=0; i<data.result.APs.length; i++) {
           if (data.result.APs[i].essid == "" && data.result.APs[i].rssi == 0) continue;
           $("#aps").appendChild(createInputForAp(data.result.APs[i]));
+          n = n+1;
         }
-        //window.setTimeout(scanAPs, 10000);
+        showNotification("Scan found " + n + " networks");
+        var cb = $("#connect-button");
+        cb.className = cb.className.replace(" pure-button-disabled", "");
+        if (scanTimeout != null) clearTimeout(scanTimeout);
+        scanTimeout = window.setTimeout(scanAPs, 20000);
       } else {
-        window.setTimeout(scanAPs, 1000);
+        window.setTimeout(scanResult, 1000);
       }
-    }
-  }
-  scan_xhr.send();
+    }, function(s, st) {
+      window.setTimeout(scanResult, 5000);
+  });
+}
+
+function scanAPs() {
+  scanTimeout = null;
+  ajaxSpin('POST', "scan", function(data) {
+    showNotification("Wifi scan started");
+    window.setTimeout(scanResult, 1000);
+  }, function(s, st) {
+    showNotification("Wifi scan may have started?");
+    window.setTimeout(scanResult, 1000);
+  });
+}
+
+function showWifiInfo(data) {
+  Object.keys(data).forEach(function(v) {
+    el = $("#wifi-" + v);
+    if (el != null) el.innerHTML = data[v];
+  });
+  $("#wifi-spinner").setAttribute("hidden", "");
+  $("#wifi-table").removeAttribute("hidden");
+  currAp = data.ssid;
 }
 
 function getWifiInfo() {
-  var xhr = j();
-  xhr.open("GET", "info");
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState != 4) { return; }
-    if (xhr.status >= 200 && xhr.status < 300) {
-      var data = JSON.parse(xhr.responseText);
-      Object.keys(data).forEach(function(v) {
-        el = document.getElementById("wifi-" + v);
-        if (el != null) el.innerHTML = data[v];
-      });
-      currAp = data.ssid;
-    } else {
-      window.setTimeout(getWifiInfo, 1000);
-    }
-  }
-  xhr.send();
+  ajaxJson('GET', "info", showWifiInfo,
+      function(s, st) { window.setTimeout(getWifiInfo, 1000); });
 }
 
 function getStatus() {
-  var xhr = j();
-  xhr.open("GET", "connstatus");
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState != 4) { return; }
-    if (xhr.status >= 200 && xhr.status < 300) {
-      var data = JSON.parse(xhr.responseText);
+  ajaxJsonSpin("GET", "connstatus", function(data) {
       if (data.status == "idle" || data.status == "connecting") {
         $("#aps").innerHTML = "Connecting...";
+        showNotification("Connecting...");
         window.setTimeout(getStatus, 1000);
       } else if (data.status == "got IP address") {
-        $("#aps").innerHTML="Connected! Got IP "+data.ip+ ".<br/>" +
-          "If you're in the same network, you can access it <a href=\"http://"+data.ip+
-          "/\">here</a>.<br/>ESP Link will switch to STA-only mode in a few seconds.";
+        var txt = "Connected! Got IP "+data.ip;
+        showNotification(txt);
+        showWifiInfo(data);
+
+        var txt2 = "ESP Link will switch to STA-only mode in a few seconds";
+        window.setTimeout(function() { showNotification(txt2); }, 4000);
+
+        $("#reconnect").removeAttribute("hidden");
+        $("#reconnect").innerHTML =
+          "If you are in the same network, go to <a href=\"http://"+data.ip+
+          "/\">"+data.ip+"</a>, else connect to network "+data.ssid+" first.";
       } else {
-        $("#aps").innerHTML="Oops: " + data.status + ". Reason: " + data.reason +
-          "<br/>Check password and selected AP.<br/><a href=\"wifi.tpl\">Go Back</a>";
+        showWarning("Connection failed: " + data.status + ", " + data.reason);
+        $("#aps").innerHTML = 
+          "Check password and selected AP. <a href=\"wifi.tpl\">Go Back</a>";
       }
-    } else {
+    }, function(s, st) {
+      //showWarning("Can't get status: " + st);
       window.setTimeout(getStatus, 2000);
-    }
-  }
-  xhr.send();
+    });
+}
+
+function changeWifiMode(m) {
+  hideWarning();
+  ajaxSpin("POST", "setmode?mode=" + m, function(resp) {
+    showNotification("Mode changed");
+    window.setTimeout(getWifiInfo, 100);
+  }, function(s, st) {
+    showWarning("Error changing mode: " + st);
+    window.setTimeout(getWifiInfo, 100);
+  });
 }
 
 function changeWifiAp(e) {
   e.preventDefault();
-  var xhr = j();
   var passwd = $("#wifi-passwd").value;
   var essid = getSelectedEssid();
   console.log("Posting form", "essid=" + essid, "pwd="+passwd);
-  xhr.open("POST", "connect");
-  xhr.onreadystatechange = function() {
-    if (xhr.readyState != 4) { return; }
-    if (xhr.status >= 200 && xhr.status < 300) {
+  showNotification("Connecting to " + essid);
+  var url = "connect?essid="+encodeURIComponent(essid)+"&passwd="+encodeURIComponent(passwd);
+
+  hideWarning();
+  $("#reconnect").setAttribute("hidden", "");
+  $("#wifi-passwd").value = "";
+  var cb = $("#connect-button");
+  var cn = cb.className;
+  cb.className += ' pure-button-disabled';
+  ajaxSpin("POST", url, function(resp) {
+      $("#spinner").removeAttribute('hidden'); // hack
+      showNotification("Waiting for network change...");
+      window.scrollTo(0, 0);
       window.setTimeout(getStatus, 2000);
-    } else {
+    }, function(s, st) {
+      showWarning("Error switching network: "+st);
+      cb.className = cn;
       window.setTimeout(scanAPs, 1000);
-    }
-  }
-  xhr.setRequestHeader("Content-type", "application/x-form-urlencoded");
-  xhr.send("essid="+encodeURIComponent(essid)+"&passwd="+encodeURIComponent(passwd));
+    });
 }
 
 window.onload=function(e) {
   getWifiInfo();
   $("#wifiform").onsubmit = changeWifiAp;
-  window.setTimeout(scanAPs, 500);
+  scanTimeout = window.setTimeout(scanAPs, 500);
 };
 </script>
 </body></html>

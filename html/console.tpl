@@ -34,7 +34,7 @@
   }
 
   window.onload = function() {
-    fetchText(100);
+    fetchText(100, true);
 
     $("#reset-button").addEventListener("click", function(e) {
       e.preventDefault();

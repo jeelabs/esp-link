@@ -108,34 +108,40 @@ int ICACHE_FLASH_ATTR cgiEspFsHtml(HttpdConnData *connData) {
 			os_strcpy(buff, "Header file 'head.tpl' not found\n");
 			os_printf(buff);
 			status = 500;
-		} else {
-			// read file and return it
-			int len = espFsRead(file, buff, sizeof(buff));
-			if (len == sizeof(buff)) {
-				os_strcpy(buff, "Header file 'head.tpl' too large!\n");
-				os_printf(buff);
-				status = 500;
-			}
-			// open the real file for next time around
-			file = espFsOpen(connData->url);
-			if (file == NULL) {
-				os_strcpy(buff, connData->url);
-				os_strcat(buff, " not found\n");
-				os_printf(buff);
-				status = 404;
-			} else {
-				connData->cgiData = file;
-				httpdStartResponse(connData, 200);
-				httpdHeader(connData, "Content-Type", "text/html; charset=UTF-8");
-				httpdEndHeaders(connData);
-				httpdSend(connData, buff, len);
-				printGlobalJSON(connData);
-				return HTTPD_CGI_MORE;
-			}
+			goto error;
 		}
-		// error response
+
+		// read file and return it
+		int len = espFsRead(file, buff, sizeof(buff));
+		espFsClose(file);
+		if (len == sizeof(buff)) {
+			os_sprintf(buff, "Header file 'head.tpl' too large (%d>%d)!\n", len, sizeof(buff));
+			os_printf(buff);
+			status = 500;
+			goto error;
+		}
+
+		// before returning, open the real file for next time around
+		file = espFsOpen(connData->url);
+		if (file == NULL) {
+			os_strcpy(buff, connData->url);
+			os_strcat(buff, " not found\n");
+			os_printf(buff);
+			status = 404;
+			goto error;
+		}
+
+		connData->cgiData = file;
 		httpdStartResponse(connData, status);
-		httpdHeader(connData, "text/plain", "text/html; charset=UTF-8");
+		httpdHeader(connData, "Content-Type", "text/html; charset=UTF-8");
+		httpdEndHeaders(connData);
+		httpdSend(connData, buff, len);
+		printGlobalJSON(connData);
+		return HTTPD_CGI_MORE;
+
+error: // error response
+		httpdStartResponse(connData, status);
+		httpdHeader(connData, "Content-Type", "text/html; charset=UTF-8");
 		httpdEndHeaders(connData);
 		httpdSend(connData, buff, -1);
 		return HTTPD_CGI_DONE;

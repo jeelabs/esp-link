@@ -7,8 +7,8 @@
 // The web log has a 1KB circular in-memory buffer which os_printf prints into and
 // the HTTP handler simply displays the buffer content on a web page.
 
-// see consolse.c for invariants (same here)
-#define BUF_MAX (1024)
+// see console.c for invariants (same here)
+#define BUF_MAX (1400)
 static char log_buf[BUF_MAX];
 static int log_wr, log_rd;
 static int log_pos;
@@ -18,9 +18,9 @@ static bool log_newline; // at start of a new line
 void ICACHE_FLASH_ATTR
 log_uart(bool enable) {
 	if (!enable && !log_no_uart) {
-		os_printf("Turning OFF uart log\n");
+		//os_printf("Turning OFF uart log\n");
 		os_delay_us(4*1000L); // time for uart to flush
-		log_no_uart = !enable;
+		//log_no_uart = !enable;
 	} else if (enable && log_no_uart) {
 		log_no_uart = !enable;
 		os_printf("Turning ON uart log\n");
@@ -54,12 +54,17 @@ log_write_char(char c) {
 	// Uart output unless disabled
 	if (!log_no_uart) {
 		if (log_newline) {
-			uart0_write_char('>');
-			uart0_write_char(' ');
+			char buff[16];
+			int l = os_sprintf(buff, "%6d> ", (system_get_time()/1000)%1000000);
+			for (int i=0; i<l; i++)
+				uart0_write_char(buff[i]);
 			log_newline = false;
 		}
 		uart0_write_char(c);
-		log_newline = c == '\n';
+		if (c == '\n') {
+			log_newline = true;
+			uart0_write_char('\r');
+		}
 	}
 	// Store in log buffer
 	if (c == '\n') log_write('\r');

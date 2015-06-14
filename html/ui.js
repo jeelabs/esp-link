@@ -1,6 +1,5 @@
 // fill out menu items
 (function() {
-    console.log("Filling out menu with", menu.length, "items");
     html = "";
     for (var i=0; i<menu.length; i+=2) {
       html = html.concat(" <li class=\"pure-menu-item\"><a href=\"" + menu[i+1] +
@@ -52,14 +51,19 @@ function showWarning(text) {
   el.innerHTML = text;
   el.removeAttribute('hidden');
 }
-function hideWarning(text) {
+function hideWarning() {
   el = $("#warning").setAttribute('hidden', '');
 }
+var notifTimeout = null;
 function showNotification(text) {
   var el = $("#notification");
   el.innerHTML = text;
   el.removeAttribute('hidden');
-  setTimeout(function() { el.setAttribute('hidden', ''); }, 4000);
+  if (notifTimeout != null) clearTimeout(notifTimeout);
+  notifTimout = setTimeout(function() {
+      el.setAttribute('hidden', '');
+      notifTimout = null;
+    }, 4000);
 }
 
 function ajaxReq(method, url, ok_cb, err_cb) {
@@ -67,39 +71,58 @@ function ajaxReq(method, url, ok_cb, err_cb) {
   xhr.open(method, url);
   var timeout = setTimeout(function() {
     xhr.abort();
+    console.log("XHR abort:", method, url);
     err_cb(599, "Request timeout");
-  }, 20000);
+  }, 9000);
   xhr.onreadystatechange = function() {
     if (xhr.readyState != 4) { return; }
     clearTimeout(timeout);
     if (xhr.status >= 200 && xhr.status < 300) {
+      console.log("XHR done:", method, url, "->", xhr.status);
       ok_cb(xhr.responseText);
     } else {
-      err_cb(xhr.status, xhr.statusText);
+      console.log("XHR ERR :", method, url, "->", xhr.status, xhr.responseText);
+      err_cb(xhr.status, xhr.responseText);
     }
   }
-  xhr.send();
+  console.log("XHR send:", method, url);
+  try {
+    xhr.send();
+  } catch(err) {
+    console.log("XHR EXC :", method, url, "->", err);
+    err_cb(599, err);
+  }
+}
+
+function dispatchJson(resp, ok_cb, err_cb) {
+  var j;
+  try { j = JSON.parse(resp); }
+  catch(err) {
+    console.log("JSON parse error: " + err + ". In: " + resp);
+    err_cb(500, "JSON parse error: " + err);
+    return;
+  }
+  ok_cb(j);
 }
 
 function ajaxJson(method, url, ok_cb, err_cb) {
-  ajaxReq(method, url, function(resp) { ok_cb(JSON.parse(resp)); }, err_cb);
+  ajaxReq(method, url, function(resp) { dispatchJson(resp, ok_cb, err_cb); }, err_cb);
 }
 
 function ajaxSpin(method, url, ok_cb, err_cb) {
   $("#spinner").removeAttribute('hidden');
-  console.log("starting spinner");
   ajaxReq(method, url, function(resp) {
       $("#spinner").setAttribute('hidden', '');
       ok_cb(resp);
     }, function(status, statusText) {
       $("#spinner").setAttribute('hidden', '');
-      showWarning("Request error: " + statusText);
+      showWarning("Error: " + statusText);
       err_cb(status, statusText);
     });
 }
 
 function ajaxJsonSpin(method, url, ok_cb, err_cb) {
-  ajaxSpin(method, url, function(resp) { ok_cb(JSON.parse(resp)); }, err_cb);
+  ajaxSpin(method, url, function(resp) { dispatchJson(resp, ok_cb, err_cb); }, err_cb);
 }
 
 
