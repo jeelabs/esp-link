@@ -53,7 +53,7 @@ int ICACHE_FLASH_ATTR printGlobalInfo(char *buff, int buflen, char *token) {
 void ICACHE_FLASH_ATTR printGlobalJSON(HttpdConnData *connData) {
 	httpdSend(connData,
 			"<script type=\"text/javascript\">\n"
-			"menu = [\"Home\", \"/home.tpl\", \"Wifi\", \"/wifi/wifi.tpl\","
+			"var menu = [\"Home\", \"/home.tpl\", \"Wifi\", \"/wifi/wifi.tpl\","
 			"\"\xC2\xB5" "C Console\", \"/console.tpl\", \"Debug log\", \"/log.tpl\", "
 			"\"Help\", \"/help.tpl\" ];\n", -1);
 #   define VERS_STR_STR(V) #V

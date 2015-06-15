@@ -68,11 +68,12 @@ function showNotification(text) {
 
 function ajaxReq(method, url, ok_cb, err_cb) {
   var xhr = j();
-  xhr.open(method, url);
+  xhr.open(method, url, true);
   var timeout = setTimeout(function() {
     xhr.abort();
     console.log("XHR abort:", method, url);
-    err_cb(599, "Request timeout");
+    xhr.status = 599;
+    xhr.responseText = "request time-out";
   }, 9000);
   xhr.onreadystatechange = function() {
     if (xhr.readyState != 4) { return; }
@@ -81,7 +82,7 @@ function ajaxReq(method, url, ok_cb, err_cb) {
       console.log("XHR done:", method, url, "->", xhr.status);
       ok_cb(xhr.responseText);
     } else {
-      console.log("XHR ERR :", method, url, "->", xhr.status, xhr.responseText);
+      console.log("XHR ERR :", method, url, "->", xhr.status, xhr.responseText, xhr);
       err_cb(xhr.status, xhr.responseText);
     }
   }
@@ -116,7 +117,7 @@ function ajaxSpin(method, url, ok_cb, err_cb) {
       ok_cb(resp);
     }, function(status, statusText) {
       $("#spinner").setAttribute('hidden', '');
-      showWarning("Error: " + statusText);
+      //showWarning("Error: " + statusText);
       err_cb(status, statusText);
     });
 }

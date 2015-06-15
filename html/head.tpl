@@ -1,3 +1,4 @@
+<!doctype html>
 <html><head>
   <title>ESP Link</title>
   <link rel="stylesheet" href="/pure-min.css">

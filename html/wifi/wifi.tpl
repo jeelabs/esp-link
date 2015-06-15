@@ -40,6 +40,7 @@
 <script type="text/javascript">
 
 var currAp = "";
+var blockScan = 0;
 
 function createInputForAp(ap) {
   if (ap.essid=="" && ap.rssi==0) return;
@@ -88,8 +89,13 @@ function getSelectedEssid() {
 }
 
 var scanTimeout = null;
+var scanReqCnt = 0;
 
 function scanResult() {
+  if (scanReqCnt > 60) {
+    return scanAPs();
+  }
+  scanReqCnt += 1;
   ajaxJson('GET', "scan", function(data) {
       currAp = getSelectedEssid();
       if (data.result.inProgress == "0" && data.result.APs.length > 1) {
@@ -114,12 +120,17 @@ function scanResult() {
 }
 
 function scanAPs() {
+  if (blockScan) {
+    scanTimeout = window.setTimeout(scanAPs, 1000);
+    return;
+  }
   scanTimeout = null;
-  ajaxSpin('POST', "scan", function(data) {
-    showNotification("Wifi scan started");
+  scanReqCnt = 0;
+  ajaxReq('POST', "scan", function(data) {
+    //showNotification("Wifi scan started");
     window.setTimeout(scanResult, 1000);
   }, function(s, st) {
-    showNotification("Wifi scan may have started?");
+    //showNotification("Wifi scan may have started?");
     window.setTimeout(scanResult, 1000);
   });
 }
@@ -149,6 +160,7 @@ function getStatus() {
         var txt = "Connected! Got IP "+data.ip;
         showNotification(txt);
         showWifiInfo(data);
+        blockScan = 0;
 
         var txt2 = "ESP Link will switch to STA-only mode in a few seconds";
         window.setTimeout(function() { showNotification(txt2); }, 4000);
@@ -158,6 +170,7 @@ function getStatus() {
           "If you are in the same network, go to <a href=\"http://"+data.ip+
           "/\">"+data.ip+"</a>, else connect to network "+data.ssid+" first.";
       } else {
+        blockScan = 0;
         showWarning("Connection failed: " + data.status + ", " + data.reason);
         $("#aps").innerHTML = 
           "Check password and selected AP. <a href=\"wifi.tpl\">Go Back</a>";
@@ -169,13 +182,16 @@ function getStatus() {
 }
 
 function changeWifiMode(m) {
+  blockScan = 1;
   hideWarning();
   ajaxSpin("POST", "setmode?mode=" + m, function(resp) {
     showNotification("Mode changed");
     window.setTimeout(getWifiInfo, 100);
+    blockScan = 0;
   }, function(s, st) {
     showWarning("Error changing mode: " + st);
     window.setTimeout(getWifiInfo, 100);
+    blockScan = 0;
   });
 }
 
@@ -193,6 +209,7 @@ function changeWifiAp(e) {
   var cb = $("#connect-button");
   var cn = cb.className;
   cb.className += ' pure-button-disabled';
+  blockScan = 1;
   ajaxSpin("POST", url, function(resp) {
       $("#spinner").removeAttribute('hidden'); // hack
       showNotification("Waiting for network change...");
