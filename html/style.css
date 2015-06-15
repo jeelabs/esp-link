@@ -21,6 +21,24 @@ body {
 #aps label div {
 	display: inline-block;
 	margin: 0em 0.2em;
+	vertical-align: top;
+}
+fieldset.radios {
+	border: none;
+	padding-left: 0px;
+}
+fieldset fields {
+	clear: both;
+}
+#pin-mux input {
+	display: block;
+	margin-top: 0.4em;
+	float: left;
+}
+#pin-mux label {
+	display: block;
+	margin: 0em 0.2em 0em 2em;
+	width: 90%;
 }
 
 .pure-table td, .pure-table th {

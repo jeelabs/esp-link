@@ -15,6 +15,7 @@
 #include "httpdespfs.h"
 #include "cgi.h"
 #include "cgiwifi.h"
+#include "cgipins.h"
 #include "cgiflash.h"
 #include "auth.h"
 #include "espfs.h"
@@ -86,6 +87,7 @@ HttpdBuiltInUrl builtInUrls[]={
 	{"/wifi/connect", cgiWiFiConnect, NULL},
 	{"/wifi/connstatus", cgiWiFiConnStatus, NULL},
 	{"/wifi/setmode", cgiWiFiSetMode, NULL},
+	{"/pins", cgiPins, NULL},
 
 	{"*", cgiEspFsHook, NULL}, //Catch-all cgi function for the filesystem
 	{NULL, NULL, NULL}
