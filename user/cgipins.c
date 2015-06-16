@@ -2,16 +2,20 @@
 #include <esp8266.h>
 #include "cgi.h"
 #include "espfs.h"
+#include "config.h"
 
 static char *map_names[] = {
-  "esp-bridge", "jn-esp-v2", "esp-01"
+  "esp-bridge", "jn-esp-v2", "esp-01(ARM)", "esp-01(AVR)",
 };
 static char* map_func[] = { "reset", "isp", "conn_led", "ser_led" };
-static uint8_t map_asn[][4] = {
+static int8_t map_asn[][4] = {
   { 12, 13,  0, 14 },  // esp-bridge
   { 12, 13,  0,  2 },  // jn-esp-v2
-  {  0,  2, 12, 13 },  // esp-01
+  {  0,  2, -1, -1 },  // esp-01(ARM)
+  {  0, -1,  2, -1 },  // esp-01(AVR)
 };
+static const int num_map_names = sizeof(map_names)/sizeof(char*);
+static const int num_map_func = sizeof(map_func)/sizeof(char*);
 
 // Cgi to return choice of pin assignments
 int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
@@ -22,15 +26,25 @@ int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
 		return HTTPD_CGI_DONE; // Connection aborted
 	}
 
-  len = os_sprintf(buff, "{ \"curr\":\"esp-bridge\", \"map\": [ ");
-  for (int i=0; i<sizeof(map_names)/sizeof(char*); i++) {
+  // figure out current mapping
+  int curr = 99;
+  for (int i=0; i<num_map_names; i++) {
+    int8_t *map = map_asn[i];
+    if (map[0] == flashConfig.reset_pin && map[1] == flashConfig.isp_pin &&
+        map[2] == flashConfig.conn_led_pin && map[3] == flashConfig.ser_led_pin) {
+      curr = i;
+    }
+  }
+
+  len = os_sprintf(buff, "{ \"curr\":\"%s\", \"map\": [ ", map_names[curr]);
+  for (int i=0; i<num_map_names; i++) {
     if (i != 0) buff[len++] = ',';
     len += os_sprintf(buff+len, "\n{ \"value\":%d, \"name\":\"%s\"", i, map_names[i]);
-    for (int f=0; f<sizeof(map_func)/sizeof(char*); f++) {
+    for (int f=0; f<num_map_func; f++) {
       len += os_sprintf(buff+len, ", \"%s\":%d", map_func[f], map_asn[i][f]);
     }
     len += os_sprintf(buff+len, ", \"descr\":\"");
-    for (int f=0; f<sizeof(map_func)/sizeof(char*); f++) {
+    for (int f=0; f<num_map_func; f++) {
       len += os_sprintf(buff+len, " %s:gpio%d", map_func[f], map_asn[i][f]);
     }
     len += os_sprintf(buff+len, "\" }");
@@ -47,6 +61,26 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
 	if (connData->conn==NULL) {
 		return HTTPD_CGI_DONE; // Connection aborted
 	}
+
+  char buff[128];
+	int len = httpdFindArg(connData->getArgs, "map", buff, sizeof(buff));
+	if (len == 0) {
+	  jsonHeader(connData, 400);
+    return HTTPD_CGI_DONE;
+  }
+
+  int m = atoi(buff);
+	if (m < 0 || m >= num_map_names) {
+	  jsonHeader(connData, 400);
+    return HTTPD_CGI_DONE;
+  }
+
+  os_printf("Switching pin map to %s (%d)\n", map_names[m], m);
+  int8_t *map = map_asn[m];
+  flashConfig.reset_pin    = map[0];
+  flashConfig.isp_pin      = map[1];
+  flashConfig.conn_led_pin = map[2];
+  flashConfig.ser_led_pin  = map[3];
 
 	jsonHeader(connData, 200);
 	return HTTPD_CGI_DONE;
