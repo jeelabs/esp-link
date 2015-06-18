@@ -2,7 +2,7 @@
 #define SERLED_H
 
 void serledFlash(int duration);
-void serledInit(uint8_t pin);
+void serledInit(void);
 void makeGpio(uint8_t pin);
 
 #endif

@@ -3,16 +3,20 @@
 #include "cgi.h"
 #include "espfs.h"
 #include "config.h"
+#include "serled.h"
+#include "status.h"
+#include "serbridge.h"
 
 static char *map_names[] = {
-  "esp-bridge", "jn-esp-v2", "esp-01(ARM)", "esp-01(AVR)",
+  "esp-bridge", "jn-esp-v2", "esp-01(AVR)", "esp-01(ARM)", "esp-br-rev",
 };
 static char* map_func[] = { "reset", "isp", "conn_led", "ser_led" };
 static int8_t map_asn[][4] = {
   { 12, 13,  0, 14 },  // esp-bridge
   { 12, 13,  0,  2 },  // jn-esp-v2
-  {  0,  2, -1, -1 },  // esp-01(ARM)
   {  0, -1,  2, -1 },  // esp-01(AVR)
+  {  0,  2, -1, -1 },  // esp-01(ARM)
+  { 13, 12, 14,  0 },  // esp-br-rev -- for test purposes
 };
 static const int num_map_names = sizeof(map_names)/sizeof(char*);
 static const int num_map_func = sizeof(map_func)/sizeof(char*);
@@ -45,7 +49,9 @@ int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
     }
     len += os_sprintf(buff+len, ", \"descr\":\"");
     for (int f=0; f<num_map_func; f++) {
-      len += os_sprintf(buff+len, " %s:gpio%d", map_func[f], map_asn[i][f]);
+      int8_t p = map_asn[i][f];
+      if (p >= 0) len += os_sprintf(buff+len, " %s:gpio%d", map_func[f], p);
+      else len += os_sprintf(buff+len, " %s:n/a", map_func[f]);
     }
     len += os_sprintf(buff+len, "\" }");
   }
@@ -64,7 +70,7 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
 
   char buff[128];
 	int len = httpdFindArg(connData->getArgs, "map", buff, sizeof(buff));
-	if (len == 0) {
+	if (len <= 0) {
 	  jsonHeader(connData, 400);
     return HTTPD_CGI_DONE;
   }
@@ -81,6 +87,10 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
   flashConfig.isp_pin      = map[1];
   flashConfig.conn_led_pin = map[2];
   flashConfig.ser_led_pin  = map[3];
+
+  serbridgeInitPins();
+  serledInit();
+  statusInit();
 
 	jsonHeader(connData, 200);
 	return HTTPD_CGI_DONE;

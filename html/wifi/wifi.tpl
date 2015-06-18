@@ -135,21 +135,6 @@ function scanAPs() {
   });
 }
 
-function showWifiInfo(data) {
-  Object.keys(data).forEach(function(v) {
-    el = $("#wifi-" + v);
-    if (el != null) el.innerHTML = data[v];
-  });
-  $("#wifi-spinner").setAttribute("hidden", "");
-  $("#wifi-table").removeAttribute("hidden");
-  currAp = data.ssid;
-}
-
-function getWifiInfo() {
-  ajaxJson('GET', "info", showWifiInfo,
-      function(s, st) { window.setTimeout(getWifiInfo, 1000); });
-}
-
 function getStatus() {
   ajaxJsonSpin("GET", "connstatus", function(data) {
       if (data.status == "idle" || data.status == "connecting") {

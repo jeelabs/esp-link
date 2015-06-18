@@ -46,6 +46,25 @@
 
 }(this, this.document));
 
+//===== Wifi info
+
+function showWifiInfo(data) {
+  Object.keys(data).forEach(function(v) {
+    el = $("#wifi-" + v);
+    if (el != null) el.innerHTML = data[v];
+  });
+  $("#wifi-spinner").setAttribute("hidden", "");
+  $("#wifi-table").removeAttribute("hidden");
+  currAp = data.ssid;
+}
+
+function getWifiInfo() {
+  ajaxJson('GET', "/wifi/info", showWifiInfo,
+      function(s, st) { window.setTimeout(getWifiInfo, 1000); });
+}
+
+//===== Notifications
+
 function showWarning(text) {
   var el = $("#warning");
   el.innerHTML = text;
@@ -65,6 +84,8 @@ function showNotification(text) {
       notifTimout = null;
     }, 4000);
 }
+
+//===== AJAX
 
 function ajaxReq(method, url, ok_cb, err_cb) {
   var xhr = j();

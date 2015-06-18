@@ -9,12 +9,12 @@
 #include "uart.h"
 #include "serbridge.h"
 #include "serled.h"
+#include "config.h"
 #include "console.h"
-
-static uint8_t mcu_reset_pin, mcu_isp_pin;
 
 static struct espconn serbridgeConn;
 static esp_tcp serbridgeTcp;
+static int8_t mcu_reset_pin, mcu_isp_pin;
 
 sint8  ICACHE_FLASH_ATTR espbuffsend(serbridgeConnData *conn, const char *data, uint16 len);
 
@@ -147,22 +147,30 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
 		case TN_setControl:             // switch control line and delay a tad
 			switch (c) {
 			case DTR_ON:
-				os_printf("MCU reset gpio%d\n", mcu_reset_pin);
-				GPIO_OUTPUT_SET(mcu_reset_pin, 0);
-				os_delay_us(100L);
+				if (mcu_reset_pin >= 0) {
+					os_printf("MCU reset gpio%d\n", mcu_reset_pin);
+					GPIO_OUTPUT_SET(mcu_reset_pin, 0);
+					os_delay_us(100L);
+				} else os_printf("MCU reset: no pin\n");
 				break;
 			case DTR_OFF:
-				GPIO_OUTPUT_SET(mcu_reset_pin, 1);
-				os_delay_us(100L);
+				if (mcu_reset_pin >= 0) {
+					GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+					os_delay_us(100L);
+				}
 				break;
 			case RTS_ON:
-				os_printf("MCU ISP gpio%d\n", mcu_isp_pin);
-				GPIO_OUTPUT_SET(mcu_isp_pin, 0);
-				os_delay_us(100L);
+				if (mcu_isp_pin >= 0) {
+					os_printf("MCU ISP gpio%d\n", mcu_isp_pin);
+					GPIO_OUTPUT_SET(mcu_isp_pin, 0);
+					os_delay_us(100L);
+				} else os_printf("MCU isp: no pin\n");
 				break;
 			case RTS_OFF:
-				GPIO_OUTPUT_SET(mcu_isp_pin, 1);
-				os_delay_us(100L);
+				if (mcu_isp_pin >= 0) {
+					GPIO_OUTPUT_SET(mcu_isp_pin, 1);
+					os_delay_us(100L);
+				}
 				break;
 			}
 			state = TN_end;
@@ -173,10 +181,12 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
 }
 
 void ICACHE_FLASH_ATTR serbridgeReset() {
-	os_printf("MCU reset gpio%d\n", mcu_reset_pin);
-	GPIO_OUTPUT_SET(mcu_reset_pin, 0);
-	os_delay_us(100L);
-	GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+	if (mcu_reset_pin >= 0) {
+		os_printf("MCU reset gpio%d\n", mcu_reset_pin);
+		GPIO_OUTPUT_SET(mcu_reset_pin, 0);
+		os_delay_us(100L);
+		GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+	} else os_printf("MCU reset: no pin\n");
 }
 
 
@@ -201,13 +211,13 @@ static void ICACHE_FLASH_ATTR serbridgeRecvCb(void *arg, char *data, unsigned sh
 			os_printf("MCU Reset=%d ISP=%d\n", mcu_reset_pin, mcu_isp_pin);
 			os_delay_us(2*1000L); // time for os_printf to happen
 			// send reset to arduino/ARM
-			GPIO_OUTPUT_SET(mcu_reset_pin, 0);
+			if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 0);
 			os_delay_us(100L);
-			GPIO_OUTPUT_SET(mcu_isp_pin, 0);
+			if (mcu_isp_pin >= 0) GPIO_OUTPUT_SET(mcu_isp_pin, 0);
 			os_delay_us(100L);
-			GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+			if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 1);
 			os_delay_us(100L);
-			GPIO_OUTPUT_SET(mcu_isp_pin, 1);
+			if (mcu_isp_pin >= 0) GPIO_OUTPUT_SET(mcu_isp_pin, 1);
 			os_delay_us(1000L);
 			conn->conn_mode = cmAVR;
 
@@ -255,9 +265,11 @@ static void ICACHE_FLASH_ATTR serbridgeDisconCb(void *arg) {
 		{
 			if (connData[i].conn_mode == cmAVR) {
 				// send reset to arduino/ARM
-				GPIO_OUTPUT_SET(mcu_reset_pin, 0);
-				os_delay_us(100L);
-				GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+				if (mcu_reset_pin >= 0) {
+					GPIO_OUTPUT_SET(mcu_reset_pin, 0);
+					os_delay_us(100L);
+					GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+				}
 			}
 			connData[i].conn = NULL;
 		}
@@ -306,8 +318,23 @@ serbridgeUartCb(char *buf, int length) {
 		}
 }
 
+void ICACHE_FLASH_ATTR serbridgeInitPins() {
+	mcu_reset_pin = flashConfig.reset_pin;
+	mcu_isp_pin = flashConfig.isp_pin;
+	os_printf("Serbridge pins: reset=%d isp=%d\n", mcu_reset_pin, mcu_isp_pin);
+
+	// set both pins to 1 before turning them on so we don't cause a reset
+	if (mcu_isp_pin >= 0)   GPIO_OUTPUT_SET(mcu_isp_pin, 1);
+	if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+	// switch pin mux to make these pins GPIO pins
+	if (mcu_reset_pin >= 0) makeGpio(mcu_reset_pin);
+	if (mcu_isp_pin >= 0)   makeGpio(mcu_isp_pin);
+}
+
 // Start transparent serial bridge TCP server on specified port (typ. 23)
-void ICACHE_FLASH_ATTR serbridgeInit(int port, uint8_t reset_pin, uint8_t isp_pin) {
+void ICACHE_FLASH_ATTR serbridgeInit(int port) {
+	serbridgeInitPins();
+
 	int i;
 	for (i = 0; i < MAX_CONN; i++) {
 		connData[i].conn = NULL;
@@ -317,15 +344,6 @@ void ICACHE_FLASH_ATTR serbridgeInit(int port, uint8_t reset_pin, uint8_t isp_pi
 	serbridgeConn.state = ESPCONN_NONE;
 	serbridgeTcp.local_port = port;
 	serbridgeConn.proto.tcp = &serbridgeTcp;
-
-	mcu_reset_pin = reset_pin;
-	mcu_isp_pin = isp_pin;
-	// set both pins to 1 so we don't cause a reset
-	GPIO_OUTPUT_SET(mcu_isp_pin, 1);
-	GPIO_OUTPUT_SET(mcu_reset_pin, 1);
-	// switch pin mux to make these pins GPIO pins
-	makeGpio(mcu_reset_pin);
-	makeGpio(mcu_isp_pin);
 
 	espconn_regist_connectcb(&serbridgeConn, serbridgeConnectCb);
 	espconn_accept(&serbridgeConn);

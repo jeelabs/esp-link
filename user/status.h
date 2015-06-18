@@ -2,7 +2,7 @@
 #define STATUS_H
 
 void statusWifiUpdate(uint8_t state);
-void statusInit(uint8_t pin);
+void statusInit(void);
 
 #endif
 

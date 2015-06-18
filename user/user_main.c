@@ -122,8 +122,8 @@ void user_init(void) {
 # define VERS_STR(V) VERS_STR_STR(V)
 	os_printf("\n\nInitializing esp-link\n" VERS_STR(VERSION) "\n");
 	// Status LEDs
-	statusInit(LED_CONN_PIN);
-	serledInit(LED_SERIAL_PIN);
+	statusInit();
+	serledInit();
 	logInit();
 	// Wifi
 	wifiInit();
@@ -133,7 +133,7 @@ void user_init(void) {
 	// mount the http handlers
 	httpdInit(builtInUrls, 80);
 	// init the wifi-serial transparent bridge (port 23)
-	serbridgeInit(23, MCU_RESET_PIN, MCU_ISP_PIN);
+	serbridgeInit(23);
 	uart_add_recv_cb(&serbridgeUartCb);
 #ifdef SHOW_HEAP_USE
 	os_timer_disarm(&prHeapTimer);

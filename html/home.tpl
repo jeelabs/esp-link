@@ -44,10 +44,11 @@ function createInputForPin(pin) {
   var input = document.createElement("input");
   input.type = "radio";
   input.name = "pins";
+  input.data = pin.name;
+	input.className = "pin-input";
   input.value= pin.value;
   input.id   = "opt-" + pin.value;
-	input.onclick = "setPins("+pin.value+", '"+pin.name+"')";
-  if (currPin == pin.value) input.checked = "1";
+  if (currPin == pin.name) input.checked = "1";
 
 	var descr = m('<label for="opt-'+pin.value+'"><b>'+pin.name+":</b>"+pin.descr+"</label>");
 	descr.for = "opt-" + pin.value;
@@ -64,6 +65,10 @@ function displayPins(resp) {
 	resp.map.forEach(function(v) {
 		po.appendChild(createInputForPin(v));
 	});
+	var i, inputs = $(".pin-input");
+	for (i=0; i<inputs.length; i++) {
+		inputs[i].onclick = function() { setPins(this.value, this.data) };
+	};
 }
 
 function fetchPins() {
@@ -73,7 +78,7 @@ function fetchPins() {
 }
 
 function setPins(v, name) {
-  ajaxJson("POST", "/pins?value="+v, function() {
+  ajaxSpin("POST", "/pins?map="+v, function() {
 		showNotification("Pin assignment changed to " + name);
 	}, function() {
 		showNotification("Pin assignment change failed");
@@ -83,7 +88,7 @@ function setPins(v, name) {
 
 window.onload=function(e) {
 	fetchPins();
-  //$("#pinform").onsubmit = setPins;
+  getWifiInfo();
 };
 </script>
 </body></html>

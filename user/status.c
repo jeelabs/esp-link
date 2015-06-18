@@ -1,16 +1,18 @@
 #include <esp8266.h>
+#include "config.h"
+#include "serled.h"
 #include "cgiwifi.h"
-
-#define LEDGPIO 0
 
 static ETSTimer ledTimer;
 
 static void ICACHE_FLASH_ATTR setLed(int on) {
+  int8_t pin = flashConfig.conn_led_pin;
+  if (pin < 0) return; // disabled
 	// LED is active-low
 	if (on) {
-		gpio_output_set(0, (1<<LEDGPIO), (1<<LEDGPIO), 0);
+		gpio_output_set(0, (1<<pin), (1<<pin), 0);
 	} else {
-		gpio_output_set((1<<LEDGPIO), 0, (1<<LEDGPIO), 0);
+		gpio_output_set((1<<pin), 0, (1<<pin), 0);
 	}
 }
 
@@ -58,10 +60,12 @@ void ICACHE_FLASH_ATTR statusWifiUpdate(uint8_t state) {
 	os_timer_arm(&ledTimer, 500, 0);
 }
 
-void ICACHE_FLASH_ATTR statusInit() {
-	PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0);
-	gpio_output_set(0, 0, (1<<LEDGPIO), 0);
-	setLed(1);
+void ICACHE_FLASH_ATTR statusInit(void) {
+	if (flashConfig.conn_led_pin >= 0) {
+		makeGpio(flashConfig.conn_led_pin);
+		setLed(1);
+	}
+	os_printf("CONN led=%d\n", flashConfig.conn_led_pin);
 
 	os_timer_disarm(&ledTimer);
 	os_timer_setfn(&ledTimer, ledTimerCb, NULL);
