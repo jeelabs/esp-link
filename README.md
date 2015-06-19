@@ -1,8 +1,6 @@
 ESP-LINK
 ========
 
-[![Join the chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jeelabs/esp-link?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
 This firmware implements a transparent bridge between Wifi and serial using an ESP8266 module.
 It also provides support for flash-programming Arduino/AVR microcontrollers as well as
 LPC800-series ARM microcontrollers via the ESP8266.
@@ -11,12 +9,17 @@ The firmware includes a tiny HTTP server based on
 [esphttpd](http://www.esp8266.com/viewforum.php?f=34)
 with a simple web interface, many thanks to Jeroen Domburg for making it available!
 
+[![Chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jeelabs/esp-link?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Eye Candy
 ---------
-These screen shots show the Wifi configuration page and the esp firmware's log
+These screen shots show the Home page, the Wifi configuration page, the console for the attached microcontroller,
+and the pin assignments card:
+
 <img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261425/6ca395a6-167f-11e5-8e92-77150371135a.png">
-<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261426/6ca7f75e-167f-11e5-827d-9a1c582ad05d.png">
 <img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261427/6caf7326-167f-11e5-8085-bc8b20159b2b.png">
+<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261426/6ca7f75e-167f-11e5-827d-9a1c582ad05d.png">
+<img width="30%" src="https://cloud.githubusercontent.com/assets/39480/8261658/11e6c64a-1681-11e5-82d0-ea5ec90a6ddb.png">
 
 Hardware info
 -------------
