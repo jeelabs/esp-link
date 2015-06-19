@@ -104,6 +104,20 @@ cannot connect to your network it will revert back to AP+STA mode after 15 secon
 both present its `ESP_012ABC`-style network and continue trying to reconnect to the requested network.
 You can then connect to the esp-link's AP and reconfigure the station part.
 
+Troubleshooting
+---------------
+- verify that you have sufficient power, borderline power can cause the esp module to seemingly
+  function until it tries to transmit
+- check the "conn" LED to see which mode esp-link is in (LED info above)
+- reset or power-cycle the esp-link to force it to become an access-point if it can't
+  connect to your network within 15-20 seconds
+- if the LED says that esp-link is on your network but you can't get to it, make sure your
+  laptop is on the same network (and no longer on the esp's network)
+- if you do not know the esp-link's IP address on your network, try esp-link.local, try to find the
+  lease in your DHCP server; if all fails, you may have to turn off your access point (or walk
+  far enough away) and reset/power-cycle esp-link, it will then fail to connect and start its
+  own AP after 15-20 seconds
+
 Building the firmware
 ---------------------
 The firmware has been built using the [esp-open-sdk](https://github.com/pfalcon/esp-open-sdk)
