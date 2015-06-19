@@ -447,7 +447,7 @@ int ICACHE_FLASH_ATTR cgiWifiInfo(HttpdConnData *connData) {
 // Init the wireless, which consists of setting a timer if we expect to connect to an AP
 // so we can revert to STA+AP mode if we can't connect.
 void ICACHE_FLASH_ATTR wifiInit() {
-	//wifi_station_set_hostname("esp-link");
+	wifi_station_set_hostname("esp-link");
 	int x = wifi_get_opmode() & 0x3;
 	os_printf("Wifi init, mode=%s\n", wifiMode[x]);
 	wifi_set_phy_mode(2);
