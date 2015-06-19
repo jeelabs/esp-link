@@ -1,3 +1,5 @@
+// Copyright 2015 by Thorsten von Eicken, see LICENSE.txt
+
 #include <esp8266.h>
 #include "config.h"
 #include "serled.h"

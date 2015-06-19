@@ -14,6 +14,8 @@
  *
  * You should have received a copy of the GNU General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * ----------------------------------------------------------------------------
+ * Heavily modified and enhanced by Thorsten von Eicken in 2015
  */
 #include "espmissingincludes.h"
 #include "ets_sys.h"

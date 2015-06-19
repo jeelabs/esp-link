@@ -1,3 +1,4 @@
+// Copyright 2015 by Thorsten von Eicken, see LICENSE.txt
 /* Configuration stored in flash */
 
 #include <esp8266.h>

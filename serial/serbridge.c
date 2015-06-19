@@ -1,3 +1,5 @@
+// Copyright 2015 by Thorsten von Eicken, see LICENSE.txt
+
 #include "espmissingincludes.h"
 #include "c_types.h"
 #include "user_interface.h"

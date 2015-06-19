@@ -9,6 +9,8 @@ Esp8266 http server - core routines
  * this notice you can do whatever you want with this stuff. If we meet some day,
  * and you think this stuff is worth it, you can buy me a beer in return.
  * ----------------------------------------------------------------------------
+ * Modified and enhanced by Thorsten von Eicken in 2015
+ * ----------------------------------------------------------------------------
  */
 
 

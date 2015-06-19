@@ -9,6 +9,8 @@ Some flash handling cgi routines. Used for reading the existing flash and updati
  * this notice you can do whatever you want with this stuff. If we meet some day,
  * and you think this stuff is worth it, you can buy me a beer in return.
  * ----------------------------------------------------------------------------
+ * Heavily modified and enhanced by Thorsten von Eicken in 2015
+ * ----------------------------------------------------------------------------
  */
 
 
