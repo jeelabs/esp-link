@@ -140,6 +140,13 @@ git submodule update
 
 Now, build the code: `make` in the top-level of esp-link.
 
+A few notes from others (I can't fully verify these):
+- You may need to install `zlib1g-dev` and `python-serial`
+- Make sure you have the correct version of the esp_iot_sdk (v1.1.2 with scan patch for 
+  esp-link release 0.10.0)
+- Make sure the paths at the beginning of the makefile are correct
+- Make sure `esp-open-sdk/xtensa-lx106-elf/bin` is in the PATH
+
 Flashing the firmware
 ---------------------
 This firmware supports over-the-air (OTA) flashing, so you do not have to deal with serial
