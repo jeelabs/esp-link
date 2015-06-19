@@ -12,13 +12,14 @@ with a simple web interface, many thanks to Jeroen Domburg for making it availab
 Eye Candy
 ---------
 These screen shots show the Wifi configuration page and the esp firmware's log
-<img src="https://cloud.githubusercontent.com/assets/39480/8001003/2528fdd4-0b16-11e5-98c9-c2419740b439.png" width="45%">
-<img src="https://cloud.githubusercontent.com/assets/39480/8001004/2738debe-0b16-11e5-8340-eb31e1e378e3.png" width="45%">
+<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261425/6ca395a6-167f-11e5-8e92-77150371135a.png">
+<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261426/6ca7f75e-167f-11e5-827d-9a1c582ad05d.png">
+<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261427/6caf7326-167f-11e5-8085-bc8b20159b2b.png">
 
 Hardware info
 -------------
 This firmware is designed for esp8266 modules which have most ESP I/O pins available.
-The expected connections are:
+The default connections are:
 - URXD: connect to TX of microcontroller
 - UTXD: connect to RX of microcontroller
 - GPIO12: connect to RESET of microcontroller
@@ -26,7 +27,9 @@ The expected connections are:
 - GPIO0: optionally connect green "conn" LED to 3.3V (indicates wifi status)
 - GPIO2: optionally connect yellow "ser" LED to 3.3V (indicates serial activity)
 
-If you are using an FTDI connector, GPIO12 goes to DTR and GPIO13 goes to CTS
+If you are using an FTDI connector, GPIO12 goes to DTR and GPIO13 goes to CTS.
+
+The GPIO pin assignments can be changed dynamicall in the web UI and are saved in flash.
 
 Initial flashing
 ----------------
@@ -56,15 +59,15 @@ to join its network to configure it. The short version is:
 
 LED indicators
 --------------
-Assuming the above LED configuration, the green LED will show the wifi status as follows:
+Assuming appropriate hardware attached to GPIO pins, the green "conn" LED will show the wifi
+status as follows:
 - Very short flash once a second: not connected to a network and running as AP+STA
 - Very short flash once every two seconds: not connected to a network and running as AP-only
 - Even on/off at 1HZ: connected to your network but no IP address (waiting for DHCP)
 - Steady on with very short off every 3 seconds: connected to your network with an IP address
   (esp-link shuts down its AP after 15 seconds)
 
-The yellow LED will blink briefly every time serial data is sent or received by the esp-link.
-(This does not function yet.)
+The yellow "ser" LED will blink briefly every time serial data is sent or received by the esp-link.
 
 Wifi configuration details
 --------------------------
