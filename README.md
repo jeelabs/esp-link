@@ -38,7 +38,7 @@ The GPIO pin assignments can be changed dynamicall in the web UI and are saved i
 
 Initial flashing
 ----------------
-(This is not necessary if you receive one of the jn-esp or esp-bridge modules.)
+(This is not necessary if you receive one of the jn-esp or esp-bridge modules!)
 If you want to simply flash the provided firmware binary, you can download the latest
 [release](https://github.com/jeelabs/esp-link/releases) and use your favorite
 ESP8266 flashing tool to flash the following:
@@ -47,7 +47,7 @@ ESP8266 flashing tool to flash the following:
 - `user1.bin` to 0x01000
 
 Note that the firmware assumes a 512KB flash chip, which most of the esp-01 thru esp-11
-modules appear to have.
+modules appear to have. A larger flash chip should work but has not been tested.
 
 Wifi configuration overview
 ------------------
@@ -55,21 +55,22 @@ For proper operation the end state the esp-link needs to arrive at is to have it
 join your pre-existing wifi network as a pure station.
 However, in order to get there the esp-link will start out as an access point and you'll have
 to join its network to configure it. The short version is:
- 1. the esp-link creates a wifi access point
- 2. your laptop joins as a station and you configure the esp-link wifi with your network info
-    by pointing your browser at `http://192.168.4.1/`
- 3. the esp-link joins your network while continuing to also be an access point ("AP+STA")
- 4. the esp-link succeeds in connecting and shuts down its own access point
- 5. if the esp-link looses your network it brings up its access point again
+ 1. the esp-link creates a wifi access point with an SSID of the form `ESP_012ABC`
+ 2. you join your laptop to the esp-link's network as a station and you configure
+    the esp-link wifi with your network info by pointing your browser at http://192.168.4.1/
+ 3. the esp-link starts to connect to your network while continuing to also be an access point ("AP+STA"),
+    the esp-link may show up with the esp-link.local hostname (depends on your DHCP/DNS config)
+ 4. the esp-link succeeds in connecting and shuts down its own access point after 15 seconds,
 
 LED indicators
 --------------
 Assuming appropriate hardware attached to GPIO pins, the green "conn" LED will show the wifi
 status as follows:
-- Very short flash once a second: not connected to a network and running as AP+STA
+- Very short flash once a second: not connected to a network and running as AP+STA, i.e.
+  trying to connect to the configured network
 - Very short flash once every two seconds: not connected to a network and running as AP-only
-- Even on/off at 1HZ: connected to your network but no IP address (waiting for DHCP)
-- Steady on with very short off every 3 seconds: connected to your network with an IP address
+- Even on/off at 1HZ: connected to the configured network but no IP address (waiting on DHCP)
+- Steady on with very short off every 3 seconds: connected to the configured network with an IP address
   (esp-link shuts down its AP after 15 seconds)
 
 The yellow "ser" LED will blink briefly every time serial data is sent or received by the esp-link.
@@ -79,27 +80,24 @@ Wifi configuration details
 After you have serially flashed the module it will create a wifi access point (AP) with an
 SSID of the form `ESP_012ABC` where 012ABC is a piece of the module's MAC address.
 Using a laptop, phone, or tablet connect to this SSID and then open a browser pointed at
-`http://192.168.4.1/`, you should then see the esp-link web site.
+http://192.168.4.1/, you should then see the esp-link web site.
 
 Now configure the wifi. The desired configuration is for the esp-link to be a
 station on your local wifi network so you can communicate with it from all your computers.
 
 To make this happen, navigate to the wifi page and you should see the esp-link scan
-for available networks.
-If nothing happens verify that it is in AP+STA mode and not in AP-only mode (I need to fix this).
-
-You should then see a list of detected networks on the web page and you can select
-yours. Enter a password if your network is secure (recommended...) and hit the connect button.
+for available networks. You should then see a list of detected networks on the web page and you can select
+yours. Enter a password if your network is secure (highly recommended...) and hit the connect button.
 
 You should now see that the esp-link has connected to your network and it should show you
-its IP address. _Write it down_ (due to a bug you won't see it anymore after this) and then
-follow the provided link (you will have to switch your
-laptop, phone, or tablet back to your network before you can actually connect).
+its IP address. _Write it down_. You will then have to switch your laptop, phone, or tablet
+back to your network and then you can connect to the esp-link's IP address or, depending on your
+network's DHCP/DNS config you may be able to go to http://esp-link.local
 
 At this point the esp-link will have switched to STA mode and be just a station on your
 wifi network. These settings are stored in flash and thereby remembered through resets and
 power cycles. They are also remembered when you flash new firmware. Only flashing `blank.bin`
-as indicated above will reset the wifi settings.
+via the serial port as indicated above will reset the wifi settings.
 
 There is a fail-safe, which is that after a reset or a configuration change, if the esp-link
 cannot connect to your network it will revert back to AP+STA mode after 15 seconds and thus
@@ -110,7 +108,7 @@ Building the firmware
 ---------------------
 The firmware has been built using the [esp-open-sdk](https://github.com/pfalcon/esp-open-sdk)
 on a Linux system. Create an esp8266 directory, install the esp-open-sdk into a sub-directory.
-Download the Espressif SDK (1.0.1) and also expand it into a sub-directory. Then clone
+Download the Espressif SDK (1.1.2) and also expand it into a sub-directory. Then clone
 this repository into a third sub-directory.  This way the relative paths in the Makefile will work.
 If you choose a different directory structure look at the Makefile for the appropriate environment
 variables to define. (I have not used the esptool for flashing, so I don't know whether what's
@@ -155,25 +153,27 @@ using the serial port.
 Serial bridge and connections to Arduino, AVR, ARM, LPC microcontrollers
 ------------------------------------------------------------------------
 In order to connect through the esp-link to a microcontroller use port 23. For example,
-on linux you can use `nc esp-hostname 23` or `telnet esp-hostname 23`.
+on linux you can use `nc esp-hostname 23` or `telnet esp-hostname 23`. (There seems to be
+a problem with the telnet program, please use nc instead for now.)
 
 You can reprogram an Arduino / AVR microcontroller by pointing avrdude at port 23. Instead of
-specifying a serial port of the form /dev/ttyUSB0 use `net:esp-hostname:23` (where `esp-hostname`
-is either the hostname of your esp-link or its IP address). The esp-link detects that avrdude
-starts its connection with a flash synchronization sequence and sends a reset to the AVR
-microcontroller so it can switch into flash programming mode.
+specifying a serial port of the form /dev/ttyUSB0 use `net:esp-link:23` with avrdude's -P option
+(where `esp-link` is either the hostname of your esp-link or its IP address).
+The esp-link detects that avrdude starts its connection with a flash synchronization sequence
+and sends a reset to the AVR microcontroller so it can switch into flash programming mode.
 
-You can reprogram NXP's LPC800-series ARM processors as well by pointing your programmer
+You can reprogram NXP's LPC800-series and many other ARM processors as well by pointing your programmer
 similarly at the esp-link's port 23. For example, if you are using
 https://github.com/jeelabs/embello/tree/master/tools/uploader a command line like
-`uploader -s -w esp-link:23 build/firmware.bin` should do the trick.
-The way it works is that esp-link detects that the uploader starts its connection with the
-flash synchronization sequence `?\r\n` and issues the appropriate "ISP" and reset sequence
-to the microcontroller to start the flash programming.
+`uploader -t -s -w esp-link:23 build/firmware.bin` should do the trick.
+The way it works is that the uploader uses telnet protocol escape sequences in order to
+make esp-link issue the appropriate "ISP" and reset sequence to the microcontroller to start the
+flash programming. If you use a different ARM programming tool it will work as well as long as
+it starts the connection with the `?\r\n` synchronization sequence.
 
 Note that multiple connections to port 23 can be made simultaneously. The esp-link will
 intermix characters received on all these connections onto the serial TX and it will
-broadcast incoming characters from the serial RX to all connections. Use with caution...
+broadcast incoming characters from the serial RX to all connections. Use with caution!
 
 Flash layout
 ------------
@@ -182,17 +182,14 @@ The flash layout dictated by the bootloader is the following (all this assumes a
 and is documented in Espressif's `99C-ESP8266__OTA_Upgrade__EN_v1.5.pdf`):
  - @0x00000 4KB bootloader
  - @0x01000 236KB partition1
- - @0x3E000 16KB user parameters
+ - @0x3E000 16KB esp-link parameters
  - @0x40000 4KB unused
  - @0x41000 236KB partition2
- - @0x4E000 16KB system parameters
+ - @0x4E000 16KB system wifi parameters
 
 What this means is that we can flash just about anything into partition1 or partition2 as long
 as it doesn't take more than 236KB and has the right format that the boot loader understands.
 We can't mess with the first 4KB nor the last 16KB of the flash.
-I have not investigated how badly the user
-parameters and unused sections can be abused, that's for the moment where I get desperate looking
-for a few more KB...
 
 Now how does a code partition break down? that is reflected in the following definition found in
 the loader scripts:
