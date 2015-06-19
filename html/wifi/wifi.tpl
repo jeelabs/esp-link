@@ -1,6 +1,6 @@
   <div id="main">
     <div class="header">
-      <h1><span class="esp">esp</span> link - Wifi Configuration</h1>
+      <h1>Wifi Configuration</h1>
     </div>
 
     <div class="content pure-g">
@@ -147,7 +147,7 @@ function getStatus() {
         showWifiInfo(data);
         blockScan = 0;
 
-        var txt2 = "ESP Link will switch to STA-only mode in a few seconds";
+        var txt2 = "esp-link will switch to STA-only mode in a few seconds";
         window.setTimeout(function() { showNotification(txt2); }, 4000);
 
         $("#reconnect").removeAttribute("hidden");

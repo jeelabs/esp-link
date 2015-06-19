@@ -11,7 +11,7 @@ static char *map_names[] = {
   "esp-bridge", "jn-esp-v2", "esp-01(AVR)", "esp-01(ARM)", "esp-br-rev",
 };
 static char* map_func[] = { "reset", "isp", "conn_led", "ser_led" };
-static int8_t map_asn[][5] = {
+static int8_t map_asn[][4] = {
   { 12, 13,  0, 14 },  // esp-bridge
   { 12, 13,  0,  2 },  // jn-esp-v2
   {  0, -1,  2, -1 },  // esp-01(AVR)

@@ -1,15 +1,28 @@
   <div id="main">
     <div class="header">
-      <h1><span class="esp">esp</span> link</h1>
+	  	<div><img src="jl-200x55.png" height="55"></div>
+      <h1 style="margin-top:0"><span class="esp">esp</span>-link</h1>
       <h2 id="version"></h2>
     </div>
 
 		<div class="content">
 			<div class="pure-g">
 				<div class="pure-u-24-24"><div class="card">
-					<p>The ESP Link bridges the ESP8266 serial port to Wifi and it can
+					<p>The JeeLabs esp-link firmware bridges the ESP8266 serial port to Wifi and can
 					program microcontrollers over the serial port, in particular Arduinos, AVRs, and
-					NXP's LPC800-series ARM processors.</p>
+					NXP's LPC800 and other ARM processors.</p>
+					<p style="margin-bottom:0;">Program an Arduino/AVR using avrdude using a command
+					line similar to:
+					<div class="tt">/home/arduino-1.0.5/hardware/tools/avrdude \<br>
+					&nbsp;&nbsp;-DV -patmega328p -Pnet:esp-link.local:23 -carduino -b115200 -U \<br>
+					&nbsp;&nbsp;-C /home/arduino-1.0.5/hardware/tools/avrdude.conf flash:w:my_sketch.hex:i
+					</div>
+					where <tt>-Pnet:esp-link.local:23</tt> tells avrdude to connect to port 23 of esp-link.
+					You can substitute the IP address of your esp-link for esp-link.local if necessary.</p>
+					<p>Please refer to
+					<a href="https://github.com/jeelabs/esp-link/blob/master/README.md">the online README</a>
+					for up-to-date help and to the forthcoming
+					<a href="http://jeelabs.org">JeeLabs blog</a> for an intro to the codebase.</p>
 				</div></div>
 			</div>
 			<div class="pure-g">

@@ -6,6 +6,12 @@ html, button, input, select, textarea, .pure-g [class *= "pure-u"] {
 body {
     color: #777;
 }
+a:visited, a:link {
+	color: #009;
+}
+a:hover {
+	color: #00c;
+}
 
 .card {
 	background-color: #eee;
@@ -74,6 +80,16 @@ fieldset fields {
 	left: 150px;
 }
 
+div.tt {
+	font-family: monospace;
+	font-size: 120%;
+	color: #390;
+	background-color: #ddd;
+	padding: 2px;
+	margin: 2px 0;
+	line-height: 100%;
+}
+
 /* The content `<div>` */
 .content {
 	margin: 0 auto;
@@ -133,59 +149,57 @@ pre.console a {
 	display: inline-block;
 }
 
-/* The `#menu` `<div>` is the parent `<div>` that contains the `.pure-menu` that
- * appears on the left side of the page */
 #menu {
-	margin-left: -150px; /* "#menu" width */
+	margin-left: -150px;
 	width: 150px;
 	position: fixed;
 	top: 0;
 	left: 0;
 	bottom: 0;
-	z-index: 1000; /* so the menu or its navicon stays above all content */
+	z-index: 1000;
 	background: #191818;
 	overflow-y: auto;
 	-webkit-overflow-scrolling: touch;
 }
 
-/* All anchors inside the menu should be styled like this */
 #menu a {
 	color: #999;
 	border: none;
 	padding: 0.6em 0 0.6em 0.6em;
 }
 
-/* Remove all background/borders, since we are applying them to #menu */
 #menu .pure-menu, #menu .pure-menu ul {
 	border: none;
 	background: transparent;
 }
 
-/* Add that light border to separate items into groups */
 #menu .pure-menu ul, #menu .pure-menu .menu-item-divided {
 	border-top: 1px solid #333;
 }
 
-/* Change color of the anchor links on hover/focus */
 #menu .pure-menu li a:hover, #menu .pure-menu li a:focus {
 	background: #333;
 }
 
-/* This styles the selected menu item `<li>` */
 #menu .pure-menu-selected, #menu .pure-menu-heading {
-	background: #c60;
+	background: #9d1414;
 }
 
-/* This styles a link within a selected menu item `<li>` */
 #menu .pure-menu-selected a {
 	color: #fff;
 }
 
-/* This styles the menu heading */
 #menu .pure-menu-heading {
 	font-size: 110%;
 	color: #fff;
 	margin: 0;
+	text-transform: none;
+}
+
+#menu .pure-menu-heading img {
+	vertical-align: middle;
+	top: -1px;
+	position: relative;
 }
 
 #menu .pure-menu-item {
@@ -194,15 +208,14 @@ pre.console a {
 
 /* -- Dynamic Button For Responsive Menu -------------------------------------*/
 
-/* `.menu-link` represents the responsive menu toggle that shows/hides on small screens */
 .menu-link {
 	position: fixed;
-	display: block; /* show this only on small screens */
+	display: block; 
 	top: 0;
-	left: 0; /* "#menu width" */
+	left: 0; 
 	background: #000;
 	background: rgba(0,0,0,0.7);
-	font-size: 10px; /* change this value to increase/decrease button size */
+	font-size: 10px; 
 	z-index: 10;
 	width: 2em;
 	height: auto;
@@ -236,7 +249,6 @@ pre.console a {
 
 /* -- Responsive Styles (Media Queries) ------------------------------------- */
 
-/* Hides the menu at `48em`, but modify this based on your app's needs */
 @media (min-width: 48em) {
 	.header, .content {
 		padding-left: 2em;
@@ -244,7 +256,7 @@ pre.console a {
 	}
 
 	#layout {
-		padding-left: 150px; /* left col width "#menu" */
+		padding-left: 150px;
 		left: 0;
 	}
 	#menu {
@@ -263,12 +275,6 @@ pre.console a {
 }
 
 @media (max-width: 48em) {
-	/* Only apply this when the window is small. Otherwise, the following
-	case results in extra padding on the left:
-			* Make the window small.
-			* Tap the menu to trigger the active state.
-			* Make the window large again.
-	*/
 	#layout.active {
 		position: relative;
 		left: 150px;

@@ -1,6 +1,6 @@
   <div id="main">
     <div class="header">
-      <h1><span class="esp">esp</span> link - Microcontroller Console</h1>
+      <h1>Microcontroller Console</h1>
     </div>
 
     <div class="content">

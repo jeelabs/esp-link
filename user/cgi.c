@@ -54,8 +54,7 @@ void ICACHE_FLASH_ATTR printGlobalJSON(HttpdConnData *connData) {
 	httpdSend(connData,
 			"<script type=\"text/javascript\">\n"
 			"var menu = [\"Home\", \"/home.tpl\", \"Wifi\", \"/wifi/wifi.tpl\","
-			"\"\xC2\xB5" "C Console\", \"/console.tpl\", \"Debug log\", \"/log.tpl\", "
-			"\"Help\", \"/help.tpl\" ];\n", -1);
+			"\"\xC2\xB5" "C Console\", \"/console.tpl\", \"Debug log\", \"/log.tpl\" ];\n", -1);
 #   define VERS_STR_STR(V) #V
 #   define VERS_STR(V) VERS_STR_STR(V)
 	httpdSend(connData, "version = \"" VERS_STR(VERSION) "\";\n", -1);

@@ -189,7 +189,7 @@ $1/%.o: %.c
 	$(Q) $(CC) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CFLAGS)  -c $$< -o $$@
 endef
 
-.PHONY: all checkdirs clean webpages.espfs
+.PHONY: all checkdirs clean webpages.espfs wiflash
 
 all: echo_version checkdirs $(FW_BASE) firmware/user1.bin firmware/user2.bin
 
@@ -199,7 +199,8 @@ echo_version:
 $(TARGET_OUT): $(APP_AR) $(LD_SCRIPT)
 	$(vecho) "LD $@"
 	$(Q) $(LD) -L$(SDK_LIBDIR) -T$(LD_SCRIPT) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
-	$(OBJDP) -x $(TARGET_OUT) | egrep '(espfs_img)'
+	@echo Dump: $(OBJDP) -x $(TARGET_OUT)
+#	$(OBJDP) -x $(TARGET_OUT) | egrep '(espfs_img)'
 
 $(USER1_OUT): $(APP_AR) $(LD_SCRIPT1)
 	$(vecho) "LD $@"
@@ -269,6 +270,7 @@ ifeq ("$(COMPRESS_W_YUI)","yes")
 	$(Q) cd html_compressed; find  | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..;
 else
 	$(Q) cd html; find . \! -name \*- | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..
+	$(Q) ls -sl build/espfs.img
 endif
 	$(Q) cd build; $(OBJCP) -I binary -O elf32-xtensa-le -B xtensa --rename-section .data=.espfs \
 			espfs.img espfs_img.o; cd ..

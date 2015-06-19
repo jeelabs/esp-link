@@ -20,7 +20,7 @@
 
 //Gzip
 #ifdef ESPFS_GZIP
-// If compiler complains about missing header, try running "sudo apt-get install zlib1g-dev" 
+// If compiler complains about missing header, try running "sudo apt-get install zlib1g-dev"
 // to install missing package.
 #include <zlib.h>
 #endif
@@ -229,7 +229,7 @@ int handleFile(int f, char *name, int compression, int level, char **compName) {
 	h.nameLen=htoxs(h.nameLen);
 	h.fileLenComp=htoxl(csize);
 	h.fileLenDecomp=htoxl(size);
-	
+
 	write(1, &h, sizeof(EspFsHeader));
 	write(1, name, nameLen);
 	while (nameLen&3) {
@@ -309,7 +309,7 @@ int main(int argc, char **argv) {
 
 #ifdef ESPFS_GZIP
 	if (gzipExtensions == NULL) {
-		parseGzipExtensions(strdup("html,css,js"));
+		parseGzipExtensions(strdup("html,css,js,ico"));
 	}
 #endif
 

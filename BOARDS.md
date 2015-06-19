@@ -1,4 +1,4 @@
-Boards with ESP-Link
+Boards with esp-link
 ====================
 
 This readme provides instructions for PCBs that I've made that are designed for esp-link.
