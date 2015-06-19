@@ -24,6 +24,7 @@
 #include "status.h"
 #include "serled.h"
 #include "console.h"
+#include "config.h"
 #include "log.h"
 #define MCU_RESET 12
 #define MCU_ISP   13
@@ -121,6 +122,9 @@ void user_init(void) {
 # define VERS_STR_STR(V) #V
 # define VERS_STR(V) VERS_STR_STR(V)
 	os_printf("\n\nInitializing esp-link\n" VERS_STR(VERSION) "\n");
+	//configWipe();
+	if (configRestore()) os_printf("Flash config restored\n");
+	else os_printf("*** Flash config restore failed, using defaults ***\n");
 	// Status LEDs
 	statusInit();
 	serledInit();
