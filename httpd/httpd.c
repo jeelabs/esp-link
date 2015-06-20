@@ -82,14 +82,37 @@ const char ICACHE_FLASH_ATTR *httpdGetMimetype(char *url) {
 	return mimeTypes[i].mimetype;
 }
 
+// debug string to identify connection (ip address & port)
+// a static string works because callbacks don't get interrupted...
+static char connStr[24];
+
+static void debugConn(void *arg, char *what) {
+	struct espconn *espconn = arg;
+	esp_tcp *tcp = espconn->proto.tcp;
+	os_sprintf(connStr, "%d.%d.%d.%d:%d",
+			tcp->remote_ip[0], tcp->remote_ip[1], tcp->remote_ip[2], tcp->remote_ip[3],
+			tcp->remote_port);
+	//os_printf("%s %s\n", connStr, what);
+}
+
 //Looks up the connData info for a specific esp connection
 static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
-	int i;
-	for (i=0; i<MAX_CONN; i++) {
-		if (connData[i].conn==(struct espconn *)arg) return &connData[i];
+	struct espconn *espconn = arg;
+	for (int i=0; i<MAX_CONN; i++) {
+		if (connData[i].remote_port == espconn->proto.tcp->remote_port &&
+				os_memcmp(connData[i].remote_ip, espconn->proto.tcp->remote_ip, 4) == 0)
+		{
+#if 0
+			os_printf("FindConn: 0x%p->0x%p", arg, &connData[i]);
+			if (arg == connData[i].conn) os_printf("\n");
+			else os_printf(" *** was 0x%p\n", connData[i].conn);
+#endif
+			if (arg != connData[i].conn) connData[i].conn = arg; // yes, this happens!?
+			return &connData[i];
+		}
 	}
 	//Shouldn't happen.
-	os_printf("FindConnData: Huh? Couldn't find connection for %p\n", arg);
+	os_printf("%s *** Unknown connection 0x%p\n", connStr, arg);
 	return NULL;
 }
 
@@ -97,12 +120,14 @@ static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
 static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
 	uint32 dt = conn->startTime;
 	if (dt > 0) dt = (system_get_time() - dt)/1000;
-	os_printf("Closed %p, took %ums, heap=%ld\n", conn->conn, dt,
+	os_printf("%s Closed, took %ums, heap=%ld\n", connStr, dt,
 			(unsigned long)system_get_free_heap_size());
 	if (conn->post->buff!=NULL) os_free(conn->post->buff);
 	conn->post->buff=NULL;
 	conn->cgi=NULL;
 	conn->conn=NULL;
+	conn->remote_port = 0;
+	conn->remote_ip[0] = 0;
 }
 
 //Stupid li'l helper function that returns the value of a hex char.
@@ -243,7 +268,8 @@ int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData) {
 int ICACHE_FLASH_ATTR httpdSend(HttpdConnData *conn, const char *data, int len) {
 	if (len<0) len=strlen(data);
 	if (conn->priv->sendBuffLen+len>MAX_SENDBUFF_LEN) {
-		os_printf("ERROR! httpdSend full (%d of %d)\n", conn->priv->sendBuffLen, MAX_SENDBUFF_LEN);
+		os_printf("%s ERROR! httpdSend full (%d of %d)\n",
+				connStr, conn->priv->sendBuffLen, MAX_SENDBUFF_LEN);
 		return 0;
 	}
 	os_memcpy(conn->priv->sendBuff+conn->priv->sendBuffLen, data, len);
@@ -256,15 +282,15 @@ static void ICACHE_FLASH_ATTR xmitSendBuff(HttpdConnData *conn) {
 	if (conn->priv->sendBuffLen!=0) {
 		sint8 status = espconn_sent(conn->conn, (uint8_t*)conn->priv->sendBuff, conn->priv->sendBuffLen);
 		if (status != 0) {
-			os_printf("ERROR! espconn_sent returned %d\n", status);
+			os_printf("%s ERROR! espconn_sent returned %d\n", connStr, status);
 		}
 		conn->priv->sendBuffLen=0;
 	}
 }
 
-//Callback called when the data on a socket has been successfully
-//sent.
+//Callback called when the data on a socket has been successfully sent.
 static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
+	debugConn(arg, "httpdSentCb");
 	int r;
 	HttpdConnData *conn=httpdFindConnData(arg);
 	char sendBuff[MAX_SENDBUFF_LEN];
@@ -274,9 +300,9 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 	conn->priv->sendBuffLen=0;
 
 	if (conn->cgi==NULL) { //Marked for destruction?
-		//os_printf("Conn %p is done. Closing.\n", conn->conn);
+		//os_printf("Closing 0x%p/0x%p->0x%p\n", arg, conn->conn, conn);
 		espconn_disconnect(conn->conn);
-		httpdRetireConn(conn);
+		//httpdRetireConn(conn); // can't call this, we will get a diconnect callback!
 		return; //No need to call xmitSendBuff.
 	}
 
@@ -285,7 +311,7 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 		conn->cgi=NULL; //mark for destruction.
 	}
 	if (r==HTTPD_CGI_NOTFOUND || r==HTTPD_CGI_AUTHENTICATED) {
-		os_printf("ERROR! CGI fn returns code %d after sending data! Bad CGI!\n", r);
+		os_printf("%s ERROR! CGI fn returns code %d after sending data! Bad CGI!\n", connStr, r);
 		conn->cgi=NULL; //mark for destruction.
 	}
 	xmitSendBuff(conn);
@@ -301,7 +327,7 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
 	int r;
 	int i=0;
 	if (conn->url==NULL) {
-		os_printf("WtF? url = NULL\n");
+		os_printf("%s WtF? url = NULL\n", connStr);
 		return; //Shouldn't happen
 	}
 	//See if we can find a CGI that's happy to handle the request.
@@ -326,7 +352,7 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
 		if (builtInUrls[i].url==NULL) {
 			//Drat, we're at the end of the URL table. This usually shouldn't happen. Well, just
 			//generate a built-in 404 to handle this.
-			os_printf("%s not found. 404!\n", conn->url);
+			os_printf("%s %s not found. 404!\n", connStr, conn->url);
 			httpdSend(conn, httpNotFoundHeader, -1);
 			xmitSendBuff(conn);
 			conn->cgi=NULL; //mark for destruction
@@ -379,18 +405,14 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		if (e==NULL) return; //wtf?
 		*e=0; //terminate url part
 
-		os_printf("%s %s (%p) %d.%d.%d.%d:%d\n",
-				conn->requestType == HTTPD_METHOD_GET ? "GET" : "POST",
-				conn->url, conn->conn,
-				conn->conn->proto.tcp->remote_ip[0], conn->conn->proto.tcp->remote_ip[1],
-				conn->conn->proto.tcp->remote_ip[2], conn->conn->proto.tcp->remote_ip[3],
-				conn->conn->proto.tcp->remote_port);
+		os_printf("%s %s %s\n", connStr,
+				conn->requestType == HTTPD_METHOD_GET ? "GET" : "POST", conn->url);
 		//Parse out the URL part before the GET parameters.
 		conn->getArgs=(char*)os_strstr(conn->url, "?");
 		if (conn->getArgs!=0) {
 			*conn->getArgs=0;
 			conn->getArgs++;
-			os_printf("GET args = %s\n", conn->getArgs);
+			os_printf("%s GET args = %s\n", connStr, conn->getArgs);
 		} else {
 			conn->getArgs=NULL;
 		}
@@ -409,7 +431,7 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		} else {
 			conn->post->buffSize = conn->post->len;
 		}
-		os_printf("Mallocced buffer for %d + 1 bytes of post data.\n", conn->post->buffSize);
+		//os_printf("Mallocced buffer for %d + 1 bytes of post data.\n", conn->post->buffSize);
 		conn->post->buff=(char*)os_malloc(conn->post->buffSize + 1);
 		conn->post->buffLen=0;
 	} else if (os_strncmp(h, "Content-Type: ", 14)==0) {
@@ -420,7 +442,7 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 				conn->post->multipartBoundary = b + 7; // move the pointer 2 chars before boundary then fill them with dashes
 				conn->post->multipartBoundary[0] = '-';
 				conn->post->multipartBoundary[1] = '-';
-				os_printf("boundary = %s\n", conn->post->multipartBoundary);
+				//os_printf("boundary = %s\n", conn->post->multipartBoundary);
 			}
 		}
 	}
@@ -429,6 +451,7 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 
 //Callback called when there's data available on a socket.
 static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short len) {
+	debugConn(arg, "httpdRecvCb");
 	int x;
 	char *p, *e;
 	char sendBuff[MAX_SENDBUFF_LEN];
@@ -484,45 +507,47 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
 }
 
 static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
-	//The esp sdk passes through wrong arg here, namely the one of the *listening* socket.
-	//That is why we can't use (HttpdConnData)arg->sock here.
-	//Just look at all the sockets and kill the slot if needed.
-	int i;
-	for (i=0; i<MAX_CONN; i++) {
-		if (connData[i].conn!=NULL) {
-			//Why the >=ESPCONN_CLOSE and not ==? Well, seems the stack sometimes de-allocates
-			//espconns under our noses, especially when connections are interrupted. The memory
-			//is then used for something else, and we can use that to capture *most* of the
-			//disconnect cases.
-			if (connData[i].conn->state==ESPCONN_NONE || connData[i].conn->state>=ESPCONN_CLOSE) {
-				if (connData[i].cgi!=NULL) connData[i].cgi(&connData[i]); //flush cgi data
-				httpdRetireConn(&connData[i]);
-			}
-		}
-	}
+	debugConn(arg, "httpdDisconCb");
+	HttpdConnData *conn = httpdFindConnData(arg);
+	if (conn == NULL) return;
+	if (conn->cgi != NULL) conn->cgi(conn); // free cgi data
+	httpdRetireConn(conn);
 }
 
 // Callback indicating a failure in the connection. "Recon" is probably intended in the sense
 // of "you need to reconnect". Sigh...
 static void ICACHE_FLASH_ATTR httpdReconCb(void *arg, sint8 err) {
-	os_printf("Connection %p died, err=%d\n", arg, err);
-	httpdDisconCb(arg); // no different from close...
+	debugConn(arg, "httpdReconCb");
+	HttpdConnData *conn = httpdFindConnData(arg);
+	os_printf("%s reset, err=%d\n", connStr, err);
+	if (conn == NULL) return;
+	conn->conn = NULL; // don't tr to send anything, the SDK crashes...
+	if (conn->cgi != NULL) conn->cgi(conn); // free cgi data
+	httpdRetireConn(conn);
 }
 
 
 static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
+	debugConn(arg, "httpdConnectCb");
 	struct espconn *conn=arg;
 	int i;
 	//Find empty conndata in pool
 	for (i=0; i<MAX_CONN; i++) if (connData[i].conn==NULL) break;
 	//os_printf("Con req, conn=%p, pool slot %d\n", conn, i);
 	if (i==MAX_CONN) {
-		os_printf("Aiee, conn pool overflow!\n");
+		os_printf("%s Aiee, conn pool overflow!\n", connStr);
 		espconn_disconnect(conn);
 		return;
 	}
+
+	int num = 0;
+	for (int j=0; j<MAX_CONN; j++) if (connData[j].conn != NULL) num++;
+	os_printf("%s Connect (%d open)\n", connStr, num+1);
+
 	connData[i].priv=&connPrivData[i];
 	connData[i].conn=conn;
+	connData[i].remote_port = conn->proto.tcp->remote_port;
+	os_memcpy(connData[i].remote_ip, conn->proto.tcp->remote_ip, 4);
 	connData[i].priv->headPos=0;
 	connData[i].post=&connPostData[i];
 	connData[i].post->buff=NULL;

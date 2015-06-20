@@ -109,6 +109,10 @@ void user_rf_pre_init(void) {
 // address of espfs binary blob
 extern uint32_t _binary_espfs_img_start;
 
+static char *rst_codes[] = {
+	"normal", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", "???",
+};
+
 //Main routine. Initialize stdout, the I/O, filesystem and the webserver and we're done.
 void user_init(void) {
 	// init gpio pins used to reset&reprogram attached microcontrollers
@@ -144,5 +148,12 @@ void user_init(void) {
 	os_timer_setfn(&prHeapTimer, prHeapTimerCb, NULL);
 	os_timer_arm(&prHeapTimer, 3000, 1);
 #endif
+
+	struct rst_info *rst_info = system_get_rst_info();
+	os_printf("Reset cause: %d=%s\n", rst_info->reason, rst_codes[rst_info->reason]);
+	os_printf("exccause=%d epc1=0x%x epc2=0x%x epc3=0x%x excvaddr=0x%x depc=0x%x\n",
+			rst_info->exccause, rst_info->epc1, rst_info->epc2, rst_info->epc3,
+			rst_info->excvaddr, rst_info->depc);
+
 	os_printf("** esp-link ready\n");
 }

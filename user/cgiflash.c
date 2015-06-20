@@ -92,6 +92,7 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 	int code = 400;
 
 	// check overall size
+	//os_printf("FW: %d (max %d)\n", connData->post->len, FIRMWARE_SIZE);
 	if (connData->post->len > FIRMWARE_SIZE) err = "Firmware image too large";
 
 	// check that data starts with an appropriate header
