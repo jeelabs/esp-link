@@ -5,6 +5,7 @@
 #include "cgi.h"
 #include "uart.h"
 #include "serbridge.h"
+#include "config.h"
 #include "console.h"
 
 // Microcontroller console capturing the last 1024 characters received on the uart so
@@ -55,18 +56,24 @@ ajaxConsoleReset(HttpdConnData *connData) {
 
 int ICACHE_FLASH_ATTR
 ajaxConsoleBaud(HttpdConnData *connData) {
-	char buff[2048];
-	int len;
+	char buff[512];
+	int len, status = 400;
 	len = httpdFindArg(connData->getArgs, "rate", buff, sizeof(buff));
 	if (len > 0) {
 		int rate = atoi(buff);
 		if (rate >= 9600 && rate <= 1000000) {
 			jsonHeader(connData, 200);
 			uart0_baud(rate);
-			return HTTPD_CGI_DONE;
+			flashConfig.baud_rate = rate;
+			status = configSave() ? 200 : 400;
 		}
+	} else if (connData->requestType == HTTPD_METHOD_GET) {
+		status = 200;
 	}
-	jsonHeader(connData, 400);
+
+	jsonHeader(connData, status);
+	os_sprintf(buff, "{\"rate\": %ld}", flashConfig.baud_rate);
+	httpdSend(connData, buff, -1);
 	return HTTPD_CGI_DONE;
 }
 

@@ -122,8 +122,14 @@ div.tt {
 	color: #888;
 }
 
+form button {
+	margin-top: 0.5em;
+}
 .button-primary {
 	background-color: #99f;
+}
+.button-selected {
+	background-color: #fc6;
 }
 
 /* Text console */

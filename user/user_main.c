@@ -26,8 +26,6 @@
 #include "console.h"
 #include "config.h"
 #include "log.h"
-#define MCU_RESET 12
-#define MCU_ISP   13
 #include <gpio.h>
 
 //#define SHOW_HEAP_USE
@@ -88,6 +86,7 @@ HttpdBuiltInUrl builtInUrls[]={
 	{"/wifi/connect", cgiWiFiConnect, NULL},
 	{"/wifi/connstatus", cgiWiFiConnStatus, NULL},
 	{"/wifi/setmode", cgiWiFiSetMode, NULL},
+	{"/wifi/special", cgiWiFiSpecial, NULL},
 	{"/pins", cgiPins, NULL},
 
 	{"*", cgiEspFsHook, NULL}, //Catch-all cgi function for the filesystem
@@ -113,31 +112,32 @@ static char *rst_codes[] = {
 	"normal", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", "???",
 };
 
-//Main routine. Initialize stdout, the I/O, filesystem and the webserver and we're done.
-void user_init(void) {
-	// init gpio pins used to reset&reprogram attached microcontrollers
-	gpio_init();
-	// put MCU into reset in case it interferes with serial-programming of the esp8266
-	//GPIO_OUTPUT_SET(MCU_RESET, 0);
-	// init UART
-	uart_init(BIT_RATE_115200, BIT_RATE_115200);
-	// say hello (leave some time to cause break in TX after boot loader's msg
-	os_delay_us(10000L);
 # define VERS_STR_STR(V) #V
 # define VERS_STR(V) VERS_STR_STR(V)
-	os_printf("\n\nInitializing esp-link\n" VERS_STR(VERSION) "\n");
-	//configWipe();
-	if (configRestore()) os_printf("Flash config restored\n");
-	else os_printf("*** Flash config restore failed, using defaults ***\n");
+char *esp_link_version = VERS_STR(VERSION);
+
+//Main routine. Initialize stdout, the I/O, filesystem and the webserver and we're done.
+void user_init(void) {
+	// get the flash config so we know how to init things
+	//configWipe(); // uncomment to reset the config for testing purposes
+	bool restoreOk = configRestore();
+	// init gpio pin registers
+	gpio_init();
+	// init UART
+	uart_init(flashConfig.baud_rate, 115200);
+	logInit(); // must come after init of uart
+	// say hello (leave some time to cause break in TX after boot loader's msg
+	os_delay_us(10000L);
+	os_printf("\n\n** %s\n", esp_link_version);
+	os_printf("Flash config restore %s\n", restoreOk ? "ok" : "*FAILED*");
 	// Status LEDs
 	statusInit();
 	serledInit();
-	logInit();
 	// Wifi
 	wifiInit();
 	// init the flash filesystem with the html stuff
 	EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
-	os_printf("espFsInit(0x%08lx) returned %d\n", (uint32_t)&_binary_espfs_img_start, res);
+	os_printf("espFsInit %s\n", res?"ok":"ERR");
 	// mount the http handlers
 	httpdInit(builtInUrls, 80);
 	// init the wifi-serial transparent bridge (port 23)

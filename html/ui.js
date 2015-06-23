@@ -10,30 +10,28 @@
     if (v != null) { v.innerHTML = version; }
 }());
 
+function addClass(el, cl) {
+  el.className += ' ' + cl;
+}
+function removeClass(el, cl) {
+  var cls = el.className.split(/\s+/),
+      l = cls.length;
+  for (var i=0; i<l; i++) {
+    if (cls[i] === cl) cls.splice(i, 1);
+  }
+  el.className = cls.join(' ');
+  return cls.length != l
+}
+function toggleClass(el, cl) {
+  if (!removeClass(el, cl)) addClass(el, cl);
+}
+
+
 (function (window, document) {
 
     var layout   = document.getElementById('layout'),
         menu     = document.getElementById('menu'),
         menuLink = document.getElementById('menuLink');
-
-    function toggleClass(element, className) {
-        var classes = element.className.split(/\s+/),
-            length = classes.length,
-            i = 0;
-
-        for(; i < length; i++) {
-          if (classes[i] === className) {
-            classes.splice(i, 1);
-            break;
-          }
-        }
-        // The className is not found
-        if (length === classes.length) {
-            classes.push(className);
-        }
-
-        element.className = classes.join(' ');
-    }
 
     menuLink.onclick = function (e) {
         var active = 'active';
@@ -51,7 +49,10 @@
 function showWifiInfo(data) {
   Object.keys(data).forEach(function(v) {
     el = $("#wifi-" + v);
-    if (el != null) el.innerHTML = data[v];
+    if (el != null) {
+      if (el.nodeName === "INPUT") el.value = data[v];
+      else el.innerHTML = data[v];
+    }
   });
   $("#wifi-spinner").setAttribute("hidden", "");
   $("#wifi-table").removeAttribute("hidden");

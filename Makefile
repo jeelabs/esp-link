@@ -199,12 +199,13 @@ echo_version:
 $(TARGET_OUT): $(APP_AR) $(LD_SCRIPT)
 	$(vecho) "LD $@"
 	$(Q) $(LD) -L$(SDK_LIBDIR) -T$(LD_SCRIPT) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
-	@echo Dump: $(OBJDP) -x $(TARGET_OUT)
 #	$(OBJDP) -x $(TARGET_OUT) | egrep '(espfs_img)'
 
 $(USER1_OUT): $(APP_AR) $(LD_SCRIPT1)
 	$(vecho) "LD $@"
 	$(Q) $(LD) -L$(SDK_LIBDIR) -T$(LD_SCRIPT1) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
+	@echo Dump  : $(OBJDP) -x $(USER1_OUT)
+	@echo Disass: $(OBJDP) -d -l -x $(USER1_OUT)
 #	$(Q) $(OBJDP) -x $(TARGET_OUT) | egrep espfs_img
 
 $(USER2_OUT): $(APP_AR) $(LD_SCRIPT2)

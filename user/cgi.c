@@ -21,13 +21,15 @@ Some random cgi routines.
 void ICACHE_FLASH_ATTR
 jsonHeader(HttpdConnData *connData, int code) {
 	httpdStartResponse(connData, code);
+	httpdHeader(connData, "Cache-Control", "no-cache, no-store, must-revalidate");
+	httpdHeader(connData, "Pragma", "no-cache");
+	httpdHeader(connData, "Expires", "0");
 	httpdHeader(connData, "Content-Type", "application/json");
 	httpdEndHeaders(connData);
 }
 
 #define TOKEN(x) (os_strcmp(token, x) == 0)
 #if 0
-
 // Handle system information variables and print their value, returns the number of
 // characters appended to buff
 int ICACHE_FLASH_ATTR printGlobalInfo(char *buff, int buflen, char *token) {

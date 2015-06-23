@@ -120,7 +120,7 @@ static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
 static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
 	uint32 dt = conn->startTime;
 	if (dt > 0) dt = (system_get_time() - dt)/1000;
-	os_printf("%s Closed, took %ums, heap=%ld\n", connStr, dt,
+	os_printf("%s Closed, %ums, heap=%ld\n", connStr, dt,
 			(unsigned long)system_get_free_heap_size());
 	if (conn->post->buff!=NULL) os_free(conn->post->buff);
 	conn->post->buff=NULL;
@@ -405,8 +405,12 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		if (e==NULL) return; //wtf?
 		*e=0; //terminate url part
 
-		os_printf("%s %s %s\n", connStr,
-				conn->requestType == HTTPD_METHOD_GET ? "GET" : "POST", conn->url);
+		// Count number of open connections
+		int open = 0;
+		for (int j=0; j<MAX_CONN; j++) if (connData[j].conn != NULL) open++;
+
+		os_printf("%s %s %s (%d conn open)\n", connStr,
+				conn->requestType == HTTPD_METHOD_GET ? "GET" : "POST", conn->url, open);
 		//Parse out the URL part before the GET parameters.
 		conn->getArgs=(char*)os_strstr(conn->url, "?");
 		if (conn->getArgs!=0) {
@@ -540,9 +544,11 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 		return;
 	}
 
+#if 0
 	int num = 0;
 	for (int j=0; j<MAX_CONN; j++) if (connData[j].conn != NULL) num++;
 	os_printf("%s Connect (%d open)\n", connStr, num+1);
+#endif
 
 	connData[i].priv=&connPrivData[i];
 	connData[i].conn=conn;

@@ -18,6 +18,7 @@ Cgi/template routines for the /wifi url.
 #include "cgiwifi.h"
 #include "cgi.h"
 #include "status.h"
+#include "config.h"
 #include "log.h"
 
 //Enable this to disallow any changes in AP settings
@@ -289,10 +290,7 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 	char essid[128];
 	char passwd[128];
 
-	if (connData->conn==NULL) {
-		//Connection aborted. Clean up.
-		return HTTPD_CGI_DONE;
-	}
+	if (connData->conn==NULL) return HTTPD_CGI_DONE;
 
 	int el = httpdFindArg(connData->getArgs, "essid", essid, sizeof(essid));
 	int pl = httpdFindArg(connData->getArgs, "passwd", passwd, sizeof(passwd));
@@ -314,6 +312,104 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 		jsonHeader(connData, 400);
 		httpdSend(connData, "Cannot parse ssid or password", -1);
 	}
+	return HTTPD_CGI_DONE;
+}
+
+static bool parse_ip(char *buff, ip_addr_t *ip_ptr) {
+	char *next = buff; // where to start parsing next integer
+	int found = 0;     // number of integers parsed
+	uint32_t ip = 0;   // the ip addres parsed
+	for (int i=0; i<32; i++) { // 32 is just a safety limit
+		char c = buff[i];
+		if (c == '.' || c == 0) {
+			// parse the preceding integer and accumulate into IP address
+			bool last = c == 0;
+			buff[i] = 0;
+			uint32_t v = atoi(next);
+			ip = ip | ((v&0xff)<<(found*8));
+			next = buff+i+1; // next integer starts after the '.'
+			found++;
+			if (last) { // if at end of string we better got 4 integers
+				ip_ptr->addr = ip;
+				return found == 4;
+			}
+			continue;
+		}
+		if (c < '0' || c > '9') return false;
+	}
+	return false;
+}
+
+#define DEBUGIP
+#ifdef DEBUGIP
+static void ICACHE_FLASH_ATTR debugIP() {
+	struct ip_info info;
+	if (wifi_get_ip_info(0, &info)) {
+		os_printf("\"ip\": \"%d.%d.%d.%d\"\n", IP2STR(&info.ip.addr));
+		os_printf("\"netmask\": \"%d.%d.%d.%d\"\n", IP2STR(&info.netmask.addr));
+		os_printf("\"gateway\": \"%d.%d.%d.%d\"\n", IP2STR(&info.gw.addr));
+		os_printf("\"hostname\": \"%s\"", flashConfig.hostname);
+	} else {
+		os_printf("\"ip\": \"-none-\"\n");
+	}
+}
+#endif
+
+// Change special settings
+int ICACHE_FLASH_ATTR cgiWiFiSpecial(HttpdConnData *connData) {
+	char hostname[32];
+	char staticip[32];
+	char netmask[32];
+	char gateway[32];
+
+	if (connData->conn==NULL) return HTTPD_CGI_DONE;
+
+	// get args and their string lengths
+	int hl = httpdFindArg(connData->getArgs, "hostname", hostname, sizeof(hostname));
+	int sl = httpdFindArg(connData->getArgs, "staticip", staticip, sizeof(staticip));
+	int nl = httpdFindArg(connData->getArgs, "netmask", netmask, sizeof(netmask));
+	int gl = httpdFindArg(connData->getArgs, "gateway", gateway, sizeof(gateway));
+
+	if (hl >= 0 && sl >= 0 && nl >= 0 && gl >= 0) {
+		if (sl > 0) {
+			// static IP overrides hostname (HDCP stuff)
+			wifi_station_dhcpc_stop();
+			struct ip_info ipi;
+			bool ok = parse_ip(staticip, &ipi.ip);
+			if (nl > 0) ok = ok && parse_ip(netmask, &ipi.netmask);
+			else IP4_ADDR(&ipi.netmask, 255, 255, 255, 0);
+			if (gl > 0) ok = ok && parse_ip(gateway, &ipi.gw);
+			else ipi.gw.addr = 0;
+			if (ok) {
+				os_printf("Setting static IP: %s\n", staticip);
+				ok = wifi_set_ip_info(0, &ipi);
+				if (ok) os_printf("Static IP set: %s\n", staticip);
+#ifdef DEBUGIP
+				debugIP();
+#endif
+				jsonHeader(connData, ok ? 200: 400);
+				return HTTPD_CGI_DONE;
+			}
+		} else {
+			// no static IP, set hostname
+			if (hl == 0) os_strcpy(hostname, "esp-link");
+			if (wifi_station_dhcpc_status() == DHCP_STARTED)
+				wifi_station_dhcpc_stop();
+			bool hok = wifi_station_set_hostname(hostname);
+			if (hok) {
+				os_strcpy(flashConfig.hostname, hostname);
+				hok = hok && configSave();
+			}
+			hok = hok && wifi_station_dhcpc_start();
+			if (hok) os_printf("DHCP hostname set: %s\n", hostname);
+			jsonHeader(connData, hok ? 200 : 400);
+			if (!hok) httpdSend(connData, "Error setting hostname or starting DHCP", -1);
+			return HTTPD_CGI_DONE;
+		}
+	}
+
+	jsonHeader(connData, 400);
+	httpdSend(connData, "Cannot parse hostname or staticip", -1);
 	return HTTPD_CGI_DONE;
 }
 
@@ -386,9 +482,10 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 
 	struct ip_info info;
 	if (wifi_get_ip_info(0, &info)) {
-		len += os_sprintf(buff+len, ", \"ip\": \"%d.%d.%d.%d\"",
-			(info.ip.addr>>0)&0xff, (info.ip.addr>>8)&0xff,
-			(info.ip.addr>>16)&0xff, (info.ip.addr>>24)&0xff);
+		len += os_sprintf(buff+len, ", \"ip\": \"%d.%d.%d.%d\"", IP2STR(&info.ip.addr));
+		len += os_sprintf(buff+len, ", \"netmask\": \"%d.%d.%d.%d\"", IP2STR(&info.netmask.addr));
+		len += os_sprintf(buff+len, ", \"gateway\": \"%d.%d.%d.%d\"", IP2STR(&info.gw.addr));
+		len += os_sprintf(buff+len, ", \"hostname\": \"%s\"", flashConfig.hostname);
 	} else {
 		len += os_sprintf(buff+len, ", \"ip\": \"-none-\"");
 	}
@@ -449,7 +546,7 @@ int ICACHE_FLASH_ATTR cgiWifiInfo(HttpdConnData *connData) {
 // Init the wireless, which consists of setting a timer if we expect to connect to an AP
 // so we can revert to STA+AP mode if we can't connect.
 void ICACHE_FLASH_ATTR wifiInit() {
-	wifi_station_set_hostname("esp-link");
+	wifi_station_set_hostname(flashConfig.hostname);
 	int x = wifi_get_opmode() & 0x3;
 	os_printf("Wifi init, mode=%s\n", wifiMode[x]);
 	wifi_set_phy_mode(2);
