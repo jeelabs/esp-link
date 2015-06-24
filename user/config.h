@@ -4,9 +4,10 @@
 typedef struct {
   uint32_t seq; // flash write sequence number
   uint32_t crc; // FlashConfig crc
-  int8_t  reset_pin, isp_pin, conn_led_pin, ser_led_pin;
-  int32_t baud_rate;
-  char    hostname[32];
+  int8_t   reset_pin, isp_pin, conn_led_pin, ser_led_pin;
+  int32_t  baud_rate;
+  char     hostname[32];               // if using DHCP
+  uint32_t staticip, netmask, gateway; // using DHCP if staticip==0
 } FlashConfig;
 extern FlashConfig flashConfig;
 

@@ -10,6 +10,7 @@
 typedef struct espconn espconn;
 
 bool wifi_station_set_hostname(char *);
+char *wifi_station_get_hostname(void);
 
 int atoi(const char *nptr);
 

@@ -348,12 +348,36 @@ static void ICACHE_FLASH_ATTR debugIP() {
 		os_printf("\"ip\": \"%d.%d.%d.%d\"\n", IP2STR(&info.ip.addr));
 		os_printf("\"netmask\": \"%d.%d.%d.%d\"\n", IP2STR(&info.netmask.addr));
 		os_printf("\"gateway\": \"%d.%d.%d.%d\"\n", IP2STR(&info.gw.addr));
-		os_printf("\"hostname\": \"%s\"", flashConfig.hostname);
+		os_printf("\"hostname\": \"%s\"\n", wifi_station_get_hostname());
 	} else {
 		os_printf("\"ip\": \"-none-\"\n");
 	}
 }
 #endif
+
+// configure Wifi, specifically DHCP vs static IP address based on flash config
+static void ICACHE_FLASH_ATTR configWifiIP() {
+	if (flashConfig.staticip == 0) {
+		// let's DHCP!
+		wifi_station_set_hostname(flashConfig.hostname);
+		if (wifi_station_dhcpc_status() == DHCP_STARTED)
+			wifi_station_dhcpc_stop();
+		wifi_station_dhcpc_start();
+		os_printf("Wifi uses DHCP, hostname=%s\n", flashConfig.hostname);
+	} else {
+		// no DHCP, we got static network config!
+		wifi_station_dhcpc_stop();
+		struct ip_info ipi;
+		ipi.ip.addr = flashConfig.staticip;
+		ipi.netmask.addr = flashConfig.netmask;
+		ipi.gw.addr = flashConfig.gateway;
+		wifi_set_ip_info(0, &ipi);
+		os_printf("Wifi uses static IP %d.%d.%d.%d\n", IP2STR(&ipi.ip.addr));
+	}
+#ifdef DEBUGIP
+	debugIP();
+#endif
+}
 
 // Change special settings
 int ICACHE_FLASH_ATTR cgiWiFiSpecial(HttpdConnData *connData) {
@@ -370,46 +394,49 @@ int ICACHE_FLASH_ATTR cgiWiFiSpecial(HttpdConnData *connData) {
 	int nl = httpdFindArg(connData->getArgs, "netmask", netmask, sizeof(netmask));
 	int gl = httpdFindArg(connData->getArgs, "gateway", gateway, sizeof(gateway));
 
-	if (hl >= 0 && sl >= 0 && nl >= 0 && gl >= 0) {
-		if (sl > 0) {
-			// static IP overrides hostname (HDCP stuff)
-			wifi_station_dhcpc_stop();
-			struct ip_info ipi;
-			bool ok = parse_ip(staticip, &ipi.ip);
-			if (nl > 0) ok = ok && parse_ip(netmask, &ipi.netmask);
-			else IP4_ADDR(&ipi.netmask, 255, 255, 255, 0);
-			if (gl > 0) ok = ok && parse_ip(gateway, &ipi.gw);
-			else ipi.gw.addr = 0;
-			if (ok) {
-				os_printf("Setting static IP: %s\n", staticip);
-				ok = wifi_set_ip_info(0, &ipi);
-				if (ok) os_printf("Static IP set: %s\n", staticip);
-#ifdef DEBUGIP
-				debugIP();
-#endif
-				jsonHeader(connData, ok ? 200: 400);
-				return HTTPD_CGI_DONE;
-			}
-		} else {
-			// no static IP, set hostname
-			if (hl == 0) os_strcpy(hostname, "esp-link");
-			if (wifi_station_dhcpc_status() == DHCP_STARTED)
-				wifi_station_dhcpc_stop();
-			bool hok = wifi_station_set_hostname(hostname);
-			if (hok) {
-				os_strcpy(flashConfig.hostname, hostname);
-				hok = hok && configSave();
-			}
-			hok = hok && wifi_station_dhcpc_start();
-			if (hok) os_printf("DHCP hostname set: %s\n", hostname);
-			jsonHeader(connData, hok ? 200 : 400);
-			if (!hok) httpdSend(connData, "Error setting hostname or starting DHCP", -1);
-			return HTTPD_CGI_DONE;
-		}
+	if (!(hl >= 0 && sl >= 0 && nl >= 0 && gl >= 0)) {
+		jsonHeader(connData, 400);
+		httpdSend(connData, "Request is missing fields", -1);
+		return HTTPD_CGI_DONE;
 	}
 
-	jsonHeader(connData, 400);
-	httpdSend(connData, "Cannot parse hostname or staticip", -1);
+	char url[64]; // redirect URL
+	if (sl > 0) {
+		// parse static IP params
+		struct ip_info ipi;
+		bool ok = parse_ip(staticip, &ipi.ip);
+		if (nl > 0) ok = ok && parse_ip(netmask, &ipi.netmask);
+		else IP4_ADDR(&ipi.netmask, 255, 255, 255, 0);
+		if (gl > 0) ok = ok && parse_ip(gateway, &ipi.gw);
+		else ipi.gw.addr = 0;
+		if (!ok) {
+			jsonHeader(connData, 400);
+			httpdSend(connData, "Cannot parse static IP config", -1);
+			return HTTPD_CGI_DONE;
+		}
+		// save the params in flash
+		flashConfig.staticip = ipi.ip.addr;
+		flashConfig.netmask = ipi.netmask.addr;
+		flashConfig.gateway = ipi.gw.addr;
+		// construct redirect URL
+		os_sprintf(url, "{\"url\": \"http://%d.%d.%d.%d\"}", IP2STR(&ipi.ip));
+
+	} else {
+		// no static IP, set hostname
+		if (hl == 0) os_strcpy(hostname, "esp-link");
+		flashConfig.staticip = 0;
+		os_strcpy(flashConfig.hostname, hostname);
+		os_sprintf(url, "{\"url\": \"http://%s\"}", hostname);
+	}
+
+	configSave(); // ignore error...
+	// schedule change-over
+	os_timer_disarm(&reassTimer);
+	os_timer_setfn(&reassTimer, configWifiIP, NULL);
+	os_timer_arm(&reassTimer, 1000, 0);
+	// return redirect info
+	jsonHeader(connData, 200);
+	httpdSend(connData, url, -1);
 	return HTTPD_CGI_DONE;
 }
 
@@ -485,10 +512,11 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 		len += os_sprintf(buff+len, ", \"ip\": \"%d.%d.%d.%d\"", IP2STR(&info.ip.addr));
 		len += os_sprintf(buff+len, ", \"netmask\": \"%d.%d.%d.%d\"", IP2STR(&info.netmask.addr));
 		len += os_sprintf(buff+len, ", \"gateway\": \"%d.%d.%d.%d\"", IP2STR(&info.gw.addr));
-		len += os_sprintf(buff+len, ", \"hostname\": \"%s\"", flashConfig.hostname);
+		len += os_sprintf(buff+len, ", \"hostname\": \"%s\"", wifi_station_get_hostname());
 	} else {
 		len += os_sprintf(buff+len, ", \"ip\": \"-none-\"");
 	}
+	len += os_sprintf(buff+len, ", \"staticip\": \"%d.%d.%d.%d\"", IP2STR(&flashConfig.staticip));
 
 	return len;
 }
@@ -546,10 +574,11 @@ int ICACHE_FLASH_ATTR cgiWifiInfo(HttpdConnData *connData) {
 // Init the wireless, which consists of setting a timer if we expect to connect to an AP
 // so we can revert to STA+AP mode if we can't connect.
 void ICACHE_FLASH_ATTR wifiInit() {
-	wifi_station_set_hostname(flashConfig.hostname);
+	wifi_set_phy_mode(2);
 	int x = wifi_get_opmode() & 0x3;
 	os_printf("Wifi init, mode=%s\n", wifiMode[x]);
-	wifi_set_phy_mode(2);
+	configWifiIP();
+
 	wifi_set_event_handler_cb(wifiHandleEventCb);
 	// check on the wifi in a few seconds to see whether we need to switch mode
 	os_timer_disarm(&resetTimer);

@@ -11,8 +11,11 @@ FlashConfig flashDefault = {
   33, 0,
   MCU_RESET_PIN, MCU_ISP_PIN, LED_CONN_PIN, LED_SERIAL_PIN,
   115200,
-  "esp-link\0                       ",
+  "esp-link\0                       ", // hostname
+  0, 0x00ffffff, 0,                    // static ip, netmask, gateway
 };
+
+#define FLASH_MAGIC  (0xaa55aa55)
 
 #define FLASH_ADDR   (0x3E000)
 #define FLASH_SECT   (4096)
@@ -28,7 +31,7 @@ bool ICACHE_FLASH_ATTR configSave(void) {
     return false; // no harm done, give up
   // write primary with incorrect seq
   fc.seq = 0xffffffff;
-  fc.crc = 0x55aa55aa;
+  fc.crc = FLASH_MAGIC;
   if (spi_flash_write(addr, (void *)&fc, sizeof(FlashConfig)) != SPI_FLASH_RESULT_OK)
     return false; // no harm done, give up
   // fill in correct seq
@@ -77,8 +80,8 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
 }
 
 static uint32_t ICACHE_FLASH_ATTR selectPrimary(FlashConfig *fc0, FlashConfig *fc1) {
-  bool fc0_crc_ok = fc0->crc == 0x55aa55aa && fc0->seq != 0xffffffff; // need real crc checksum...
-  bool fc1_crc_ok = fc1->crc == 0x55aa55aa && fc1->seq != 0xffffffff; // need real crc checksum...
+  bool fc0_crc_ok = fc0->crc == FLASH_MAGIC && fc0->seq != 0xffffffff; // need real crc checksum...
+  bool fc1_crc_ok = fc1->crc == FLASH_MAGIC && fc1->seq != 0xffffffff; // need real crc checksum...
   if (fc0_crc_ok)
     if (!fc1_crc_ok || fc0->seq >= fc1->seq)
       return 0; // use first sector as primary
