@@ -137,7 +137,7 @@ void user_init(void) {
 	wifiInit();
 	// init the flash filesystem with the html stuff
 	EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
-	os_printf("espFsInit %s\n", res?"ok":"ERR");
+	os_printf("espFsInit %s\n", res?"ERR":"ok");
 	// mount the http handlers
 	httpdInit(builtInUrls, 80);
 	// init the wifi-serial transparent bridge (port 23)

@@ -44,7 +44,7 @@ static char *wifiPhy[]  = { 0, "11b", "11g", "11n" };
 
 static char* ICACHE_FLASH_ATTR wifiGetReason(void) {
 	if (wifiReason <= 24) return wifiReasons[wifiReason];
-	if (wifiReason >= 200 && wifiReason <= 201) return wifiReasons[wifiReason-200+25];
+	if (wifiReason >= 200 && wifiReason <= 201) return wifiReasons[wifiReason-200+24];
 	return wifiReasons[1];
 }
 
@@ -61,8 +61,8 @@ static void ICACHE_FLASH_ATTR wifiHandleEventCb(System_Event_t *evt) {
 	case EVENT_STAMODE_DISCONNECTED:
 		wifiState = wifiIsDisconnected;
 		wifiReason = evt->event_info.disconnected.reason;
-		os_printf("Wifi disconnected from ssid %s, reason %s\n",
-				evt->event_info.disconnected.ssid, wifiGetReason());
+		os_printf("Wifi disconnected from ssid %s, reason %s (%d)\n",
+				evt->event_info.disconnected.ssid, wifiGetReason(), evt->event_info.disconnected.reason);
 		statusWifiUpdate(wifiState);
 		break;
 	case EVENT_STAMODE_AUTHMODE_CHANGE:
@@ -502,9 +502,8 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 
 	len = os_sprintf(buff,
 		"\"mode\": \"%s\", \"ssid\": \"%s\", \"status\": \"%s\", \"phy\": \"%s\", "
-		"\"rssi\": \"%ddB\", \"warn\": \"%s\", \"passwd\": \"%s\", "
-		"\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\"",
-		mode, (char*)stconf.ssid, status, phy, rssi, warn, (char*)stconf.password,
+		"\"rssi\": \"%ddB\", \"warn\": \"%s\", \"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\"",
+		mode, (char*)stconf.ssid, status, phy, rssi, warn,
 		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
 
 	struct ip_info info;
