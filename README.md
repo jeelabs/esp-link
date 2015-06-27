@@ -206,7 +206,7 @@ and is documented in Espressif's `99C-ESP8266__OTA_Upgrade__EN_v1.5.pdf`):
  - @0x3E000 16KB esp-link parameters
  - @0x40000 4KB unused
  - @0x41000 236KB partition2
- - @0x4E000 16KB system wifi parameters
+ - @0x7E000 16KB system wifi parameters
 
 What this means is that we can flash just about anything into partition1 or partition2 as long
 as it doesn't take more than 236KB and has the right format that the boot loader understands.
