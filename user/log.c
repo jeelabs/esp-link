@@ -20,7 +20,7 @@ static bool log_newline; // at start of a new line
 void ICACHE_FLASH_ATTR
 log_uart(bool enable) {
 	if (!enable && !log_no_uart) {
-#if 0
+#if 1
 		os_printf("Turning OFF uart log\n");
 		os_delay_us(4*1000L); // time for uart to flush
 		log_no_uart = !enable;

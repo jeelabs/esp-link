@@ -515,7 +515,10 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 	} else {
 		len += os_sprintf(buff+len, ", \"ip\": \"-none-\"");
 	}
-	len += os_sprintf(buff+len, ", \"staticip\": \"%d.%d.%d.%d\"", IP2STR(&flashConfig.staticip));
+	if (flashConfig.staticip > 0)
+		len += os_sprintf(buff+len, ", \"staticip\": \"%d.%d.%d.%d\"", IP2STR(&flashConfig.staticip));
+	else
+		len += os_sprintf(buff+len, ", \"staticip\": \"\"");
 
 	return len;
 }
