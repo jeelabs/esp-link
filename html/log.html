@@ -20,17 +20,16 @@
   </div>
 </div>
 
-<script src="ui.js"></script>
 <script type="text/javascript">console_url = "/log/text"</script>
 <script src="console.js"></script>
 <script type="text/javascript">
-  window.onload = function() {
+  onLoad(function() {
     fetchText(100, false);
 
     $("#refresh-button").addEventListener("click", function(e) {
       e.preventDefault();
       fetchText(100, false);
     });
-  }
+  });
 </script>
 </body></html>

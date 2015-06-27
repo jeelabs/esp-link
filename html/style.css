@@ -23,11 +23,16 @@ a:hover {
 	border: 0px solid #000000;
 }
 
+@media screen and (max-width: 1023px) {
+	.pure-u-12-24 {
+		width: 100%;
+	}
+}
+
 /* wifi AP selection form */
 #aps label div {
 	display: inline-block;
 	margin: 0em 0.2em;
-	vertical-align: top;
 }
 fieldset.radios {
 	border: none;
@@ -286,6 +291,8 @@ pre.console a {
 		left: 150px;
 	}
 }
+
+/*===== spinners and notification messages */
 
 #messages {
 	position: absolute;

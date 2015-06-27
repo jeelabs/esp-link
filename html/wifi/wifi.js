@@ -1,96 +1,35 @@
-  <div id="main">
-    <div class="header">
-      <h1>Wifi Configuration</h1>
-    </div>
-
-    <div class="content">
-      <div class="pure-g">
-        <div class="pure-u-12-24"><div class="card">
-          <h1>Wifi State</h2>
-          <div id="wifi-spinner" class="spinner spinner-small"></div>
-          <table id="wifi-table" class="pure-table pure-table-horizontal" hidden><tbody>
-          <tr><td>WiFi mode</td><td id="wifi-mode"></td></tr>
-          <tr><td>Configured network</td><td id="wifi-ssid"></td></tr>
-          <tr><td>Wifi status</td><td id="wifi-status"></td></tr>
-          <tr><td>Wifi address</td><td id="wifi-ip"></td></tr>
-          <tr><td>Wifi rssi</td><td id="wifi-rssi"></td></tr>
-          <tr><td>Wifi phy</td><td id="wifi-phy"></td></tr>
-          <tr><td>Wifi MAC</td><td id="wifi-mac"></td></tr>
-          <tr><td colspan="2" id="wifi-warn"></td></tr>
-          </tbody> </table>
-        </div></div>
-        <div class="pure-u-12-24"><div class="card">
-          <h1>Wifi Association</h2>
-          <p id="reconnect" style="color: #600" hidden></p>
-          <form action="#" id="wifiform" class="pure-form pure-form-stacked">
-            <legend>To connect to a WiFi network, please select one of the detected networks,
-               enter the password, and hit the connect button...</legend>
-            <label>Network SSID</label>
-            <div id="aps">Scanning... <div class="spinner spinner-small"></div></div>
-            <label>WiFi password, if applicable:</label>
-            <input id="wifi-passwd" type="text" name="passwd" placeholder="password">
-            <button id="connect-button" type="submit" class="pure-button button-primary">Connect!</button>
-          </form>
-        </div></div>
-      </div>
-      <div class="pure-g">
-        <div class="pure-u-12-24"><div class="card">
-          <h1>Special Settings</h2>
-          <form action="#" id="specform" class="pure-form pure-form-stacked">
-            <legend>Special settings, use with care! If the Static IP field is empty
-            then DHCP will be used, else DHCP will be off.</legend>
-            <label>Hostname used when requesting DHCP lease</label>
-            <input id="wifi-hostname" type="text" name="hostname">
-            <label>Static IP address, blank to use DHCP</label>
-            <input id="wifi-staticip" type="text" name="staticip">
-            <label>Netmask (for static IP)</label>
-            <input id="wifi-netmask" type="text" name="netmask">
-            <label>Gateway (for static IP)</label>
-            <input id="wifi-gateway" type="text" name="gateway">
-            <button id="special-button" type="submit" class="pure-button button-primary">Change!</button>
-          </form>
-        </div></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script src="/ui.js"></script>
-<script type="text/javascript">
-
 var currAp = "";
 var blockScan = 0;
 
 function createInputForAp(ap) {
   if (ap.essid=="" && ap.rssi==0) return;
 
-  var input = document.createElement("input");
+  var input = e("input");
   input.type = "radio";
   input.name = "essid";
   input.value=ap.essid;
   input.id   = "opt-" + ap.essid;
   if (currAp == ap.essid) input.checked = "1";
 
-  var bars    = document.createElement("div");
+  var bars    = e("div");
   var rssiVal = -Math.floor(ap.rssi/51)*32;
   bars.className = "lock-icon";
   bars.style.backgroundPosition = "0px "+rssiVal+"px";
 
-  var rssi = document.createElement("div");
+  var rssi = e("div");
   rssi.innerHTML = "" + ap.rssi +"dB";
 
-  var encrypt = document.createElement("div");
+  var encrypt = e("div");
   var encVal  = "-64"; //assume wpa/wpa2
   if (ap.enc == "0") encVal = "0"; //open
   if (ap.enc == "1") encVal = "-32"; //wep
   encrypt.className = "lock-icon";
   encrypt.style.backgroundPosition = "-32px "+encVal+"px";
 
-  var label = document.createElement("div");
+  var label = e("div");
   label.innerHTML = ap.essid;
 
-  var div = document.createElement("label");
-  div.for = "opt-" + ap.essid;
+  var div = m('<label for=\"opt-' + ap.essid + '"></label>').children[0];
   div.appendChild(input);
   div.appendChild(encrypt);
   div.appendChild(bars);
@@ -139,6 +78,7 @@ function scanResult() {
 }
 
 function scanAPs() {
+	console.log("scanning now");
   if (blockScan) {
     scanTimeout = window.setTimeout(scanAPs, 1000);
     return;
@@ -176,7 +116,7 @@ function getStatus() {
       } else {
         blockScan = 0;
         showWarning("Connection failed: " + data.status + ", " + data.reason);
-        $("#aps").innerHTML = 
+        $("#aps").innerHTML =
           "Check password and selected AP. <a href=\"wifi.tpl\">Go Back</a>";
       }
     }, function(s, st) {
@@ -245,12 +185,4 @@ function changeSpecial(e) {
       getWifiInfo();
     });
 }
-
-window.onload=function(e) {
-  getWifiInfo();
-  $("#wifiform").onsubmit = changeWifiAp;
-  $("#specform").onsubmit = changeSpecial;
-  scanTimeout = window.setTimeout(scanAPs, 500);
-};
-</script>
-</body></html>
+console.log("wifi.js done");
