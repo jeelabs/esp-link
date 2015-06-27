@@ -84,13 +84,13 @@ GZIP_COMPRESSION ?= yes
 # yui-compressor. This option works only when GZIP_COMPRESSION is set to "yes".
 # http://yui.github.io/yuicompressor/
 #Disabled by default.
-COMPRESS_W_YUI ?= no
-YUI-COMPRESSOR ?= /usr/bin/yui-compressor
+COMPRESS_W_YUI ?= yes
+YUI-COMPRESSOR ?= yuicompressor-2.4.8.jar
 
 # If USE_HEATSHRINK is set to "yes" then the espfs files will be compressed with Heatshrink and
 # decompressed on the fly while reading the file.
 # Because the decompression is done in the esp8266, it does not require any support in the browser.
-USE_HEATSHRINK ?= yes
+USE_HEATSHRINK ?= no
 
 # -------------- End of config options -------------
 
@@ -107,7 +107,7 @@ APPGEN_TOOL	?= gen_appbin.py
 
 # which modules (subdirectories) of the project to include in compiling
 MODULES		= espfs httpd user serial
-EXTRA_INCDIR	= include . lib/heatshrink/
+EXTRA_INCDIR	= include . # lib/heatshrink/
 
 # libraries used in this project, mainly provided by the SDK
 LIBS		= c gcc hal phy pp net80211 wpa main lwip
@@ -258,21 +258,32 @@ flash: all
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
 	  0x7E000 $(SDK_BASE)/bin/blank.bin
 
-$(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
+yui/$(YUI-COMPRESSOR):
+	$(Q) mkdir -p yui
+	cd yui; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR)
+
 ifeq ("$(COMPRESS_W_YUI)","yes")
+$(BUILD_BASE)/espfs_img.o: yui/$(YUI-COMPRESSOR)
+endif
+
+$(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
 	$(Q) rm -rf html_compressed;
 	$(Q) cp -r html html_compressed;
+	$(Q) for file in `find html_compressed -type f -name "*.html"`; do \
+			cat html_compressed/head- $$file >$${file}-; \
+			mv $$file- $$file; \
+		done
+ifeq ("$(COMPRESS_W_YUI)","yes")
 	$(Q) echo "Compression assets with yui-compressor. This may take a while..."
-	$(Q) for file in `find html_compressed -type f -name "*.js"`; do $(YUI-COMPRESSOR) --type js $$file -o $$file; done
-	$(Q) for file in `find html_compressed -type f -name "*.css"`; do $(YUI-COMPRESSOR) --type css $$file -o $$file; done
-	$(Q) awk "BEGIN {printf \"YUI compression ratio was: %.2f%%\\n\", (`du -b -s html_compressed/ | sed 's/\([0-9]*\).*/\1/'`/`du -b -s html/ | sed 's/\([0-9]*\).*/\1/'`)*100}"
-  # mkespfsimage will compress html, css and js files with gzip by default if enabled
-  # override with -g cmdline parameter
-	$(Q) cd html_compressed; find  | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..;
-else
-	$(Q) cd html; find . \! -name \*- | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..
-	$(Q) ls -sl build/espfs.img
+	$(Q) for file in `find html_compressed -type f -name "*.js"`; do \
+			java -jar yui/$(YUI-COMPRESSOR) $$file --nomunge --line-break 40 -o $$file; \
+		done
+	$(Q) for file in `find html_compressed -type f -name "*.css"`; do \
+			java -jar yui/$(YUI-COMPRESSOR) $$file -o $$file; \
+		done
 endif
+	$(Q) cd html_compressed; find . \! -name \*- | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..;
+	$(Q) ls -sl build/espfs.img
 	$(Q) cd build; $(OBJCP) -I binary -O elf32-xtensa-le -B xtensa --rename-section .data=.espfs \
 			espfs.img espfs_img.o; cd ..
 
