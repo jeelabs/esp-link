@@ -34,6 +34,8 @@ int ICACHE_FLASH_ATTR cgiEspFsHook(HttpdConnData *connData) {
 	char acceptEncodingBuffer[64];
 	int isGzip;
 
+	//os_printf("cgiEspFsHook conn=%p conn->conn=%p file=%p\n", connData, connData->conn, file);
+
 	if (connData->conn==NULL) {
 		//Connection aborted. Clean up.
 		espFsClose(file);
@@ -89,7 +91,7 @@ int ICACHE_FLASH_ATTR cgiEspFsHook(HttpdConnData *connData) {
 	}
 }
 
-
+#if 0
 //cgiEspFsHtml is a simple HTML file that gets prefixed by head.tpl
 int ICACHE_FLASH_ATTR cgiEspFsHtml(HttpdConnData *connData) {
   EspFsFile *file = connData->cgiData;
@@ -160,6 +162,7 @@ error: // error response
 		return HTTPD_CGI_DONE;
 	}
 }
+#endif
 
 #if 0
 //cgiEspFsTemplate can be used as a template.

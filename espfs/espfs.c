@@ -47,7 +47,6 @@ It's written for use with httpd, but doesn't need to be used as such.
 
 static char* espFsData = NULL;
 
-
 struct EspFsFile {
 	EspFsHeader *header;
 	char decompressor;
@@ -147,7 +146,7 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 			return NULL;
 		}
 		if (h.flags&FLAG_LASTFILE) {
-			os_printf("End of image.\n");
+			//os_printf("End of image.\n");
 			return NULL;
 		}
 		//Grab the name of the file.
@@ -159,7 +158,7 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 			//Yay, this is the file we need!
 			p+=h.nameLen; //Skip to content.
 			r=(EspFsFile *)os_malloc(sizeof(EspFsFile)); //Alloc file desc mem
-//			os_printf("Alloc %p\n", r);
+			//os_printf("Alloc %p[%d]\n", r, sizeof(EspFsFile));
 			if (r==NULL) return NULL;
 			r->header=(EspFsHeader *)hpos;
 			r->decompressor=h.compression;
@@ -266,7 +265,7 @@ void ICACHE_FLASH_ATTR espFsClose(EspFsFile *fh) {
 //		os_printf("Freed %p\n", dec);
 	}
 #endif
-//	os_printf("Freed %p\n", fh);
+	//os_printf("Freed %p\n", fh);
 	os_free(fh);
 }
 

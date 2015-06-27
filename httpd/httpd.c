@@ -118,16 +118,20 @@ static HttpdConnData ICACHE_FLASH_ATTR *httpdFindConnData(void *arg) {
 
 //Retires a connection for re-use
 static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
+	conn->conn = NULL; // don't try to send anything, the SDK crashes...
+	if (conn->cgi != NULL) conn->cgi(conn); // free cgi data
+	if (conn->post->buff != NULL) {
+		os_free(conn->post->buff);
+	}
+	conn->cgi=NULL;
+	conn->post->buff=NULL;
+	conn->remote_port = 0;
+	conn->remote_ip[0] = 0;
+
 	uint32 dt = conn->startTime;
 	if (dt > 0) dt = (system_get_time() - dt)/1000;
 	os_printf("%s Closed, %ums, heap=%ld\n", connStr, dt,
 			(unsigned long)system_get_free_heap_size());
-	if (conn->post->buff!=NULL) os_free(conn->post->buff);
-	conn->post->buff=NULL;
-	conn->cgi=NULL;
-	conn->conn=NULL;
-	conn->remote_port = 0;
-	conn->remote_ip[0] = 0;
 }
 
 //Stupid li'l helper function that returns the value of a hex char.
@@ -301,8 +305,7 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 
 	if (conn->cgi==NULL) { //Marked for destruction?
 		//os_printf("Closing 0x%p/0x%p->0x%p\n", arg, conn->conn, conn);
-		espconn_disconnect(conn->conn);
-		//httpdRetireConn(conn); // can't call this, we will get a diconnect callback!
+		espconn_disconnect(conn->conn); // we will get a disconnect callback
 		return; //No need to call xmitSendBuff.
 	}
 
@@ -514,19 +517,16 @@ static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
 	debugConn(arg, "httpdDisconCb");
 	HttpdConnData *conn = httpdFindConnData(arg);
 	if (conn == NULL) return;
-	if (conn->cgi != NULL) conn->cgi(conn); // free cgi data
 	httpdRetireConn(conn);
 }
 
 // Callback indicating a failure in the connection. "Recon" is probably intended in the sense
-// of "you need to reconnect". Sigh...
+// of "you need to reconnect". Sigh... Note that there is no DiconCb after ReconCb
 static void ICACHE_FLASH_ATTR httpdReconCb(void *arg, sint8 err) {
 	debugConn(arg, "httpdReconCb");
 	HttpdConnData *conn = httpdFindConnData(arg);
-	os_printf("%s reset, err=%d\n", connStr, err);
+	os_printf("%s ***** reset, err=%d\n", connStr, err);
 	if (conn == NULL) return;
-	conn->conn = NULL; // don't tr to send anything, the SDK crashes...
-	if (conn->cgi != NULL) conn->cgi(conn); // free cgi data
 	httpdRetireConn(conn);
 }
 

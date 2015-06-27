@@ -94,6 +94,8 @@ HttpdBuiltInUrl builtInUrls[]={
 };
 
 
+#define SHOW_HEAP_USE
+
 #ifdef SHOW_HEAP_USE
 static ETSTimer prHeapTimer;
 
@@ -146,7 +148,7 @@ void user_init(void) {
 #ifdef SHOW_HEAP_USE
 	os_timer_disarm(&prHeapTimer);
 	os_timer_setfn(&prHeapTimer, prHeapTimerCb, NULL);
-	os_timer_arm(&prHeapTimer, 3000, 1);
+	os_timer_arm(&prHeapTimer, 10000, 1);
 #endif
 
 	struct rst_info *rst_info = system_get_rst_info();
