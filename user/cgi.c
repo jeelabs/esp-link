@@ -56,7 +56,12 @@ extern char *esp_link_version; // in user_main.c
 
 int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
 	char buff[1024];
-	jsonHeader(connData, 200);
+	// don't use jsonHeader so the response does get cached
+	httpdStartResponse(connData, 200);
+	httpdHeader(connData, "Cache-Control", "max-age=3600, must-revalidate");
+	httpdHeader(connData, "Content-Type", "application/json");
+	httpdEndHeaders(connData);
+	// construct json response
 	os_sprintf(buff,
 			"{\"menu\": [\"Home\", \"/home.html\", \"Wifi\", \"/wifi/wifi.html\","
 			"\"\xC2\xB5" "C Console\", \"/console.html\", \"Debug log\", \"/log.html\" ],\n"
