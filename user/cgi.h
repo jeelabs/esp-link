@@ -3,7 +3,7 @@
 
 #include "httpd.h"
 
-void ICACHE_FLASH_ATTR jsonHeader(HttpdConnData *connData, int code);
-void ICACHE_FLASH_ATTR printGlobalJSON(HttpdConnData *connData);
+void jsonHeader(HttpdConnData *connData, int code);
+int cgiMenu(HttpdConnData *connData);
 
 #endif

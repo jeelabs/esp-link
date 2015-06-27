@@ -59,28 +59,27 @@ general ones. Authorization things (like authBasic) act as a 'barrier' and
 should be placed above the URLs they protect.
 */
 HttpdBuiltInUrl builtInUrls[]={
-	{"/", cgiRedirect, "/home.tpl"},
+	{"/", cgiRedirect, "/home.html"},
+	{"/menu", cgiMenu, NULL},
 	{"/flash/next", cgiGetFirmwareNext, NULL},
 	{"/flash/upload", cgiUploadFirmware, NULL},
 	{"/flash/reboot", cgiRebootFirmware, NULL},
-	{"/home.tpl", cgiEspFsHtml, NULL},
-	//{"/help.tpl", cgiEspFsTemplate, tplCounter},
-	{"/log.tpl", cgiEspFsHtml, NULL},
+	//{"/home.html", cgiEspFsHtml, NULL},
+	//{"/log.html", cgiEspFsHtml, NULL},
 	{"/log/text", ajaxLog, NULL},
-	{"/console.tpl", cgiEspFsHtml, NULL},
+	//{"/console.html", cgiEspFsHtml, NULL},
 	{"/console/reset", ajaxConsoleReset, NULL},
 	{"/console/baud", ajaxConsoleBaud, NULL},
 	{"/console/text", ajaxConsole, NULL},
-	{"/help.tpl", cgiEspFsHtml, NULL},
 
 	//Routines to make the /wifi URL and everything beneath it work.
 
 //Enable the line below to protect the WiFi configuration with an username/password combo.
 //	{"/wifi/*", authBasic, myPassFn},
 
-	{"/wifi", cgiRedirect, "/wifi/wifi.tpl"},
-	{"/wifi/", cgiRedirect, "/wifi/wifi.tpl"},
-	{"/wifi/wifi.tpl", cgiEspFsHtml, NULL},
+	{"/wifi", cgiRedirect, "/wifi/wifi.html"},
+	{"/wifi/", cgiRedirect, "/wifi/wifi.html"},
+	//{"/wifi/wifi.html", cgiEspFsHtml, NULL},
 	{"/wifi/info", cgiWifiInfo, NULL},
 	{"/wifi/scan", cgiWiFiScan, NULL},
 	{"/wifi/connect", cgiWiFiConnect, NULL},

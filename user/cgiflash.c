@@ -125,7 +125,7 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 
 	// erase next flash block if necessary
 	if (address % SPI_FLASH_SEC_SIZE == 0){
-		os_printf("Erasing flash at 0x%05x (id=%d)\n", address, 2-id);
+		os_printf("Flashing 0x%05x (id=%d)\n", address, 2-id);
 		spi_flash_erase_sector(address/SPI_FLASH_SEC_SIZE);
 	}
 

@@ -52,13 +52,15 @@ int ICACHE_FLASH_ATTR printGlobalInfo(char *buff, int buflen, char *token) {
 }
 #endif
 
-void ICACHE_FLASH_ATTR printGlobalJSON(HttpdConnData *connData) {
-	httpdSend(connData,
-			"<script type=\"text/javascript\">\n"
-			"var menu = [\"Home\", \"/home.tpl\", \"Wifi\", \"/wifi/wifi.tpl\","
-			"\"\xC2\xB5" "C Console\", \"/console.tpl\", \"Debug log\", \"/log.tpl\" ];\n", -1);
-#   define VERS_STR_STR(V) #V
-#   define VERS_STR(V) VERS_STR_STR(V)
-	httpdSend(connData, "version = \"" VERS_STR(VERSION) "\";\n", -1);
-  httpdSend(connData, "</script>\n", -1);
+extern char *esp_link_version; // in user_main.c
+
+int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
+	char buff[1024];
+	jsonHeader(connData, 200);
+	os_sprintf(buff,
+			"{\"menu\": [\"Home\", \"/home.html\", \"Wifi\", \"/wifi/wifi.html\","
+			"\"\xC2\xB5" "C Console\", \"/console.html\", \"Debug log\", \"/log.html\" ],\n"
+			" \"version\": \"%s\" }", esp_link_version);
+	httpdSend(connData, buff, -1);
+	return HTTPD_CGI_DONE;
 }

@@ -511,7 +511,7 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 		len += os_sprintf(buff+len, ", \"ip\": \"%d.%d.%d.%d\"", IP2STR(&info.ip.addr));
 		len += os_sprintf(buff+len, ", \"netmask\": \"%d.%d.%d.%d\"", IP2STR(&info.netmask.addr));
 		len += os_sprintf(buff+len, ", \"gateway\": \"%d.%d.%d.%d\"", IP2STR(&info.gw.addr));
-		len += os_sprintf(buff+len, ", \"hostname\": \"%s\"", wifi_station_get_hostname());
+		len += os_sprintf(buff+len, ", \"hostname\": \"%s\"", flashConfig.hostname);
 	} else {
 		len += os_sprintf(buff+len, ", \"ip\": \"-none-\"");
 	}
