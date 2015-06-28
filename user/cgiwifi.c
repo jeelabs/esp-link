@@ -25,6 +25,7 @@ Cgi/template routines for the /wifi url.
 //#define DEMO_MODE
 
 #define SLEEP_MODE LIGHT_SLEEP_T
+//#define SLEEP_MODE MODEM_SLEEP_T
 
 // ===== wifi status change callback
 

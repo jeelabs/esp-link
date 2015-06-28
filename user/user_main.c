@@ -93,7 +93,7 @@ HttpdBuiltInUrl builtInUrls[]={
 };
 
 
-#define SHOW_HEAP_USE
+//#define SHOW_HEAP_USE
 
 #ifdef SHOW_HEAP_USE
 static ETSTimer prHeapTimer;
