@@ -35,7 +35,7 @@ ESP_FLASH_FREQ_DIV  ?= 0      # 0->40Mhz
 ESP_FLASH_MAX       ?= 241664 # max bin file for 512KB flash: 236KB
 
 # hostname or IP address for wifi flashing
-ESP_HOSTNAME        ?= esp8266
+ESP_HOSTNAME        ?= esp-link
 
 # The pin assignments below are used when the settings in flash are invalid, they
 # can be changed via the web interface
