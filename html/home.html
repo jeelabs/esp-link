@@ -12,12 +12,12 @@
 					program microcontrollers over the serial port, in particular Arduinos, AVRs, and
 					NXP's LPC800 and other ARM processors.</p>
 					<p style="margin-bottom:0;">Program an Arduino/AVR using avrdude using a command
-					line similar to:
+					line similar to:</p>
 					<div class="tt">/home/arduino-1.0.5/hardware/tools/avrdude \<br>
 					&nbsp;&nbsp;-DV -patmega328p -Pnet:esp-link.local:23 -carduino -b115200 -U \<br>
 					&nbsp;&nbsp;-C /home/arduino-1.0.5/hardware/tools/avrdude.conf flash:w:my_sketch.hex:i
 					</div>
-					where <tt>-Pnet:esp-link.local:23</tt> tells avrdude to connect to port 23 of esp-link.
+					<p>where <tt>-Pnet:esp-link.local:23</tt> tells avrdude to connect to port 23 of esp-link.
 					You can substitute the IP address of your esp-link for esp-link.local if necessary.</p>
 					<p>Please refer to
 					<a href="https://github.com/jeelabs/esp-link/blob/master/README.md">the online README</a>
@@ -27,7 +27,7 @@
 			</div>
 			<div class="pure-g">
 				<div class="pure-u-12-24"><div class="card">
-					<h1>Wifi summary</h2>
+					<h1>Wifi summary</h1>
 					<div id="wifi-spinner" class="spinner spinner-small"></div>
 					<table id="wifi-table" class="pure-table pure-table-horizontal" hidden><tbody>
 					<tr><td>WiFi mode</td><td id="wifi-mode"></td></tr>
@@ -37,7 +37,7 @@
 					</tbody> </table>
 				</div></div>
 				<div class="pure-u-12-24"><div class="card">
-					<h1>Pin assignment</h2>
+					<h1>Pin assignment</h1>
 					<legend>Select one of the following signal/pin assignments to match your hardware</legend>
 					<fieldset class='radios' id='pin-mux'>
 						<div class="spinner spinner-small"></div>
