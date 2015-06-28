@@ -29,7 +29,7 @@ function createInputForAp(ap) {
   var label = e("div");
   label.innerHTML = ap.essid;
 
-  var div = m('<label for=\"opt-' + ap.essid + '"></label>').children[0];
+  var div = m('<label for=\"opt-' + ap.essid + '"></label>').childNodes[0];
   div.appendChild(input);
   div.appendChild(encrypt);
   div.appendChild(bars);
@@ -168,7 +168,8 @@ function changeWifiAp(e) {
 function changeSpecial(e) {
   e.preventDefault();
   var url = "special";
-  url += "?hostname=" + encodeURIComponent($("#wifi-hostname").value);
+  url += "?dhcp=" + document.querySelector('input[name="dhcp"]:checked').value;
+  url += "&hostname=" + encodeURIComponent($("#wifi-hostname").value);
   url += "&staticip=" + encodeURIComponent($("#wifi-staticip").value);
   url += "&netmask=" + encodeURIComponent($("#wifi-netmask").value);
   url += "&gateway=" + encodeURIComponent($("#wifi-gateway").value);
@@ -185,4 +186,13 @@ function changeSpecial(e) {
       getWifiInfo();
     });
 }
-console.log("wifi.js done");
+
+function doDhcp() {
+	$('#dhcp-on').removeAttribute('hidden');
+	$('#dhcp-off').setAttribute('hidden', '');
+}
+
+function doStatic() {
+	$('#dhcp-off').removeAttribute('hidden');
+	$('#dhcp-on').setAttribute('hidden', '');
+}

@@ -1,13 +1,121 @@
-//===== 140medley.min.js with mods
+//===== Collection of small utilities
 
-var p=function(a,b,c,d){c=c||document;d=c[b="on"+b];a=c[b]=function(e){d=d&&d(e=e||c.event);return(a=a&&b(e))?b:d};c=this},
-m=function(a,b,c){b=document;c=b.createElement("p");c.innerHTML=a;for(a=b.createDocumentFragment();b=
-c.firstChild;)a.appendChild(b);return a},
-$=function(a,b){a=a.match(/^(\W)?(.*)/);return(b||document)["getElement"+(a[1]?a[1]=="#"?"ById":"sByClassName":"sByTagName")](a[2])},
-j=function(a){for(a=0;a<4;a++)try{return a?new ActiveXObject([,"Msxml2","Msxml3","Microsoft"][a]+".XMLHTTP"):new XMLHttpRequest}catch(b){}};
-e=function(a){return document.createElement(a);}
+/*
+ * Bind/Unbind events
+ *
+ * Usage:
+ *   var el = document.getElementyById('#container');
+ *   bnd(el, 'click', function() {
+ *     console.log('clicked');
+ *   });
+ */
+
+var bnd = function(
+  d, // a DOM element
+  e, // an event name such as "click"
+  f  // a handler function
+){
+  d.addEventListener(e, f, false);
+}
+
+/*
+ * Create DOM element
+ *
+ * Usage:
+ *   var el = m('<h1>Hello</h1>');
+ *   document.body.appendChild(el);
+ *
+ * Copyright (C) 2011 Jed Schmidt <http://jed.is> - WTFPL
+ * More: https://gist.github.com/966233
+ */
+
+var m = function(
+  a, // an HTML string
+  b, // placeholder
+  c  // placeholder
+){
+  b = document;                   // get the document,
+  c = b.createElement("p");       // create a container element,
+  c.innerHTML = a;                // write the HTML to it, and
+  a = b.createDocumentFragment(); // create a fragment.
+
+  while (                         // while
+    b = c.firstChild              // the container element has a first child
+  ) a.appendChild(b);             // append the child to the fragment,
+
+  return a                        // and then return the fragment.
+}
+
+/*
+ * DOM selector
+ *
+ * Usage:
+ *   $('div');
+ *   $('#name');
+ *   $('.name');
+ *
+ * Copyright (C) 2011 Jed Schmidt <http://jed.is> - WTFPL
+ * More: https://gist.github.com/991057
+ */
+
+var $ = function(
+  a,                         // take a simple selector like "name", "#name", or ".name", and
+  b                          // an optional context, and
+){
+  a = a.match(/^(\W)?(.*)/); // split the selector into name and symbol.
+  return(                    // return an element or list, from within the scope of
+    b                        // the passed context
+    || document              // or document,
+  )[
+    "getElement" + (         // obtained by the appropriate method calculated by
+      a[1]
+        ? a[1] == "#"
+          ? "ById"           // the node by ID,
+          : "sByClassName"   // the nodes by class name, or
+        : "sByTagName"       // the nodes by tag name,
+    )
+  ](
+    a[2]                     // called with the name.
+  )
+}
+
+/*
+ * Get cross browser xhr object
+ *
+ * Copyright (C) 2011 Jed Schmidt <http://jed.is>
+ * More: https://gist.github.com/993585
+ */
+
+var j = function(
+  a // cursor placeholder
+){
+  for(                     // for all a
+    a=0;                   // from 0
+    a<4;                   // to 4,
+    a++                    // incrementing
+  ) try {                  // try
+    return a               // returning
+      ? new ActiveXObject( // a new ActiveXObject
+          [                // reflecting
+            ,              // (elided)
+            "Msxml2",      // the various
+            "Msxml3",      // working
+            "Microsoft"    // options
+          ][a] +           // for Microsoft implementations, and
+          ".XMLHTTP"       // the appropriate suffix,
+        )                  // but make sure to
+      : new XMLHttpRequest // try the w3c standard first, and
+  }
+
+  catch(e){}               // ignore when it fails.
+}
+
+// createElement short-hand
+
+e = function(a) { return document.createElement(a); }
 
 // chain onload handlers
+
 function onLoad(f) {
   var old = window.onload;
   if (typeof old != 'function') {
@@ -186,6 +294,8 @@ function showWifiInfo(data) {
       else el.innerHTML = data[v];
     }
   });
+  var dhcp = $('#dhcp-r'+data.dhcp);
+  if (dhcp) dhcp.click();
   $("#wifi-spinner").setAttribute("hidden", "");
   $("#wifi-table").removeAttribute("hidden");
   currAp = data.ssid;

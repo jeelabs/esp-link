@@ -381,27 +381,29 @@ static void ICACHE_FLASH_ATTR configWifiIP() {
 
 // Change special settings
 int ICACHE_FLASH_ATTR cgiWiFiSpecial(HttpdConnData *connData) {
+	char dhcp[8];
 	char hostname[32];
-	char staticip[32];
-	char netmask[32];
-	char gateway[32];
+	char staticip[20];
+	char netmask[20];
+	char gateway[20];
 
 	if (connData->conn==NULL) return HTTPD_CGI_DONE;
 
 	// get args and their string lengths
+	int dl = httpdFindArg(connData->getArgs, "dhcp", dhcp, sizeof(dhcp));
 	int hl = httpdFindArg(connData->getArgs, "hostname", hostname, sizeof(hostname));
 	int sl = httpdFindArg(connData->getArgs, "staticip", staticip, sizeof(staticip));
 	int nl = httpdFindArg(connData->getArgs, "netmask", netmask, sizeof(netmask));
 	int gl = httpdFindArg(connData->getArgs, "gateway", gateway, sizeof(gateway));
 
-	if (!(hl >= 0 && sl >= 0 && nl >= 0 && gl >= 0)) {
+	if (!(dl > 0 && hl >= 0 && sl >= 0 && nl >= 0 && gl >= 0)) {
 		jsonHeader(connData, 400);
 		httpdSend(connData, "Request is missing fields", -1);
 		return HTTPD_CGI_DONE;
 	}
 
 	char url[64]; // redirect URL
-	if (sl > 0) {
+	if (os_strcmp(dhcp, "off") == 0) {
 		// parse static IP params
 		struct ip_info ipi;
 		bool ok = parse_ip(staticip, &ipi.ip);
@@ -515,10 +517,8 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 	} else {
 		len += os_sprintf(buff+len, ", \"ip\": \"-none-\"");
 	}
-	if (flashConfig.staticip > 0)
-		len += os_sprintf(buff+len, ", \"staticip\": \"%d.%d.%d.%d\"", IP2STR(&flashConfig.staticip));
-	else
-		len += os_sprintf(buff+len, ", \"staticip\": \"\"");
+	len += os_sprintf(buff+len, ", \"staticip\": \"%d.%d.%d.%d\"", IP2STR(&flashConfig.staticip));
+	len += os_sprintf(buff+len, ", \"dhcp\": \"%s\"", flashConfig.staticip > 0 ? "off" : "on");
 
 	return len;
 }

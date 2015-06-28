@@ -36,18 +36,29 @@
       <div class="pure-g">
         <div class="pure-u-12-24"><div class="card">
           <h1>Special Settings</h1>
-          <form action="#" id="specform" class="pure-form pure-form-stacked">
-            <legend>Special settings, use with care! If the Static IP field is empty
-            then DHCP will be used, else DHCP will be off.</legend>
-            <label>Hostname used when requesting DHCP lease</label>
-            <input id="wifi-hostname" type="text" name="hostname">
-            <label>Static IP address, blank to use DHCP</label>
-            <input id="wifi-staticip" type="text" name="staticip">
-            <label>Netmask (for static IP)</label>
-            <input id="wifi-netmask" type="text" name="netmask">
-            <label>Gateway (for static IP)</label>
-            <input id="wifi-gateway" type="text" name="gateway">
-            <button id="special-button" type="submit" class="pure-button button-primary">Change!</button>
+          <form action="#" id="specform" class="pure-form">
+            <legend>Special settings, use with care!</legend>
+            <div class="form-horizontal">
+              <input type="radio" name="dhcp" value="on" id="dhcp-ron"/>
+              <label for="dhcp-ron">DHCP</label>
+              <input type="radio" name="dhcp" value="off" id="dhcp-roff"
+                     style="margin-left:1em"/>
+              <label for="dhcp-roff">Static IP</label>
+            <div>
+            <div id="dhcp-on" class="pure-form-stacked">
+              <label>Hostname when requesting DHCP lease</label>
+              <input id="wifi-hostname" type="text" name="hostname">
+            </div>
+            <div id="dhcp-off" class="pure-form-stacked">
+              <label>Static IP address</label>
+              <input id="wifi-staticip" type="text" name="staticip"/>
+              <label>Netmask (for static IP)</label>
+              <input id="wifi-netmask" type="text" name="netmask"/>
+              <label>Gateway (for static IP)</label>
+              <input id="wifi-gateway" type="text" name="gateway"/>
+            </div>
+            <button id="special-button" type="submit"
+                    class="pure-button button-primary">Change!</button>
           </form>
         </div></div>
       </div>
@@ -56,17 +67,15 @@
 </div>
 
 <script type="text/javascript">
-console.log("before wifi.js");
 </script>
 <script src="wifi.js"></script>
 <script type="text/javascript">
-	console.log("wifi html");
 onLoad(function() {
-	console.log("wifi html onload");
   getWifiInfo();
-  $("#wifiform").onsubmit = changeWifiAp;
-  $("#specform").onsubmit = changeSpecial;
-	console.log("scanning in 500ms");
+  bnd($("#wifiform"), "submit", changeWifiAp);
+  bnd($("#specform"), "submit", changeSpecial);
+  bnd($("#dhcp-ron"), "click", doDhcp);
+  bnd($("#dhcp-roff"), "click", doStatic);
   scanTimeout = window.setTimeout(scanAPs, 500);
 });
 </script>
