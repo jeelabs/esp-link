@@ -269,7 +269,7 @@ endif
 $(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
 	$(Q) rm -rf html_compressed;
 	$(Q) cp -r html html_compressed;
-	$(Q) for file in `find html_compressed -type f -name "*.html"`; do \
+	$(Q) for file in `find html_compressed -type f -name "*.htm*"`; do \
 			cat html_compressed/head- $$file >$${file}-; \
 			mv $$file- $$file; \
 		done
