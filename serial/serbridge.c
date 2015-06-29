@@ -81,8 +81,6 @@ static void ICACHE_FLASH_ATTR serbridgeSentCb(void *arg) {
 	//os_printf("%d ST\n", system_get_time());
 	conn->readytosend = true;
 	sendtxbuffer(conn); // send possible new data in txbuffer
-
-	serledFlash(50); // short blink on serial LED
 }
 
 // Telnet protocol characters
@@ -309,15 +307,16 @@ static void ICACHE_FLASH_ATTR serbridgeConnectCb(void *arg) {
 // callback with a buffer of characters that have arrived on the uart
 void ICACHE_FLASH_ATTR
 serbridgeUartCb(char *buf, int length) {
-		// push the buffer into the microcontroller console
-		for (int i=0; i<length; i++)
-			console_write_char(buf[i]);
-		// push the buffer into each open connection
-		for (int i = 0; i < MAX_CONN; ++i) {
-			if (connData[i].conn) {
-				espbuffsend(&connData[i], buf, length);
-			}
+	// push the buffer into the microcontroller console
+	for (int i=0; i<length; i++)
+		console_write_char(buf[i]);
+	// push the buffer into each open connection
+	for (int i = 0; i < MAX_CONN; ++i) {
+		if (connData[i].conn) {
+			espbuffsend(&connData[i], buf, length);
 		}
+	}
+	serledFlash(50); // short blink on serial LED
 }
 
 void ICACHE_FLASH_ATTR serbridgeInitPins() {
