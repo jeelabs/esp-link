@@ -219,8 +219,7 @@ onLoad(function() {
   l.insertBefore(m(
     '<div id="messages"><div id="warning" hidden></div><div id="notification" hidden></div></div>'), o);
   // menu hamburger button
-  var ml = m('<a href="#menu" id="menuLink" class="menu-link"><span></span></a>');
-  l.insertBefore(ml, o);
+  l.insertBefore(m('<a href="#menu" id="menuLink" class="menu-link"><span></span></a>'), o);
   // menu left-pane
   var mm = m(
    '<div id="menu">\
@@ -234,13 +233,15 @@ onLoad(function() {
   l.insertBefore(mm, o);
 
   // make hamburger button pull out menu
-  ml.onclick = function (e) {
+  var ml = $('#menuLink'), mm = $('#menu');
+  bnd(ml, 'click', function (e) {
+    console.log("hamburger time");
       var active = 'active';
       e.preventDefault();
       toggleClass(l, active);
       toggleClass(mm, active);
       toggleClass(ml, active);
-  };
+  });
 
   // populate menu via ajax call
   var getMenu = function() {

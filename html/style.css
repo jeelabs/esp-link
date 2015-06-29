@@ -23,12 +23,6 @@ a:hover {
 	border: 0px solid #000000;
 }
 
-@media screen and (max-width: 1023px) {
-	.pure-u-12-24 {
-		width: 100%;
-	}
-}
-
 /* wifi AP selection form */
 #aps label div {
 	display: inline-block;
@@ -260,7 +254,7 @@ pre.console a {
 
 /* -- Responsive Styles (Media Queries) ------------------------------------- */
 
-@media (min-width: 48em) {
+@media (min-width: 56em) {
 	.header, .content {
 		padding-left: 2em;
 		padding-right: 2em;
@@ -285,7 +279,7 @@ pre.console a {
 	}
 }
 
-@media (max-width: 48em) {
+@media (max-width: 56em) {
 	#layout.active {
 		position: relative;
 		left: 150px;
