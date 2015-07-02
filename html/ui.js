@@ -263,31 +263,6 @@ onLoad(function() {
   getMenu();
 });
 
-//===== Console page
-
-function showRate(rate) {
-    rates.forEach(function(r) {
-      var el = $("#"+r+"-button");
-      el.className = el.className.replace(" button-selected", "");
-    });
-
-    var el = $("#"+rate+"-button");
-    if (el != null) el.className += " button-selected";
-  }
-
-function baudButton(baud) {
-  $("#baud-btns").appendChild(m(
-    ' <a id="'+baud+'-button" href="#" class="pure-button">'+baud+'</a>'));
-
-  $("#"+baud+"-button").addEventListener("click", function(e) {
-    e.preventDefault();
-    ajaxSpin('POST', "/console/baud?rate="+baud,
-      function(resp) { showNotification("" + baud + " baud set"); showRate(baud); },
-      function(s, st) { showWarning("Error setting baud rate: ", st); }
-    );
-  });
-}
-
 //===== Wifi info
 
 function showWifiInfo(data) {

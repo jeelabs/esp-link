@@ -67,6 +67,7 @@ HttpdBuiltInUrl builtInUrls[]={
 	//{"/home.html", cgiEspFsHtml, NULL},
 	//{"/log.html", cgiEspFsHtml, NULL},
 	{"/log/text", ajaxLog, NULL},
+	{"/log/dbg", ajaxLogDbg, NULL},
 	//{"/console.html", cgiEspFsHtml, NULL},
 	{"/console/reset", ajaxConsoleReset, NULL},
 	{"/console/baud", ajaxConsoleBaud, NULL},

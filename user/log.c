@@ -3,6 +3,7 @@
 #include <esp8266.h>
 #include "uart.h"
 #include "cgi.h"
+#include "config.h"
 #include "log.h"
 
 // Web log for the esp8266 to replace outputting to uart1.
@@ -17,15 +18,19 @@ static int log_pos;
 static bool log_no_uart; // start out printing to uart
 static bool log_newline; // at start of a new line
 
+// called from wifi reset timer to turn UART on when we loose wifi and back off
+// when we connect to wifi AP. Here this is gated by the flash setting
 void ICACHE_FLASH_ATTR
 log_uart(bool enable) {
-	if (!enable && !log_no_uart) {
+	if (!enable && !log_no_uart && flashConfig.log_mode != LOG_MODE_ON) {
+		// we're asked to turn uart off, and uart is on, and the flash setting isn't always-on
 #if 1
 		os_printf("Turning OFF uart log\n");
 		os_delay_us(4*1000L); // time for uart to flush
 		log_no_uart = !enable;
 #endif
-	} else if (enable && log_no_uart) {
+	} else if (enable && log_no_uart && flashConfig.log_mode != LOG_MODE_OFF) {
+		// we're asked to turn uart on, and uart is off, and the flash setting isn't always-off
 		log_no_uart = !enable;
 		os_printf("Turning ON uart log\n");
 	}
@@ -119,7 +124,36 @@ ajaxLog(HttpdConnData *connData) {
 	return HTTPD_CGI_DONE;
 }
 
+static char *dbg_mode[] = { "auto", "off", "on" };
+
+int ICACHE_FLASH_ATTR
+ajaxLogDbg(HttpdConnData *connData) {
+	char buff[512];
+	int len, status = 400;
+	len = httpdFindArg(connData->getArgs, "mode", buff, sizeof(buff));
+	if (len > 0) {
+		int8_t mode = -1;
+		if (os_strcmp(buff, "auto") == 0) mode = LOG_MODE_AUTO;
+		if (os_strcmp(buff, "off") == 0)  mode = LOG_MODE_OFF;
+		if (os_strcmp(buff, "on") == 0)   mode = LOG_MODE_ON;
+		if (mode >= 0) {
+			flashConfig.log_mode = mode;
+			if (mode != LOG_MODE_AUTO) log_uart(mode == LOG_MODE_ON);
+			status = configSave() ? 200 : 400;
+		}
+	} else if (connData->requestType == HTTPD_METHOD_GET) {
+		status = 200;
+	}
+
+	jsonHeader(connData, status);
+	os_sprintf(buff, "{\"mode\": \"%s\"}", dbg_mode[flashConfig.log_mode]);
+	httpdSend(connData, buff, -1);
+	return HTTPD_CGI_DONE;
+}
+
+
 void ICACHE_FLASH_ATTR logInit() {
+	log_no_uart = flashConfig.log_mode == LOG_MODE_OFF; // ON unless set to always-off
 	log_wr = 0;
 	log_rd = 0;
   os_install_putc1((void *)log_write_char);

@@ -3,8 +3,13 @@
 
 #include "httpd.h"
 
+#define LOG_MODE_AUTO 0
+#define LOG_MODE_OFF  1
+#define LOG_MODE_ON   2
+
 void logInit(void);
-void ICACHE_FLASH_ATTR log_uart(bool enable);
-int ICACHE_FLASH_ATTR ajaxLog(HttpdConnData *connData);
+void log_uart(bool enable);
+int ajaxLog(HttpdConnData *connData);
+int ajaxLogDbg(HttpdConnData *connData);
 
 #endif

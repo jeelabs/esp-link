@@ -146,6 +146,11 @@ pre.console a {
 	color: #66ff66;
 }
 
+/* log page */
+.dbg-btn, #refresh-button {
+	vertical-align: baseline;
+}
+
 .lock-icon {
 	background-image: url("/wifi/icons.png");
 	background-color: transparent;
