@@ -175,7 +175,7 @@ reconnect to your network within a few seconds and the whole flashing process sh
 from beginning to end. If you need to clear the wifi settings you need to reflash the `blank.bin`
 using the serial port.
 
-The flash configuration and the OTA upgrade process is described in more detail in flash.md
+The flash configuration and the OTA upgrade process is described in more detail in [FLASH.md](FLASH.md)
 
 Serial bridge and connections to Arduino, AVR, ARM, LPC microcontrollers
 ------------------------------------------------------------------------
