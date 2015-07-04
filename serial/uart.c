@@ -62,7 +62,7 @@ uart_config(uint8 uart_no)
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0RXD_U, 0); // FUNC_U0RXD==0
   }
 
-  uart_div_modify(uart_no, UART_CLK_FREQ / (UartDev.baut_rate));
+  uart_div_modify(uart_no, UART_CLK_FREQ / UartDev.baut_rate);
 
   if (uart_no == UART1)  //UART 1 always 8 N 1
     WRITE_PERI_REG(UART_CONF0(uart_no),
@@ -77,19 +77,20 @@ uart_config(uint8 uart_no)
 
   if (uart_no == UART0) {
     // Configure RX interrupt conditions as follows: trigger rx-full when there are 80 characters
-    // in the buffer (allows for 64-byte HEX records), trigger rx-timeout when the fifo is
-    // non-empty and nothing further has been received for 4 character period. Also set the
-    // hardware flow-control to trigger when the FIFO holds 100 characters, although we don't
-    // really expect the signals to actually be wired up to anything. It doesn't hurt to set
-    // the threshold here...
+    // in the buffer, trigger rx-timeout when the fifo is non-empty and nothing further has been
+    // received for 4 character periods.
+    // Set the hardware flow-control to trigger when the FIFO holds 100 characters, although
+    // we don't really expect the signals to actually be wired up to anything. It doesn't hurt
+    // to set the threshold here...
+    // We do not enable framing error interrupts 'cause they tend to cause an interrupt avalanche
+    // and instead just poll for them when we get a std RX interrupt.
     WRITE_PERI_REG(UART_CONF1(uart_no),
                    ((80 & UART_RXFIFO_FULL_THRHD) << UART_RXFIFO_FULL_THRHD_S) |
                    ((100 & UART_RX_FLOW_THRHD) << UART_RX_FLOW_THRHD_S) |
                    UART_RX_FLOW_EN |
                    (4 & UART_RX_TOUT_THRHD) << UART_RX_TOUT_THRHD_S |
                    UART_RX_TOUT_EN);
-    SET_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA |
-                   UART_RXFIFO_TOUT_INT_ENA | UART_FRM_ERR_INT_ENA);
+    SET_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA);
   } else {
     WRITE_PERI_REG(UART_CONF1(uart_no),
                    ((UartDev.rcv_buff.TrigLvl & UART_RXFIFO_FULL_THRHD) << UART_RXFIFO_FULL_THRHD_S));
@@ -169,7 +170,7 @@ uart0_sendStr(const char *str)
   }
 }
 
-static bool rx_bad; // set to true on framing error to avoid printing errors continuously
+static uint32 last_frm_err; // time in us when last framing error message was printed
 
 /******************************************************************************
  * FunctionName : uart0_rx_intr_handler
@@ -181,33 +182,32 @@ static bool rx_bad; // set to true on framing error to avoid printing errors con
 static void // must not use ICACHE_FLASH_ATTR !
 uart0_rx_intr_handler(void *para)
 {
-  /* uart0 and uart1 intr combine togther, when interrupt occur, see reg 0x3ff20020, bit2,
-   * bit0 represents uart1 and uart0 respectively */
-  uint8 uart_no = UART0;//UartDev.buff_uart_no;
+  // we assume that uart1 has interrupts disabled (it uses the same interrupt vector)
+  uint8 uart_no = UART0;
+  const uint32 one_sec = 1000000; // one second in usecs
 
-  if(UART_FRM_ERR_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_FRM_ERR_INT_ST))
-  {
-    if (!rx_bad) os_printf("FRM_ERR\n");
-    rx_bad = true;
-    //clear rx and tx fifo
+  // we end up largely ignoring framing errors and we just print a warning every second max
+  if (READ_PERI_REG(UART_INT_RAW(uart_no)) & UART_FRM_ERR_INT_RAW) {
+    uint32 now = system_get_time();
+    if (last_frm_err == 0 || (now - last_frm_err) > one_sec) {
+      os_printf("UART framing error (bad baud rate?)\n");
+      last_frm_err = now;
+    }
+    // clear rx fifo (apparently this is not optional at this point)
     SET_PERI_REG_MASK(UART_CONF0(uart_no), UART_RXFIFO_RST);
     CLEAR_PERI_REG_MASK(UART_CONF0(uart_no), UART_RXFIFO_RST);
-    // reset interrupt
-    WRITE_PERI_REG(UART_INT_CLR(uart_no), UART_FRM_ERR_INT_CLR);
+    // reset framing error
+    WRITE_PERI_REG(UART_INT_CLR(UART0), UART_FRM_ERR_INT_CLR);
+  // once framing errors are gone for 10 secs we forget about having seen them
+  } else if (last_frm_err != 0 && (system_get_time() - last_frm_err) > 10*one_sec) {
+    last_frm_err = 0;
   }
 
-  if(UART_RXFIFO_FULL_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_RXFIFO_FULL_INT_ST))
+  if (UART_RXFIFO_FULL_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_RXFIFO_FULL_INT_ST)
+  ||  UART_RXFIFO_TOUT_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_RXFIFO_TOUT_INT_ST))
   {
-    //os_printf("fifo fullr\n");
-    ETS_UART_INTR_DISABLE();
-
-    system_os_post(recvTaskPrio, 0, 0);
-  }
-  else if(UART_RXFIFO_TOUT_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_RXFIFO_TOUT_INT_ST))
-  {
-    rx_bad = false;
-    ETS_UART_INTR_DISABLE();
     //os_printf("stat:%02X",*(uint8 *)UART_INT_ENA(uart_no));
+    ETS_UART_INTR_DISABLE();
     system_os_post(recvTaskPrio, 0, 0);
   }
 }
@@ -241,6 +241,7 @@ uart_recvTask(os_event_t *events)
 
 void ICACHE_FLASH_ATTR
 uart0_baud(int rate) {
+  os_printf("UART %d baud\n", rate);
   uart_div_modify(UART0, UART_CLK_FREQ / rate);
 }
 
