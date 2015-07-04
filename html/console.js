@@ -1,5 +1,5 @@
 function fetchText(delay, repeat) {
-  el = $("#console");
+  var el = $("#console");
   if (el.textEnd == undefined) {
     el.textEnd = 0;
     el.innerHTML = "";
@@ -15,9 +15,9 @@ function fetchText(delay, repeat) {
 }
 
 function updateText(resp) {
-  el = $("#console");
+  var el = $("#console");
 
-  delay = 3000;
+  var delay = 3000;
   if (resp != null && resp.len > 0) {
     console.log("updateText got", resp.len, "chars at", resp.start);
     if (resp.start > el.textEnd) {

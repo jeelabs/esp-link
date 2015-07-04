@@ -27,9 +27,10 @@
 
     $("#reset-button").addEventListener("click", function(e) {
       e.preventDefault();
-      $("#console").innerHTML = "";
+			var co = $("#console");
+      co.innerHTML = "";
       ajaxSpin('POST', "/console/reset",
-        function(resp) { showNotification("uC reset"); },
+        function(resp) { showNotification("uC reset"); co.textEnd = 0; },
         function(s, st) { showWarning("Error resetting uC"); }
       );
     });
