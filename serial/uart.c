@@ -1,5 +1,5 @@
 /*
- * File	: uart.c
+ * File : uart.c
  * This file is part of Espressif's AT+ command set program.
  * Copyright (C) 2013 - 2016, Espressif Systems
  *
@@ -29,7 +29,7 @@
 // UartDev is defined and initialized in rom code.
 extern UartDevice    UartDev;
 
-os_event_t		recvTaskQueue[recvTaskQueueLen];
+os_event_t    recvTaskQueue[recvTaskQueueLen];
 
 #define MAX_CB 4
 static UartRecv_cb uart_recv_cb[4];
@@ -49,8 +49,8 @@ uart_config(uint8 uart_no)
 {
   if (uart_no == UART1) {
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_U1TXD_BK);
-		//PIN_PULLDWN_DIS(PERIPHS_IO_MUX_GPIO2_U);
-		PIN_PULLUP_DIS(PERIPHS_IO_MUX_GPIO2_U);
+    //PIN_PULLDWN_DIS(PERIPHS_IO_MUX_GPIO2_U);
+    PIN_PULLUP_DIS(PERIPHS_IO_MUX_GPIO2_U);
   } else {
     /* rcv_buff size is 0x100 */
     ETS_UART_INTR_ATTACH(uart0_rx_intr_handler,  &(UartDev.rcv_buff));
@@ -109,11 +109,11 @@ uart_config(uint8 uart_no)
 STATUS
 uart_tx_one_char(uint8 uart, uint8 c)
 {
-	//Wait until there is room in the FIFO
-	while (((READ_PERI_REG(UART_STATUS(uart))>>UART_TXFIFO_CNT_S)&UART_TXFIFO_CNT)>=100) ;
-	//Send the character
-	WRITE_PERI_REG(UART_FIFO(uart), c);
-	return OK;
+  //Wait until there is room in the FIFO
+  while (((READ_PERI_REG(UART_STATUS(uart))>>UART_TXFIFO_CNT_S)&UART_TXFIFO_CNT)>=100) ;
+  //Send the character
+  WRITE_PERI_REG(UART_FIFO(uart), c);
+  return OK;
 }
 
 /******************************************************************************
@@ -126,14 +126,14 @@ uart_tx_one_char(uint8 uart, uint8 c)
 void ICACHE_FLASH_ATTR
 uart1_write_char(char c)
 {
-	//if (c == '\n') uart_tx_one_char(UART1, '\r');
-	uart_tx_one_char(UART1, c);
+  //if (c == '\n') uart_tx_one_char(UART1, '\r');
+  uart_tx_one_char(UART1, c);
 }
 void ICACHE_FLASH_ATTR
 uart0_write_char(char c)
 {
-	//if (c == '\n') uart_tx_one_char(UART0, '\r');
-	uart_tx_one_char(UART0, c);
+  //if (c == '\n') uart_tx_one_char(UART0, '\r');
+  uart_tx_one_char(UART0, c);
 }
 /******************************************************************************
  * FunctionName : uart0_tx_buffer
@@ -163,10 +163,10 @@ uart0_tx_buffer(char *buf, uint16 len)
 void ICACHE_FLASH_ATTR
 uart0_sendStr(const char *str)
 {
-	while(*str)
-	{
-		uart_tx_one_char(UART0, *str++);
-	}
+  while(*str)
+  {
+    uart_tx_one_char(UART0, *str++);
+  }
 }
 
 static bool rx_bad; // set to true on framing error to avoid printing errors continuously
@@ -219,24 +219,24 @@ uart0_rx_intr_handler(void *para)
 static void ICACHE_FLASH_ATTR
 uart_recvTask(os_event_t *events)
 {
-	while (READ_PERI_REG(UART_STATUS(UART0)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S)) {
-		//WRITE_PERI_REG(0X60000914, 0x73); //WTD // commented out by TvE
+  while (READ_PERI_REG(UART_STATUS(UART0)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S)) {
+    //WRITE_PERI_REG(0X60000914, 0x73); //WTD // commented out by TvE
 
-		// read a buffer-full from the uart
-		uint16 length = 0;
-		char buf[128];
-		while ((READ_PERI_REG(UART_STATUS(UART0)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S)) &&
-					 (length < 128)) {
-			buf[length++] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
-		}
-		//os_printf("%d ix %d\n", system_get_time(), length);
+    // read a buffer-full from the uart
+    uint16 length = 0;
+    char buf[128];
+    while ((READ_PERI_REG(UART_STATUS(UART0)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S)) &&
+           (length < 128)) {
+      buf[length++] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
+    }
+    //os_printf("%d ix %d\n", system_get_time(), length);
 
-		for (int i=0; i<MAX_CB; i++) {
-			if (uart_recv_cb[i] != NULL) (uart_recv_cb[i])(buf, length);
-		}
-	}
-	WRITE_PERI_REG(UART_INT_CLR(UART0), UART_RXFIFO_FULL_INT_CLR|UART_RXFIFO_TOUT_INT_CLR);
-	ETS_UART_INTR_ENABLE();
+    for (int i=0; i<MAX_CB; i++) {
+      if (uart_recv_cb[i] != NULL) (uart_recv_cb[i])(buf, length);
+    }
+  }
+  WRITE_PERI_REG(UART_INT_CLR(UART0), UART_RXFIFO_FULL_INT_CLR|UART_RXFIFO_TOUT_INT_CLR);
+  ETS_UART_INTR_ENABLE();
 }
 
 void ICACHE_FLASH_ATTR
@@ -266,24 +266,24 @@ uart_init(UartBautRate uart0_br, UartBautRate uart1_br)
   // install uart1 putc callback
   os_install_putc1((void *)uart0_write_char);
 
-	system_os_task(uart_recvTask, recvTaskPrio, recvTaskQueue, recvTaskQueueLen);
+  system_os_task(uart_recvTask, recvTaskPrio, recvTaskQueue, recvTaskQueueLen);
 }
 
 void ICACHE_FLASH_ATTR
 uart_add_recv_cb(UartRecv_cb cb) {
-	for (int i=0; i<MAX_CB; i++) {
-		if (uart_recv_cb[i] == NULL) {
-			uart_recv_cb[i] = cb;
-			return;
-		}
-	}
-	os_printf("UART: max cb count exceeded\n");
+  for (int i=0; i<MAX_CB; i++) {
+    if (uart_recv_cb[i] == NULL) {
+      uart_recv_cb[i] = cb;
+      return;
+    }
+  }
+  os_printf("UART: max cb count exceeded\n");
 }
 
 void ICACHE_FLASH_ATTR
 uart_reattach()
 {
-	uart_init(BIT_RATE_74880, BIT_RATE_74880);
+  uart_init(BIT_RATE_74880, BIT_RATE_74880);
 //  ETS_UART_INTR_ATTACH(uart_rx_intr_handler_ssc,  &(UartDev.rcv_buff));
 //  ETS_UART_INTR_ENABLE();
 }
