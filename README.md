@@ -11,7 +11,7 @@ with a simple web interface, many thanks to Jeroen Domburg for making it availab
 
 [![Chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jeelabs/esp-link?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-[_Latest release_](releases)
+###[Latest release](https://github.com/jeelabs/esp-link/releases)
 
 Eye Candy
 ---------
