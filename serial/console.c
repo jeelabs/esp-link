@@ -50,6 +50,7 @@ console_write_char(char c) {
 int ICACHE_FLASH_ATTR
 ajaxConsoleReset(HttpdConnData *connData) {
 	jsonHeader(connData, 200);
+	console_rd = console_wr = console_pos = 0;
 	serbridgeReset();
 	return HTTPD_CGI_DONE;
 }
