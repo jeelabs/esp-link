@@ -21,11 +21,8 @@ Cgi/template routines for the /wifi url.
 #include "config.h"
 #include "log.h"
 
-//Enable this to disallow any changes in AP settings
-//#define DEMO_MODE
-
-#define SLEEP_MODE LIGHT_SLEEP_T
-//#define SLEEP_MODE MODEM_SLEEP_T
+//#define SLEEP_MODE LIGHT_SLEEP_T
+#define SLEEP_MODE MODEM_SLEEP_T
 
 // ===== wifi status change callback
 
@@ -298,7 +295,6 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 
 	if (el > 0 && pl >= 0) {
 		//Set to 0 if you want to disable the actual reconnecting bit
-#ifndef DEMO_MODE
 		os_strncpy((char*)stconf.ssid, essid, 32);
 		os_strncpy((char*)stconf.password, passwd, 64);
 		os_printf("Wifi try to connect to AP %s pw %s\n", essid, passwd);
@@ -307,7 +303,6 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 		os_timer_disarm(&reassTimer);
 		os_timer_setfn(&reassTimer, reassTimerCb, NULL);
 		os_timer_arm(&reassTimer, 1000, 0);
-#endif
 		jsonHeader(connData, 200);
 	} else {
 		jsonHeader(connData, 400);
@@ -457,7 +452,6 @@ int ICACHE_FLASH_ATTR cgiWiFiSetMode(HttpdConnData *connData) {
 	if (len!=0) {
 		int m = atoi(buff);
 		os_printf("Wifi switching to mode %d\n", m);
-#ifndef DEMO_MODE
 		wifi_set_opmode(m&3);
 		if (m == 1) {
 			wifi_set_sleep_type(SLEEP_MODE);
@@ -467,7 +461,6 @@ int ICACHE_FLASH_ATTR cgiWiFiSetMode(HttpdConnData *connData) {
 			os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
 		}
 		jsonHeader(connData, 200);
-#endif
 	} else {
 	  jsonHeader(connData, 400);
 	}
@@ -527,13 +520,10 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 int ICACHE_FLASH_ATTR cgiWiFiConnStatus(HttpdConnData *connData) {
 	char buff[1024];
 	int len;
-	int st=wifi_station_get_connect_status();
 
 	jsonHeader(connData, 200);
 
-	len = os_sprintf(buff, "{\"status\": \"%s\", ",
-			st > 0 && st < sizeof(connStatuses) ? connStatuses[st] : "unknown");
-
+	len = os_sprintf(buff, "{");
 	len += printWifiInfo(buff+len);
 	len += os_sprintf(buff+len, ", ");
 
@@ -541,14 +531,19 @@ int ICACHE_FLASH_ATTR cgiWiFiConnStatus(HttpdConnData *connData) {
 		len += os_sprintf(buff+len, "\"reason\": \"%s\", ", wifiGetReason());
 	}
 
+#if 0
+	// commented out 'cause often the client that requested the change can't get a request in to
+	// find out that it succeeded. Better to just wait the std 15 seconds...
+	int st=wifi_station_get_connect_status();
 	if (st == STATION_GOT_IP) {
 		if (wifi_get_opmode() != 1) {
-			//Reset into AP-only mode sooner.
+			// Reset into AP-only mode sooner.
 			os_timer_disarm(&resetTimer);
 			os_timer_setfn(&resetTimer, resetTimerCb, NULL);
 			os_timer_arm(&resetTimer, 1000, 0);
 		}
 	}
+#endif
 
 	len += os_sprintf(buff+len, "\"x\":0}\n");
 
