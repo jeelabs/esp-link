@@ -6,6 +6,7 @@ Some of the instructions may be helpful to others as well.
 
 esp-bridge
 ----------
+![dsc_5127](https://cloud.githubusercontent.com/assets/39480/8509323/11037aa2-2252-11e5-9bd2-6c86c9a3b2ed.jpg)
 
 The esp-bridge has an esp-03 modulde, an FTDI connector (with wrong pinout!), a 3-pin power
 and debug connector, and two buttons.
@@ -47,6 +48,7 @@ and briefly press the reset button. Then run esptool.py.as described below.
 
 jn-esp
 -------
+![dsc_5125](https://cloud.githubusercontent.com/assets/39480/8509322/08194674-2252-11e5-8539-4eacb0d79304.jpg)
 
 The jn-esp has an esp-03 module, an LPC824, a pseudo-FTDI connector (marked in tiny letters)
 and a JeePort (also marked). On the bottom it is marked "JN-ESP-V2".
