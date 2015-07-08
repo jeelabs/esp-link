@@ -243,11 +243,13 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
 
 	if (x == STATION_GOT_IP) {
 		if (m != 1) {
+#ifdef CHANGE_TO_STA
 			// We're happily connected, go to STA mode
 			os_printf("Wifi got IP. Going into STA mode..\n");
 			wifi_set_opmode(1);
 			wifi_set_sleep_type(SLEEP_MODE);
 			os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
+#endif
 			//os_timer_disarm(&deepTimer);
 			//os_timer_setfn(&deepTimer, deepSleepCb, NULL);
 			//os_timer_arm(&deepTimer, 1000, 1);
@@ -485,6 +487,11 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 
 	uint8_t op = wifi_get_opmode() & 0x3;
 	char *mode = wifiMode[op];
+#ifdef CHANGE_TO_STA
+	char *modechange = "yes";
+#else
+	char *modechange = "no";
+#endif
 	char *status = "unknown";
 	int st = wifi_station_get_connect_status();
 	if (st > 0 && st < sizeof(connStatuses)) status = connStatuses[st];
@@ -497,9 +504,9 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 	wifi_get_macaddr(0, mac_addr);
 
 	len = os_sprintf(buff,
-		"\"mode\": \"%s\", \"ssid\": \"%s\", \"status\": \"%s\", \"phy\": \"%s\", "
+		"\"mode\": \"%s\", \"modechange\": \"%s\", \"ssid\": \"%s\", \"status\": \"%s\", \"phy\": \"%s\", "
 		"\"rssi\": \"%ddB\", \"warn\": \"%s\", \"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\"",
-		mode, (char*)stconf.ssid, status, phy, rssi, warn,
+		mode, modechange, (char*)stconf.ssid, status, phy, rssi, warn,
 		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
 
 	struct ip_info info;

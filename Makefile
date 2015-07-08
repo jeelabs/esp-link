@@ -61,6 +61,13 @@ SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | c
 	else echo "development"; fi)
 VERSION ?=esp-link $(BRANCH) - $(DATE) - $(SHA)
 
+# --------------- esp-link config options ---------------
+
+# If CHANGE_TO_STA is set to "yes" the esp-link module will switch to station mode
+# once successfully connected to an access point. Else it will stay in AP+STA mode.
+
+CHANGE_TO_STA ?= yes
+
 # --------------- esphttpd config options ---------------
 
 # If GZIP_COMPRESSION is set to "yes" then the static css, js, and html files will be compressed
@@ -118,7 +125,7 @@ CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-
 		-D__ets__ -DICACHE_FLASH -D_STDINT_H -Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX) \
 		-DMCU_RESET_PIN=$(MCU_RESET_PIN) -DMCU_ISP_PIN=$(MCU_ISP_PIN) \
 		-DLED_CONN_PIN=$(LED_CONN_PIN) -DLED_SERIAL_PIN=$(LED_SERIAL_PIN) \
-		"-DVERSION=$(VERSION)"
+		-DVERSION="$(VERSION)"
 
 # linker flags used to generate the main object file
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--gc-sections
@@ -179,6 +186,10 @@ endif
 
 ifeq ("$(USE_HEATSHRINK)","yes")
 CFLAGS		+= -DESPFS_HEATSHRINK
+endif
+
+ifeq ("$(CHANGE_TO_STA)","yes")
+CFLAGS          += -DCHANGE_TO_STA
 endif
 
 vpath %.c $(SRC_DIR)
