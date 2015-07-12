@@ -175,7 +175,7 @@ int parseGzipExtensions(char *input) {
 }
 #endif
 
-int handleFile(int f, char *name, int compression, int level, char **compName) {
+int handleFile(int f, char *name, int compression, int level, char **compName, off_t *csizePtr) {
 	char *fdat, *cdat;
 	off_t size, csize;
 	EspFsHeader h;
@@ -257,6 +257,7 @@ int handleFile(int f, char *name, int compression, int level, char **compName) {
 			*compName = "unknown";
 		}
 	}
+  *csizePtr = csize;
 	return (csize*100)/size;
 }
 
@@ -346,8 +347,9 @@ int main(int argc, char **argv) {
 			f=open(fileName, O_RDONLY);
 			if (f>0) {
 				char *compName = "unknown";
-				rate=handleFile(f, realName, compType, compLvl, &compName);
-				fprintf(stderr, "%s (%d%%, %s)\n", realName, rate, compName);
+        off_t csize;
+				rate=handleFile(f, realName, compType, compLvl, &compName, &csize);
+				fprintf(stderr, "%-16s (%3d%%, %s, %4u bytes)\n", realName, rate, compName, (uint32_t)csize);
 				close(f);
 			} else {
 				perror(fileName);
