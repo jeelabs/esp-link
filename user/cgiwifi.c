@@ -215,27 +215,13 @@ int ICACHE_FLASH_ATTR cgiWiFiScan(HttpdConnData *connData) {
 
 // ===== timers to change state and rescue from failed associations
 
-#if 0
-static ETSTimer deepTimer;
-static void ICACHE_FLASH_ATTR deepSleepCb(void *arg) {
-	system_deep_sleep_set_option(2);
-	system_deep_sleep(100*1000);
-}
-#endif
-
-//#define CONNTRY_IDLE 0
-//#define CONNTRY_WORKING 1
-//#define CONNTRY_SUCCESS 2
-//#define CONNTRY_FAIL 3
-//Connection result var
-//static int connTryStatus=CONNTRY_IDLE;
-
 // reset timer changes back to STA+AP if we can't associate
 #define RESET_TIMEOUT (15000) // 15 seconds
 static ETSTimer resetTimer;
 
-//This routine is ran some time after a connection attempt to an access point. If
-//the connect succeeds, this gets the module in STA-only mode.
+// This routine is ran some time after a connection attempt to an access point. If
+// the connect succeeds, this gets the module in STA-only mode. If it fails, it ensures
+// that the module is in STA+AP mode so the user has a chance to recover.
 static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
 	int x = wifi_station_get_connect_status();
 	int m = wifi_get_opmode() & 0x3;
@@ -250,9 +236,6 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
 			wifi_set_sleep_type(SLEEP_MODE);
 			os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
 #endif
-			//os_timer_disarm(&deepTimer);
-			//os_timer_setfn(&deepTimer, deepSleepCb, NULL);
-			//os_timer_arm(&deepTimer, 1000, 1);
 		}
 		log_uart(false);
 		// no more resetTimer at this point, gotta use physical reset to recover if in trouble
@@ -478,6 +461,12 @@ static char *wifiWarn[] = { 0,
 	"Switch to <a href=\\\"#\\\" onclick=\\\"changeWifiMode(1)\\\">STA mode</a>",
 };
 
+#ifdef CHANGE_TO_STA
+#define MODECHANGE "yes"
+#else
+#define MODECHANGE "no"
+#endif
+
 // print various Wifi information into json buffer
 int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 	int len;
@@ -487,11 +476,6 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 
 	uint8_t op = wifi_get_opmode() & 0x3;
 	char *mode = wifiMode[op];
-#ifdef CHANGE_TO_STA
-	char *modechange = "yes";
-#else
-	char *modechange = "no";
-#endif
 	char *status = "unknown";
 	int st = wifi_station_get_connect_status();
 	if (st > 0 && st < sizeof(connStatuses)) status = connStatuses[st];
@@ -506,7 +490,7 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 	len = os_sprintf(buff,
 		"\"mode\": \"%s\", \"modechange\": \"%s\", \"ssid\": \"%s\", \"status\": \"%s\", \"phy\": \"%s\", "
 		"\"rssi\": \"%ddB\", \"warn\": \"%s\", \"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\"",
-		mode, modechange, (char*)stconf.ssid, status, phy, rssi, warn,
+		mode, MODECHANGE, (char*)stconf.ssid, status, phy, rssi, warn,
 		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
 
 	struct ip_info info;
