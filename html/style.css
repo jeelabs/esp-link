@@ -114,6 +114,13 @@ div.tt {
 .header h1 .esp {
 	font-size: 1.25em;
 }
+.jl {
+	font: normal 800 1.5em sans-serif;
+	position: relative;
+	bottom: 19px;
+	color: #9d1414;
+	margin-left: 3px;
+}
 
 .content-subhead {
 	margin: 50px 0 20px 0;
