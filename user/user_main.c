@@ -156,6 +156,7 @@ void user_init(void) {
 	os_printf("exccause=%d epc1=0x%x epc2=0x%x epc3=0x%x excvaddr=0x%x depc=0x%x\n",
 			rst_info->exccause, rst_info->epc1, rst_info->epc2, rst_info->epc3,
 			rst_info->excvaddr, rst_info->depc);
+	os_printf("Flash map %d, chip %08X\n", system_get_flash_size_map(), spi_flash_get_id());
 
 	os_printf("** esp-link ready\n");
 }

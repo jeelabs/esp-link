@@ -29,10 +29,27 @@ ESPBAUD		?= 460800
 
 # --------------- chipset configuration   ---------------
 
+# Pick your flash size: "512KB" or "4MB"
+FLASH_SIZE ?= 4MB
+
+ifeq ("$(FLASH_SIZE)","512KB")
+# Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
 ESP_SPI_SIZE        ?= 0      # 0->512KB
 ESP_FLASH_MODE      ?= 0      # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0      # 0->40Mhz
 ESP_FLASH_MAX       ?= 241664 # max bin file for 512KB flash: 236KB
+
+else
+# Winbond 25Q32 4MB flash, typ for esp-12
+# Here we're using two partitions of approx 0.5MB because that's what's easily available in terms
+# of linker scripts in the SDK. Ideally we'd use two partitions of approx 1MB, the remaining 2MB
+# cannot be used for code.
+ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
+#ESP_FLASH_MAX       ?= 1028096 # max bin file for 1MB flash partition: 1004KB
+endif
 
 # hostname or IP address for wifi flashing
 ESP_HOSTNAME        ?= esp-link
@@ -163,7 +180,6 @@ SRC		:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.c))
 OBJ		:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC)) $(BUILD_BASE)/espfs_img.o
 LIBS		:= $(addprefix -l,$(LIBS))
 APP_AR		:= $(addprefix $(BUILD_BASE)/,$(TARGET)_app.a)
-TARGET_OUT	:= $(addprefix $(BUILD_BASE)/,$(TARGET).out)
 USER1_OUT 	:= $(addprefix $(BUILD_BASE)/,$(TARGET).user1.out)
 USER2_OUT 	:= $(addprefix $(BUILD_BASE)/,$(TARGET).user2.out)
 
@@ -202,15 +218,10 @@ endef
 
 .PHONY: all checkdirs clean webpages.espfs wiflash
 
-all: echo_version checkdirs $(FW_BASE) firmware/user1.bin firmware/user2.bin
+all: echo_version checkdirs $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
 
 echo_version:
 	@echo VERSION: $(VERSION)
-
-$(TARGET_OUT): $(APP_AR) $(LD_SCRIPT)
-	$(vecho) "LD $@"
-	$(Q) $(LD) -L$(SDK_LIBDIR) -T$(LD_SCRIPT) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
-#	$(OBJDP) -x $(TARGET_OUT) | egrep '(espfs_img)'
 
 $(USER1_OUT): $(APP_AR) $(LD_SCRIPT1)
 	$(vecho) "LD $@"
@@ -224,12 +235,11 @@ $(USER2_OUT): $(APP_AR) $(LD_SCRIPT2)
 	$(Q) $(LD) -L$(SDK_LIBDIR) -T$(LD_SCRIPT2) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
 #	$(Q) $(OBJDP) -x $(TARGET_OUT) | egrep espfs_img
 
-$(FW_BASE): $(TARGET_OUT)
+$(FW_BASE):
 	$(vecho) "FW $@"
 	$(Q) mkdir -p $@
-	$(Q) $(ESPTOOL) elf2image $(TARGET_OUT) --output $@/
 
-firmware/user1.bin: $(USER1_OUT)
+$(FW_BASE)/user1.bin: $(USER1_OUT) $(FW_BASE)
 	$(Q) $(OBJCP) --only-section .text -O binary $(USER1_OUT) eagle.app.v6.text.bin
 	$(Q) $(OBJCP) --only-section .data -O binary $(USER1_OUT) eagle.app.v6.data.bin
 	$(Q) $(OBJCP) --only-section .rodata -O binary $(USER1_OUT) eagle.app.v6.rodata.bin
@@ -241,7 +251,7 @@ firmware/user1.bin: $(USER1_OUT)
 	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
 	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
 
-firmware/user2.bin: $(USER2_OUT)
+$(FW_BASE)/user2.bin: $(USER2_OUT) $(FW_BASE)
 	$(Q) $(OBJCP) --only-section .text -O binary $(USER2_OUT) eagle.app.v6.text.bin
 	$(Q) $(OBJCP) --only-section .data -O binary $(USER2_OUT) eagle.app.v6.data.bin
 	$(Q) $(OBJCP) --only-section .rodata -O binary $(USER2_OUT) eagle.app.v6.rodata.bin
@@ -250,7 +260,6 @@ firmware/user2.bin: $(USER2_OUT)
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
-
 
 $(APP_AR): $(OBJ)
 	$(vecho) "AR $@"
@@ -262,7 +271,7 @@ $(BUILD_DIR):
 	$(Q) mkdir -p $@
 
 wiflash: all
-	./wiflash $(ESP_HOSTNAME) firmware/user1.bin firmware/user2.bin
+	./wiflash $(ESP_HOSTNAME) $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
 
 flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash \
@@ -302,24 +311,32 @@ endif
 # we also adjust the sizes of the segments 'cause we need more irom0
 # in the end the only thing that matters wrt size is that the whole shebang fits into the
 # 236KB available (in a 512KB flash)
-build/eagle.esphttpd.v6.ld: $(SDK_LDDIR)/eagle.app.v6.ld
-	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
-	    $(SDK_LDDIR)/eagle.app.v6.ld >$@
+ifeq ("$(FLASH_SIZE)","512KB")
 build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/2B000/38000/' \
-	    $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld >$@
+			$(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld >$@
 build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/2B000/38000/' \
-	    $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
+			$(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
+else
+build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld
+	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
+			-e '/^  irom0_0_seg/ s/6B000/7C000/' \
+			$(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld >$@
+build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld
+	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
+			-e '/^  irom0_0_seg/ s/6B000/7C000/' \
+			$(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld >$@
+endif
 
 espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 	$(Q) $(MAKE) -C espfs/mkespfsimage USE_HEATSHRINK="$(USE_HEATSHRINK)" GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
 
 release: all
 	$(Q) rm -rf release; mkdir -p release/esp-link
-	$(Q) cp firmware/user1.bin firmware/user2.bin $(SDK_BASE)/bin/blank.bin \
+	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
 		   "$(SDK_BASE)/bin/boot_v1.4(b1).bin" wiflash release/esp-link
 	$(Q) tar zcf esp-link.tgz -C release esp-link
 	$(Q) rm -rf release
