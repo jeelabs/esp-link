@@ -22,8 +22,10 @@ Some flash handling cgi routines. Used for reading the existing flash and updati
 // Check that the header of the firmware blob looks like actual firmware...
 static char* ICACHE_FLASH_ATTR check_header(void *buf) {
 	uint8_t *cd = (uint8_t *)buf;
+	uint32_t *buf32 = buf;
+	os_printf("%p: %08lX %08lX %08lX %08lX\n", buf, buf32[0], buf32[1], buf32[2], buf32[3]);
 	if (cd[0] != 0xEA) return "IROM magic missing";
-	if (cd[1] != 4 || cd[2] > 3 || cd[3] > 0x40) return "bad flash header";
+	if (cd[1] != 4 || cd[2] > 3 || (cd[3]>>4) > 6) return "bad flash header";
 	if (((uint16_t *)buf)[3] != 0x4010) return "Invalid entry addr";
 	if (((uint32_t *)buf)[2] != 0) return "Invalid start offset";
 	return NULL;
