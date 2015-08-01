@@ -16,6 +16,7 @@
 #include "cgi.h"
 #include "cgiwifi.h"
 #include "cgipins.h"
+#include "cgitcp.h"
 #include "cgiflash.h"
 #include "auth.h"
 #include "espfs.h"
@@ -88,6 +89,7 @@ HttpdBuiltInUrl builtInUrls[]={
 	{"/wifi/setmode", cgiWiFiSetMode, NULL},
 	{"/wifi/special", cgiWiFiSpecial, NULL},
 	{"/pins", cgiPins, NULL},
+	{"/tcpclient", cgiTcp, NULL},
 
 	{"*", cgiEspFsHook, NULL}, //Catch-all cgi function for the filesystem
 	{NULL, NULL, NULL}
@@ -138,8 +140,9 @@ void user_init(void) {
 	// Wifi
 	wifiInit();
 	// init the flash filesystem with the html stuff
-	EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
-	os_printf("espFsInit %s\n", res?"ERR":"ok");
+	espFsInit(&_binary_espfs_img_start);
+	//EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
+	//os_printf("espFsInit %s\n", res?"ERR":"ok");
 	// mount the http handlers
 	httpdInit(builtInUrls, 80);
 	// init the wifi-serial transparent bridge (port 23)

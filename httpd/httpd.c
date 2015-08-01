@@ -314,13 +314,13 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
 		conn->cgi=NULL; //mark for destruction.
 	}
 	if (r==HTTPD_CGI_NOTFOUND || r==HTTPD_CGI_AUTHENTICATED) {
-		os_printf("%s ERROR! CGI fn returns code %d after sending data! Bad CGI!\n", connStr, r);
+		os_printf("%s ERROR! Bad CGI code %d\n", connStr, r);
 		conn->cgi=NULL; //mark for destruction.
 	}
 	xmitSendBuff(conn);
 }
 
-static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nServer: esp8266-httpd/"HTTPDVER"\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\nNot Found.\r\n";
+static const char *httpNotFoundHeader="HTTP/1.0 404 Not Found\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\nNot Found.\r\n";
 
 //This is called when the headers have been received and the connection is ready to send
 //the result headers and data.
@@ -419,7 +419,7 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
 		if (conn->getArgs!=0) {
 			*conn->getArgs=0;
 			conn->getArgs++;
-			os_printf("%s GET args = %s\n", connStr, conn->getArgs);
+			os_printf("%s args = %s\n", connStr, conn->getArgs);
 		} else {
 			conn->getArgs=NULL;
 		}

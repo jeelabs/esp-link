@@ -26,16 +26,40 @@
 				</div></div>
 			</div>
 			<div class="pure-g">
-				<div class="pure-u-1 pure-u-md-1-2"><div class="card">
-					<h1>Wifi summary</h1>
-					<div id="wifi-spinner" class="spinner spinner-small"></div>
-					<table id="wifi-table" class="pure-table pure-table-horizontal" hidden><tbody>
-					<tr><td>WiFi mode</td><td id="wifi-mode"></td></tr>
-					<tr><td>Configured network</td><td id="wifi-ssid"></td></tr>
-					<tr><td>Wifi status</td><td id="wifi-status"></td></tr>
-					<tr><td>Wifi address</td><td id="wifi-ip"></td></tr>
-					</tbody> </table>
-				</div></div>
+				<div class="pure-u-1 pure-u-md-1-2">
+					<div class="card">
+						<h1>Wifi summary</h1>
+						<div id="wifi-spinner" class="spinner spinner-small"></div>
+						<table id="wifi-table" class="pure-table pure-table-horizontal" hidden><tbody>
+						<tr><td>WiFi mode</td><td id="wifi-mode"></td></tr>
+						<tr><td>Configured network</td><td id="wifi-ssid"></td></tr>
+						<tr><td>Wifi status</td><td id="wifi-status"></td></tr>
+						<tr><td>Wifi address</td><td id="wifi-ip"></td></tr>
+						</tbody> </table>
+					</div>
+					<div class="card">
+						<h1>TCP client</h1>
+						<form action="#" id="tcpform" class="pure-form">
+							<legend>TCP client support in esp-link</legend>
+							<div class="form-horizontal">
+								<input type="checkbox" name="tcp_enable"/>
+								<label>Enable serial port TCP client</label>
+							</div>
+							<br>
+							<legend>Grovestreams data push</legend>
+							<div class="form-horizontal">
+								<input type="checkbox" name="rssi_enable"/>
+								<label>Send RSSI</label>
+							</div>
+							<div class="pure-form-stacked">
+								<label>API key/passwd</label>
+								<input type="password" name="api_key"/>
+							</div>
+							<button id="tcp-button" type="submit"
+											class="pure-button button-primary">Change!</button>
+						</form>
+					</div>
+				</div>
 				<div class="pure-u-1 pure-u-md-1-2"><div class="card">
 					<h1>Pin assignment</h1>
 					<legend>Select one of the following signal/pin assignments to match your hardware</legend>
@@ -45,26 +69,6 @@
 				</div></div>
 			</div>
 			<div class="pure-g">
-				<div class="pure-u-1 pure-u-md-1-2"><div class="card">
-					<h1>HTTP service</h1>
-          <form action="#" id="httpform" class="pure-form">
-					  <legend>External web service configuration</legend>
-            <div class="form-horizontal">
-              <label>Enable serial port HTTP</label>
-              <input type="checkbox" name="http_enable"/>
-              <label>Send RSSI</label>
-              <input type="checkbox" name="send_rssi"/>
-            </div>
-            <div class="pure-form-stacked">
-              <label>Server hostname</label>
-              <input type="text" name="hostname"/>
-              <label>API key/passwd</label>
-              <input type="password" name="api_key"/>
-            </div>
-            <button id="special-button" type="submit"
-                    class="pure-button button-primary">Change!</button>
-          </form>
-				</div></div>
 			</div>
     </div>
   </div>
@@ -74,6 +78,8 @@
 onLoad(function() {
 	fetchPins();
   getWifiInfo();
+	fetchTcpClient();
+  bnd($("#tcpform"), "submit", changeTcpClient);
 });
 </script>
 </body></html>

@@ -356,3 +356,42 @@ function setPins(v, name) {
 	});
 }
 
+//===== TCP client card
+
+function tcpEn(){return document.querySelector('input[name="tcp_enable"]')}
+function rssiEn(){return document.querySelector('input[name="rssi_enable"]')}
+function apiKey(){return document.querySelector('input[name="api_key"]')}
+
+function changeTcpClient(e) {
+  e.preventDefault();
+  var url = "tcpclient";
+  url += "?tcp_enable=" + tcpEn().checked;
+  url += "&rssi_enable=" + rssiEn().checked;
+  url += "&api_key=" + encodeURIComponent(apiKey().value);
+
+  hideWarning();
+  var cb = $("#tcp-button");
+  addClass(cb, 'pure-button-disabled');
+  ajaxSpin("POST", url, function(resp) {
+      removeClass(cb, 'pure-button-disabled');
+      getWifiInfo();
+    }, function(s, st) {
+      showWarning("Error: "+st);
+      removeClass(cb, 'pure-button-disabled');
+      getWifiInfo();
+    });
+}
+
+function displayTcpClient(resp) {
+  tcpEn().checked = resp.tcp_enable > 0;
+  rssiEn().checked = resp.rssi_enable > 0;
+  apiKey().value = resp.api_key;
+}
+
+function fetchTcpClient() {
+  ajaxJson("GET", "/tcpclient", displayTcpClient, function() {
+		window.setTimeout(fetchTcpClient, 1000);
+	});
+}
+
+
