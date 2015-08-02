@@ -225,7 +225,7 @@ onLoad(function() {
    '<div id="menu">\
       <div class="pure-menu">\
         <a class="pure-menu-heading" href="https://github.com/jeelabs/esp-link">\
-        <img src="/favicon.ico">&nbsp;esp-link</a>\
+        <img src="/favicon.ico" height="32">&nbsp;esp-link</a>\
         <ul id="menu-list" class="pure-menu-list"></ul>\
       </div>\
     </div>\
