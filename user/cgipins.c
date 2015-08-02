@@ -23,15 +23,13 @@ static const int num_map_func = sizeof(map_func)/sizeof(char*);
 
 // Cgi to return choice of pin assignments
 int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
-	char buff[1024];
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted
+
+	char buff[2048];
   int len;
 
-	if (connData->conn==NULL) {
-		return HTTPD_CGI_DONE; // Connection aborted
-	}
-
   // figure out current mapping
-  int curr = 99;
+  int curr = 0;
   for (int i=0; i<num_map_names; i++) {
     int8_t *map = map_asn[i];
     if (map[0] == flashConfig.reset_pin && map[1] == flashConfig.isp_pin &&
@@ -40,6 +38,7 @@ int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
     }
   }
 
+  // print mapping
   len = os_sprintf(buff, "{ \"curr\":\"%s\", \"map\": [ ", map_names[curr]);
   for (int i=0; i<num_map_names; i++) {
     if (i != 0) buff[len++] = ',';
@@ -50,8 +49,12 @@ int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
     len += os_sprintf(buff+len, ", \"descr\":\"");
     for (int f=0; f<num_map_func; f++) {
       int8_t p = map_asn[i][f];
-      if (p >= 0) len += os_sprintf(buff+len, " %s:gpio%d", map_func[f], p);
-      else len += os_sprintf(buff+len, " %s:n/a", map_func[f]);
+      if (f == 4)
+        len += os_sprintf(buff+len, " %s:%s", map_func[f], p?"yes":"no");
+      else if (p >= 0)
+        len += os_sprintf(buff+len, " %s:gpio%d", map_func[f], p);
+      else
+        len += os_sprintf(buff+len, " %s:n/a", map_func[f]);
     }
     len += os_sprintf(buff+len, "\" }");
   }
@@ -87,6 +90,7 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
   flashConfig.isp_pin      = map[1];
   flashConfig.conn_led_pin = map[2];
   flashConfig.ser_led_pin  = map[3];
+  flashConfig.swap_uart    = map[4];
 
   serbridgeInitPins();
   serledInit();
