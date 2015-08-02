@@ -263,9 +263,13 @@ enum {
 	TC_idle,       // in-between commands
 	TC_newline,    // newline seen
 	TC_start,      // start character (~) seen
-	TC_cmd,        // command character (0) seen
+	TC_cmd,        // command start (@) seen
+	TC_cmdChar,    // command character seen
 	TC_cmdLine,    // accumulating command
-	TC_tdata,      // data character (1-9) seen, and in text data mode
+	TC_tdchan,     // saw data channel character
+	TC_tdlen1,     // saw first data length character
+	TC_tdata0,     // accumulate data, zero-terminated
+	TC_tdataN,     // accumulate data, length-terminated
 };
 static uint8_t tcState = TC_newline;
 static uint8_t tcChan; // channel for current command (index into tcConn)
@@ -274,6 +278,7 @@ static uint8_t tcChan; // channel for current command (index into tcConn)
 static char tcCmdBuf[CMD_MAX];
 static short tcCmdBufLen = 0;
 static char tcCmdChar;
+static short tcLen;
 
 // scan a buffer for tcp client commands
 static int ICACHE_FLASH_ATTR
@@ -291,17 +296,27 @@ tcpClientProcess(char *buf, int len)
 			if (c == '~') tcState = TC_start;
 			continue; // gobble up the ~
 		case TC_start: // saw ~, expect channel number
-			if (c == '0') {
+			if (c == '@') {
 				tcState = TC_cmd;
 				continue;
-			} else if (c >= '1' && c <= '9') {
-				tcChan = c-'1';
-				tcState = TC_tdata;
+			} else if (c >= '0' && c <= '9') {
+				tcChan = c-'0';
+				tcState = TC_tdchan;
 				continue;
 			}
 			*out++ = '~'; // make up for '~' we skipped
 			break;
-		case TC_cmd: // saw channel number 0 (command), expect command char
+		case TC_cmd: // saw control char (@), expect channel char
+			if (c >= '0' && c <= '9') {
+				tcChan = c-'0';
+				tcState = TC_cmdChar;
+				continue;
+			} else {
+				*out++ = '~'; // make up for '~' we skipped
+				*out++ = '@'; // make up for '@' we skipped
+				break;
+			}
+		case TC_cmdChar: // saw channel number, expect command char
 			tcCmdChar = c;   // save command character
 			tcCmdBufLen = 0; // empty the command buffer
 			tcState = TC_cmdLine;
@@ -310,14 +325,47 @@ tcpClientProcess(char *buf, int len)
 			if (c != '\n') {
 				if (tcCmdBufLen < CMD_MAX) tcCmdBuf[tcCmdBufLen++] = c;
 			} else {
-				tcpClientCommand(tcCmdChar, tcCmdBuf);
+				tcpClientCommand(tcChan, tcCmdChar, tcCmdBuf);
 				tcState = TC_newline;
 			}
 			continue;
-		case TC_tdata: // saw channel number, getting data characters
+		case TC_tdchan: // saw channel number, getting first length char
+			if (c >= '0' && c <= '9') {
+				tcLen = c-'0';
+			} else if (c >= 'A' && c <= 'F') {
+				tcLen = c-'A'+10;
+			} else {
+				*out++ = '~'; // make up for '~' we skipped
+				*out++ = '0'+tcChan;
+				break;
+			}
+			tcState = TC_tdlen1;
+			continue;
+		case TC_tdlen1: // saw first length char, get second
+			tcLen *= 16;
+			if (c >= '0' && c <= '9') {
+				tcLen += c-'0';
+			} else if (c >= 'A' && c <= 'F') {
+				tcLen += c-'A'+10;
+			} else {
+				*out++ = '~'; // make up for '~' we skipped
+				*out++ = '0'+tcChan;
+				break;
+			}
+			tcState = tcLen == 0 ? TC_tdata0 : TC_tdataN;
+			continue;
+		case TC_tdata0: // saw data length, getting data characters zero-terminated
 			if (c != 0) {
 				tcpClientSendChar(tcChan, c);
 			} else {
+				tcpClientSendPush(tcChan);
+				tcState = TC_idle;
+			}
+			continue;
+		case TC_tdataN: // saw data length, getting data characters length-terminated
+			tcpClientSendChar(tcChan, c);
+			tcLen--;
+			if (tcLen == 0) {
 				tcpClientSendPush(tcChan);
 				tcState = TC_idle;
 			}
@@ -410,6 +458,8 @@ void ICACHE_FLASH_ATTR serbridgeInitPins() {
 	mcu_reset_pin = flashConfig.reset_pin;
 	mcu_isp_pin = flashConfig.isp_pin;
 	os_printf("Serbridge pins: reset=%d isp=%d\n", mcu_reset_pin, mcu_isp_pin);
+
+	if (flashConfig.swap_uart) system_uart_swap(); else system_uart_de_swap();
 
 	// set both pins to 1 before turning them on so we don't cause a reset
 	if (mcu_isp_pin >= 0)   GPIO_OUTPUT_SET(mcu_isp_pin, 1);

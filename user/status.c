@@ -4,6 +4,7 @@
 #include "config.h"
 #include "serled.h"
 #include "cgiwifi.h"
+#include "tcpclient.h"
 
 //===== "CONN" LED status indication
 
@@ -72,101 +73,44 @@ void ICACHE_FLASH_ATTR statusWifiUpdate(uint8_t state) {
 
 static ETSTimer rssiTimer;
 
-static uint8_t rssiSendState = 0;
-static sint8 rssiLast = 0; //last RSSI value
-
-static esp_tcp rssiTcp;
-static struct espconn rssiConn;
-
-#define GS_API_KEY "2eb868a8-224f-3faa-939d-c79bd605912a"
-#define GS_COMP_ID "esp-link"
 #define GS_STREAM  "rssi"
 
-// Connected callback
-static void ICACHE_FLASH_ATTR rssiConnectCb(void *arg) {
-	struct espconn *conn = (struct espconn *)arg;
-	os_printf("RSSI connect CB (%p %p)\n", arg, conn->reverse);
+// Timer callback to send an RSSI update to a monitoring system
+static void ICACHE_FLASH_ATTR rssiTimerCb(void *v) {
+	if (!flashConfig.rssi_enable || !flashConfig.tcp_enable || flashConfig.api_key[0]==0)
+		return;
 
-	char buf[2000];
+	sint8 rssi = wifi_station_get_rssi();
+	if (rssi >= 0) return; // not connected or other error
 
-	// http header
+	// compose TCP command
+	uint8_t chan = MAX_TCP_CHAN-1;
+	tcpClientCommand(chan, 'T', "grovestreams.com:80");
+
+	// compose http header
+	char buf[1024];
 	int hdrLen = os_sprintf(buf,
 			"PUT /api/feed?api_key=%s HTTP/1.0\r\n"
 			"Content-Type: application/json\r\n"
 			"Content-Length: XXXXX\r\n\r\n",
-			GS_API_KEY);
+			flashConfig.api_key);
 
 	// http body
 	int dataLen = os_sprintf(buf+hdrLen,
-			"[{\"compId\":\"%s\", \"streamId\":\"%s\", \"data\":%d}]",
-			GS_COMP_ID, GS_STREAM, rssiLast);
+			"[{\"compId\":\"%s\", \"streamId\":\"%s\", \"data\":%d}]\r",
+			flashConfig.hostname, GS_STREAM, rssi);
+	buf[hdrLen+dataLen++] = 0;
+	buf[hdrLen+dataLen++] = '\r';
 
 	// hackish way to fill in the content-length
 	os_sprintf(buf+hdrLen-9, "%5d", dataLen);
-	buf[hdrLen-4] = '\r';
+	buf[hdrLen-4] = '\r'; // fix-up the \0 inserted by sprintf (hack!)
 
-	// send it off
-	if (espconn_sent(conn, (uint8*)buf, hdrLen+dataLen) == ESPCONN_OK) {
-		os_printf("RSSI sent rssi=%d\n", rssiLast);
-		os_printf("RSSI sent <<%s>>\n", buf);
+	// send the request off and forget about it...
+	for (short i=0; i<hdrLen+dataLen; i++) {
+		tcpClientSendChar(chan, buf[i]);
 	}
-}
-
-// Sent callback
-static void ICACHE_FLASH_ATTR rssiSentCb(void *arg) {
-	struct espconn *conn = (struct espconn *)arg;
-	os_printf("RSSI sent CB (%p %p)\n", arg, conn->reverse);
-}
-
-// Recv callback
-static void ICACHE_FLASH_ATTR rssiRecvCb(void *arg, char *data, uint16_t len) {
-	struct espconn *conn = (struct espconn *)arg;
-	os_printf("RSSI recv CB (%p %p)\n", arg, conn->reverse);
-	data[len] = 0; // hack!!!
-	os_printf("GOT %d: <<%s>>\n", len, data);
-
-	espconn_disconnect(conn);
-}
-
-// Disconnect callback
-static void ICACHE_FLASH_ATTR rssiDisconCb(void *arg) {
-	struct espconn *conn = (struct espconn *)arg;
-	os_printf("RSSI disconnect CB (%p %p)\n", arg, conn->reverse);
-	rssiSendState = 0;
-}
-
-// Connection reset callback
-static void ICACHE_FLASH_ATTR rssiResetCb(void *arg, sint8 err) {
-	struct espconn *conn = (struct espconn *)arg;
-	os_printf("RSSI reset CB (%p %p) err=%d\n", arg, conn->reverse, err);
-	rssiSendState = 0;
-}
-
-// Timer callback to send an RSSI update to a monitoring system
-static void ICACHE_FLASH_ATTR rssiTimerCb(void *v) {
-	sint8 rssi = wifi_station_get_rssi();
-	if (rssi >= 0) return; // not connected or other error
-	rssiLast = rssi;
-	if (rssiSendState > 0) return; // not done with previous rssi report
-
-	rssiConn.type = ESPCONN_TCP;
-	rssiConn.state = ESPCONN_NONE;
-	rssiConn.proto.tcp = &rssiTcp;
-	rssiTcp.remote_port = 80;
-	rssiTcp.remote_ip[0] = 173;
-  rssiTcp.remote_ip[1] = 236;
-  rssiTcp.remote_ip[2] = 12;
-  rssiTcp.remote_ip[3] = 163;
-  espconn_regist_connectcb(&rssiConn, rssiConnectCb);
-	espconn_regist_reconcb(&rssiConn, rssiResetCb);
-	espconn_regist_sentcb(&rssiConn, rssiSentCb);
-	espconn_regist_recvcb(&rssiConn, rssiRecvCb);
-	espconn_regist_disconcb(&rssiConn, rssiDisconCb);
-	rssiConn.reverse = (void *)0xdeadf00d;
-	os_printf("RSSI connect (%p)\n", &rssiConn);
-	if (espconn_connect(&rssiConn) == ESPCONN_OK) {
-		rssiSendState++;
-	}
+	tcpClientSendPush(chan);
 }
 
 //===== Init status stuff
