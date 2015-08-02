@@ -1,9 +1,12 @@
 ESP-LINK
 ========
 
-This firmware implements a transparent bridge between Wifi and serial using an ESP8266 module.
-It also provides support for flash-programming Arduino/AVR microcontrollers as well as
-LPC800-series and other ARM microcontrollers via the ESP8266.
+This firmware connects an attached micro-controller to the internet using a ESP8266 Wifi module.
+It implements a number of features:
+- transparent bridge between Wifi and serial, useful for debugging or inputting into a uC
+- flash-programming attached Arduino/AVR microcontrollers as well as LPC800-series and other
+  ARM microcontrollers via Wifi
+- outbound TCP (and thus HTTP) connections from the attached micro-controller to the internet
 
 The firmware includes a tiny HTTP server based on
 [esphttpd](http://www.esp8266.com/viewforum.php?f=34)
@@ -12,6 +15,8 @@ with a simple web interface, many thanks to Jeroen Domburg for making it availab
 [![Chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jeelabs/esp-link?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ###[Latest release](https://github.com/jeelabs/esp-link/releases)
+Note that the [stable V1.0 release](https://github.com/jeelabs/esp-link/releases/tag/v1.0.0) is
+recommended if you do not need the outbound TCP connections and have a 512KB flash chip.
 
 Eye Candy
 ---------
@@ -214,6 +219,12 @@ modes are supported that can be set in the web UI (and the mode is saved in flas
 
 Note that even if the UART log is always off the bootloader prints to uart0 whenever the
 esp8266 comes out of reset. This cannot be disabled.
+
+Outbound TCP connections
+------------------------
+The attached micro-controller can open outbound TCP connections using a simple
+[serial protocol](https://gist.github.com/tve/a46c44bf1f6b42bc572e).
+More info and sample code forthcoming...
 
 Contact
 -------
