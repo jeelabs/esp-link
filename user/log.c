@@ -87,6 +87,7 @@ ajaxLog(HttpdConnData *connData) {
 	int log_len = (log_wr+BUF_MAX-log_rd) % BUF_MAX; // num chars in log_buf
 	int start = 0; // offset onto log_wr to start sending out chars
 
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 	jsonHeader(connData, 200);
 
 	// figure out where to start in buffer based on URI param
@@ -128,6 +129,7 @@ static char *dbg_mode[] = { "auto", "off", "on" };
 
 int ICACHE_FLASH_ATTR
 ajaxLogDbg(HttpdConnData *connData) {
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 	char buff[512];
 	int len, status = 400;
 	len = httpdFindArg(connData->getArgs, "mode", buff, sizeof(buff));

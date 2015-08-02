@@ -49,6 +49,7 @@ console_write_char(char c) {
 
 int ICACHE_FLASH_ATTR
 ajaxConsoleReset(HttpdConnData *connData) {
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 	jsonHeader(connData, 200);
 	console_rd = console_wr = console_pos = 0;
 	serbridgeReset();
@@ -57,6 +58,7 @@ ajaxConsoleReset(HttpdConnData *connData) {
 
 int ICACHE_FLASH_ATTR
 ajaxConsoleBaud(HttpdConnData *connData) {
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 	char buff[512];
 	int len, status = 400;
 	len = httpdFindArg(connData->getArgs, "rate", buff, sizeof(buff));
@@ -79,6 +81,7 @@ ajaxConsoleBaud(HttpdConnData *connData) {
 
 int ICACHE_FLASH_ATTR
 ajaxConsole(HttpdConnData *connData) {
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 	char buff[2048];
 	int len; // length of text in buff
 	int console_len = (console_wr+BUF_MAX-console_rd) % BUF_MAX; // num chars in console_buf

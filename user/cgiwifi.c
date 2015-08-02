@@ -167,6 +167,7 @@ static void ICACHE_FLASH_ATTR scanStartCb(void *arg) {
 }
 
 static int ICACHE_FLASH_ATTR cgiWiFiStartScan(HttpdConnData *connData) {
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 	jsonHeader(connData, 200);
 	if (!cgiWifiAps.scanInProgress) {
 		cgiWifiAps.scanInProgress = 1;
@@ -178,6 +179,7 @@ static int ICACHE_FLASH_ATTR cgiWiFiStartScan(HttpdConnData *connData) {
 }
 
 static int ICACHE_FLASH_ATTR cgiWiFiGetScan(HttpdConnData *connData) {
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 	char buff[2048];
 	int len;
 
@@ -428,10 +430,7 @@ int ICACHE_FLASH_ATTR cgiWiFiSetMode(HttpdConnData *connData) {
 	int len;
 	char buff[1024];
 
-	if (connData->conn==NULL) {
-		// Connection aborted. Clean up.
-		return HTTPD_CGI_DONE;
-	}
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
 	len=httpdFindArg(connData->getArgs, "mode", buff, sizeof(buff));
 	if (len!=0) {
@@ -512,6 +511,7 @@ int ICACHE_FLASH_ATTR cgiWiFiConnStatus(HttpdConnData *connData) {
 	char buff[1024];
 	int len;
 
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 	jsonHeader(connData, 200);
 
 	len = os_sprintf(buff, "{");
@@ -547,9 +547,7 @@ int ICACHE_FLASH_ATTR cgiWiFiConnStatus(HttpdConnData *connData) {
 int ICACHE_FLASH_ATTR cgiWifiInfo(HttpdConnData *connData) {
 	char buff[1024];
 
-	if (connData->conn==NULL) {
-		return HTTPD_CGI_DONE; // Connection aborted
-	}
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
 	os_strcpy(buff, "{");
 	printWifiInfo(buff+1);

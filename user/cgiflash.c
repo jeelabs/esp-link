@@ -55,10 +55,7 @@ int ICACHE_FLASH_ATTR cgiReadFlash(HttpdConnData *connData) {
 
 //===== Cgi to query which firmware needs to be uploaded next
 int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
-	if (connData->conn==NULL) {
-		//Connection aborted. Clean up.
-		return HTTPD_CGI_DONE;
-	}
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
 	uint8 id = system_upgrade_userbin_check();
 	httpdStartResponse(connData, 200);
@@ -74,10 +71,7 @@ int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
 
 //===== Cgi that allows the firmware to be replaced via http POST
 int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
-	if (connData->conn==NULL) {
-		//Connection aborted. Clean up.
-		return HTTPD_CGI_DONE;
-	}
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
 	int offset = connData->post->received - connData->post->buffLen;
 	if (offset == 0) {
@@ -147,10 +141,7 @@ static ETSTimer flash_reboot_timer;
 
 // Handle request to reboot into the new firmware
 int ICACHE_FLASH_ATTR cgiRebootFirmware(HttpdConnData *connData) {
-	if (connData->conn==NULL) {
-		//Connection aborted. Clean up.
-		return HTTPD_CGI_DONE;
-	}
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
 	// sanity-check that the 'next' partition actually contains something that looks like
 	// valid firmware

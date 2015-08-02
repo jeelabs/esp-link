@@ -106,6 +106,7 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
 }
 
 int ICACHE_FLASH_ATTR cgiPins(HttpdConnData *connData) {
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 	if (connData->requestType == HTTPD_METHOD_GET) {
 		return cgiPinsGet(connData);
 	} else if (connData->requestType == HTTPD_METHOD_POST) {
