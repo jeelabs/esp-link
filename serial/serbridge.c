@@ -457,9 +457,18 @@ static void ICACHE_FLASH_ATTR serbridgeConnectCb(void *arg) {
 void ICACHE_FLASH_ATTR serbridgeInitPins() {
 	mcu_reset_pin = flashConfig.reset_pin;
 	mcu_isp_pin = flashConfig.isp_pin;
-	os_printf("Serbridge pins: reset=%d isp=%d\n", mcu_reset_pin, mcu_isp_pin);
+	os_printf("Serbridge pins: reset=%d isp=%d swap=%d\n",
+			mcu_reset_pin, mcu_isp_pin, flashConfig.swap_uart);
 
-	if (flashConfig.swap_uart) system_uart_swap(); else system_uart_de_swap();
+	if (flashConfig.swap_uart) {
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 4);
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, 4);
+		system_uart_swap();
+	} else {
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, 0);
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0RXD_U, 0);
+		system_uart_de_swap();
+	}
 
 	// set both pins to 1 before turning them on so we don't cause a reset
 	if (mcu_isp_pin >= 0)   GPIO_OUTPUT_SET(mcu_isp_pin, 1);
