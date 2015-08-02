@@ -485,12 +485,13 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 	if (rssi > 0) rssi = 0;
 	uint8 mac_addr[6];
 	wifi_get_macaddr(0, mac_addr);
+	uint8_t chan = wifi_get_channel();
 
 	len = os_sprintf(buff,
 		"\"mode\": \"%s\", \"modechange\": \"%s\", \"ssid\": \"%s\", \"status\": \"%s\", \"phy\": \"%s\", "
-		"\"rssi\": \"%ddB\", \"warn\": \"%s\", \"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\"",
+		"\"rssi\": \"%ddB\", \"warn\": \"%s\", \"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\", \"chan\":%d",
 		mode, MODECHANGE, (char*)stconf.ssid, status, phy, rssi, warn,
-		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5], chan);
 
 	struct ip_info info;
 	if (wifi_get_ip_info(0, &info)) {
