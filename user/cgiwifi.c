@@ -261,6 +261,7 @@ static ETSTimer reassTimer;
 static void ICACHE_FLASH_ATTR reassTimerCb(void *arg) {
 	os_printf("Wifi changing association\n");
 	wifi_station_disconnect();
+	stconf.bssid_set = 0;
 	wifi_station_set_config(&stconf);
 	wifi_station_connect();
 	// Schedule check
