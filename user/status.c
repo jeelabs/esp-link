@@ -81,6 +81,7 @@ static void ICACHE_FLASH_ATTR rssiTimerCb(void *v) {
 		return;
 
 	sint8 rssi = wifi_station_get_rssi();
+	os_printf("timer rssi=%d\n", rssi);
 	if (rssi >= 0) return; // not connected or other error
 
 	// compose TCP command
@@ -100,7 +101,7 @@ static void ICACHE_FLASH_ATTR rssiTimerCb(void *v) {
 			"[{\"compId\":\"%s\", \"streamId\":\"%s\", \"data\":%d}]\r",
 			flashConfig.hostname, GS_STREAM, rssi);
 	buf[hdrLen+dataLen++] = 0;
-	buf[hdrLen+dataLen++] = '\r';
+	buf[hdrLen+dataLen++] = '\n';
 
 	// hackish way to fill in the content-length
 	os_sprintf(buf+hdrLen-9, "%5d", dataLen);

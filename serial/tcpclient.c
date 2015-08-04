@@ -261,10 +261,15 @@ tcpClientCommand(uint8_t chan, char cmd, char *cmdBuf) {
 	char *hostname;
 	char *port;
 
+	// copy the command so we can modify it
+	char buf[128];
+	os_strncpy(buf, cmdBuf, 128);
+	buf[127] = 0;
+
 	switch (cmd) {
 	//== TCP Connect command
 	case 'T':
-		hostname = cmdBuf;
+		hostname = buf;
 		port = hostname;
 		while (*port != 0 && *port != ':') port++;
 		if (*port != ':') break;
