@@ -26,16 +26,7 @@ serbridgeConnData connData[MAX_CONN];
 // Given a pointer to an espconn struct find the connection that correcponds to it
 static serbridgeConnData ICACHE_FLASH_ATTR *serbridgeFindConnData(void *arg) {
 	struct espconn *conn = arg;
-	return (serbridgeConnData *)conn->reverse;
-#if 0
-	for (int i=0; i<MAX_CONN; i++) {
-		if (connData[i].conn == (struct espconn *)arg) {
-			return &connData[i];
-		}
-	}
-	//os_printf("FindConnData: Huh? Couldn't find connection for %p\n", arg);
-	return NULL; // not found, may be closed already...
-#endif
+	return arg == NULL ? NULL : (serbridgeConnData *)conn->reverse;
 }
 
 //===== TCP -> UART
@@ -293,8 +284,12 @@ tcpClientProcess(char *buf, int len)
 			if (c == '\n') tcState = TC_newline;
 			break;
 		case TC_newline: // saw newline, expect ~
-			if (c == '~') tcState = TC_start;
-			continue; // gobble up the ~
+			if (c == '~') {
+				tcState = TC_start;
+				continue; // gobble up the ~
+			} else {
+				break;
+			}
 		case TC_start: // saw ~, expect channel number
 			if (c == '@') {
 				tcState = TC_cmd;
@@ -373,7 +368,7 @@ tcpClientProcess(char *buf, int len)
 		}
 		*out++ = c;
 	}
-	if (tcState != TC_idle) os_printf("tcState=%d\n", tcState);
+	//if (tcState != TC_idle) os_printf("tcState=%d\n", tcState);
 	return out-buf;
 }
 
@@ -387,7 +382,7 @@ serbridgeUartCb(char *buf, int length) {
 	length = tcpClientProcess(buf, length);
 	// push the buffer into each open connection
 	if (length > 0) {
-		for (int i = 0; i < MAX_CONN; ++i) {
+		for (int i=0; i<MAX_CONN; i++) {
 			if (connData[i].conn && connData[i].conn_mode != cmTcpClient) {
 				espbuffsend(&connData[i], buf, length);
 			}
@@ -463,6 +458,8 @@ void ICACHE_FLASH_ATTR serbridgeInitPins() {
 	if (flashConfig.swap_uart) {
 		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 4);
 		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, 4);
+		PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTCK_U);
+		PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTDO_U);
 		system_uart_swap();
 	} else {
 		PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, 0);
