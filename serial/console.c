@@ -34,16 +34,18 @@ console_write(char c) {
 	}
 }
 
+#if 0
 // return previous character in console, 0 if at start
 static char ICACHE_FLASH_ATTR
 console_prev(void) {
 	if (console_wr == console_rd) return 0;
 	return console_buf[(console_wr-1+BUF_MAX)%BUF_MAX];
 }
+#endif
 
 void ICACHE_FLASH_ATTR
 console_write_char(char c) {
-	if (c == '\n' && console_prev() != '\r') console_write('\r');
+	//if (c == '\n' && console_prev() != '\r') console_write('\r'); // does more harm than good
 	console_write(c);
 }
 
@@ -112,6 +114,8 @@ ajaxConsole(HttpdConnData *connData) {
 		if (c == '\\' || c == '"') {
 			buff[len++] = '\\';
 			buff[len++] = c;
+		} else if (c == '\r') {
+			// this is crummy, but browsers display a newline for \r\n sequences
 		} else if (c < ' ') {
 			len += os_sprintf(buff+len, "\\u%04x", c);
 		} else {
