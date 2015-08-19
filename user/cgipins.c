@@ -8,15 +8,16 @@
 #include "serbridge.h"
 
 static char *map_names[] = {
-  "esp-bridge", "jn-esp-v2", "esp-01(AVR)", "esp-01(ARM)", "esp-br-rev",
+  "esp-bridge", "jn-esp-v2", "esp-01(AVR)", "esp-01(ARM)", "esp-br-rev", "wifi-link-12",
 };
-static char* map_func[] = { "reset", "isp", "conn_led", "ser_led" };
-static int8_t map_asn[][4] = {
-  { 12, 13,  0, 14 },  // esp-bridge
-  { 12, 13,  0,  2 },  // jn-esp-v2
-  {  0, -1,  2, -1 },  // esp-01(AVR)
-  {  0,  2, -1, -1 },  // esp-01(ARM)
-  { 13, 12, 14,  0 },  // esp-br-rev -- for test purposes
+static char* map_func[] = { "reset", "isp", "conn_led", "ser_led", "swap_uart" };
+static int8_t map_asn[][5] = {
+  { 12, 13,  0, 14, 0 },  // esp-bridge
+  { 12, 13,  0,  2, 0 },  // jn-esp-v2
+  {  0, -1,  2, -1, 0 },  // esp-01(AVR)
+  {  0,  2, -1, -1, 0 },  // esp-01(ARM)
+  { 13, 12, 14,  0, 0 },  // esp-br-rev -- for test purposes
+  {  3,  1,  0,  2, 1 },  // esp-link-12
 };
 static const int num_map_names = sizeof(map_names)/sizeof(char*);
 static const int num_map_func = sizeof(map_func)/sizeof(char*);
@@ -33,7 +34,8 @@ int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
   for (int i=0; i<num_map_names; i++) {
     int8_t *map = map_asn[i];
     if (map[0] == flashConfig.reset_pin && map[1] == flashConfig.isp_pin &&
-        map[2] == flashConfig.conn_led_pin && map[3] == flashConfig.ser_led_pin) {
+        map[2] == flashConfig.conn_led_pin && map[3] == flashConfig.ser_led_pin &&
+        map[4] == flashConfig.swap_uart) {
       curr = i;
     }
   }
