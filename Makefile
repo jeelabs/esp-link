@@ -29,7 +29,7 @@ ESPBAUD		?= 460800
 
 # --------------- chipset configuration   ---------------
 
-# Pick your flash size: "512KB" or "4MB"
+# Pick your flash size: "512KB", "1MB", or "4MB"
 FLASH_SIZE ?= 512KB
 
 ifeq ("$(FLASH_SIZE)","512KB")
