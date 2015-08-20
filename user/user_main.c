@@ -113,7 +113,7 @@ void user_rf_pre_init(void) {
 extern uint32_t _binary_espfs_img_start;
 
 static char *rst_codes[] = {
-	"normal", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", "???",
+	"normal", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", "external",
 };
 
 # define VERS_STR_STR(V) #V
