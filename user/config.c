@@ -17,6 +17,7 @@ FlashConfig flashDefault = {
   "esp-link\0                       ", // hostname
   0, 0x00ffffff, 0,                    // static ip, netmask, gateway
   0,                                   // log mode
+  0,                                   // swap uart (don't by default)
 };
 
 typedef union {
@@ -46,7 +47,6 @@ static void memDump(void *addr, int len) {
 #endif
 
 bool ICACHE_FLASH_ATTR configSave(void) {
-
   FlashFull ff;
   memset(&ff, 0, sizeof(ff));
   memcpy(&ff, &flashConfig, sizeof(FlashConfig));
@@ -54,7 +54,7 @@ bool ICACHE_FLASH_ATTR configSave(void) {
   // erase secondary
   uint32_t addr = FLASH_ADDR + (1-flash_pri)*FLASH_SECT;
   if (spi_flash_erase_sector(addr>>12) != SPI_FLASH_RESULT_OK)
-    return false; // no harm done, give up
+    goto fail; // no harm done, give up
   // calculate CRC
   ff.fc.seq = seq;
   ff.fc.magic = FLASH_MAGIC;
@@ -66,11 +66,11 @@ bool ICACHE_FLASH_ATTR configSave(void) {
   // write primary with incorrect seq
   ff.fc.seq = 0xffffffff;
   if (spi_flash_write(addr, (void *)&ff, sizeof(ff)) != SPI_FLASH_RESULT_OK)
-    return false; // no harm done, give up
+    goto fail; // no harm done, give up
   // fill in correct seq
   ff.fc.seq = seq;
   if (spi_flash_write(addr, (void *)&ff, sizeof(uint32_t)) != SPI_FLASH_RESULT_OK)
-    return false; // most likely failed, but no harm if successful
+    goto fail; // most likely failed, but no harm if successful
   // now that we have safely written the new version, erase old primary
   addr = FLASH_ADDR + flash_pri*FLASH_SECT;
   flash_pri = 1-flash_pri;
@@ -83,6 +83,9 @@ bool ICACHE_FLASH_ATTR configSave(void) {
   ff.fc.seq = seq;
   spi_flash_write(addr, (void *)&ff, sizeof(uint32_t));
   return true;
+fail:
+  os_printf("*** Failed to save config ***\n");
+  return false;
 }
 
 void ICACHE_FLASH_ATTR configWipe(void) {
