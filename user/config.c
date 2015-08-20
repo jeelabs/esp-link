@@ -24,10 +24,16 @@ typedef union {
   uint8_t     block[128];
 } FlashFull;
 
+// magic number to recognize thet these are our flash settings as opposed to some random stuff
 #define FLASH_MAGIC  (0xaa55)
 
-#define FLASH_ADDR   (0x3E000)
+// size of the setting sector
 #define FLASH_SECT   (4096)
+
+// address where to flash the settings: there are 16KB of reserved space at the end of the first
+// flash partition, we use the upper 8KB (2 sectors)
+#define FLASH_ADDR   (FLASH_SECT + FIRMWARE_SIZE + 2*FLASH_SECT)
+
 static int flash_pri; // primary flash sector (0 or 1, or -1 for error)
 
 #if 0
