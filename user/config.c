@@ -95,7 +95,7 @@ void ICACHE_FLASH_ATTR configWipe(void) {
   spi_flash_erase_sector((FLASH_ADDR+FLASH_SECT)>>12);
 }
 
-static uint32_t ICACHE_FLASH_ATTR selectPrimary(FlashFull *fc0, FlashFull *fc1);
+static int ICACHE_FLASH_ATTR selectPrimary(FlashFull *fc0, FlashFull *fc1);
 
 bool ICACHE_FLASH_ATTR configRestore(void) {
   FlashFull ff0, ff1;
@@ -117,7 +117,7 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
   return true;
 }
 
-static uint32_t ICACHE_FLASH_ATTR selectPrimary(FlashFull *ff0, FlashFull *ff1) {
+static int ICACHE_FLASH_ATTR selectPrimary(FlashFull *ff0, FlashFull *ff1) {
   // check CRC of ff0
   uint16_t crc = ff0->fc.crc;
   ff0->fc.crc = 0;
