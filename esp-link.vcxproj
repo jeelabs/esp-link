@@ -1,0 +1,175 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|ARM">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM">
+      <Configuration>Release</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A92F0CAA-F89B-4F78-AD2A-A042429BD87F}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup>
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <NMakeOutput />
+    <NMakePreprocessorDefinitions>__ets__;_STDINT_H;ICACHE_FLASH;__MINGW32__;__WIN32__</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>.\mqtt\include;.\serial;.\user;.\espfs;.\httpd;.\include;c:\tools\mingw64\x86_64-w64-mingw32\include\c++\x86_64-w64-mingw32;c:\tools\mingw64\x86_64-w64-mingw32\include\c++\backward;c:\tools\mingw64\x86_64-w64-mingw32\include\c++;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include-fixed;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include;c:\Espressif\sdk\include</NMakeIncludeSearchPath>
+    <ExecutablePath />
+    <ReferencePath />
+    <LibraryPath />
+    <LibraryWPath />
+    <ExcludePath />
+    <NMakeOutput />
+    <OutDir>bin</OutDir>
+    <IntDir>build</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
+    <NMakeBuildCommandLine>espmake flash</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>espmake clean all</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>espmake clean</NMakeCleanCommandLine>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
+    <NMakeBuildCommandLine>espmake baseflash</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>espmake clean all</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>espmake clean</NMakeCleanCommandLine>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <BuildLog>
+      <Path />
+    </BuildLog>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <None Include="espfs\mkespfsimage\build-linux.sh" />
+    <None Include="espfs\mkespfsimage\build-win32.sh" />
+    <None Include="espfs\mkespfsimage\heatshrink_encoder.o" />
+    <None Include="espfs\mkespfsimage\main.o" />
+    <None Include="espfs\mkespfsimage\Makefile" />
+    <None Include="espfs\mkespfsimage\Makefile.linux" />
+    <None Include="espfs\mkespfsimage\Makefile.windows" />
+    <None Include="espfs\mkespfsimage\mman-win32\config.mak" />
+    <None Include="espfs\mkespfsimage\mman-win32\configure" />
+    <None Include="espfs\mkespfsimage\mman-win32\Makefile" />
+    <None Include="html-old\home.js" />
+    <None Include="espmake.cmd" />
+    <None Include="Makefile" />
+    <None Include="wiflash" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="espfs\espfs.c" />
+    <ClCompile Include="espfs\espfstest\main.c" />
+    <ClCompile Include="espfs\heatshrink_decoder.c" />
+    <ClCompile Include="espfs\mkespfsimage\heatshrink_encoder.c" />
+    <ClCompile Include="espfs\mkespfsimage\main.c" />
+    <ClCompile Include="espfs\mkespfsimage\mman-win32\mman.c" />
+    <ClCompile Include="espfs\mkespfsimage\mman-win32\test.c" />
+    <ClCompile Include="httpd\auth.c" />
+    <ClCompile Include="httpd\base64.c" />
+    <ClCompile Include="httpd\httpd.c" />
+    <ClCompile Include="httpd\httpdespfs.c" />
+    <ClCompile Include="mqtt\driver\uart.c" />
+    <ClCompile Include="mqtt\modules\config.c" />
+    <ClCompile Include="mqtt\modules\wifi.c" />
+    <ClCompile Include="mqtt\mqtt.c" />
+    <ClCompile Include="mqtt\mqtt\mqtt.c" />
+    <ClCompile Include="mqtt\mqtt\mqtt_msg.c" />
+    <ClCompile Include="mqtt\mqtt\proto.c" />
+    <ClCompile Include="mqtt\mqtt\queue.c" />
+    <ClCompile Include="mqtt\mqtt\ringbuf.c" />
+    <ClCompile Include="mqtt\mqtt\utils.c" />
+    <ClCompile Include="mqtt\mqtt_msg.c" />
+    <ClCompile Include="mqtt\proto.c" />
+    <ClCompile Include="mqtt\queue.c" />
+    <ClCompile Include="mqtt\ringbuf.c" />
+    <ClCompile Include="mqtt\user\user_main.c" />
+    <ClCompile Include="mqtt\utils.c" />
+    <ClCompile Include="serial\debugpin.c" />
+    <ClCompile Include="serial\serslip.c" />
+    <ClCompile Include="serial\console.c" />
+    <ClCompile Include="serial\crc16.c" />
+    <ClCompile Include="serial\serbridge.c" />
+    <ClCompile Include="serial\serled.c" />
+    <ClCompile Include="serial\softuart.c" />
+    <ClCompile Include="serial\tcpclient.c" />
+    <ClCompile Include="serial\uart.c" />
+    <ClCompile Include="user\cgi.c" />
+    <ClCompile Include="user\cgiflash.c" />
+    <ClCompile Include="user\cgipins.c" />
+    <ClCompile Include="user\cgitcp.c" />
+    <ClCompile Include="user\cgiwifi.c" />
+    <ClCompile Include="user\config.c" />
+    <ClCompile Include="user\log.c" />
+    <ClCompile Include="user\status.c" />
+    <ClCompile Include="user\user_main.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="espfs\espfs.h" />
+    <ClInclude Include="espfs\espfsformat.h" />
+    <ClInclude Include="espfs\heatshrink_config_custom.h" />
+    <ClInclude Include="espfs\mkespfsimage\espfsformat.h" />
+    <ClInclude Include="espfs\mkespfsimage\mman-win32\mman.h" />
+    <ClInclude Include="httpd\auth.h" />
+    <ClInclude Include="httpd\base64.h" />
+    <ClInclude Include="httpd\httpd.h" />
+    <ClInclude Include="httpd\httpdespfs.h" />
+    <ClInclude Include="include\esp8266.h" />
+    <ClInclude Include="include\espmissingincludes.h" />
+    <ClInclude Include="include\uart_hw.h" />
+    <ClInclude Include="include\user_config.h" />
+    <ClInclude Include="mqtt\include\debug.h" />
+    <ClInclude Include="mqtt\include\driver\uart.h" />
+    <ClInclude Include="mqtt\include\driver\uart_register.h" />
+    <ClInclude Include="mqtt\include\mqtt.h" />
+    <ClInclude Include="mqtt\include\mqtt_msg.h" />
+    <ClInclude Include="mqtt\include\proto.h" />
+    <ClInclude Include="mqtt\include\queue.h" />
+    <ClInclude Include="mqtt\include\ringbuf.h" />
+    <ClInclude Include="mqtt\include\typedef.h" />
+    <ClInclude Include="mqtt\include\user_config.h" />
+    <ClInclude Include="mqtt\include\utils.h" />
+    <ClInclude Include="mqtt\modules\include\config.h" />
+    <ClInclude Include="mqtt\modules\include\wifi.h" />
+    <ClInclude Include="mqtt\mqtt\include\debug.h" />
+    <ClInclude Include="mqtt\mqtt\include\mqtt.h" />
+    <ClInclude Include="mqtt\mqtt\include\mqtt_msg.h" />
+    <ClInclude Include="mqtt\mqtt\include\proto.h" />
+    <ClInclude Include="mqtt\mqtt\include\queue.h" />
+    <ClInclude Include="mqtt\mqtt\include\ringbuf.h" />
+    <ClInclude Include="mqtt\mqtt\include\typedef.h" />
+    <ClInclude Include="mqtt\mqtt\include\utils.h" />
+    <ClInclude Include="serial\debugpin.h" />
+    <ClInclude Include="serial\serslip.h" />
+    <ClInclude Include="serial\console.h" />
+    <ClInclude Include="serial\crc16.h" />
+    <ClInclude Include="serial\serbridge.h" />
+    <ClInclude Include="serial\serled.h" />
+    <ClInclude Include="serial\softuart.h" />
+    <ClInclude Include="serial\tcpclient.h" />
+    <ClInclude Include="serial\uart.h" />
+    <ClInclude Include="user\cgi.h" />
+    <ClInclude Include="user\cgiflash.h" />
+    <ClInclude Include="user\cgipins.h" />
+    <ClInclude Include="user\cgitcp.h" />
+    <ClInclude Include="user\cgiwifi.h" />
+    <ClInclude Include="user\config.h" />
+    <ClInclude Include="user\log.h" />
+    <ClInclude Include="user\status.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

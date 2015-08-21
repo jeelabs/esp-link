@@ -13,7 +13,7 @@
 #endif
 
 #include "heatshrink_config_custom.h"
-#include "../lib/heatshrink/heatshrink_decoder.c"
+#include "heatshrink/heatshrink_decoder.c"
 
 
 #endif

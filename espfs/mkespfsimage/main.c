@@ -5,22 +5,31 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/mman.h>
-#include <arpa/inet.h>
 #include <string.h>
 #include "espfs.h"
+#ifdef __MINGW32__
+#include <mman.h>
+#else
+#include <sys/mman.h>
+#endif
+#ifdef __WIN32__
+#include <winsock2.h>
+#else
+#include <arpa/inet.h>
+#endif
+#include <string.h>
 #include "espfsformat.h"
 
 //Heatshrink
 #ifdef ESPFS_HEATSHRINK
-#include "heatshrink_common.h"
-#include "heatshrink_config.h"
-#include "heatshrink_encoder.h"
+#include "../heatshrink/heatshrink_common.h"
+#include "../heatshrink/heatshrink_config.h"
+#include "../heatshrink/heatshrink_encoder.h"
 #endif
 
 //Gzip
 #ifdef ESPFS_GZIP
-// If compiler complains about missing header, try running "sudo apt-get install zlib1g-dev"
+// If compiler complains about missing header, try running "sudo apt-get install zlib1g-dev" 
 // to install missing package.
 #include <zlib.h>
 #endif
@@ -175,7 +184,7 @@ int parseGzipExtensions(char *input) {
 }
 #endif
 
-int handleFile(int f, char *name, int compression, int level, char **compName, off_t *csizePtr) {
+int handleFile(int f, char *name, int compression, int level, char **compName) {
 	char *fdat, *cdat;
 	off_t size, csize;
 	EspFsHeader h;
@@ -229,7 +238,7 @@ int handleFile(int f, char *name, int compression, int level, char **compName, o
 	h.nameLen=htoxs(h.nameLen);
 	h.fileLenComp=htoxl(csize);
 	h.fileLenDecomp=htoxl(size);
-
+	
 	write(1, &h, sizeof(EspFsHeader));
 	write(1, name, nameLen);
 	while (nameLen&3) {
@@ -257,7 +266,6 @@ int handleFile(int f, char *name, int compression, int level, char **compName, o
 			*compName = "unknown";
 		}
 	}
-  *csizePtr = csize;
 	return (csize*100)/size;
 }
 
@@ -310,7 +318,7 @@ int main(int argc, char **argv) {
 
 #ifdef ESPFS_GZIP
 	if (gzipExtensions == NULL) {
-		parseGzipExtensions(strdup("html,css,js,ico"));
+		parseGzipExtensions(strdup("html,css,js"));
 	}
 #endif
 
@@ -334,6 +342,10 @@ int main(int argc, char **argv) {
 		exit(0);
 	}
 
+#ifdef __WIN32__
+	setmode(fileno(stdout), _O_BINARY);
+#endif
+
 	while(fgets(fileName, sizeof(fileName), stdin)) {
 		//Kill off '\n' at the end
 		fileName[strlen(fileName)-1]=0;
@@ -347,9 +359,8 @@ int main(int argc, char **argv) {
 			f=open(fileName, O_RDONLY);
 			if (f>0) {
 				char *compName = "unknown";
-        off_t csize;
-				rate=handleFile(f, realName, compType, compLvl, &compName, &csize);
-				fprintf(stderr, "%-16s (%3d%%, %s, %4u bytes)\n", realName, rate, compName, (uint32_t)csize);
+				rate=handleFile(f, realName, compType, compLvl, &compName);
+				fprintf(stderr, "%s (%d%%, %s)\n", realName, rate, compName);
 				close(f);
 			} else {
 				perror(fileName);

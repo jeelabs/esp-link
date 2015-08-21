@@ -289,6 +289,9 @@ $(BUILD_DIR):
 wiflash: all
 	./wiflash $(ESP_HOSTNAME) $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
 
+baseflash: all
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x01000 $(FW_BASE)/user1.bin
+
 flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) -fs $(ET_FS) -ff $(ET_FF) write_flash \
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
@@ -296,7 +299,7 @@ flash: all
 
 yui/$(YUI-COMPRESSOR):
 	$(Q) mkdir -p yui
-	cd yui; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR)
+	cd yui; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR) -O $(YUI-COMPRESSOR)
 
 ifeq ("$(COMPRESS_W_YUI)","yes")
 $(BUILD_BASE)/espfs_img.o: yui/$(YUI-COMPRESSOR)

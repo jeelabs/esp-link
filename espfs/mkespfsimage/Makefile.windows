@@ -19,10 +19,7 @@ endif
 
 OBJECTS = main.o heatshrink_encoder.o
 
-all: libmman $(TARGET)
-
-libmman:
-	$(Q) make -C mman-win32
+all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
 	$(LD) -o $@ $^ $(LDFLAGS)
