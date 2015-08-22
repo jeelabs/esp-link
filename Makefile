@@ -23,6 +23,7 @@ SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.3.0)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
+# Windows users use the com port i.e: ESPPORT ?= com3
 ESPTOOL		?= $(abspath ../esp-open-sdk/esptool/esptool.py)
 ESPPORT		?= /dev/ttyUSB0
 ESPBAUD		?= 460800
@@ -132,10 +133,10 @@ YUI-COMPRESSOR ?= yuicompressor-2.4.8.jar
 # Output directors to store intermediate compiled files
 # relative to the project directory
 BUILD_BASE	= build
-FW_BASE		= firmware
+FW_BASE = firmware
 
 # name for the target project
-TARGET		= httpd
+TARGET = httpd
 
 # espressif tool to concatenate sections for OTA upload using bootloader v1.2+
 APPGEN_TOOL	?= gen_appbin.py
@@ -145,10 +146,10 @@ MODULES		= espfs httpd user serial
 EXTRA_INCDIR	= include .
 
 # libraries used in this project, mainly provided by the SDK
-LIBS		= c gcc hal phy pp net80211 wpa main lwip
+LIBS = c gcc hal phy pp net80211 wpa main lwip
 
 # compiler flags using during compilation of source files
-CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
+CFLAGS = -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
 		-nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections \
 		-D__ets__ -DICACHE_FLASH -D_STDINT_H -Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX) \
 		-DMCU_RESET_PIN=$(MCU_RESET_PIN) -DMCU_ISP_PIN=$(MCU_ISP_PIN) \
@@ -208,11 +209,11 @@ vecho := @echo
 endif
 
 ifeq ("$(GZIP_COMPRESSION)","yes")
-CFLAGS		+= -DGZIP_COMPRESSION
+CFLAGS += -DGZIP_COMPRESSION
 endif
 
 ifeq ("$(CHANGE_TO_STA)","yes")
-CFLAGS          += -DCHANGE_TO_STA
+CFLAGS += -DCHANGE_TO_STA
 endif
 
 vpath %.c $(SRC_DIR)
@@ -289,9 +290,9 @@ flash: all
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 
 yui/$(YUI-COMPRESSOR):
-	$(Q) mkdir -p yui
+  $(Q) mkdir -p yui
   ifeq ($(OS),Windows_NT)
-	cd yui; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR) -O $(YUI-COMPRESSOR)
+  cd yui; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR) -O $(YUI-COMPRESSOR)
   else
   cd yui; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR)
   endif
