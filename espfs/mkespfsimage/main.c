@@ -8,7 +8,7 @@
 #include <string.h>
 #include "espfs.h"
 #ifdef __MINGW32__
-#include <mman.h>
+#include "mman-win32/mman.h"
 #else
 #include <sys/mman.h>
 #endif
@@ -17,15 +17,7 @@
 #else
 #include <arpa/inet.h>
 #endif
-#include <string.h>
 #include "espfsformat.h"
-
-//Heatshrink
-#ifdef ESPFS_HEATSHRINK
-#include "../heatshrink/heatshrink_common.h"
-#include "../heatshrink/heatshrink_config.h"
-#include "../heatshrink/heatshrink_encoder.h"
-#endif
 
 //Gzip
 #ifdef ESPFS_GZIP
@@ -33,6 +25,7 @@
 // to install missing package.
 #include <zlib.h>
 #endif
+
 
 
 //Routines to convert host format to the endianness used in the xtensa
@@ -51,53 +44,6 @@ int htoxl(int in) {
 	r[3]=in>>24;
 	return *((int *)r);
 }
-
-#ifdef ESPFS_HEATSHRINK
-size_t compressHeatshrink(char *in, int insize, char *out, int outsize, int level) {
-	char *inp=in;
-	char *outp=out;
-	size_t len;
-	int ws[]={5, 6, 8, 11, 13};
-	int ls[]={3, 3, 4, 4, 4};
-	HSE_poll_res pres;
-	HSE_sink_res sres;
-	size_t r;
-	if (level==-1) level=8;
-	level=(level-1)/2; //level is now 0, 1, 2, 3, 4
-	heatshrink_encoder *enc=heatshrink_encoder_alloc(ws[level], ls[level]);
-	if (enc==NULL) {
-		perror("allocating mem for heatshrink");
-		exit(1);
-	}
-	//Save encoder parms as first byte
-	*outp=(ws[level]<<4)|ls[level];
-	outp++; outsize--;
-
-	r=1;
-	do {
-		if (insize>0) {
-			sres=heatshrink_encoder_sink(enc, inp, insize, &len);
-			if (sres!=HSER_SINK_OK) break;
-			inp+=len; insize-=len;
-			if (insize==0) heatshrink_encoder_finish(enc);
-		}
-		do {
-			pres=heatshrink_encoder_poll(enc, outp, outsize, &len);
-			if (pres!=HSER_POLL_MORE && pres!=HSER_POLL_EMPTY) break;
-			outp+=len; outsize-=len;
-			r+=len;
-		} while (pres==HSER_POLL_MORE);
-	} while (insize!=0);
-
-	if (insize!=0) {
-		fprintf(stderr, "Heatshrink: Bug? insize is still %d. sres=%d pres=%d\n", insize, sres, pres);
-		exit(1);
-	}
-
-	heatshrink_encoder_free(enc);
-	return r;
-}
-#endif
 
 #ifdef ESPFS_GZIP
 size_t compressGzip(char *in, int insize, char *out, int outsize, int level) {
@@ -184,7 +130,7 @@ int parseGzipExtensions(char *input) {
 }
 #endif
 
-int handleFile(int f, char *name, int compression, int level, char **compName) {
+int handleFile(int f, char *name, int compression, int level, char **compName, off_t *csizePtr) {
 	char *fdat, *cdat;
 	off_t size, csize;
 	EspFsHeader h;
@@ -211,11 +157,6 @@ int handleFile(int f, char *name, int compression, int level, char **compName) {
 	if (compression==COMPRESS_NONE) {
 		csize=size;
 		cdat=fdat;
-#ifdef ESPFS_HEATSHRINK
-	} else if (compression==COMPRESS_HEATSHRINK) {
-		cdat=malloc(size*2);
-		csize=compressHeatshrink(fdat, size, cdat, size*2, level);
-#endif
 	} else {
 		fprintf(stderr, "Unknown compression - %d\n", compression);
 		exit(1);
@@ -238,7 +179,7 @@ int handleFile(int f, char *name, int compression, int level, char **compName) {
 	h.nameLen=htoxs(h.nameLen);
 	h.fileLenComp=htoxl(csize);
 	h.fileLenDecomp=htoxl(size);
-	
+
 	write(1, &h, sizeof(EspFsHeader));
 	write(1, name, nameLen);
 	while (nameLen&3) {
@@ -254,9 +195,7 @@ int handleFile(int f, char *name, int compression, int level, char **compName) {
 	munmap(fdat, size);
 
 	if (compName != NULL) {
-		if (h.compression==COMPRESS_HEATSHRINK) {
-			*compName = "heatshrink";
-		} else if (h.compression==COMPRESS_NONE) {
+		if (h.compression==COMPRESS_NONE) {
 			if (h.flags & FLAG_GZIP) {
 				*compName = "gzip";
 			} else {
@@ -266,6 +205,7 @@ int handleFile(int f, char *name, int compression, int level, char **compName) {
 			*compName = "unknown";
 		}
 	}
+  *csizePtr = csize;
 	return (csize*100)/size;
 }
 
@@ -292,11 +232,7 @@ int main(int argc, char **argv) {
 	int compType;  //default compression type - heatshrink
 	int compLvl=-1;
 
-#ifdef ESPFS_HEATSHRINK
-	compType = COMPRESS_HEATSHRINK;
-#else
 	compType = COMPRESS_NONE;
-#endif
 
 	for (x=1; x<argc; x++) {
 		if (strcmp(argv[x], "-c")==0 && argc>=x-2) {
@@ -318,7 +254,7 @@ int main(int argc, char **argv) {
 
 #ifdef ESPFS_GZIP
 	if (gzipExtensions == NULL) {
-		parseGzipExtensions(strdup("html,css,js"));
+		parseGzipExtensions(strdup("html,css,js,ico"));
 	}
 #endif
 
@@ -330,11 +266,7 @@ int main(int argc, char **argv) {
 #endif
 		fprintf(stderr, "> out.espfs\n");
 		fprintf(stderr, "Compressors:\n");
-#ifdef ESPFS_HEATSHRINK
-		fprintf(stderr, "0 - None\n1 - Heatshrink(default)\n");
-#else
 		fprintf(stderr, "0 - None(default)\n");
-#endif
 		fprintf(stderr, "\nCompression level: 1 is worst but low RAM usage, higher is better compression \nbut uses more ram on decompression. -1 = compressors default.\n");
 #ifdef ESPFS_GZIP
 		fprintf(stderr, "\nGzipped extensions: list of comma separated, case sensitive file extensions \nthat will be gzipped. Defaults to 'html,css,js'\n");
@@ -359,8 +291,9 @@ int main(int argc, char **argv) {
 			f=open(fileName, O_RDONLY);
 			if (f>0) {
 				char *compName = "unknown";
-				rate=handleFile(f, realName, compType, compLvl, &compName);
-				fprintf(stderr, "%s (%d%%, %s)\n", realName, rate, compName);
+        off_t csize;
+				rate=handleFile(f, realName, compType, compLvl, &compName, &csize);
+				fprintf(stderr, "%-16s (%3d%%, %s, %4u bytes)\n", realName, rate, compName, (uint32_t)csize);
 				close(f);
 			} else {
 				perror(fileName);

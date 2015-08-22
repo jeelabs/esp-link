@@ -28,7 +28,7 @@
   <PropertyGroup>
     <NMakeOutput />
     <NMakePreprocessorDefinitions>__ets__;_STDINT_H;ICACHE_FLASH;__MINGW32__;__WIN32__</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>.\mqtt\include;.\serial;.\user;.\espfs;.\httpd;.\include;c:\tools\mingw64\x86_64-w64-mingw32\include\c++\x86_64-w64-mingw32;c:\tools\mingw64\x86_64-w64-mingw32\include\c++\backward;c:\tools\mingw64\x86_64-w64-mingw32\include\c++;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include-fixed;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include;c:\Espressif\sdk\include</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.3.0\include;c:\tools\mingw64\x86_64-w64-mingw32\include\c++\x86_64-w64-mingw32;c:\tools\mingw64\x86_64-w64-mingw32\include\c++\backward;c:\tools\mingw64\x86_64-w64-mingw32\include\c++;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include-fixed;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
     <ExecutablePath />
     <ReferencePath />
     <LibraryPath />
@@ -54,17 +54,10 @@
     </BuildLog>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="espfs\mkespfsimage\build-linux.sh" />
-    <None Include="espfs\mkespfsimage\build-win32.sh" />
-    <None Include="espfs\mkespfsimage\heatshrink_encoder.o" />
-    <None Include="espfs\mkespfsimage\main.o" />
     <None Include="espfs\mkespfsimage\Makefile" />
-    <None Include="espfs\mkespfsimage\Makefile.linux" />
-    <None Include="espfs\mkespfsimage\Makefile.windows" />
     <None Include="espfs\mkespfsimage\mman-win32\config.mak" />
     <None Include="espfs\mkespfsimage\mman-win32\configure" />
     <None Include="espfs\mkespfsimage\mman-win32\Makefile" />
-    <None Include="html-old\home.js" />
     <None Include="espmake.cmd" />
     <None Include="Makefile" />
     <None Include="wiflash" />
@@ -72,8 +65,6 @@
   <ItemGroup>
     <ClCompile Include="espfs\espfs.c" />
     <ClCompile Include="espfs\espfstest\main.c" />
-    <ClCompile Include="espfs\heatshrink_decoder.c" />
-    <ClCompile Include="espfs\mkespfsimage\heatshrink_encoder.c" />
     <ClCompile Include="espfs\mkespfsimage\main.c" />
     <ClCompile Include="espfs\mkespfsimage\mman-win32\mman.c" />
     <ClCompile Include="espfs\mkespfsimage\mman-win32\test.c" />
@@ -81,35 +72,13 @@
     <ClCompile Include="httpd\base64.c" />
     <ClCompile Include="httpd\httpd.c" />
     <ClCompile Include="httpd\httpdespfs.c" />
-    <ClCompile Include="mqtt\driver\uart.c" />
-    <ClCompile Include="mqtt\modules\config.c" />
-    <ClCompile Include="mqtt\modules\wifi.c" />
-    <ClCompile Include="mqtt\mqtt.c" />
-    <ClCompile Include="mqtt\mqtt\mqtt.c" />
-    <ClCompile Include="mqtt\mqtt\mqtt_msg.c" />
-    <ClCompile Include="mqtt\mqtt\proto.c" />
-    <ClCompile Include="mqtt\mqtt\queue.c" />
-    <ClCompile Include="mqtt\mqtt\ringbuf.c" />
-    <ClCompile Include="mqtt\mqtt\utils.c" />
-    <ClCompile Include="mqtt\mqtt_msg.c" />
-    <ClCompile Include="mqtt\proto.c" />
-    <ClCompile Include="mqtt\queue.c" />
-    <ClCompile Include="mqtt\ringbuf.c" />
-    <ClCompile Include="mqtt\user\user_main.c" />
-    <ClCompile Include="mqtt\utils.c" />
-    <ClCompile Include="serial\debugpin.c" />
-    <ClCompile Include="serial\serslip.c" />
     <ClCompile Include="serial\console.c" />
-    <ClCompile Include="serial\crc16.c" />
     <ClCompile Include="serial\serbridge.c" />
     <ClCompile Include="serial\serled.c" />
-    <ClCompile Include="serial\softuart.c" />
-    <ClCompile Include="serial\tcpclient.c" />
     <ClCompile Include="serial\uart.c" />
     <ClCompile Include="user\cgi.c" />
     <ClCompile Include="user\cgiflash.c" />
     <ClCompile Include="user\cgipins.c" />
-    <ClCompile Include="user\cgitcp.c" />
     <ClCompile Include="user\cgiwifi.c" />
     <ClCompile Include="user\config.c" />
     <ClCompile Include="user\log.c" />
@@ -119,8 +88,6 @@
   <ItemGroup>
     <ClInclude Include="espfs\espfs.h" />
     <ClInclude Include="espfs\espfsformat.h" />
-    <ClInclude Include="espfs\heatshrink_config_custom.h" />
-    <ClInclude Include="espfs\mkespfsimage\espfsformat.h" />
     <ClInclude Include="espfs\mkespfsimage\mman-win32\mman.h" />
     <ClInclude Include="httpd\auth.h" />
     <ClInclude Include="httpd\base64.h" />
@@ -130,40 +97,13 @@
     <ClInclude Include="include\espmissingincludes.h" />
     <ClInclude Include="include\uart_hw.h" />
     <ClInclude Include="include\user_config.h" />
-    <ClInclude Include="mqtt\include\debug.h" />
-    <ClInclude Include="mqtt\include\driver\uart.h" />
-    <ClInclude Include="mqtt\include\driver\uart_register.h" />
-    <ClInclude Include="mqtt\include\mqtt.h" />
-    <ClInclude Include="mqtt\include\mqtt_msg.h" />
-    <ClInclude Include="mqtt\include\proto.h" />
-    <ClInclude Include="mqtt\include\queue.h" />
-    <ClInclude Include="mqtt\include\ringbuf.h" />
-    <ClInclude Include="mqtt\include\typedef.h" />
-    <ClInclude Include="mqtt\include\user_config.h" />
-    <ClInclude Include="mqtt\include\utils.h" />
-    <ClInclude Include="mqtt\modules\include\config.h" />
-    <ClInclude Include="mqtt\modules\include\wifi.h" />
-    <ClInclude Include="mqtt\mqtt\include\debug.h" />
-    <ClInclude Include="mqtt\mqtt\include\mqtt.h" />
-    <ClInclude Include="mqtt\mqtt\include\mqtt_msg.h" />
-    <ClInclude Include="mqtt\mqtt\include\proto.h" />
-    <ClInclude Include="mqtt\mqtt\include\queue.h" />
-    <ClInclude Include="mqtt\mqtt\include\ringbuf.h" />
-    <ClInclude Include="mqtt\mqtt\include\typedef.h" />
-    <ClInclude Include="mqtt\mqtt\include\utils.h" />
-    <ClInclude Include="serial\debugpin.h" />
-    <ClInclude Include="serial\serslip.h" />
     <ClInclude Include="serial\console.h" />
-    <ClInclude Include="serial\crc16.h" />
     <ClInclude Include="serial\serbridge.h" />
     <ClInclude Include="serial\serled.h" />
-    <ClInclude Include="serial\softuart.h" />
-    <ClInclude Include="serial\tcpclient.h" />
     <ClInclude Include="serial\uart.h" />
     <ClInclude Include="user\cgi.h" />
     <ClInclude Include="user\cgiflash.h" />
     <ClInclude Include="user\cgipins.h" />
-    <ClInclude Include="user\cgitcp.h" />
     <ClInclude Include="user\cgiwifi.h" />
     <ClInclude Include="user\config.h" />
     <ClInclude Include="user\log.h" />

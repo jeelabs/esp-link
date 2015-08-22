@@ -7,9 +7,9 @@ It's written for use with httpd, but doesn't need to be used as such.
 /*
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
- * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain 
- * this notice you can do whatever you want with this stuff. If we meet some day, 
- * and you think this stuff is worth it, you can buy me a beer in return. 
+ * Jeroen Domburg <jeroen@spritesmods.com> wrote this file. As long as you retain
+ * this notice you can do whatever you want with this stuff. If we meet some day,
+ * and you think this stuff is worth it, you can buy me a beer in return.
  * ----------------------------------------------------------------------------
  */
 
@@ -40,13 +40,7 @@ It's written for use with httpd, but doesn't need to be used as such.
 #include "espfsformat.h"
 #include "espfs.h"
 
-#ifdef ESPFS_HEATSHRINK
-#include "heatshrink_config_custom.h"
-#include "heatshrink/heatshrink_decoder.h"
-#endif
-
 static char* espFsData = NULL;
-
 
 struct EspFsFile {
 	EspFsHeader *header;
@@ -147,19 +141,19 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 			return NULL;
 		}
 		if (h.flags&FLAG_LASTFILE) {
-			os_printf("End of image.\n");
+			//os_printf("End of image.\n");
 			return NULL;
 		}
 		//Grab the name of the file.
-		p+=sizeof(EspFsHeader); 
+		p+=sizeof(EspFsHeader);
 		os_memcpy(namebuf, p, sizeof(namebuf));
-//		os_printf("Found file '%s'. Namelen=%x fileLenComp=%x, compr=%d flags=%d\n", 
+//		os_printf("Found file '%s'. Namelen=%x fileLenComp=%x, compr=%d flags=%d\n",
 //				namebuf, (unsigned int)h.nameLen, (unsigned int)h.fileLenComp, h.compression, h.flags);
 		if (os_strcmp(namebuf, fileName)==0) {
 			//Yay, this is the file we need!
 			p+=h.nameLen; //Skip to content.
 			r=(EspFsFile *)os_malloc(sizeof(EspFsFile)); //Alloc file desc mem
-//			os_printf("Alloc %p\n", r);
+			//os_printf("Alloc %p[%d]\n", r, sizeof(EspFsFile));
 			if (r==NULL) return NULL;
 			r->header=(EspFsHeader *)hpos;
 			r->decompressor=h.compression;
@@ -168,18 +162,6 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 			r->posDecomp=0;
 			if (h.compression==COMPRESS_NONE) {
 				r->decompData=NULL;
-#ifdef ESPFS_HEATSHRINK
-			} else if (h.compression==COMPRESS_HEATSHRINK) {
-				//File is compressed with Heatshrink.
-				char parm;
-				heatshrink_decoder *dec;
-				//Decoder params are stored in 1st byte.
-				memcpyAligned(&parm, r->posComp, 1);
-				r->posComp++;
-				os_printf("Heatshrink compressed file; decode parms = %x\n", parm);
-				dec=heatshrink_decoder_alloc(16, (parm>>4)&0xf, parm&0xf);
-				r->decompData=dec;
-#endif
 			} else {
 				os_printf("Invalid compression: %d\n", h.compression);
 				return NULL;
@@ -210,48 +192,6 @@ int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 		fh->posComp+=len;
 //		os_printf("Done reading %d bytes, pos=%x\n", len, fh->posComp);
 		return len;
-#ifdef ESPFS_HEATSHRINK
-	} else if (fh->decompressor==COMPRESS_HEATSHRINK) {
-		int decoded=0;
-		size_t elen, rlen;
-		char ebuff[16];
-		heatshrink_decoder *dec=(heatshrink_decoder *)fh->decompData;
-//		os_printf("Alloc %p\n", dec);
-		if (fh->posDecomp == fdlen) {
-			return 0;
-		}
-
-		// We must ensure that whole file is decompressed and written to output buffer.
-		// This means even when there is no input data (elen==0) try to poll decoder until
-		// posDecomp equals decompressed file length
-
-		while(decoded<len) {
-			//Feed data into the decompressor
-			//ToDo: Check ret val of heatshrink fns for errors
-			elen=flen-(fh->posComp - fh->posStart);
-			if (elen>0) {
-				memcpyAligned(ebuff, fh->posComp, 16);
-				heatshrink_decoder_sink(dec, (uint8_t *)ebuff, (elen>16)?16:elen, &rlen);
-				fh->posComp+=rlen;
-			}
-			//Grab decompressed data and put into buff
-			heatshrink_decoder_poll(dec, (uint8_t *)buff, len-decoded, &rlen);
-			fh->posDecomp+=rlen;
-			buff+=rlen;
-			decoded+=rlen;
-
-//			os_printf("Elen %d rlen %d d %d pd %ld fdl %d\n",elen,rlen,decoded, fh->posDecomp, fdlen);
-
-			if (elen == 0) {
-				if (fh->posDecomp == fdlen) {
-//					os_printf("Decoder finish\n");
-					heatshrink_decoder_finish(dec);
-				}
-				return decoded;
-			}
-		}
-		return len;
-#endif
 	}
 	return 0;
 }
@@ -259,14 +199,7 @@ int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 //Close the file.
 void ICACHE_FLASH_ATTR espFsClose(EspFsFile *fh) {
 	if (fh==NULL) return;
-#ifdef ESPFS_HEATSHRINK
-	if (fh->decompressor==COMPRESS_HEATSHRINK) {
-		heatshrink_decoder *dec=(heatshrink_decoder *)fh->decompData;
-		heatshrink_decoder_free(dec);
-//		os_printf("Freed %p\n", dec);
-	}
-#endif
-//	os_printf("Freed %p\n", fh);
+	//os_printf("Freed %p\n", fh);
 	os_free(fh);
 }
 

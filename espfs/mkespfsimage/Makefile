@@ -1,36 +1,24 @@
-GZIP_COMPRESSION ?= no
-USE_HEATSHRINK ?= yes
+GZIP_COMPRESSION?=no
 
-TARGET = mkespfsimage.exe
-
-CC = gcc
-LD = $(CC)
-CFLAGS=-c -I../../heatshrink -I.. -Imman-win32 -std=gnu99
-LDFLAGS=-Lmman-win32 -lmman 
+CFLAGS=-I.. -std=gnu99
 
 ifeq ("$(GZIP_COMPRESSION)","yes")
-CFLAGS += -DESPFS_GZIP
-LDFLAGS += -lz
+LDFLAGS+=-lz
+CFLAGS+=-DESPFS_GZIP
 endif
 
-ifeq ("$(USE_HEATSHRINK)","yes")
-CFLAGS += -DESPFS_HEATSHRINK
+ifeq ($(OS),Windows_NT)
+CFLAGS+=-Imman-win32
+LDFLAGS+=-Lmman-win32 -lmman
+TARGET =mkespfsimage.exe
+else
+TARGET =mkespfsimage
 endif
 
-OBJECTS = main.o heatshrink_encoder.o
+OBJS=main.o
 
-all: libmman $(TARGET)
-
-libmman:
-	$(Q) make -C mman-win32
-
-$(TARGET): $(OBJECTS)
-	$(LD) -o $@ $^ $(LDFLAGS)
-
-%.o: %.c
-	$(CC) $(CFLAGS) -o $@ $^
+$(TARGET): $(OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -f $(OBJECTS) $(TARGET)
-
-.PHONY: all clean
+	rm -f $(TARGET) $(OBJS)
