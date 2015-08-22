@@ -290,9 +290,9 @@ flash: all
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 
 yui/$(YUI-COMPRESSOR):
-  $(Q) mkdir -p yui
+	$(Q) mkdir -p yui
   ifeq ($(OS),Windows_NT)
-  cd yui; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR) -O $(YUI-COMPRESSOR)
+	cd yui; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR) -O $(YUI-COMPRESSOR)
   else
   cd yui; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR)
   endif
