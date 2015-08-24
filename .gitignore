@@ -10,3 +10,8 @@ html_compressed/
 esp-link.tgz
 tve-patch/
 yui
+espfs/mkespfsimage/mman-win32/mman.o
+esp-link.opensdf
+esp-link.sdf
+espfs/mkespfsimage/mman-win32/libmman.a
+.localhistory/

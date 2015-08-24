@@ -1,24 +1,24 @@
-GZIP_COMPRESSION ?= no
-USE_HEATSHRINK ?= yes
+GZIP_COMPRESSION?=no
 
-CFLAGS=-I../../lib/heatshrink -I.. -std=gnu99
+CFLAGS=-I.. -std=gnu99
+
 ifeq ("$(GZIP_COMPRESSION)","yes")
-CFLAGS		+= -DESPFS_GZIP
+LDFLAGS+=-lz
+CFLAGS+=-DESPFS_GZIP
 endif
 
-ifeq ("$(USE_HEATSHRINK)","yes")
-CFLAGS		+= -DESPFS_HEATSHRINK
+ifeq ($(OS),Windows_NT)
+CFLAGS+=-Imman-win32
+LDFLAGS+=-Lmman-win32 -lmman
+TARGET =mkespfsimage.exe
+else
+TARGET =mkespfsimage
 endif
 
-OBJS=main.o heatshrink_encoder.o
-TARGET=mkespfsimage
+OBJS=main.o
 
 $(TARGET): $(OBJS)
-ifeq ("$(GZIP_COMPRESSION)","yes")
-	$(CC) -o $@ $^ -lz
-else
-	$(CC) -o $@ $^
-endif
+	$(CC) -o $@ $^ $(LDFLAGS)
 
 clean:
 	rm -f $(TARGET) $(OBJS)
