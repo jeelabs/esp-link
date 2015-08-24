@@ -17,7 +17,7 @@ FlashConfig flashDefault = {
   "esp-link\0                       ", // hostname
   0, 0x00ffffff, 0,                    // static ip, netmask, gateway
   0,                                   // log mode
-  0,                                   // swap_uart
+  0,                                   // swap_uart (don't by default)
   1, 0,                                // tcp_enable, rssi_enable
   "\0",                                // api_key
 };
@@ -27,10 +27,16 @@ typedef union {
   uint8_t     block[128];
 } FlashFull;
 
+// magic number to recognize thet these are our flash settings as opposed to some random stuff
 #define FLASH_MAGIC  (0xaa55)
 
-#define FLASH_ADDR   (0x3E000)
+// size of the setting sector
 #define FLASH_SECT   (4096)
+
+// address where to flash the settings: there are 16KB of reserved space at the end of the first
+// flash partition, we use the upper 8KB (2 sectors)
+#define FLASH_ADDR   (FLASH_SECT + FIRMWARE_SIZE + 2*FLASH_SECT)
+
 static int flash_pri; // primary flash sector (0 or 1, or -1 for error)
 
 #if 0
@@ -89,7 +95,7 @@ void ICACHE_FLASH_ATTR configWipe(void) {
   spi_flash_erase_sector((FLASH_ADDR+FLASH_SECT)>>12);
 }
 
-static uint32_t ICACHE_FLASH_ATTR selectPrimary(FlashFull *fc0, FlashFull *fc1);
+static int ICACHE_FLASH_ATTR selectPrimary(FlashFull *fc0, FlashFull *fc1);
 
 bool ICACHE_FLASH_ATTR configRestore(void) {
   FlashFull ff0, ff1;
@@ -111,7 +117,7 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
   return true;
 }
 
-static uint32_t ICACHE_FLASH_ATTR selectPrimary(FlashFull *ff0, FlashFull *ff1) {
+static int ICACHE_FLASH_ATTR selectPrimary(FlashFull *ff0, FlashFull *ff1) {
   // check CRC of ff0
   uint16_t crc = ff0->fc.crc;
   ff0->fc.crc = 0;
