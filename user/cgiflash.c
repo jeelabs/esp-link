@@ -129,6 +129,7 @@ int ICACHE_FLASH_ATTR cgiRebootFirmware(HttpdConnData *connData) {
 	int address = id == 1 ? 4*1024                   // either start after 4KB boot partition
 	    : 4*1024 + FIRMWARE_SIZE + 16*1024 + 4*1024; // 4KB boot, fw1, 16KB user param, 4KB reserved
 	uint32 buf[8];
+	os_printf("Checking %p\n", (void *)address);
 	spi_flash_read(address, buf, sizeof(buf));
 	char *err = check_header(buf);
 	if (err != NULL) {

@@ -36,9 +36,9 @@ FLASH_SIZE ?= 512KB
 ifeq ("$(FLASH_SIZE)","512KB")
 # Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
 ESP_SPI_SIZE        ?= 0       # 0->512KB (256KB+256KB)
-ESP_FLASH_MODE      ?= 0       # 0->QIO
-ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
-ESP_FLASH_MAX       ?= 241664  # max bin file for 512KB flash: 236KB
+ESP_FLASH_MODE      ?= 0      # 0->QIO
+ESP_FLASH_FREQ_DIV  ?= 0      # 0->40Mhz
+ESP_FLASH_MAX       ?= 241664 # max bin file for 512KB flash: 236KB
 ET_FS               ?= 4m      # 4Mbit flash size in esptool flash command
 ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
@@ -133,10 +133,10 @@ YUI-COMPRESSOR ?= yuicompressor-2.4.8.jar
 # Output directors to store intermediate compiled files
 # relative to the project directory
 BUILD_BASE	= build
-FW_BASE = firmware
+FW_BASE		= firmware
 
 # name for the target project
-TARGET = httpd
+TARGET		= httpd
 
 # espressif tool to concatenate sections for OTA upload using bootloader v1.2+
 APPGEN_TOOL	?= gen_appbin.py
@@ -146,10 +146,10 @@ MODULES		= espfs httpd user serial
 EXTRA_INCDIR	= include .
 
 # libraries used in this project, mainly provided by the SDK
-LIBS = c gcc hal phy pp net80211 wpa main lwip
+LIBS		= c gcc hal phy pp net80211 wpa main lwip
 
 # compiler flags using during compilation of source files
-CFLAGS = -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
+CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
 		-nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections \
 		-D__ets__ -DICACHE_FLASH -D_STDINT_H -Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX) \
 		-DMCU_RESET_PIN=$(MCU_RESET_PIN) -DMCU_ISP_PIN=$(MCU_ISP_PIN) \
@@ -209,11 +209,11 @@ vecho := @echo
 endif
 
 ifeq ("$(GZIP_COMPRESSION)","yes")
-CFLAGS += -DGZIP_COMPRESSION
+CFLAGS		+= -DGZIP_COMPRESSION
 endif
 
 ifeq ("$(CHANGE_TO_STA)","yes")
-CFLAGS += -DCHANGE_TO_STA
+CFLAGS          += -DCHANGE_TO_STA
 endif
 
 vpath %.c $(SRC_DIR)
@@ -294,7 +294,7 @@ yui/$(YUI-COMPRESSOR):
   ifeq ($(OS),Windows_NT)
 	cd yui; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR) -O $(YUI-COMPRESSOR)
   else
-  cd yui; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR)
+	cd yui; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR)
   endif
 
 ifeq ("$(COMPRESS_W_YUI)","yes")
@@ -330,11 +330,11 @@ ifeq ("$(FLASH_SIZE)","512KB")
 build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/2B000/38000/' \
-			$(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld >$@
+	    $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld >$@
 build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/2B000/38000/' \
-			$(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
+	    $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
 else
 build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \

@@ -99,11 +99,9 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
   statusInit();
 
   if (configSave()) {
-    os_printf("New config saved\n");
     httpdStartResponse(connData, 200);
     httpdEndHeaders(connData);
   } else {
-    os_printf("*** Failed to save config ***\n");
     httpdStartResponse(connData, 500);
     httpdEndHeaders(connData);
     httpdSend(connData, "Failed to save config", -1);

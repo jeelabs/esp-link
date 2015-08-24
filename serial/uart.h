@@ -4,7 +4,7 @@
 #include "uart_hw.h"
 
 // Receive callback function signature
-typedef void (*UartRecv_cb)(char *buf, int len);
+typedef void (*UartRecv_cb)(char *buf, short len);
 
 // Initialize UARTs to the provided baud rates (115200 recommended). This also makes the os_printf
 // calls use uart1 for output (for debugging purposes)
