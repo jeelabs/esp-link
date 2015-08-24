@@ -32,7 +32,7 @@ typedef struct serbridgeConnData {
 
 void ICACHE_FLASH_ATTR serbridgeInit(int port);
 void ICACHE_FLASH_ATTR serbridgeInitPins(void);
-void ICACHE_FLASH_ATTR serbridgeUartCb(char *buf, int len);
+void ICACHE_FLASH_ATTR serbridgeUartCb(char *buf, short len);
 void ICACHE_FLASH_ATTR serbridgeReset();
 
 #endif /* __SER_BRIDGE_H__ */

@@ -40,6 +40,8 @@ static char *wifiReasons[] = {
 static char *wifiMode[] = { 0, "STA", "AP", "AP+STA" };
 static char *wifiPhy[]  = { 0, "11b", "11g", "11n" };
 
+void (*wifiStatusCb)(uint8_t); // callback when wifi status changes
+
 static char* ICACHE_FLASH_ATTR wifiGetReason(void) {
 	if (wifiReason <= 24) return wifiReasons[wifiReason];
 	if (wifiReason >= 200 && wifiReason <= 201) return wifiReasons[wifiReason-200+24];
@@ -86,6 +88,7 @@ static void ICACHE_FLASH_ATTR wifiHandleEventCb(System_Event_t *evt) {
 	default:
 		break;
 	}
+	if (wifiStatusCb) (*wifiStatusCb)(wifiState);
 }
 
 // ===== wifi scanning
@@ -478,7 +481,7 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
 	char *mode = wifiMode[op];
 	char *status = "unknown";
 	int st = wifi_station_get_connect_status();
-	if (st > 0 && st < sizeof(connStatuses)) status = connStatuses[st];
+	if (st >= 0 && st < sizeof(connStatuses)) status = connStatuses[st];
 	int p = wifi_get_phy_mode();
 	char *phy = wifiPhy[p&3];
 	char *warn = wifiWarn[op];

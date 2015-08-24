@@ -4,7 +4,7 @@
 // max number of channels the client can open
 #define MAX_TCP_CHAN 8
 
-// Parse and perform the commandm cmdBuf must be null-terminated
+// Parse and perform the command, cmdBuf must be null-terminated
 bool tcpClientCommand(uint8_t chan, char cmd, char *cmdBuf);
 
 // Append a character to the specified channel
