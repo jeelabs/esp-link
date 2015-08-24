@@ -17,9 +17,7 @@ FlashConfig flashDefault = {
   "esp-link\0                       ", // hostname
   0, 0x00ffffff, 0,                    // static ip, netmask, gateway
   0,                                   // log mode
-  0,                                   // swap_uart (don't by default)
-  1, 0,                                // tcp_enable, rssi_enable
-  "\0",                                // api_key
+  0,                                   // swap uart (don't by default)
 };
 
 typedef union {

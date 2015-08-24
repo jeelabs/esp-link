@@ -45,8 +45,13 @@ console_prev(void) {
 
 void ICACHE_FLASH_ATTR
 console_write_char(char c) {
+<<<<<<< HEAD
+	//if (c == '\n' && console_prev() != '\r') console_write('\r'); // does more harm than good
+	console_write(c);
+=======
   //if (c == '\n' && console_prev() != '\r') console_write('\r'); // does more harm than good
   console_write(c);
+>>>>>>> master
 }
 
 int ICACHE_FLASH_ATTR
@@ -83,6 +88,51 @@ ajaxConsoleBaud(HttpdConnData *connData) {
 
 int ICACHE_FLASH_ATTR
 ajaxConsole(HttpdConnData *connData) {
+<<<<<<< HEAD
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+	char buff[2048];
+	int len; // length of text in buff
+	int console_len = (console_wr+BUF_MAX-console_rd) % BUF_MAX; // num chars in console_buf
+	int start = 0; // offset onto console_wr to start sending out chars
+
+	jsonHeader(connData, 200);
+
+	// figure out where to start in buffer based on URI param
+	len = httpdFindArg(connData->getArgs, "start", buff, sizeof(buff));
+	if (len > 0) {
+		start = atoi(buff);
+		if (start < console_pos) {
+			start = 0;
+		} else if (start >= console_pos+console_len) {
+			start = console_len;
+		} else {
+			start = start - console_pos;
+		}
+	}
+
+	// start outputting
+	len = os_sprintf(buff, "{\"len\":%d, \"start\":%d, \"text\": \"",
+			console_len-start, console_pos+start);
+
+	int rd = (console_rd+start) % BUF_MAX;
+	while (len < 2040 && rd != console_wr) {
+		uint8_t c = console_buf[rd];
+		if (c == '\\' || c == '"') {
+			buff[len++] = '\\';
+			buff[len++] = c;
+		} else if (c == '\r') {
+			// this is crummy, but browsers display a newline for \r\n sequences
+		} else if (c < ' ') {
+			len += os_sprintf(buff+len, "\\u%04x", c);
+		} else {
+			buff[len++] = c;
+		}
+		rd = (rd + 1) % BUF_MAX;
+	}
+	os_strcpy(buff+len, "\"}"); len+=2;
+	httpdSend(connData, buff, len);
+	return HTTPD_CGI_DONE;
+=======
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
   char buff[2048];
   int len; // length of text in buff
@@ -126,6 +176,7 @@ ajaxConsole(HttpdConnData *connData) {
   os_strcpy(buff+len, "\"}"); len+=2;
   httpdSend(connData, buff, len);
   return HTTPD_CGI_DONE;
+>>>>>>> master
 }
 
 void ICACHE_FLASH_ATTR consoleInit() {

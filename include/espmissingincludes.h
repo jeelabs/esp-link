@@ -1,9 +1,8 @@
 #ifndef ESPMISSINGINCLUDES_H
 #define ESPMISSINGINCLUDES_H
 
-#include <stdint.h>
-#include <c_types.h>
-#include <ets_sys.h>
+#include <user_interface.h>
+#include <eagle_soc.h>
 
 //Missing function prototypes in include folders. Gcc will warn on these if we don't define 'em anywhere.
 //MOST OF THESE ARE GUESSED! but they seem to work and shut up the compiler.
@@ -53,6 +52,11 @@ uint32 system_get_time();
 int rand(void);
 void ets_bzero(void *s, size_t n);
 void ets_delay_us(int ms);
+
+// Shortcuts for memory functions
+#define os_malloc   pvPortMalloc
+#define os_free     vPortFree
+#define os_zalloc   pvPortZalloc
 
 // disappeared in SDK 1.1.0:
 #define os_timer_done ets_timer_done

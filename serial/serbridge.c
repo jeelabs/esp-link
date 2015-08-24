@@ -334,6 +334,31 @@ static void ICACHE_FLASH_ATTR serbridgeConnectCb(void *arg) {
 //===== Initialization
 
 void ICACHE_FLASH_ATTR serbridgeInitPins() {
+<<<<<<< HEAD
+	mcu_reset_pin = flashConfig.reset_pin;
+	mcu_isp_pin = flashConfig.isp_pin;
+	os_printf("Serbridge pins: reset=%d isp=%d swap=%d\n",
+			mcu_reset_pin, mcu_isp_pin, flashConfig.swap_uart);
+
+	if (flashConfig.swap_uart) {
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 4);
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, 4);
+		PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTCK_U);
+		PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTDO_U);
+		system_uart_swap();
+	} else {
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, 0);
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0RXD_U, 0);
+		system_uart_de_swap();
+	}
+
+	// set both pins to 1 before turning them on so we don't cause a reset
+	if (mcu_isp_pin >= 0)   GPIO_OUTPUT_SET(mcu_isp_pin, 1);
+	if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+	// switch pin mux to make these pins GPIO pins
+	if (mcu_reset_pin >= 0) makeGpio(mcu_reset_pin);
+	if (mcu_isp_pin >= 0)   makeGpio(mcu_isp_pin);
+=======
   mcu_reset_pin = flashConfig.reset_pin;
   mcu_isp_pin = flashConfig.isp_pin;
   os_printf("Serbridge pins: reset=%d isp=%d swap=%d\n",
@@ -357,6 +382,7 @@ void ICACHE_FLASH_ATTR serbridgeInitPins() {
   // switch pin mux to make these pins GPIO pins
   if (mcu_reset_pin >= 0) makeGpio(mcu_reset_pin);
   if (mcu_isp_pin >= 0)   makeGpio(mcu_isp_pin);
+>>>>>>> master
 }
 
 // Start transparent serial bridge TCP server on specified port (typ. 23)

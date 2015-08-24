@@ -14,8 +14,6 @@ typedef struct {
   uint32_t staticip, netmask, gateway; // using DHCP if staticip==0
   uint8_t  log_mode;                   // UART log debug mode
   uint8_t  swap_uart;                  // swap uart0 to gpio 13&15
-  uint8_t  tcp_enable, rssi_enable;    // TCP client settings
-  char     api_key[48];                // RSSI submission API key (Grovestreams for now)
 } FlashConfig;
 extern FlashConfig flashConfig;
 

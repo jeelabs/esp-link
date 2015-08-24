@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "esp-link", "esp-link.vcxproj", "{A92F0CAA-F89B-4F78-AD2A-A042429BD87F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM = Debug|ARM
+		Release|ARM = Release|ARM
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A92F0CAA-F89B-4F78-AD2A-A042429BD87F}.Debug|ARM.ActiveCfg = Debug|ARM
+		{A92F0CAA-F89B-4F78-AD2A-A042429BD87F}.Debug|ARM.Build.0 = Debug|ARM
+		{A92F0CAA-F89B-4F78-AD2A-A042429BD87F}.Release|ARM.ActiveCfg = Release|ARM
+		{A92F0CAA-F89B-4F78-AD2A-A042429BD87F}.Release|ARM.Build.0 = Release|ARM
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
