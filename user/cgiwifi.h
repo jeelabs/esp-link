@@ -14,4 +14,6 @@ int cgiWiFiConnStatus(HttpdConnData *connData);
 int cgiWiFiSpecial(HttpdConnData *connData);
 void wifiInit(void);
 
+extern void (*wifiStatusCb)(uint8_t); // callback when wifi status changes
+
 #endif
