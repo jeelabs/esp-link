@@ -31,14 +31,14 @@ ESPBAUD		?= 460800
 # --------------- chipset configuration   ---------------
 
 # Pick your flash size: "512KB", "1MB", or "4MB"
-FLASH_SIZE ?= 512KB
+FLASH_SIZE ?= 4MB
 
 ifeq ("$(FLASH_SIZE)","512KB")
 # Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
 ESP_SPI_SIZE        ?= 0       # 0->512KB (256KB+256KB)
-ESP_FLASH_MODE      ?= 0      # 0->QIO
-ESP_FLASH_FREQ_DIV  ?= 0      # 0->40Mhz
-ESP_FLASH_MAX       ?= 241664 # max bin file for 512KB flash: 236KB
+ESP_FLASH_MODE      ?= 0       # 0->QIO
+ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
+ESP_FLASH_MAX       ?= 241664  # max bin file for 512KB flash: 236KB
 ET_FS               ?= 4m      # 4Mbit flash size in esptool flash command
 ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
@@ -330,11 +330,11 @@ ifeq ("$(FLASH_SIZE)","512KB")
 build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/2B000/38000/' \
-	    $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld >$@
+			$(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld >$@
 build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/2B000/38000/' \
-	    $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
+			$(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
 else
 build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \

@@ -18,6 +18,8 @@ FlashConfig flashDefault = {
   0, 0x00ffffff, 0,                    // static ip, netmask, gateway
   0,                                   // log mode
   0,                                   // swap uart (don't by default)
+  1, 0,                                // tcp_enable, rssi_enable
+  "\0",                                // api_key
 };
 
 typedef union {
