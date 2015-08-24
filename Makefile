@@ -25,13 +25,13 @@ SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.3.0)
 # Typically you'll use https://github.com/themadinventor/esptool
 # Windows users use the com port i.e: ESPPORT ?= com3
 ESPTOOL		?= $(abspath ../esp-open-sdk/esptool/esptool.py)
-ESPPORT		?= /dev/ttyUSB0
-ESPBAUD		?= 460800
+ESPPORT		?= com10
+ESPBAUD		?= 230400
 
 # --------------- chipset configuration   ---------------
 
 # Pick your flash size: "512KB", "1MB", or "4MB"
-FLASH_SIZE ?= 4MB
+FLASH_SIZE ?= 512KB
 
 ifeq ("$(FLASH_SIZE)","512KB")
 # Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11

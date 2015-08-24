@@ -48,7 +48,6 @@ int myPassFn(HttpdConnData *connData, int no, char *user, int userLen, char *pas
 	return 0;
 }
 
-
 /*
 This is the main url->function dispatching data struct.
 In short, it's a struct with various URLs plus their handlers. The handlers can
@@ -95,7 +94,6 @@ HttpdBuiltInUrl builtInUrls[]={
 	{NULL, NULL, NULL}
 };
 
-
 //#define SHOW_HEAP_USE
 
 #ifdef SHOW_HEAP_USE
@@ -106,7 +104,36 @@ static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
 }
 #endif
 
+# define VERS_STR_STR(V) #V
+# define VERS_STR(V) VERS_STR_STR(V)
+char *esp_link_version = VERS_STR(VERSION);
+
 void user_rf_pre_init(void) {
+  // get the flash config so we know how to init things
+  //configWipe(); // uncomment to reset the config for testing purposes  
+  bool restoreOk = configRestore();
+
+  // init gpio pin registers
+  gpio_init();
+
+  // init UART
+  uart_init(flashConfig.baud_rate, 115200);
+  logInit(); // must come after init of uart
+
+  // say hello (leave some time to cause break in TX after boot loader's msg
+  os_delay_us(10000L);
+  os_printf("\n\n** %s\n", esp_link_version);
+  os_printf("Flash config restore %s\n", restoreOk ? "ok" : "*FAILED*");
+
+  // Status LEDs
+  statusInit();
+  serledInit();
+
+#ifdef SHOW_HEAP_USE
+  os_timer_disarm(&prHeapTimer);
+  os_timer_setfn(&prHeapTimer, prHeapTimerCb, NULL);
+  os_timer_arm(&prHeapTimer, 10000, 1);
+#endif
 }
 
 // address of espfs binary blob
@@ -116,43 +143,23 @@ static char *rst_codes[] = {
 	"normal", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", "external",
 };
 
-# define VERS_STR_STR(V) #V
-# define VERS_STR(V) VERS_STR_STR(V)
-char *esp_link_version = VERS_STR(VERSION);
-
 //Main routine. Initialize stdout, the I/O, filesystem and the webserver and we're done.
 void user_init(void) {
-	// get the flash config so we know how to init things
-	//configWipe(); // uncomment to reset the config for testing purposes
-	bool restoreOk = configRestore();
-	// init gpio pin registers
-	gpio_init();
-	// init UART
-	uart_init(flashConfig.baud_rate, 115200);
-	logInit(); // must come after init of uart
-	// say hello (leave some time to cause break in TX after boot loader's msg
-	os_delay_us(10000L);
-	os_printf("\n\n** %s\n", esp_link_version);
-	os_printf("Flash config restore %s\n", restoreOk ? "ok" : "*FAILED*");
-	// Status LEDs
-	statusInit();
-	serledInit();
 	// Wifi
 	wifiInit();
+
 	// init the flash filesystem with the html stuff
 	espFsInit(&_binary_espfs_img_start);
+
 	//EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
 	//os_printf("espFsInit %s\n", res?"ERR":"ok");
+
 	// mount the http handlers
 	httpdInit(builtInUrls, 80);
+
 	// init the wifi-serial transparent bridge (port 23)
 	serbridgeInit(23);
 	uart_add_recv_cb(&serbridgeUartCb);
-#ifdef SHOW_HEAP_USE
-	os_timer_disarm(&prHeapTimer);
-	os_timer_setfn(&prHeapTimer, prHeapTimerCb, NULL);
-	os_timer_arm(&prHeapTimer, 10000, 1);
-#endif
 
 	struct rst_info *rst_info = system_get_rst_info();
 	os_printf("Reset cause: %d=%s\n", rst_info->reason, rst_codes[rst_info->reason]);

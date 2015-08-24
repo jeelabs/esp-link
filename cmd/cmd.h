@@ -4,6 +4,7 @@
 
 #ifndef CMD_H
 #define CMD_H
+#include <esp8266.h>
 
 // Escape chars used by tuanpmt, dunno why he didn't use std ones...
 #define SLIP_START  0x7E
