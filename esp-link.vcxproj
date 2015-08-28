@@ -68,7 +68,6 @@
     <ClCompile Include="cmd\rest.c" />
     <ClCompile Include="cmd\tcpclient.c" />
     <ClCompile Include="espfs\espfs.c" />
-    <ClCompile Include="espfs\espfstest\main.c" />
     <ClCompile Include="espfs\mkespfsimage\main.c" />
     <ClCompile Include="espfs\mkespfsimage\mman-win32\mman.c" />
     <ClCompile Include="espfs\mkespfsimage\mman-win32\test.c" />
