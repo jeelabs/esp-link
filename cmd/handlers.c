@@ -70,10 +70,14 @@ CMD_WifiCb(uint8_t wifiStatus) {
 // Command handler for Wifi connect command
 static uint32_t ICACHE_FLASH_ATTR
 CMD_WifiConnect(CmdPacket *cmd) {
+  os_printf("CMD: Wifi connect\n");
 	if(cmd->argc != 2 || cmd->callback == 0)
 		return 0xFFFFFFFF;
 
   wifiStatusCb = CMD_WifiCb;    // register our callback with wifi subsystem
 	wifiCallback = cmd->callback; // save the MCU's callback
+  // trigger an immediate callback with the current status
+  lastWifiStatus = 0xff;
+  CMD_WifiCb(wifiState);
   return 1;
 }
