@@ -20,12 +20,12 @@
 #define SLIP_ESC_ESC  0335    // ESC ESC_ESC means ESC data byte
 #endif
 
-typedef struct __attribute((__packed__)) {
+typedef struct __attribute__((__packed__)) {
   uint16_t  len;      // length of data
   uint8_t   data[0];  // really data[len]
 } CmdArg;
 
-typedef struct __attribute((__packed__)) {
+typedef struct __attribute__((__packed__)) {
   uint16_t  cmd;      // command to perform, from CmdName enum
   uint32_t  callback; // callback pointer to embed in response
   uint32_t  _return;  // return value to embed in response (?)
@@ -54,7 +54,9 @@ typedef enum {
   CMD_REST_SETUP,     // (11)
   CMD_REST_REQUEST,
   CMD_REST_SETHEADER,
-  CMD_REST_EVENTS
+  CMD_REST_EVENTS,
+  CMD_ADD_SENSOR, // 15
+  CMD_SENSOR_EVENTS
 } CmdName;
 
 typedef uint32_t (*cmdfunc_t)(CmdPacket *cmd);
@@ -64,18 +66,24 @@ typedef struct {
   cmdfunc_t sc_function;
 } CmdList;
 
-void CMD_parse_packet(uint8_t *buf, short len);
+typedef struct {
+  char name[16];
+  uint32_t callback;
+} cmdCallback;
+
+void ICACHE_FLASH_ATTR CMD_parse_packet(uint8_t *buf, short len);
+cmdCallback* ICACHE_FLASH_ATTR CMD_GetCbByName(char* name);
 
 // Responses
 
 // Start a response, returns the partial CRC
-uint16_t CMD_ResponseStart(uint16_t cmd, uint32_t callback, uint32_t _return, uint16_t argc);
+uint16_t ICACHE_FLASH_ATTR CMD_ResponseStart(uint16_t cmd, uint32_t callback, uint32_t _return, uint16_t argc);
 // Adds data to a response, returns the partial CRC
-uint16_t CMD_ResponseBody(uint16_t crc_in, uint8_t* data, short len);
+uint16_t ICACHE_FLASH_ATTR CMD_ResponseBody(uint16_t crc_in, uint8_t* data, short len);
 // Ends a response
-void CMD_ResponseEnd(uint16_t crc);
+void ICACHE_FLASH_ATTR CMD_ResponseEnd(uint16_t crc);
 
-void CMD_Response(uint16_t cmd, uint32_t callback, uint32_t _return, uint16_t argc, CmdArg* args[]);
+//void ICACHE_FLASH_ATTR CMD_Response(uint16_t cmd, uint32_t callback, uint32_t _return, uint16_t argc, CmdArg* args[]);
 
 // Requests
 
