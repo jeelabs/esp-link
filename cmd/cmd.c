@@ -88,7 +88,7 @@ CMD_Exec(const CmdList *scp, CmdPacket *packet) {
       uint32_t ret = scp->sc_function(packet);
       // if requestor asked for a response, send it
       if (packet->_return){
-        os_printf("CMD: Response: %lu, cmd: %d\r\n", ret, packet->cmd);
+        os_printf("CMD: Response: 0x%lx, cmd: %d\r\n", ret, packet->cmd);
         crc = CMD_ResponseStart(packet->cmd, 0, ret, 0);
         CMD_ResponseEnd(crc);
       } else {
