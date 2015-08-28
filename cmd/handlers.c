@@ -9,7 +9,6 @@
 #include "serbridge.h"
 #include "uart.h"
 #include "cgiwifi.h"
-#include <status.h>
 
 static uint32_t ICACHE_FLASH_ATTR CMD_Null(CmdPacket *cmd);
 static uint32_t ICACHE_FLASH_ATTR CMD_IsReady(CmdPacket *cmd);

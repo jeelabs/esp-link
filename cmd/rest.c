@@ -1,19 +1,30 @@
-/*
- * api.c
- *
- *  Created on: Mar 4, 2015
- *      Author: Minh
- */
+// Copyright 2015 by Thorsten von Eicken, see LICENSE.txt
+//
+// Adapted from: github.com/tuanpmt/esp_bridge, Created on: Mar 4, 2015, Author: Minh
+
 #include "esp8266.h"
 #include "rest.h"
 #include "cmd.h"
+
+// Connection pool for REST clients. Attached MCU's just call REST_setup and this allocates
+// a connection, They never call any 'free' and given that the attached MCU could restart at
+// any time, we cannot really rely on the attached MCU to call 'free' ever, so better do without.
+// Instead, we allocate a fixed pool of connections an round-robin. What this means is that the
+// attached MCU should really use at most as many REST connections as there are slots in the pool.
+#define MAX_REST 4
+static RestClient restClient[MAX_REST];
+static uint8_t restNum = 0xff; // index into restClient for next slot to allocate
+#define REST_CB 0xdead0000 // fudge added to callback for arduino so we can detect problems
 
 extern uint8_t ICACHE_FLASH_ATTR UTILS_StrToIP(const char* str, void *ip);
 
 static void ICACHE_FLASH_ATTR
 tcpclient_discon_cb(void *arg) {
-  //struct espconn *pespconn = (struct espconn *)arg;
-  //RestClient* client = (RestClient *)pespconn->reverse;
+  struct espconn *pespconn = (struct espconn *)arg;
+  RestClient* client = (RestClient *)pespconn->reverse;
+  // free the data buffer, if we have one
+  if (client->data) os_free(client->data);
+  client->data = 0;
 }
 
 static void ICACHE_FLASH_ATTR
@@ -78,32 +89,46 @@ tcpclient_recv(void *arg, char *pdata, unsigned short len) {
 
 static void ICACHE_FLASH_ATTR
 tcpclient_sent_cb(void *arg) {
-  //struct espconn *pCon = (struct espconn *)arg;
-  //RestClient* client = (RestClient *)pCon->reverse;
+  struct espconn *pCon = (struct espconn *)arg;
+  RestClient* client = (RestClient *)pCon->reverse;
   os_printf("REST: Sent\n");
+  if (client->data_sent != client->data_len) {
+    // we only sent part of the buffer, send the rest
+    espconn_sent(client->pCon, (uint8_t*)(client->data+client->data_sent),
+          client->data_len-client->data_sent);
+    client->data_sent = client->data_len;
+  } else {
+    // we're done sending, free the memory
+    if (client->data) os_free(client->data);
+    client->data = 0;
+  }
 }
 
 static void ICACHE_FLASH_ATTR
 tcpclient_connect_cb(void *arg) {
   struct espconn *pCon = (struct espconn *)arg;
   RestClient* client = (RestClient *)pCon->reverse;
+  os_printf("REST #%d: connected\n", client-restClient);
 
   espconn_regist_disconcb(client->pCon, tcpclient_discon_cb);
-  espconn_regist_recvcb(client->pCon, tcpclient_recv);////////
-  espconn_regist_sentcb(client->pCon, tcpclient_sent_cb);///////
+  espconn_regist_recvcb(client->pCon, tcpclient_recv);
+  espconn_regist_sentcb(client->pCon, tcpclient_sent_cb);
 
+  client->data_sent = client->data_len <= 1400 ? client->data_len : 1400;
+  os_printf("REST #%d: sending %d\n", client-restClient, client->data_sent);
   //if(client->security){
-  //  espconn_secure_sent(client->pCon, client->data, client->data_len);
+  //  espconn_secure_sent(client->pCon, client->data, client->data_sent);
   //}
   //else{
-    espconn_sent(client->pCon, client->data, client->data_len);
+    espconn_sent(client->pCon, (uint8_t*)client->data, client->data_sent);
   //}
 }
 
 static void ICACHE_FLASH_ATTR
 tcpclient_recon_cb(void *arg, sint8 errType) {
-  //struct espconn *pCon = (struct espconn *)arg;
-  //RestClient* client = (RestClient *)pCon->reverse;
+  struct espconn *pCon = (struct espconn *)arg;
+  RestClient* client = (RestClient *)pCon->reverse;
+  os_printf("REST $%d: conn reset\n", client-restClient);
 }
 
 static void ICACHE_FLASH_ATTR
@@ -137,66 +162,68 @@ rest_dns_found(const char *name, ip_addr_t *ipaddr, void *arg) {
 uint32_t ICACHE_FLASH_ATTR
 REST_Setup(CmdPacket *cmd) {
   CmdRequest req;
-  RestClient *client;
-  uint8_t *rest_host;
-  uint16_t len;
   uint32_t port, security;
-
 
   // start parsing the command
   CMD_Request(&req, cmd);
-  os_printf("REST: setup argc=%ld\n", CMD_GetArgc(&req));
-  if(CMD_GetArgc(&req) != 3)
-    return 0;
+  if(CMD_GetArgc(&req) != 3) return 0;
 
   // get the hostname
-  len = CMD_ArgLen(&req);
-  os_printf("REST: len=%d\n", len);
+  uint16_t len = CMD_ArgLen(&req);
   if (len > 128) return 0; // safety check
-  rest_host = (uint8_t*)os_zalloc(len + 1);
+  uint8_t *rest_host = (uint8_t*)os_zalloc(len + 1);
   if (CMD_PopArg(&req, rest_host, len)) return 0;
   rest_host[len] = 0;
-  os_printf("REST: setup host=%s", rest_host);
 
   // get the port
   if (CMD_PopArg(&req, (uint8_t*)&port, 4)) {
     os_free(rest_host);
     return 0;
   }
-  os_printf(" port=%ld", port);
 
   // get the security mode
   if (CMD_PopArg(&req, (uint8_t*)&security, 4)) {
     os_free(rest_host);
     return 0;
   }
-  os_printf(" security=%ld\n", security);
+
+  // clear connection structures the first time
+  if (restNum == 0xff) {
+    os_memset(restClient, 0, MAX_REST * sizeof(RestClient));
+    restNum = 0;
+  }
 
   // allocate a connection structure
-  client = (RestClient*)os_zalloc(sizeof(RestClient));
-  os_memset(client, 0, sizeof(RestClient));
-  if(client == NULL)
-    return 0;
+  RestClient *client = restClient + restNum;
+  uint8_t clientNum = restNum;
+  restNum = (restNum+1)%MAX_REST;
 
-  os_printf("REST: setup host=%s port=%ld security=%ld\n", rest_host, port, security);
+  // free any data structure that may be left from a previous connection
+  if (client->header) os_free(client->header);
+  if (client->content_type) os_free(client->content_type);
+  if (client->user_agent) os_free(client->user_agent);
+  if (client->data) os_free(client->data);
+  if (client->pCon) {
+    if (client->pCon->proto.tcp) os_free(client->pCon->proto.tcp);
+    os_free(client->pCon);
+  }
+  os_memset(client, 0, sizeof(RestClient));
+
+  os_printf("REST: setup #%d host=%s port=%ld security=%ld\n", clientNum, rest_host, port, security);
 
   client->resp_cb = cmd->callback;
 
-  client->host = rest_host;
+  client->host = (char *)rest_host;
   client->port = port;
   client->security = security;
-  client->ip.addr = 0;
 
-  client->data = (uint8_t*)os_zalloc(1024);
-
-  client->header = (uint8_t*)os_zalloc(4);
+  client->header = (char*)os_zalloc(4);
   client->header[0] = 0;
 
-  client->content_type = (uint8_t*)os_zalloc(22);
+  client->content_type = (char*)os_zalloc(22);
   os_sprintf((char *)client->content_type, "x-www-form-urlencoded");
-  client->content_type[21] = 0;
 
-  client->user_agent = (uint8_t*)os_zalloc(9);
+  client->user_agent = (char*)os_zalloc(9);
   os_sprintf((char *)client->user_agent, "esp-link");
 
   client->pCon = (struct espconn *)os_zalloc(sizeof(struct espconn));
@@ -209,54 +236,56 @@ REST_Setup(CmdPacket *cmd) {
 
   client->pCon->reverse = client;
 
-  return (uint32_t)client;
+  return REST_CB | (uint32_t)clientNum;
 }
 
 uint32_t ICACHE_FLASH_ATTR
 REST_SetHeader(CmdPacket *cmd) {
   CmdRequest req;
-  RestClient *client;
-  uint16_t len;
-  uint32_t header_index, client_ptr = 0;
-
   CMD_Request(&req, cmd);
 
   if(CMD_GetArgc(&req) != 3)
     return 0;
 
-  // Get client -- TODO: Whoa, this is totally unsafe!
-  if (CMD_PopArg(&req, (uint8_t*)&client_ptr, 4)) return 0;
-  client = (RestClient*)client_ptr;
+  // Get client
+  uint32_t clientNum;
+  if (CMD_PopArg(&req, (uint8_t*)&clientNum, 4)) return 0;
+  if ((clientNum & 0xffff0000) != REST_CB) return 0;
+  RestClient *client = restClient + ((clientNum & 0xffff) % MAX_REST);
 
   // Get header selector
+  uint32_t header_index;
   if (CMD_PopArg(&req, (uint8_t*)&header_index, 4)) return 0;
 
   // Get header value
-  len = CMD_ArgLen(&req);
+  uint16_t len = CMD_ArgLen(&req);
   if (len > 256) return 0; //safety check
   switch(header_index) {
   case HEADER_GENERIC:
-    if(client->header)
-      os_free(client->header);
-    client->header = (uint8_t*)os_zalloc(len + 1);
+    if(client->header) os_free(client->header);
+    client->header = (char*)os_zalloc(len + 3);
     CMD_PopArg(&req, (uint8_t*)client->header, len);
-    client->header[len] = 0;
+    client->header[len] = '\r';
+    client->header[len+1] = '\n';
+    client->header[len+2] = 0;
     os_printf("REST: Set header: %s\r\n", client->header);
     break;
   case HEADER_CONTENT_TYPE:
-    if(client->content_type)
-      os_free(client->content_type);
-    client->content_type = (uint8_t*)os_zalloc(len + 1);
+    if(client->content_type) os_free(client->content_type);
+    client->content_type = (char*)os_zalloc(len + 3);
     CMD_PopArg(&req, (uint8_t*)client->content_type, len);
-    client->content_type[len] = 0;
+    client->content_type[len] = '\r';
+    client->content_type[len+1] = '\n';
+    client->content_type[len+2] = 0;
     os_printf("REST: Set content_type: %s\r\n", client->content_type);
     break;
   case HEADER_USER_AGENT:
-    if(client->user_agent)
-      os_free(client->user_agent);
-    client->user_agent = (uint8_t*)os_zalloc(len + 1);
+    if(client->user_agent) os_free(client->user_agent);
+    client->user_agent = (char*)os_zalloc(len + 3);
     CMD_PopArg(&req, (uint8_t*)client->user_agent, len);
-    client->user_agent[len] = 0;
+    client->user_agent[len] = '\r';
+    client->user_agent[len+1] = '\n';
+    client->user_agent[len+2] = 0;
     os_printf("REST: Set user_agent: %s\r\n", client->user_agent);
     break;
   }
@@ -266,76 +295,76 @@ REST_SetHeader(CmdPacket *cmd) {
 uint32_t ICACHE_FLASH_ATTR
 REST_Request(CmdPacket *cmd) {
   CmdRequest req;
-  RestClient *client;
-  uint16_t len, realLen = 0;
-  uint32_t client_ptr;
-  uint8_t *body = NULL;
-  uint8_t method[16];
-  uint8_t path[1024];
-
   CMD_Request(&req, cmd);
+  os_printf("REST: request");
 
-  if(CMD_GetArgc(&req) <3)
-    return 0;
-
-  // Get client -- TODO: Whoa, this is totally unsafe!
-  if(CMD_PopArg(&req, (uint8_t*)&client_ptr, 4)) return 0;
-  client = (RestClient*)client_ptr;
+  // Get client
+  uint32_t clientNum;
+  if (CMD_PopArg(&req, (uint8_t*)&clientNum, 4)) goto fail;
+  if ((clientNum & 0xffff0000) != REST_CB) goto fail;
+  clientNum &= 0xffff;
+  RestClient *client = restClient + clientNum % MAX_REST;
+  os_printf(" #%ld", clientNum);
 
   // Get HTTP method
-  len = CMD_ArgLen(&req);
-  if (len > 15) return 0;
+  uint16_t len = CMD_ArgLen(&req);
+  if (len > 15) goto fail;
+  char method[16];
   CMD_PopArg(&req, method, len);
   method[len] = 0;
+  os_printf(" method=%s", method);
 
   // Get HTTP path
   len = CMD_ArgLen(&req);
-  if (len > 1023) return 0;
+  if (len > 1023) goto fail;
+  char path[1024];
   CMD_PopArg(&req, path, len);
   path[len] = 0;
+  os_printf(" path=%s", path);
 
   // Get HTTP body
-  if (CMD_GetArgc(&req) == 3){
+  uint32_t realLen = 0;
+  if (CMD_GetArgc(&req) == 3) {
     realLen = 0;
     len = 0;
   } else {
     CMD_PopArg(&req, (uint8_t*)&realLen, 4);
 
     len = CMD_ArgLen(&req);
-    if (len > 2048 || realLen > len) return 0;
-    body = (uint8_t*)os_zalloc(len + 1);
-    CMD_PopArg(&req, body, len);
-    body[len] = 0;
+    if (len > 2048 || realLen > len) goto fail;
   }
+  os_printf(" bodyLen=%ld", realLen);
 
-  client->pCon->state = ESPCONN_NONE;
+  // we need to allocate memory for the header plus the body. First we count the length of the
+  // header (including some extra counted "%s" and then we add the body length. We allocate the
+  // whole shebang and copy everything into it.
+  char *headerFmt = "%s %s HTTP/1.1\r\n"
+                    "Host: %s\r\n"
+                    "%s"
+                    "Content-Length: %d\r\n"
+                    "Connection: close\r\n"
+                    "Content-Type: %s\r\n"
+                    "User-Agent: %s\r\n\r\n";
+  uint16_t headerLen = strlen(headerFmt) + strlen(method) + strlen(path) + strlen(client->host) +
+      strlen(client->header) + strlen(client->content_type) + strlen(client->user_agent);
+  os_printf(" hdrLen=%d", headerLen);
+  if (client->data) os_free(client->data);
+  client->data = (char*)os_zalloc(headerLen + realLen);
+  if (client->data == NULL) goto fail;
+  os_printf(" totLen=%ld data=%p", headerLen + realLen, client->data);
+  client->data_len = os_sprintf((char*)client->data, headerFmt, method, path, client->host,
+      client->header, realLen, client->content_type, client->user_agent);
+  os_printf(" hdrLen=%d", client->data_len);
 
-  os_printf("REST: method: %s, path: %s\n", method, path);
-
-  client->data_len = os_sprintf((char*)client->data, "%s %s HTTP/1.1\r\n"
-                        "Host: %s\r\n"
-                        "%s"
-                        "Content-Length: %d\r\n"
-                        "Connection: close\r\n"
-                        "Content-Type: %s\r\n"
-                        "User-Agent: %s\r\n\r\n",
-                        method, path,
-                        client->host,
-                        client->header,
-                        realLen,
-                        client->content_type,
-                        client->user_agent);
-
-  if (realLen > 0){
-    os_memcpy(client->data + client->data_len, body, realLen);
+  if (realLen > 0) {
+    CMD_PopArg(&req, client->data + client->data_len, realLen);
     client->data_len += realLen;
-    //os_sprintf(client->data + client->data_len, "\r\n\r\n");
-    //client->data_len += 4;
   }
 
   client->pCon->state = ESPCONN_NONE;
   espconn_regist_connectcb(client->pCon, tcpclient_connect_cb);
   espconn_regist_reconcb(client->pCon, tcpclient_recon_cb);
+  os_printf("\n");
 
   if(UTILS_StrToIP((char *)client->host, &client->pCon->proto.tcp->remote_ip)) {
     os_printf("REST: Connect to ip %s:%ld\n",client->host, client->port);
@@ -350,8 +379,11 @@ REST_Request(CmdPacket *cmd) {
     espconn_gethostbyname(client->pCon, (char *)client->host, &client->ip, rest_dns_found);
   }
 
-  if(body) os_free(body);
   return 1;
+
+fail:
+  os_printf("\n");
+  return 0;
 }
 
 uint8_t ICACHE_FLASH_ATTR
