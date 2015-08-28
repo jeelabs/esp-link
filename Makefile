@@ -19,7 +19,7 @@ XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 
 # Base directory of the ESP8266 SDK package, absolute
 # Typically you'll download from Espressif's BBS, http://bbs.espressif.com/viewforum.php?f=5
-SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.2.0)
+SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.3.0)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
@@ -29,26 +29,42 @@ ESPBAUD		?= 460800
 
 # --------------- chipset configuration   ---------------
 
-# Pick your flash size: "512KB" or "4MB"
+# Pick your flash size: "512KB", "1MB", or "4MB"
 FLASH_SIZE ?= 4MB
 
 ifeq ("$(FLASH_SIZE)","512KB")
 # Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
-ESP_SPI_SIZE        ?= 0      # 0->512KB
-ESP_FLASH_MODE      ?= 0      # 0->QIO
-ESP_FLASH_FREQ_DIV  ?= 0      # 0->40Mhz
-ESP_FLASH_MAX       ?= 241664 # max bin file for 512KB flash: 236KB
+ESP_SPI_SIZE        ?= 0       # 0->512KB (256KB+256KB)
+ESP_FLASH_MODE      ?= 0       # 0->QIO
+ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
+ESP_FLASH_MAX       ?= 241664  # max bin file for 512KB flash: 236KB
+ET_FS               ?= 4m      # 4Mbit flash size in esptool flash command
+ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
+ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
+
+else ifeq ("$(FLASH_SIZE)","1MB")
+# ESP-01E
+ESP_SPI_SIZE        ?= 2       # 2->1MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0       # 0->QIO
+ESP_FLASH_FREQ_DIV  ?= 15      # 15->80MHz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 1MB flash: 492KB
+ET_FS               ?= 8m      # 8Mbit flash size in esptool flash command
+ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ET_BLANK            ?= 0xFE000 # where to flash blank.bin to erase wireless settings
 
 else
 # Winbond 25Q32 4MB flash, typ for esp-12
 # Here we're using two partitions of approx 0.5MB because that's what's easily available in terms
 # of linker scripts in the SDK. Ideally we'd use two partitions of approx 1MB, the remaining 2MB
-# cannot be used for code.
+# cannot be used for code (esp8266 limitation).
 ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
 ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
 #ESP_FLASH_MAX       ?= 1028096 # max bin file for 1MB flash partition: 1004KB
+ET_FS               ?= 32m     # 32Mbit flash size in esptool flash command
+ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
 endif
 
 # hostname or IP address for wifi flashing
@@ -130,7 +146,7 @@ TARGET		= httpd
 APPGEN_TOOL	?= gen_appbin.py
 
 # which modules (subdirectories) of the project to include in compiling
-MODULES		= espfs httpd user serial
+MODULES		= espfs httpd user serial cmd
 EXTRA_INCDIR	= include . # lib/heatshrink/
 
 # libraries used in this project, mainly provided by the SDK
@@ -274,9 +290,9 @@ wiflash: all
 	./wiflash $(ESP_HOSTNAME) $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
 
 flash: all
-	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash \
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) -fs $(ET_FS) -ff $(ET_FF) write_flash \
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
-	  0x7E000 $(SDK_BASE)/bin/blank.bin
+	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 
 yui/$(YUI-COMPRESSOR):
 	$(Q) mkdir -p yui
