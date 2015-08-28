@@ -131,9 +131,7 @@ CMD_WifiConnect(CmdPacket *cmd) {
   wifiStatusCb = CMD_WifiCb;    // register our callback with wifi subsystem
   CMD_AddCb("wifiCb", (uint32_t)cmd->callback); // save the MCU's callback
   lastWifiStatus = wifiIsDisconnected;
-  if (statusWifiState() != wifiIsDisconnected) {
-    CMD_WifiCb(statusWifiState());
-  }
+  CMD_WifiCb(wifiState);
 
   return 1;
 }

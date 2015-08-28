@@ -44,7 +44,7 @@
     <NMakeCleanCommandLine>espmake clean</NMakeCleanCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
-    <NMakeBuildCommandLine>espmake baseflash</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>espmake all wiflash</NMakeBuildCommandLine>
     <NMakeReBuildCommandLine>espmake clean all</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>espmake clean</NMakeCleanCommandLine>
   </PropertyGroup>
