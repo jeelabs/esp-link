@@ -23,7 +23,6 @@ static void ICACHE_FLASH_ATTR setLed(int on) {
 }
 
 static uint8_t ledState = 0;
-static uint8_t wifiState = 0;
 
 // Timer callback to update the LED
 static void ICACHE_FLASH_ATTR ledTimerCb(void *v) {
