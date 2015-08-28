@@ -19,16 +19,17 @@ typedef enum {
 } HEADER_TYPE;
 
 typedef struct {
-  uint8_t        *host;
+  char           *host;
   uint32_t       port;
   uint32_t       security;
   ip_addr_t      ip;
   struct espconn *pCon;
-  uint8_t        *header;
-  uint8_t        *data;
-  uint32_t       data_len;
-  uint8_t        *content_type;
-  uint8_t        *user_agent;
+  char           *header;
+  char           *data;
+  uint16_t       data_len;
+  uint16_t       data_sent;
+  char           *content_type;
+  char           *user_agent;
   uint32_t       resp_cb;
 } RestClient;
 
