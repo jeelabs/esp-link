@@ -356,8 +356,8 @@ release: all
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user2.bin | cut -b 1-80
 	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
 		   "$(SDK_BASE)/bin/boot_v1.4(b1).bin" wiflash release/esp-link-$(BRANCH)
-	$(Q) tar zcf esp-link-$(BRANCH)-$(FLASH_SIZE).tgz -C release esp-link-$(BRANCH)
-	$(Q) echo "Release file: esp-link-$(BRANCH)-$(FLASH_SIZE).tgz"
+	$(Q) tar zcf esp-link-$(BRANCH).tgz -C release esp-link-$(BRANCH)
+	$(Q) echo "Release file: esp-link-$(BRANCH).tgz"
 	$(Q) rm -rf release
 
 clean:
