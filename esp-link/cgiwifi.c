@@ -24,7 +24,8 @@ Cgi/template routines for the /wifi url.
 //#define SLEEP_MODE LIGHT_SLEEP_T
 #define SLEEP_MODE MODEM_SLEEP_T
 
-// ===== wifi status change callback
+// ===== wifi status change callbacks
+static WifiStateChangeCb wifi_state_change_cb[4];
 
 uint8_t wifiState = wifiIsDisconnected;
 // reasons for which a connection failed
@@ -88,7 +89,21 @@ static void ICACHE_FLASH_ATTR wifiHandleEventCb(System_Event_t *evt) {
 	default:
 		break;
 	}
-	if (wifiStatusCb) (*wifiStatusCb)(wifiState);
+
+  for (int i = 0; i < 4; i++) {
+    if (wifi_state_change_cb[i] != NULL) (wifi_state_change_cb[i])(wifiState);
+  }
+}
+
+void ICACHE_FLASH_ATTR
+wifiAddStateChangeCb(WifiStateChangeCb cb) {
+  for (int i = 0; i < 4; i++) {
+    if (wifi_state_change_cb[i] == NULL) {
+      wifi_state_change_cb[i] = cb;
+      return;
+    }
+  }
+  os_printf("WIFI: max state change cb count exceeded\n");
 }
 
 // ===== wifi scanning
