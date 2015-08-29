@@ -27,59 +27,66 @@ tcpclient_discon_cb(void *arg) {
   client->data = 0;
 }
 
+// Receive HTTP response - this hacky function assumes that the full response is received in
+// one go. Sigh...
 static void ICACHE_FLASH_ATTR
 tcpclient_recv(void *arg, char *pdata, unsigned short len) {
-  uint8_t currentLineIsBlank = 0;
-  uint8_t httpBody = 0;
-  uint8_t inStatus = 0;
-  char statusCode[4];
-  int i = 0, j;
-  uint32_t code = 0;
-  uint16_t crc;
-
   struct espconn *pCon = (struct espconn*)arg;
   RestClient *client = (RestClient *)pCon->reverse;
 
-  for(j=0 ;j<len; j++){
-    char c = pdata[j];
-
-    if(c == ' ' && !inStatus){
-      inStatus = 1;
-    }
-    if(inStatus && i < 3 && c != ' '){
-      statusCode[i] = c;
-      i++;
-    }
-    if(i == 3){
-      statusCode[i] = '\0';
-      code = atoi(statusCode);
-    }
-
-    if(httpBody){
-      //only write response if its not null
-      uint32_t body_len = len - j;
-      os_printf("REST: status=%ld, body=%ld\n", code, body_len);
-      if(body_len == 0){
-        crc = CMD_ResponseStart(CMD_REST_EVENTS, client->resp_cb, code, 0);
-      } else {
-        crc = CMD_ResponseStart(CMD_REST_EVENTS, client->resp_cb, code, 1);
-        crc = CMD_ResponseBody(crc, (uint8_t*)(pdata+j), body_len);
-      }
-      CMD_ResponseEnd(crc);
+  // parse status line
+  int pi = 0;
+  int32_t code = -1;
+  char statusCode[4] = "\0\0\0\0";
+  int statusLen = 0;
+  bool inStatus = false;
+  while (pi < len) {
+    if (pdata[pi] == '\n') {
+      // end of status line
+      if (code == -1) code = 502; // BAD GATEWAY
       break;
-    } else {
-      if (c == '\n' && currentLineIsBlank) {
-        httpBody = true;
-      }
-      if (c == '\n') {
-        // you're starting a new line
-        currentLineIsBlank = true;
-      } else if (c != '\r') {
-        // you've gotten a character on the current line
-        currentLineIsBlank = false;
-      }
+    } else if (pdata[pi] == ' ') {
+      if (inStatus) code = atoi(statusCode);
+      inStatus = !inStatus;
+    } else if (inStatus) {
+      if (statusLen < 3) statusCode[statusLen] = pdata[pi];
+      statusLen++;
     }
+    pi++;
   }
+
+  // parse header, all this does is look for the end of the header
+  bool currentLineIsBlank = false;
+  while (pi < len) {
+    if (pdata[pi] == '\n') {
+      if (currentLineIsBlank) {
+        // body is starting
+        pi++;
+        break;
+      }
+      currentLineIsBlank = true;
+    } else if (pdata[pi] != '\r') {
+      currentLineIsBlank = false;
+    }
+    pi++;
+  }
+  //if (pi < len && pdata[pi] == '\r') pi++; // hacky!
+
+  // collect body and send it
+  uint16_t crc;
+  int body_len = len-pi;
+  os_printf("REST: status=%ld, body=%d\n", code, body_len);
+  if (pi == len) {
+    crc = CMD_ResponseStart(CMD_REST_EVENTS, client->resp_cb, code, 0);
+  } else {
+    crc = CMD_ResponseStart(CMD_REST_EVENTS, client->resp_cb, code, 1);
+    crc = CMD_ResponseBody(crc, (uint8_t*)(pdata+pi), body_len);
+    CMD_ResponseEnd(crc);
+    os_printf("REST: body=");
+    for (int j=pi; j<len; j++) os_printf(" %02x", pdata[j]);
+    os_printf("\n");
+  }
+
   //if(client->security)
   //  espconn_secure_disconnect(client->pCon);
   //else
@@ -338,7 +345,8 @@ REST_Request(CmdPacket *cmd) {
   // we need to allocate memory for the header plus the body. First we count the length of the
   // header (including some extra counted "%s" and then we add the body length. We allocate the
   // whole shebang and copy everything into it.
-  char *headerFmt = "%s %s HTTP/1.1\r\n"
+  // BTW, use http/1.0 to avoid responses with transfer-encoding: chunked
+  char *headerFmt = "%s %s HTTP/1.0\r\n"
                     "Host: %s\r\n"
                     "%s"
                     "Content-Length: %d\r\n"
@@ -360,11 +368,12 @@ REST_Request(CmdPacket *cmd) {
     CMD_PopArg(&req, client->data + client->data_len, realLen);
     client->data_len += realLen;
   }
+  os_printf("\n");
 
+  os_printf("REST: pCon state=%d\n", client->pCon->state);
   client->pCon->state = ESPCONN_NONE;
   espconn_regist_connectcb(client->pCon, tcpclient_connect_cb);
   espconn_regist_reconcb(client->pCon, tcpclient_recon_cb);
-  os_printf("\n");
 
   if(UTILS_StrToIP((char *)client->host, &client->pCon->proto.tcp->remote_ip)) {
     os_printf("REST: Connect to ip %s:%ld\n",client->host, client->port);

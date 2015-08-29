@@ -7,16 +7,24 @@ It implements a number of features:
 - flash-programming attached Arduino/AVR microcontrollers as well as LPC800-series and other
   ARM microcontrollers via Wifi
 - outbound TCP (and thus HTTP) connections from the attached micro-controller to the internet
+- outbound REST HTTP requests from the attached micro-controller to the internet, protocol
+  based on espduino and compatible with [tuanpmt/espduino](https://github.com/tuanpmt/espduino)
 
 The firmware includes a tiny HTTP server based on
 [esphttpd](http://www.esp8266.com/viewforum.php?f=34)
 with a simple web interface, many thanks to Jeroen Domburg for making it available!
+Many thanks to https://github.com/brunnels for contributions around the espduino functionality.
 
+###[Releases](https://github.com/jeelabs/esp-link/releases)
+
+- [V2.0.beta2](https://github.com/jeelabs/esp-link/releases/tag/v2.0.beta2) has REST support but
+  requires a 1MByte or 4MByte ESP8266 flash, e.g. esp-12 or wroom-02
+- [V1.0.1](https://github.com/jeelabs/esp-link/releases/tag/v1.0.1) is _stable_
+  and has the web server, transparent bridge, flash-programming support, but lacks
+  the REST and upcoming MQTT support. V1 works with 512KB flash, e.g. esp-1, esp-3, ...
+
+For quick support and questions:
 [![Chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jeelabs/esp-link?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
-###[Latest release](https://github.com/jeelabs/esp-link/releases)
-Note that the [stable V1.0 release](https://github.com/jeelabs/esp-link/releases/tag/v1.0.0) is
-recommended if you do not need the outbound TCP connections and have a 512KB flash chip.
 
 Eye Candy
 ---------
@@ -31,7 +39,7 @@ attached microcontroller, and the pin assignments card:
 Hardware info
 -------------
 This firmware is designed for esp8266 modules which have most ESP I/O pins available and
-512KB flash.
+at least 1MB flash. (The V1 firmware supports modules with 512KB flash).
 The default connections are:
 - URXD: connect to TX of microcontroller
 - UTXD: connect to RX of microcontroller
@@ -41,6 +49,9 @@ The default connections are:
 - GPIO2: optionally connect yellow "ser" LED to 3.3V (indicates serial activity)
 
 If you are using an FTDI connector, GPIO12 goes to DTR and GPIO13 goes to CTS.
+
+If you are using an esp-12 module, you can avoid the initial boot message from the esp8266
+bootloader by using the swap-pins option. This swaps the esp8266 TX/RX to gpio15/gpio13 respectively.
 
 The GPIO pin assignments can be changed dynamically in the web UI and are saved in flash.
 

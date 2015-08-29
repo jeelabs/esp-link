@@ -55,7 +55,7 @@ typedef enum {
   CMD_REST_REQUEST,
   CMD_REST_SETHEADER,
   CMD_REST_EVENTS,
-  CMD_ADD_SENSOR, // 15
+  CMD_ADD_CALLBACK,   // 15
   CMD_SENSOR_EVENTS
 } CmdName;
 
@@ -71,19 +71,23 @@ typedef struct {
   uint32_t callback;
 } cmdCallback;
 
-void ICACHE_FLASH_ATTR CMD_parse_packet(uint8_t *buf, short len);
-cmdCallback* ICACHE_FLASH_ATTR CMD_GetCbByName(char* name);
+// Used by slip protocol to cause parsing of a received packet
+void CMD_parse_packet(uint8_t *buf, short len);
+
+// Return the info about a callback to the attached uC by name, these are callbacks that the
+// attached uC registers using the ADD_SENSOR command
+cmdCallback* CMD_GetCbByName(char* name);
 
 // Responses
 
 // Start a response, returns the partial CRC
-uint16_t ICACHE_FLASH_ATTR CMD_ResponseStart(uint16_t cmd, uint32_t callback, uint32_t _return, uint16_t argc);
+uint16_t CMD_ResponseStart(uint16_t cmd, uint32_t callback, uint32_t _return, uint16_t argc);
 // Adds data to a response, returns the partial CRC
-uint16_t ICACHE_FLASH_ATTR CMD_ResponseBody(uint16_t crc_in, uint8_t* data, short len);
+uint16_t CMD_ResponseBody(uint16_t crc_in, uint8_t* data, short len);
 // Ends a response
-void ICACHE_FLASH_ATTR CMD_ResponseEnd(uint16_t crc);
+void CMD_ResponseEnd(uint16_t crc);
 
-//void ICACHE_FLASH_ATTR CMD_Response(uint16_t cmd, uint32_t callback, uint32_t _return, uint16_t argc, CmdArg* args[]);
+//void CMD_Response(uint16_t cmd, uint32_t callback, uint32_t _return, uint16_t argc, CmdArg* args[]);
 
 // Requests
 
