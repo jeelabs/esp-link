@@ -13,7 +13,10 @@
 #include <mem.h>
 #include <osapi.h>
 #include <upgrade.h>
-#include <user_interface.h>
 
 #include "espmissingincludes.h"
 #include "uart_hw.h"
+
+#ifdef __WIN32__
+#include <_mingw.h>
+#endif
