@@ -28,7 +28,7 @@
   <PropertyGroup>
     <NMakeOutput />
     <NMakePreprocessorDefinitions>__ets__;_STDINT_H;ICACHE_FLASH;__MINGW32__;__WIN32__</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>.\mqtt\include;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.3.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.3.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
     <ExecutablePath />
     <ReferencePath />
     <LibraryPath />
@@ -65,6 +65,7 @@
   <ItemGroup>
     <ClCompile Include="cmd\cmd.c" />
     <ClCompile Include="cmd\handlers.c" />
+    <ClCompile Include="cmd\mqtt_cmd.c" />
     <ClCompile Include="cmd\rest.c" />
     <ClCompile Include="cmd\tcpclient.c" />
     <ClCompile Include="espfs\espfs.c" />
@@ -87,6 +88,15 @@
     <ClCompile Include="serial\serled.c" />
     <ClCompile Include="serial\slip.c" />
     <ClCompile Include="serial\uart.c" />
+    <ClCompile Include="esp-link\cgi.c" />
+    <ClCompile Include="esp-link\cgiflash.c" />
+    <ClCompile Include="esp-link\cgipins.c" />
+    <ClCompile Include="esp-link\cgitcp.c" />
+    <ClCompile Include="esp-link\cgiwifi.c" />
+    <ClCompile Include="esp-link\config.c" />
+    <ClCompile Include="esp-link\log.c" />
+    <ClCompile Include="esp-link\status.c" />
+    <ClCompile Include="esp-link\main.c" />
     <ClCompile Include="user\cgi.c" />
     <ClCompile Include="user\cgiflash.c" />
     <ClCompile Include="user\cgipins.c" />
@@ -95,10 +105,10 @@
     <ClCompile Include="user\config.c" />
     <ClCompile Include="user\log.c" />
     <ClCompile Include="user\status.c" />
-    <ClCompile Include="user\user_main.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cmd\cmd.h" />
+    <ClInclude Include="cmd\mqtt_cmd.h" />
     <ClInclude Include="cmd\rest.h" />
     <ClInclude Include="cmd\tcpclient.h" />
     <ClInclude Include="espfs\espfs.h" />
@@ -112,18 +122,25 @@
     <ClInclude Include="include\espmissingincludes.h" />
     <ClInclude Include="include\uart_hw.h" />
     <ClInclude Include="include\user_config.h" />
-    <ClInclude Include="mqtt\include\mqtt.h" />
-    <ClInclude Include="mqtt\include\mqtt_msg.h" />
-    <ClInclude Include="mqtt\include\proto.h" />
-    <ClInclude Include="mqtt\include\queue.h" />
-    <ClInclude Include="mqtt\include\ringbuf.h" />
-    <ClInclude Include="mqtt\include\typedef.h" />
-    <ClInclude Include="mqtt\include\utils.h" />
+    <ClInclude Include="mqtt\mqtt.h" />
+    <ClInclude Include="mqtt\mqtt_msg.h" />
+    <ClInclude Include="mqtt\proto.h" />
+    <ClInclude Include="mqtt\queue.h" />
+    <ClInclude Include="mqtt\ringbuf.h" />
+    <ClInclude Include="mqtt\utils.h" />
     <ClInclude Include="serial\console.h" />
     <ClInclude Include="serial\crc16.h" />
     <ClInclude Include="serial\serbridge.h" />
     <ClInclude Include="serial\serled.h" />
     <ClInclude Include="serial\uart.h" />
+    <ClInclude Include="esp-link\cgi.h" />
+    <ClInclude Include="esp-link\cgiflash.h" />
+    <ClInclude Include="esp-link\cgipins.h" />
+    <ClInclude Include="esp-link\cgitcp.h" />
+    <ClInclude Include="esp-link\cgiwifi.h" />
+    <ClInclude Include="esp-link\config.h" />
+    <ClInclude Include="esp-link\log.h" />
+    <ClInclude Include="esp-link\status.h" />
     <ClInclude Include="user\cgi.h" />
     <ClInclude Include="user\cgiflash.h" />
     <ClInclude Include="user\cgipins.h" />

@@ -1,18 +1,3 @@
-/* 
- * File:   mqtt_msg.h
- * Author: Minh Tuan
- *
- * Created on July 12, 2014, 1:05 PM
- */
-
-#ifndef MQTT_MSG_H
-#define	MQTT_MSG_H
-#include <esp8266.h>
-
-#ifdef	__cplusplus
-extern "C" {
-#endif
-
 /*
 * Copyright (c) 2014, Stephen Robinson
 * All rights reserved.
@@ -43,12 +28,12 @@ extern "C" {
 * POSSIBILITY OF SUCH DAMAGE.
 *
 */
-/* 7			6			5			4			3			2			1			0*/
-/* | --- Message Type ---- | DUP Flag | QoS Level | Retain | Remaining Length | */
 
+#ifndef MQTT_MSG_H
+#define	MQTT_MSG_H
+#include <esp8266.h>
 
-enum mqtt_message_type
-{
+enum mqtt_message_type {
   MQTT_MSG_TYPE_CONNECT = 1,
   MQTT_MSG_TYPE_CONNACK = 2,
   MQTT_MSG_TYPE_PUBLISH = 3,
@@ -65,15 +50,13 @@ enum mqtt_message_type
   MQTT_MSG_TYPE_DISCONNECT = 14
 };
 
-typedef struct mqtt_message
-{
+typedef struct mqtt_message {
   uint8_t* data;
   uint16_t length;
 
 } mqtt_message_t;
 
-typedef struct mqtt_connection
-{
+typedef struct mqtt_connection {
   mqtt_message_t message;
 
   uint16_t message_id;
@@ -82,25 +65,35 @@ typedef struct mqtt_connection
 
 } mqtt_connection_t;
 
-typedef struct mqtt_connect_info
-{
+typedef struct mqtt_connect_info {
   char* client_id;
   char* username;
   char* password;
   char* will_topic;
   char* will_message;
-  int keepalive;
-  int will_qos;
-  int will_retain;
-  int clean_session;
+  uint32_t keepalive;
+  uint32_t will_qos;
+  uint32_t will_retain;
+  uint32_t clean_session;
 
 } mqtt_connect_info_t;
 
 
-static inline int ICACHE_FLASH_ATTR mqtt_get_type(uint8_t* buffer) { return (buffer[0] & 0xf0) >> 4; }
-static inline int ICACHE_FLASH_ATTR mqtt_get_dup(uint8_t* buffer) { return (buffer[0] & 0x08) >> 3; }
-static inline int ICACHE_FLASH_ATTR mqtt_get_qos(uint8_t* buffer) { return (buffer[0] & 0x06) >> 1; }
-static inline int ICACHE_FLASH_ATTR mqtt_get_retain(uint8_t* buffer) { return (buffer[0] & 0x01); }
+static inline int ICACHE_FLASH_ATTR mqtt_get_type(uint8_t* buffer) {
+  return (buffer[0] & 0xf0) >> 4;
+}
+
+static inline int ICACHE_FLASH_ATTR mqtt_get_dup(uint8_t* buffer) {
+  return (buffer[0] & 0x08) >> 3;
+}
+
+static inline int ICACHE_FLASH_ATTR mqtt_get_qos(uint8_t* buffer) {
+  return (buffer[0] & 0x06) >> 1;
+}
+
+static inline int ICACHE_FLASH_ATTR mqtt_get_retain(uint8_t* buffer) {
+  return (buffer[0] & 0x01);
+}
 
 void ICACHE_FLASH_ATTR mqtt_msg_init(mqtt_connection_t* connection, uint8_t* buffer, uint16_t buffer_length);
 int ICACHE_FLASH_ATTR mqtt_get_total_length(uint8_t* buffer, uint16_t length);
@@ -120,10 +113,5 @@ mqtt_message_t* ICACHE_FLASH_ATTR mqtt_msg_pingreq(mqtt_connection_t* connection
 mqtt_message_t* ICACHE_FLASH_ATTR mqtt_msg_pingresp(mqtt_connection_t* connection);
 mqtt_message_t* ICACHE_FLASH_ATTR mqtt_msg_disconnect(mqtt_connection_t* connection);
 
-
-#ifdef	__cplusplus
-}
-#endif
-
-#endif	/* MQTT_MSG_H */
+#endif // MQTT_MSG_H
 

@@ -1,5 +1,5 @@
 // Combined include file for esp8266
-
+#include <user_config.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +16,8 @@
 
 #include "espmissingincludes.h"
 #include "uart_hw.h"
+
+//void init(void);
 
 #ifdef __WIN32__
 #include <_mingw.h>

@@ -33,11 +33,10 @@
 #include "utils.h"
 
 uint8_t ICACHE_FLASH_ATTR 
-UTILS_IsIPV4(int8_t *str)
-{
-  uint8_t segs = 0;   /* Segment count. */
-  uint8_t chcnt = 0;  /* Character count within segment. */
-  uint8_t accum = 0;  /* Accumulator for segment. */
+UTILS_IsIPV4(int8_t* str) {
+  uint8_t segs = 0; /* Segment count. */
+  uint8_t chcnt = 0; /* Character count within segment. */
+  uint8_t accum = 0; /* Accumulator for segment. */
   /* Catch NULL pointer. */
   if (str == 0)
     return 0;
@@ -85,8 +84,7 @@ UTILS_IsIPV4(int8_t *str)
 }
 
 uint8_t ICACHE_FLASH_ATTR
-UTILS_StrToIP(const int8_t* str, void *ip)
-{
+UTILS_StrToIP(const int8_t* str, void* ip) {
 
   /* The count of the number of bytes processed. */
   int i;
@@ -122,12 +120,11 @@ UTILS_StrToIP(const int8_t* str, void *ip)
 }
 
 uint32_t ICACHE_FLASH_ATTR 
-UTILS_Atoh(const int8_t *s)
-{
+UTILS_Atoh(const int8_t* s) {
   uint32_t value = 0, digit;
   int8_t c;
 
-  while ((c = *s++)){
+  while ((c = *s++)) {
     if ('0' <= c && c <= '9')
       digit = c - '0';
     else if ('A' <= c && c <= 'F')
@@ -141,4 +138,3 @@ UTILS_Atoh(const int8_t *s)
 
   return value;
 }
-
