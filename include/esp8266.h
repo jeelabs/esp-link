@@ -17,7 +17,7 @@
 #include "espmissingincludes.h"
 #include "uart_hw.h"
 
-//void init(void);
+void ICACHE_FLASH_ATTR init(void);
 
 #ifdef __WIN32__
 #include <_mingw.h>

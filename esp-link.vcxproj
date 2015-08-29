@@ -105,6 +105,7 @@
     <ClCompile Include="user\config.c" />
     <ClCompile Include="user\log.c" />
     <ClCompile Include="user\status.c" />
+    <ClCompile Include="user\user_main.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cmd\cmd.h" />
