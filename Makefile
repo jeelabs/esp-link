@@ -23,6 +23,7 @@ SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.3.0)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
+# Windows users use the com port i.e: ESPPORT ?= com3
 ESPTOOL		?= $(abspath ../esp-open-sdk/esptool/esptool.py)
 ESPPORT		?= /dev/ttyUSB0
 ESPBAUD		?= 460800
@@ -108,7 +109,6 @@ CHANGE_TO_STA ?= yes
 # This could speed up the downloading of these files, but might break compatibility with older
 # web browsers not supporting gzip encoding because Accept-Encoding is simply ignored.
 # Enable this option if you have large static files to serve (for e.g. JQuery, Twitter bootstrap)
-# By default only js, css and html files are compressed using heatshrink.
 # If you have text based static files with different extensions what you want to serve compressed
 # then you will need to add the extension to the following places:
 # - Add the extension to this Makefile at the webpages.espfs target to the find command
@@ -127,10 +127,6 @@ GZIP_COMPRESSION ?= yes
 COMPRESS_W_YUI ?= yes
 YUI-COMPRESSOR ?= yuicompressor-2.4.8.jar
 
-# If USE_HEATSHRINK is set to "yes" then the espfs files will be compressed with Heatshrink and
-# decompressed on the fly while reading the file.
-# Because the decompression is done in the esp8266, it does not require any support in the browser.
-USE_HEATSHRINK ?= no
 
 # -------------- End of config options -------------
 
@@ -147,7 +143,7 @@ APPGEN_TOOL	?= gen_appbin.py
 
 # which modules (subdirectories) of the project to include in compiling
 MODULES		= espfs httpd user serial cmd
-EXTRA_INCDIR	= include . # lib/heatshrink/
+EXTRA_INCDIR	= include .
 
 # libraries used in this project, mainly provided by the SDK
 LIBS		= c gcc hal phy pp net80211 wpa main lwip
@@ -214,10 +210,6 @@ endif
 
 ifeq ("$(GZIP_COMPRESSION)","yes")
 CFLAGS		+= -DGZIP_COMPRESSION
-endif
-
-ifeq ("$(USE_HEATSHRINK)","yes")
-CFLAGS		+= -DESPFS_HEATSHRINK
 endif
 
 ifeq ("$(CHANGE_TO_STA)","yes")
@@ -289,6 +281,9 @@ $(BUILD_DIR):
 wiflash: all
 	./wiflash $(ESP_HOSTNAME) $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
 
+baseflash: all
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x01000 $(FW_BASE)/user1.bin
+
 flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) -fs $(ET_FS) -ff $(ET_FF) write_flash \
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
@@ -296,7 +291,11 @@ flash: all
 
 yui/$(YUI-COMPRESSOR):
 	$(Q) mkdir -p yui
+  ifeq ($(OS),Windows_NT)
+	cd yui; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR) -O $(YUI-COMPRESSOR)
+  else
 	cd yui; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR)
+  endif
 
 ifeq ("$(COMPRESS_W_YUI)","yes")
 $(BUILD_BASE)/espfs_img.o: yui/$(YUI-COMPRESSOR)
@@ -348,7 +347,7 @@ build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld
 endif
 
 espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
-	$(Q) $(MAKE) -C espfs/mkespfsimage USE_HEATSHRINK="$(USE_HEATSHRINK)" GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
+	$(Q) $(MAKE) -C espfs/mkespfsimage GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
 
 release: all
 	$(Q) rm -rf release; mkdir -p release/esp-link
