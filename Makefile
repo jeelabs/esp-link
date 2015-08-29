@@ -90,9 +90,10 @@ LED_SERIAL_PIN      ?= 14
 # on the release tag, make release, upload esp-link.tgz into the release files
 #VERSION ?= "esp-link custom version"
 DATE    := $(shell date '+%F %T')
-BRANCH  := $(shell git describe --tags)
+BRANCH  := $(shell if git diff --quiet HEAD; then git describe --tags; \
+                   else git symbolic-ref --short HEAD; fi)
 SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | cut -d"/" -f 3; \
-	else echo "development"; fi)
+                   else echo "development"; fi)
 VERSION ?=esp-link $(BRANCH) - $(DATE) - $(SHA)
 
 # --------------- esp-link config options ---------------
@@ -351,9 +352,11 @@ espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 
 release: all
 	$(Q) rm -rf release; mkdir -p release/esp-link
+	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user1.bin | cut -b 1-80
+	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user2.bin | cut -b 1-80
 	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
 		   "$(SDK_BASE)/bin/boot_v1.4(b1).bin" wiflash release/esp-link
-	$(Q) tar zcf esp-link.tgz -C release esp-link
+	$(Q) tar zcf esp-link-$(BRANCH)-$(FLASH_SIZE).tgz -C release esp-link
 	$(Q) rm -rf release
 
 clean:
