@@ -286,7 +286,7 @@ baseflash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x01000 $(FW_BASE)/user1.bin
 
 flash: all
-	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) -fs $(ET_FS) -ff $(ET_FF) write_flash \
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 
