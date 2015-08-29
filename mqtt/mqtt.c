@@ -471,14 +471,16 @@ MQTT_Task(os_event_t* e) {
 * @retval None
 */
 void ICACHE_FLASH_ATTR
-MQTT_InitConnection(MQTT_Client* mqttClient, uint8_t* host, uint32 port, uint8_t security) {
-  uint32_t temp;
+MQTT_InitConnection(MQTT_Client* mqttClient, char* host, uint32 port, uint8_t security) {
   os_printf("MQTT_InitConnection\n");
-  os_memset(mqttClient, 0, sizeof(MQTT_Client));
-  temp = sizeof((char*)host);
-  mqttClient->host = (uint8_t*)os_zalloc(temp + 1);
-  os_strcpy((char*)mqttClient->host, (char*)host);
+  uint8_t len = sizeof(MQTT_Client);
+  os_memset(mqttClient, 0, len);
+
+  uint32_t temp = os_strlen(host);
+  mqttClient->host = (char*)os_zalloc(temp + 1);
+  os_strcpy(mqttClient->host, host);
   mqttClient->host[temp] = 0;
+
   mqttClient->port = port;
   mqttClient->security = security;
 }
@@ -493,25 +495,25 @@ MQTT_InitConnection(MQTT_Client* mqttClient, uint8_t* host, uint32 port, uint8_t
 * @retval None
 */
 void ICACHE_FLASH_ATTR
-MQTT_InitClient(MQTT_Client* mqttClient, uint8_t* client_id, uint8_t* client_user, uint8_t* client_pass, uint8_t keepAliveTime, uint8_t cleanSession) {
+MQTT_InitClient(MQTT_Client* mqttClient, char* client_id, char* client_user, char* client_pass, uint8_t keepAliveTime, uint8_t cleanSession) {
   uint32_t temp;
   os_printf("MQTT_InitClient\n");
 
   os_memset(&mqttClient->connect_info, 0, sizeof(mqtt_connect_info_t));
 
-  temp = os_strlen((char*)client_id);
+  temp = os_strlen(client_id);
   mqttClient->connect_info.client_id = (char*)os_zalloc(temp + 1);
-  os_strcpy((char*)mqttClient->connect_info.client_id, (char*)client_id);
+  os_strcpy(mqttClient->connect_info.client_id, client_id);
   mqttClient->connect_info.client_id[temp] = 0;
 
-  temp = os_strlen((char*)client_user);
+  temp = os_strlen(client_user);
   mqttClient->connect_info.username = (char*)os_zalloc(temp + 1);
-  os_strcpy((char*)mqttClient->connect_info.username, (char*)client_user);
+  os_strcpy(mqttClient->connect_info.username, client_user);
   mqttClient->connect_info.username[temp] = 0;
 
-  temp = os_strlen((char*)client_pass);
+  temp = os_strlen(client_pass);
   mqttClient->connect_info.password = (char*)os_zalloc(temp + 1);
-  os_strcpy((char*)mqttClient->connect_info.password, (char*)client_pass);
+  os_strcpy(mqttClient->connect_info.password, client_pass);
   mqttClient->connect_info.password[temp] = 0;
 
 
@@ -533,7 +535,7 @@ MQTT_InitClient(MQTT_Client* mqttClient, uint8_t* client_id, uint8_t* client_use
 }
 
 void ICACHE_FLASH_ATTR
-MQTT_InitLWT(MQTT_Client* mqttClient, uint8_t* will_topic, uint8_t* will_msg, uint8_t will_qos, uint8_t will_retain) {
+MQTT_InitLWT(MQTT_Client* mqttClient, char* will_topic, char* will_msg, uint8_t will_qos, uint8_t will_retain) {
   uint32_t temp;
   temp = os_strlen((char*)will_topic);
   mqttClient->connect_info.will_topic = (char*)os_zalloc(temp + 1);
@@ -576,7 +578,7 @@ MQTT_Connect(MQTT_Client* mqttClient) {
   os_timer_setfn(&mqttClient->mqttTimer, (os_timer_func_t *)mqtt_timer, mqttClient);
   os_timer_arm(&mqttClient->mqttTimer, 1000, 1);
 
-  if (UTILS_StrToIP((const int8_t *)mqttClient->host, (void*)&mqttClient->pCon->proto.tcp->remote_ip)) {
+  if (UTILS_StrToIP((const char *)mqttClient->host, (void*)&mqttClient->pCon->proto.tcp->remote_ip)) {
     os_printf("MQTT-TCP: Connect to ip  %s:%ld\n", mqttClient->host, mqttClient->port);
 #ifdef CLIENT_SSL_ENABLE
     if (mqttClient->security){

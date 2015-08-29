@@ -16,6 +16,7 @@
 
 #include "espmissingincludes.h"
 #include "uart_hw.h"
+extern char* esp_link_version;
 
 void ICACHE_FLASH_ATTR init(void);
 

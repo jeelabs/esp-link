@@ -17,6 +17,7 @@ static uint32_t ICACHE_FLASH_ATTR CMD_WifiConnect(CmdPacket *cmd);
 static uint32_t ICACHE_FLASH_ATTR CMD_AddSensor(CmdPacket *cmd);
 
 static uint8_t lastWifiStatus = wifiIsDisconnected;
+static bool wifiCbAdded = false;
 
 // Command dispatch table for serial -> ESP commands
 const CmdList commands[] = {
@@ -127,7 +128,10 @@ CMD_WifiConnect(CmdPacket *cmd) {
 	if(cmd->argc != 2 || cmd->callback == 0)
 		return 0;
 
-  wifiStatusCb = CMD_WifiCb;    // register our callback with wifi subsystem
+  if (!wifiCbAdded) {
+    wifiAddStateChangeCb(CMD_WifiCb);    // register our callback with wifi subsystem
+    wifiCbAdded = true;
+  }
   CMD_AddCb("wifiCb", (uint32_t)cmd->callback); // save the MCU's callback
   lastWifiStatus = wifiIsDisconnected;
   CMD_WifiCb(wifiState);

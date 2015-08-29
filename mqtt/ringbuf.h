@@ -11,7 +11,7 @@ typedef struct {
   int32_t size; /**< Buffer size */
 } RINGBUF;
 
-int16_t ICACHE_FLASH_ATTR RINGBUF_Init(RINGBUF* r, uint8_t* buf, int32_t size);
-int16_t ICACHE_FLASH_ATTR RINGBUF_Put(RINGBUF* r, uint8_t c);
-int16_t ICACHE_FLASH_ATTR RINGBUF_Get(RINGBUF* r, uint8_t* c);
+int16_t RINGBUF_Init(RINGBUF* r, uint8_t* buf, int32_t size);
+int16_t RINGBUF_Put(RINGBUF* r, uint8_t c);
+int16_t RINGBUF_Get(RINGBUF* r, uint8_t* c);
 #endif

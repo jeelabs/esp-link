@@ -12,11 +12,11 @@ typedef struct {
   uint32_t tcpDisconnectedCb;
 } MqttCmdCb;
 
-uint32_t ICACHE_FLASH_ATTR MQTTCMD_Connect(CmdPacket *cmd);
-uint32_t ICACHE_FLASH_ATTR MQTTCMD_Disconnect(CmdPacket *cmd);
-uint32_t ICACHE_FLASH_ATTR MQTTCMD_Setup(CmdPacket *cmd);
-uint32_t ICACHE_FLASH_ATTR MQTTCMD_Publish(CmdPacket *cmd);
-uint32_t ICACHE_FLASH_ATTR MQTTCMD_Subscribe(CmdPacket *cmd);
-uint32_t ICACHE_FLASH_ATTR MQTTCMD_Lwt(CmdPacket *cmd);
+uint32_t MQTTCMD_Connect(CmdPacket *cmd);
+uint32_t MQTTCMD_Disconnect(CmdPacket *cmd);
+uint32_t MQTTCMD_Setup(CmdPacket *cmd);
+uint32_t MQTTCMD_Publish(CmdPacket *cmd);
+uint32_t MQTTCMD_Subscribe(CmdPacket *cmd);
+uint32_t MQTTCMD_Lwt(CmdPacket *cmd);
 
 #endif /* MODULES_MQTT_CMD_H_ */

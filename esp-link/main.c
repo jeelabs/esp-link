@@ -118,7 +118,7 @@ static char *rst_codes[] = {
 
 # define VERS_STR_STR(V) #V
 # define VERS_STR(V) VERS_STR_STR(V)
-char *esp_link_version = VERS_STR(VERSION);
+char* esp_link_version = VERS_STR(VERSION);
 
 //Main routine. Initialize stdout, the I/O, filesystem and the webserver and we're done.
 void user_init(void) {

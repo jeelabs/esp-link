@@ -39,8 +39,8 @@ typedef struct {
   RINGBUF rb;
 } QUEUE;
 
-void ICACHE_FLASH_ATTR QUEUE_Init(QUEUE* queue, int bufferSize);
-int32_t ICACHE_FLASH_ATTR QUEUE_Puts(QUEUE* queue, uint8_t* buffer, uint16_t len);
-int32_t ICACHE_FLASH_ATTR QUEUE_Gets(QUEUE* queue, uint8_t* buffer, uint16_t* len, uint16_t maxLen);
-bool ICACHE_FLASH_ATTR QUEUE_IsEmpty(QUEUE* queue);
+void QUEUE_Init(QUEUE* queue, int bufferSize);
+int32_t QUEUE_Puts(QUEUE* queue, uint8_t* buffer, uint16_t len);
+int32_t QUEUE_Gets(QUEUE* queue, uint8_t* buffer, uint16_t* len, uint16_t maxLen);
+bool QUEUE_IsEmpty(QUEUE* queue);
 #endif /* USER_QUEUE_H_ */

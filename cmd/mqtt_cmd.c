@@ -1,9 +1,9 @@
 #include "mqtt_cmd.h"
 
-uint32_t connectedCb = 0, disconnectCb = 0, publishedCb = 0, dataCb = 0;
+uint32_t connectedCb = 0, disconnectCb = 0, tcpDisconnectedCb = 0, publishedCb = 0, dataCb = 0;
 
 void ICACHE_FLASH_ATTR 
-mqttConnectedCb(uint32_t* args) {
+cmdMqttConnectedCb(uint32_t* args) {
   MQTT_Client* client = (MQTT_Client*)args;
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
   os_printf("MQTT: Connected  connectedCb=%p, disconnectedCb=%p, publishedCb=%p, dataCb=%p\n",
@@ -16,7 +16,7 @@ mqttConnectedCb(uint32_t* args) {
 }
 
 void ICACHE_FLASH_ATTR
-mqttTcpDisconnectedCb(uint32_t *args) {
+cmdMqttTcpDisconnectedCb(uint32_t *args) {
   MQTT_Client* client = (MQTT_Client*)args;
   MqttCmdCb *cb = (MqttCmdCb*)client->user_data;
   os_printf("MQTT: TCP Disconnected\n");
@@ -25,7 +25,7 @@ mqttTcpDisconnectedCb(uint32_t *args) {
 }
 
 void ICACHE_FLASH_ATTR 
-mqttDisconnectedCb(uint32_t* args) {
+cmdMqttDisconnectedCb(uint32_t* args) {
   MQTT_Client* client = (MQTT_Client*)args;
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
   os_printf("MQTT: Disconnected\n");
@@ -34,7 +34,7 @@ mqttDisconnectedCb(uint32_t* args) {
 }
 
 void ICACHE_FLASH_ATTR 
-mqttPublishedCb(uint32_t* args) {
+cmdMqttPublishedCb(uint32_t* args) {
   MQTT_Client* client = (MQTT_Client*)args;
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
   os_printf("MQTT: Published\n");
@@ -43,7 +43,7 @@ mqttPublishedCb(uint32_t* args) {
 }
 
 void ICACHE_FLASH_ATTR 
-mqttDataCb(uint32_t* args, const char* topic, uint32_t topic_len, const char* data, uint32_t data_len) {
+cmdMqttDataCb(uint32_t* args, const char* topic, uint32_t topic_len, const char* data, uint32_t data_len) {
   uint16_t crc = 0;
   MQTT_Client* client = (MQTT_Client*)args;
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
@@ -104,7 +104,7 @@ MQTTCMD_Setup(CmdPacket *cmd) {
 
   // init client   
   // TODO: why malloc these all here, pass to MQTT_InitClient to be malloc'd again?
-  MQTT_InitClient(client, client_id, user_data, pass_data, keepalive, clean_session);
+  MQTT_InitClient(client, (char*)client_id, (char*)user_data, (char*)pass_data, keepalive, clean_session);
 
   // create callback
   MqttCmdCb* callback = (MqttCmdCb*)os_zalloc(sizeof(MqttCmdCb));
@@ -120,15 +120,15 @@ MQTTCMD_Setup(CmdPacket *cmd) {
 
   client->user_data = callback;
 
-  client->cmdConnectedCb = mqttConnectedCb;
-  client->cmdDisconnectedCb = mqttDisconnectedCb;  
-  client->cmdPublishedCb = mqttPublishedCb;
-  client->cmdDataCb = mqttDataCb;  
+  client->cmdConnectedCb = cmdMqttConnectedCb;
+  client->cmdDisconnectedCb = cmdMqttDisconnectedCb;
+  client->cmdPublishedCb = cmdMqttPublishedCb;
+  client->cmdDataCb = cmdMqttDataCb;
 
   if (CMD_GetArgc(&req) == 10) {
     CMD_PopArg(&req, (uint8_t*)&cb_data, 4);
     callback->tcpDisconnectedCb = cb_data;
-    client->cmdTcpDisconnectedCb = mqttTcpDisconnectedCb;
+    client->cmdTcpDisconnectedCb = cmdMqttTcpDisconnectedCb;
   }
 
   os_free(client_id);
@@ -178,7 +178,7 @@ MQTTCMD_Lwt(CmdPacket *cmd) {
   // get retain
   CMD_PopArg(&req, (uint8_t*)&client->connect_info.will_retain, 4);
 
-  os_printf("MQTT: MQTTCMD_Lwt topic=%s, message=%s, qos=%ld, retain=%ld\n",
+  os_printf("MQTT: MQTTCMD_Lwt topic=%s, message=%s, qos=%d, retain=%d\n",
        client->connect_info.will_topic,
        client->connect_info.will_message,
        client->connect_info.will_qos,
@@ -207,7 +207,7 @@ MQTTCMD_Connect(CmdPacket *cmd) {
   os_free(client->host);
   len = CMD_ArgLen(&req);
   if (len > 128) return 0; // safety check
-  client->host = (uint8_t*)os_zalloc(len + 1);
+  client->host = (char*)os_zalloc(len + 1);
   CMD_PopArg(&req, client->host, len);
   client->host[len] = 0;
 
@@ -217,7 +217,7 @@ MQTTCMD_Connect(CmdPacket *cmd) {
   // get security
   CMD_PopArg(&req, (uint8_t*)&client->security, 4);
 
-  os_printf("MQTT: MQTTCMD_Connect host=%s, port=%ld, security=%ld\n",
+  os_printf("MQTT: MQTTCMD_Connect host=%s, port=%ld, security=%d\n",
     client->host,
     client->port,
     client->security);

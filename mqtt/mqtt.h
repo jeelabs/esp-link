@@ -33,7 +33,7 @@
 #include <esp8266.h>
 #include "mqtt_msg.h"
 #include "queue.h"
-#include "utils.h"
+#include <rest.h>
 
 typedef struct mqtt_event_data_t {
   uint8_t type;
@@ -87,8 +87,8 @@ typedef void (*MqttDataCallback)(uint32_t* args, const char* topic, uint32_t top
 
 typedef struct {
   struct espconn* pCon;
-  uint32_t security;
-  uint8_t* host;
+  uint8_t security;
+  char* host;
   uint32_t port;
   ip_addr_t ip;
   mqtt_state_t mqtt_state;
@@ -129,16 +129,16 @@ typedef struct {
 #define MQTT_EVENT_TYPE_EXITED 			7
 #define MQTT_EVENT_TYPE_PUBLISH_CONTINUATION 8
 
-void ICACHE_FLASH_ATTR MQTT_InitConnection(MQTT_Client* mqttClient, uint8_t* host, uint32 port, uint8_t security);
-void ICACHE_FLASH_ATTR MQTT_InitClient(MQTT_Client* mqttClient, uint8_t* client_id, uint8_t* client_user, uint8_t* client_pass, uint8_t keepAliveTime, uint8_t cleanSession);
-void ICACHE_FLASH_ATTR MQTT_InitLWT(MQTT_Client* mqttClient, uint8_t* will_topic, uint8_t* will_msg, uint8_t will_qos, uint8_t will_retain);
-void ICACHE_FLASH_ATTR MQTT_OnConnected(MQTT_Client* mqttClient, MqttCallback connectedCb);
-void ICACHE_FLASH_ATTR MQTT_OnDisconnected(MQTT_Client* mqttClient, MqttCallback disconnectedCb);
-void ICACHE_FLASH_ATTR MQTT_OnPublished(MQTT_Client* mqttClient, MqttCallback publishedCb);
-void ICACHE_FLASH_ATTR MQTT_OnData(MQTT_Client* mqttClient, MqttDataCallback dataCb);
-bool ICACHE_FLASH_ATTR MQTT_Subscribe(MQTT_Client* client, char* topic, uint8_t qos);
-void ICACHE_FLASH_ATTR MQTT_Connect(MQTT_Client* mqttClient);
-void ICACHE_FLASH_ATTR MQTT_Disconnect(MQTT_Client* mqttClient);
-bool ICACHE_FLASH_ATTR MQTT_Publish(MQTT_Client* client, const char* topic, const char* data, uint8_t qos, uint8_t retain);
+void MQTT_InitConnection(MQTT_Client* mqttClient, char* host, uint32 port, uint8_t security);
+void MQTT_InitClient(MQTT_Client* mqttClient, char* client_id, char* client_user, char* client_pass, uint8_t keepAliveTime, uint8_t cleanSession);
+void MQTT_InitLWT(MQTT_Client* mqttClient, char* will_topic, char* will_msg, uint8_t will_qos, uint8_t will_retain);
+void MQTT_OnConnected(MQTT_Client* mqttClient, MqttCallback connectedCb);
+void MQTT_OnDisconnected(MQTT_Client* mqttClient, MqttCallback disconnectedCb);
+void MQTT_OnPublished(MQTT_Client* mqttClient, MqttCallback publishedCb);
+void MQTT_OnData(MQTT_Client* mqttClient, MqttDataCallback dataCb);
+bool MQTT_Subscribe(MQTT_Client* client, char* topic, uint8_t qos);
+void MQTT_Connect(MQTT_Client* mqttClient);
+void MQTT_Disconnect(MQTT_Client* mqttClient);
+bool MQTT_Publish(MQTT_Client* client, const char* topic, const char* data, uint8_t qos, uint8_t retain);
 
 #endif /* USER_AT_MQTT_H_ */

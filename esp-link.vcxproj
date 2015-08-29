@@ -28,7 +28,7 @@
   <PropertyGroup>
     <NMakeOutput />
     <NMakePreprocessorDefinitions>__ets__;_STDINT_H;ICACHE_FLASH;__MINGW32__;__WIN32__</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.3.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>.\esp-link;.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.3.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
     <ExecutablePath />
     <ReferencePath />
     <LibraryPath />
@@ -81,7 +81,6 @@
     <ClCompile Include="mqtt\proto.c" />
     <ClCompile Include="mqtt\queue.c" />
     <ClCompile Include="mqtt\ringbuf.c" />
-    <ClCompile Include="mqtt\utils.c" />
     <ClCompile Include="serial\console.c" />
     <ClCompile Include="serial\crc16.c" />
     <ClCompile Include="serial\serbridge.c" />
@@ -128,7 +127,6 @@
     <ClInclude Include="mqtt\proto.h" />
     <ClInclude Include="mqtt\queue.h" />
     <ClInclude Include="mqtt\ringbuf.h" />
-    <ClInclude Include="mqtt\utils.h" />
     <ClInclude Include="serial\console.h" />
     <ClInclude Include="serial\crc16.h" />
     <ClInclude Include="serial\serbridge.h" />
