@@ -11,3 +11,6 @@ esp-link.tgz
 tve-patch/
 yui
 .localhistory/
+espfs/mkespfsimage/mman-win32/mman.o
+espfs/mkespfsimage/mman-win32/libmman.a
+esp-link.sdf
