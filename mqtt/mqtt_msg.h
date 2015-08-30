@@ -71,7 +71,7 @@ typedef struct mqtt_connect_info {
   char* password;
   char* will_topic;
   char* will_message;
-  uint32_t keepalive;
+  uint8_t keepalive;
   uint8_t will_qos;
   uint8_t will_retain;
   uint8_t clean_session;

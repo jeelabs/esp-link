@@ -28,7 +28,7 @@
   <PropertyGroup>
     <NMakeOutput />
     <NMakePreprocessorDefinitions>__ets__;_STDINT_H;ICACHE_FLASH;__MINGW32__;__WIN32__</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>.\esp-link;.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.3.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>.\libraries\Time;.\esp-link;.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.3.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
     <ExecutablePath />
     <ReferencePath />
     <LibraryPath />
@@ -76,6 +76,7 @@
     <ClCompile Include="httpd\base64.c" />
     <ClCompile Include="httpd\httpd.c" />
     <ClCompile Include="httpd\httpdespfs.c" />
+    <ClCompile Include="libraries\Time\Time.c" />
     <ClCompile Include="mqtt\mqtt.c" />
     <ClCompile Include="mqtt\mqtt_msg.c" />
     <ClCompile Include="mqtt\proto.c" />
@@ -104,6 +105,8 @@
     <ClCompile Include="user\config.c" />
     <ClCompile Include="user\log.c" />
     <ClCompile Include="user\status.c" />
+    <ClCompile Include="user\user_funcs.c" />
+    <ClCompile Include="user\user_json.c" />
     <ClCompile Include="user\user_main.c" />
   </ItemGroup>
   <ItemGroup>
@@ -122,6 +125,7 @@
     <ClInclude Include="include\espmissingincludes.h" />
     <ClInclude Include="include\uart_hw.h" />
     <ClInclude Include="include\user_config.h" />
+    <ClInclude Include="libraries\Time\Time.h" />
     <ClInclude Include="mqtt\mqtt.h" />
     <ClInclude Include="mqtt\mqtt_msg.h" />
     <ClInclude Include="mqtt\proto.h" />
@@ -148,6 +152,8 @@
     <ClInclude Include="user\config.h" />
     <ClInclude Include="user\log.h" />
     <ClInclude Include="user\status.h" />
+    <ClInclude Include="user\user_funcs.h" />
+    <ClInclude Include="user\user_json.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -86,7 +86,9 @@ bool ICACHE_FLASH_ATTR configSave(void) {
   spi_flash_write(addr, (void *)&ff, sizeof(uint32_t));
   return true;
 fail:
+#ifdef CONFIG_DBG
   os_printf("*** Failed to save config ***\n");
+#endif
   return false;
 }
 

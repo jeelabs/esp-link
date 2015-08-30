@@ -497,7 +497,7 @@ MQTT_InitConnection(MQTT_Client* mqttClient, char* host, uint32 port, uint8_t se
 void ICACHE_FLASH_ATTR
 MQTT_InitClient(MQTT_Client* mqttClient, char* client_id, char* client_user, char* client_pass, uint8_t keepAliveTime, uint8_t cleanSession) {
   uint32_t temp;
-  os_printf("MQTT_InitClient\n");
+  os_printf("MQTT_InitClient: ");
 
   os_memset(&mqttClient->connect_info, 0, sizeof(mqtt_connect_info_t));
 
@@ -516,7 +516,6 @@ MQTT_InitClient(MQTT_Client* mqttClient, char* client_id, char* client_user, cha
   os_strcpy(mqttClient->connect_info.password, client_pass);
   mqttClient->connect_info.password[temp] = 0;
 
-
   mqttClient->connect_info.keepalive = keepAliveTime;
   mqttClient->connect_info.clean_session = cleanSession;
 
@@ -532,6 +531,11 @@ MQTT_InitClient(MQTT_Client* mqttClient, char* client_id, char* client_user, cha
 
   system_os_task(MQTT_Task, MQTT_TASK_PRIO, mqtt_procTaskQueue, MQTT_TASK_QUEUE_SIZE);
   system_os_post(MQTT_TASK_PRIO, 0, (os_param_t)mqttClient);
+  os_printf("client_id:%s, keepAlive:%d, cleanSession:%d\n",
+    mqttClient->connect_info.client_id,
+    mqttClient->connect_info.keepalive,
+    mqttClient->connect_info.clean_session
+  );
 }
 
 void ICACHE_FLASH_ATTR

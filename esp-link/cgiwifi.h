@@ -17,6 +17,5 @@ void wifiInit(void);
 void wifiAddStateChangeCb(WifiStateChangeCb cb);
 
 extern uint8_t wifiState;
-//extern void (*wifiStatusCb)(uint8_t); // callback when wifi status changes
 
 #endif

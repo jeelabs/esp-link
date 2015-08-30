@@ -70,6 +70,7 @@ slip_printable(char c) {
 
 static void ICACHE_FLASH_ATTR
 slip_reset() {
+  //os_printf("SLIP: reset\n");
   slip_inpkt = false;
   slip_escaped = false;
   slip_len = 0;
@@ -83,6 +84,7 @@ slip_parse_char(char c) {
       if (slip_len > 0) console_process(slip_buf, slip_len);
       slip_reset();
       slip_inpkt = true;
+      os_printf("SLIP: start\n");
       return;
     }
   } else if (slip_escaped) {
@@ -101,6 +103,9 @@ slip_parse_char(char c) {
       return;
     case SLIP_START:
       os_printf("SLIP: got SLIP_START while in packet?\n");
+      //os_printf("SLIP: rcv %d:", slip_len);
+      //for (int i=0; i<slip_len; i++) os_printf(" %02x", slip_buf[i]);
+      //os_printf("\n");
       slip_reset();
       return;
     }

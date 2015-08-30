@@ -83,22 +83,30 @@ CMD_Exec(const CmdList *scp, CmdPacket *packet) {
   // Iterate through the command table and call the appropriate function
   while (scp->sc_function != NULL) {
     if(scp->sc_name == packet->cmd) {
-      //os_printf("CMD: Dispatching cmd=%d\n", packet->cmd);
+#ifdef CMD_DBG
+      os_printf("CMD: Dispatching cmd=%d\n", packet->cmd);
+#endif
       // call command function
       uint32_t ret = scp->sc_function(packet);
       // if requestor asked for a response, send it
       if (packet->_return){
+#ifdef CMD_DBG
         os_printf("CMD: Response: 0x%lx, cmd: %d\r\n", ret, packet->cmd);
+#endif
         crc = CMD_ResponseStart(packet->cmd, 0, ret, 0);
         CMD_ResponseEnd(crc);
       } else {
-        //os_printf("CMD: no response (%lu)\n", packet->_return);
+#ifdef CMD_DBG
+        os_printf("CMD: no response (%lu)\n", packet->_return);
+#endif
       }
       return ret;
     }
     scp++;
   }
+#ifdef CMD_DBG
   os_printf("CMD: cmd=%d not found\n", packet->cmd);
+#endif
   return 0;
 }
 
@@ -112,27 +120,36 @@ CMD_parse_packet(uint8_t *buf, short len) {
   CmdPacket *packet = (CmdPacket*)buf;
   uint8_t *data_ptr = (uint8_t*)&packet->args;
   uint8_t *data_limit = data_ptr+len;
-  uint16_t argc = packet->argc;
+  uint16_t argc = packet->argc;  
+#ifdef CMD_DBG
   uint16_t argn = 0;
-
   os_printf("CMD: cmd=%d argc=%d cb=%p ret=%lu\n",
       packet->cmd, packet->argc, (void *)packet->callback, packet->_return);
+#endif
 
   // print out arguments
   while (data_ptr+2 < data_limit && argc--) {
     short l = *(uint16_t*)data_ptr;
+#ifdef CMD_DBG
     os_printf("CMD: arg[%d] len=%d:", argn++, l);
+#endif
     data_ptr += 2;
     while (data_ptr < data_limit && l--) {
+#ifdef CMD_DBG
       os_printf(" %02X", *data_ptr++);
+#endif
     }
+#ifdef CMD_DBG
     os_printf("\n");
+#endif
   }
 
   if (data_ptr <= data_limit) {
     CMD_Exec(commands, packet);
   } else {
+#ifdef CMD_DBG
     os_printf("CMD: packet length overrun, parsing arg %d\n", argn-1);
+#endif
   }
 }
 

@@ -90,9 +90,10 @@ LED_SERIAL_PIN      ?= 14
 # on the release tag, make release, upload esp-link.tgz into the release files
 #VERSION ?= "esp-link custom version"
 DATE    := $(shell date '+%F %T')
-BRANCH  := $(shell git describe --tags)
+BRANCH  := $(shell if git diff --quiet HEAD; then git describe --tags; \
+                   else git symbolic-ref --short HEAD; fi)
 SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | cut -d"/" -f 3; \
-	else echo "development"; fi)
+                   else echo "development"; fi)
 VERSION ?=esp-link $(BRANCH) - $(DATE) - $(SHA)
 
 # --------------- esp-link config options ---------------
@@ -142,11 +143,13 @@ TARGET		= httpd
 APPGEN_TOOL	?= gen_appbin.py
 
 # which modules (subdirectories) of the project to include in compiling
-MODULES		= espfs httpd user serial cmd mqtt esp-link
-EXTRA_INCDIR	= include .
+LIBRARIES_DIR = libraries
+MODULES		   = espfs httpd user serial cmd mqtt esp-link
+MODULES	    += $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
+EXTRA_INCDIR = include . include/json
 
 # libraries used in this project, mainly provided by the SDK
-LIBS		= c gcc hal phy pp net80211 wpa main lwip
+LIBS		= c gcc hal phy pp net80211 wpa main lwip json
 
 # compiler flags using during compilation of source files
 CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
@@ -285,7 +288,7 @@ baseflash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x01000 $(FW_BASE)/user1.bin
 
 flash: all
-	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) -fs $(ET_FS) -ff $(ET_FF) write_flash \
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 
@@ -350,10 +353,13 @@ espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 	$(Q) $(MAKE) -C espfs/mkespfsimage GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
 
 release: all
-	$(Q) rm -rf release; mkdir -p release/esp-link
+	$(Q) rm -rf release; mkdir -p release/esp-link-$(BRANCH)
+	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user1.bin | cut -b 1-80
+	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user2.bin | cut -b 1-80
 	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
-		   "$(SDK_BASE)/bin/boot_v1.4(b1).bin" wiflash release/esp-link
-	$(Q) tar zcf esp-link.tgz -C release esp-link
+		   "$(SDK_BASE)/bin/boot_v1.4(b1).bin" wiflash release/esp-link-$(BRANCH)
+	$(Q) tar zcf esp-link-$(BRANCH)-$(FLASH_SIZE).tgz -C release esp-link-$(BRANCH)
+	$(Q) echo "Release file: esp-link-$(BRANCH)-$(FLASH_SIZE).tgz"
 	$(Q) rm -rf release
 
 clean:

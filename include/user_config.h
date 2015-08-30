@@ -8,13 +8,13 @@
 #define MQTT_PORT				1883
 #define MQTT_SECURITY   0
 
-#define MQTT_CLIENT_ID	"esp-link" // ""
+#define MQTT_CLIENT_ID	system_get_chip_id_str() // "esp-link"
 #define MQTT_USER				""
 #define MQTT_PASS				""
 #define MQTT_KEEPALIVE	120	 // seconds
 #define MQTT_CLSESSION	true
 
-#define PROTOCOL_NAMEv31	// MQTT version 3.1 compatible with Mosquitto v0.15
+#define PROTOCOL_NAMEv31	// MQTT version 3.1 compatible with Mosquitto v0.15/
 //PROTOCOL_NAMEv311			// MQTT version 3.11 compatible with https://eclipse.org/paho/clients/testing/
 
 #endif

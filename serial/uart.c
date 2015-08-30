@@ -190,7 +190,9 @@ uart0_rx_intr_handler(void *para)
   if (READ_PERI_REG(UART_INT_RAW(uart_no)) & UART_FRM_ERR_INT_RAW) {
     uint32 now = system_get_time();
     if (last_frm_err == 0 || (now - last_frm_err) > one_sec) {
+#ifdef UART_DBG
       os_printf("UART framing error (bad baud rate?)\n");
+#endif
       last_frm_err = now;
     }
     // clear rx fifo (apparently this is not optional at this point)
@@ -206,7 +208,9 @@ uart0_rx_intr_handler(void *para)
   if (UART_RXFIFO_FULL_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_RXFIFO_FULL_INT_ST)
   ||  UART_RXFIFO_TOUT_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_RXFIFO_TOUT_INT_ST))
   {
-    //os_printf("stat:%02X",*(uint8 *)UART_INT_ENA(uart_no));
+#ifdef UART_DBG
+    os_printf("stat:%02X",*(uint8 *)UART_INT_ENA(uart_no));
+#endif
     ETS_UART_INTR_DISABLE();
     system_os_post(recvTaskPrio, 0, 0);
   }
@@ -229,7 +233,9 @@ uart_recvTask(os_event_t *events)
            (length < 128)) {
       buf[length++] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
     }
-    //os_printf("%d ix %d\n", system_get_time(), length);
+#ifdef UART_DBG
+    os_printf("%d ix %d\n", system_get_time(), length);
+#endif
 
     for (int i=0; i<MAX_CB; i++) {
       if (uart_recv_cb[i] != NULL) (uart_recv_cb[i])(buf, length);
@@ -241,7 +247,9 @@ uart_recvTask(os_event_t *events)
 
 void ICACHE_FLASH_ATTR
 uart0_baud(int rate) {
+#ifdef UART_DBG
   os_printf("UART %d baud\n", rate);
+#endif
   uart_div_modify(UART0, UART_CLK_FREQ / rate);
 }
 
@@ -278,7 +286,9 @@ uart_add_recv_cb(UartRecv_cb cb) {
       return;
     }
   }
+#ifdef UART_DBG
   os_printf("UART: max cb count exceeded\n");
+#endif
 }
 
 void ICACHE_FLASH_ATTR
