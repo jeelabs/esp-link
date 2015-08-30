@@ -1,5 +1,9 @@
 #ifndef _USER_CONFIG_H_
 #define _USER_CONFIG_H_
+#include <c_types.h>
+#ifdef __WIN32__
+#include <_mingw.h>
+#endif
 
 #define MQTT_RECONNECT_TIMEOUT 	5	// seconds
 #define MQTT_BUF_SIZE		1024
@@ -16,5 +20,11 @@
 
 #define PROTOCOL_NAMEv31	// MQTT version 3.1 compatible with Mosquitto v0.15
 //PROTOCOL_NAMEv311			// MQTT version 3.11 compatible with https://eclipse.org/paho/clients/testing/
+
+extern char* esp_link_version;
+
+extern uint8_t UTILS_StrToIP(const char* str, void *ip);
+
+extern void ICACHE_FLASH_ATTR init(void);
 
 #endif

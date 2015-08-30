@@ -10,6 +10,7 @@
 #
 # Makefile heavily adapted to esp-link and wireless flashing by Thorsten von Eicken
 # Original from esphttpd and others...
+#VERBOSE=1
 
 # --------------- toolchain configuration ---------------
 
@@ -128,6 +129,8 @@ GZIP_COMPRESSION ?= yes
 COMPRESS_W_YUI ?= yes
 YUI-COMPRESSOR ?= yuicompressor-2.4.8.jar
 
+# Optional Modules
+MODULES ?= rest
 
 # -------------- End of config options -------------
 
@@ -142,15 +145,29 @@ TARGET		= httpd
 # espressif tool to concatenate sections for OTA upload using bootloader v1.2+
 APPGEN_TOOL	?= gen_appbin.py
 
+CFLAGS=
+
+# set defines for optional modules
+ifneq (,$(findstring mqtt,$(MODULES)))
+	CFLAGS		+= -DMQTT
+endif
+
+ifneq (,$(findstring rest,$(MODULES)))
+	CFLAGS		+= -DREST
+endif
+
 # which modules (subdirectories) of the project to include in compiling
-MODULES		= espfs httpd user serial cmd mqtt esp-link
+LIBRARIES_DIR	= libraries
+MODULES			+= espfs httpd user serial cmd esp-link
+MODULES			+= $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
+EXTRA_INCDIR	=include .
 EXTRA_INCDIR	= include .
 
 # libraries used in this project, mainly provided by the SDK
 LIBS		= c gcc hal phy pp net80211 wpa main lwip
 
 # compiler flags using during compilation of source files
-CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
+CFLAGS		+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
 		-nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections \
 		-D__ets__ -DICACHE_FLASH -D_STDINT_H -Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX) \
 		-DMCU_RESET_PIN=$(MCU_RESET_PIN) -DMCU_ISP_PIN=$(MCU_ISP_PIN) \
@@ -167,7 +184,7 @@ LD_SCRIPT2	:= build/eagle.esphttpd2.v6.ld
 
 # various paths from the SDK used in this project
 SDK_LIBDIR		= lib
-SDK_LDDIR			= ld
+SDK_LDDIR		= ld
 SDK_INCDIR		= include include/json
 SDK_TOOLSDIR	= tools
 
@@ -175,8 +192,8 @@ SDK_TOOLSDIR	= tools
 CC		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
 AR		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-ar
 LD		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
-OBJCP := $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objcopy
-OBJDP := $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objdump
+OBJCP	:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objcopy
+OBJDP	:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objdump
 
 
 ####
@@ -214,7 +231,7 @@ CFLAGS		+= -DGZIP_COMPRESSION
 endif
 
 ifeq ("$(CHANGE_TO_STA)","yes")
-CFLAGS          += -DCHANGE_TO_STA
+CFLAGS		+= -DCHANGE_TO_STA
 endif
 
 vpath %.c $(SRC_DIR)

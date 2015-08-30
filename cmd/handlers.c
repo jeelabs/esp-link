@@ -4,12 +4,13 @@
 
 #include "esp8266.h"
 #include "cmd.h"
-#include "rest.h"
-#include "crc16.h"
-#include "serbridge.h"
-#include "uart.h"
-#include "cgiwifi.h"
-#include "mqtt_cmd.h"
+#include <cgiwifi.h>
+#ifdef MQTT
+#include <mqtt_cmd.h>
+#endif
+#ifdef REST
+#include <rest.h>
+#endif
 
 static uint32_t CMD_Null(CmdPacket *cmd);
 static uint32_t CMD_IsReady(CmdPacket *cmd);
@@ -27,22 +28,20 @@ const CmdList commands[] = {
   {CMD_RESET,           CMD_Reset},
   {CMD_IS_READY,        CMD_IsReady},
   {CMD_WIFI_CONNECT,    CMD_WifiConnect},
-
-/*
-  {CMD_MQTT_SETUP,      MQTTAPP_Setup},
-  {CMD_MQTT_CONNECT,    MQTTAPP_Connect},
-  {CMD_MQTT_DISCONNECT, MQTTAPP_Disconnect},
-  {CMD_MQTT_PUBLISH,    MQTTAPP_Publish},
-  {CMD_MQTT_SUBSCRIBE , MQTTAPP_Subscribe},
-  {CMD_MQTT_LWT,        MQTTAPP_Lwt},
-  */
-
+#ifdef MQTT
+  {CMD_MQTT_SETUP,      MQTTCMD_Setup},
+  {CMD_MQTT_CONNECT,    MQTTCMD_Connect},
+  {CMD_MQTT_DISCONNECT, MQTTCMD_Disconnect},
+  {CMD_MQTT_PUBLISH,    MQTTCMD_Publish},
+  {CMD_MQTT_SUBSCRIBE , MQTTCMD_Subscribe},
+  {CMD_MQTT_LWT,        MQTTCMD_Lwt},
+#endif
+#ifdef REST
   {CMD_REST_SETUP,      REST_Setup},
   {CMD_REST_REQUEST,    REST_Request},
   {CMD_REST_SETHEADER,  REST_SetHeader},
-
-  {CMD_ADD_CALLBACK,    CMD_AddCallback },
-
+#endif
+  { CMD_CB_ADD,         CMD_AddCallback },
   {CMD_NULL,            NULL}
 };
 
