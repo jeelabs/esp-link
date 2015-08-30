@@ -16,8 +16,6 @@ static RestClient restClient[MAX_REST];
 static uint8_t restNum = 0xff; // index into restClient for next slot to allocate
 #define REST_CB 0xbeef0000 // fudge added to callback for arduino so we can detect problems
 
-extern uint8_t ICACHE_FLASH_ATTR UTILS_StrToIP(const char* str, void *ip);
-
 static void ICACHE_FLASH_ATTR
 tcpclient_discon_cb(void *arg) {
   struct espconn *pespconn = (struct espconn *)arg;

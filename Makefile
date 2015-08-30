@@ -143,7 +143,7 @@ TARGET		= httpd
 APPGEN_TOOL	?= gen_appbin.py
 
 # which modules (subdirectories) of the project to include in compiling
-MODULES		= espfs httpd user serial cmd
+MODULES		= espfs httpd user serial cmd mqtt esp-link
 EXTRA_INCDIR	= include .
 
 # libraries used in this project, mainly provided by the SDK
