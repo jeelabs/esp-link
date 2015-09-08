@@ -521,7 +521,7 @@ static void ICACHE_FLASH_ATTR httpdDisconCb(void *arg) {
 }
 
 // Callback indicating a failure in the connection. "Recon" is probably intended in the sense
-// of "you need to reconnect". Sigh... Note that there is no DiconCb after ReconCb
+// of "you need to reconnect". Sigh... Note that there is no DisconCb after ReconCb
 static void ICACHE_FLASH_ATTR httpdReconCb(void *arg, sint8 err) {
 	debugConn(arg, "httpdReconCb");
 	HttpdConnData *conn = httpdFindConnData(arg);

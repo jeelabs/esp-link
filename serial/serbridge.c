@@ -273,6 +273,7 @@ serbridgeSentCb(void *arg) {
 
 // Error callback (it's really poorly named, it's not a "connection reconnected" callback,
 // it's really a "connection broken, please reconnect" callback)
+// Note that there is no DisconCb after a ReconCb
 static void ICACHE_FLASH_ATTR serbridgeReconCb(void *arg, sint8 err) {
   serbridgeConnData *sbConn = serbridgeFindConnData(arg);
   if (sbConn == NULL) return;

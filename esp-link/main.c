@@ -29,7 +29,7 @@
 #include "log.h"
 #include <gpio.h>
 
-//#define SHOW_HEAP_USE
+#define SHOW_HEAP_USE
 
 //Function that tells the authentication system what users/passwords live on the system.
 //This is disabled in the default build; if you want to try it, enable the authBasic line in
@@ -120,13 +120,16 @@ static char *rst_codes[] = {
 # define VERS_STR(V) VERS_STR_STR(V)
 char* esp_link_version = VERS_STR(VERSION);
 
-//Main routine. Initialize stdout, the I/O, filesystem and the webserver and we're done.
+extern void app_init(void);
+
+// Main routine to initialize esp-link.
 void user_init(void) {
   // get the flash config so we know how to init things
   //configWipe(); // uncomment to reset the config for testing purposes
   bool restoreOk = configRestore();
   // init gpio pin registers
   gpio_init();
+  gpio_output_set(0, 0, 0, (1<<15)); // some people tie it GND, gotta ensure it's disabled
   // init UART
   uart_init(flashConfig.baud_rate, 115200);
   logInit(); // must come after init of uart
@@ -163,6 +166,5 @@ void user_init(void) {
 
   os_printf("** esp-link ready\n");
 
-  // call user_main init
-  init();
+  app_init();
 }

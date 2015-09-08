@@ -6,4 +6,3 @@ void serledInit(void);
 void makeGpio(uint8_t pin);
 
 #endif
-

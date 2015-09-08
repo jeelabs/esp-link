@@ -154,12 +154,12 @@ rest_dns_found(const char *name, ip_addr_t *ipaddr, void *arg) {
 
   if(client->ip.addr == 0 && ipaddr->addr != 0) {
     os_memcpy(client->pCon->proto.tcp->remote_ip, &ipaddr->addr, 4);
-    //if(client->security){
-    //  espconn_secure_connect(client->pCon);
-    //}
-    //else {
+#ifdef CLIENT_SSL_ENABLE
+    if(client->security) {
+      espconn_secure_connect(client->pCon);
+    } else
+#endif
       espconn_connect(client->pCon);
-    //}
     os_printf("REST: connecting...\n");
   }
 }
@@ -367,6 +367,8 @@ REST_Request(CmdPacket *cmd) {
     client->data_len += realLen;
   }
   os_printf("\n");
+
+  //os_printf("REST request: %s", (char*)client->data);
 
   os_printf("REST: pCon state=%d\n", client->pCon->state);
   client->pCon->state = ESPCONN_NONE;
