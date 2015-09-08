@@ -17,6 +17,7 @@
 #include "cgiwifi.h"
 #include "cgipins.h"
 #include "cgitcp.h"
+#include "cgimqtt.h"
 #include "cgiflash.h"
 #include "auth.h"
 #include "espfs.h"
@@ -90,6 +91,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/wifi/special", cgiWiFiSpecial, NULL },
   { "/pins", cgiPins, NULL },
   { "/tcpclient", cgiTcp, NULL },
+  { "/mqtt", cgiMqtt, NULL },
 
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
@@ -124,6 +126,9 @@ extern void app_init(void);
 
 // Main routine to initialize esp-link.
 void user_init(void) {
+  uart_init(115200, 115200);
+  logInit(); // must come after init of uart
+  os_delay_us(10000L);
   // get the flash config so we know how to init things
   //configWipe(); // uncomment to reset the config for testing purposes
   bool restoreOk = configRestore();
@@ -131,8 +136,8 @@ void user_init(void) {
   gpio_init();
   gpio_output_set(0, 0, 0, (1<<15)); // some people tie it GND, gotta ensure it's disabled
   // init UART
-  uart_init(flashConfig.baud_rate, 115200);
-  logInit(); // must come after init of uart
+//  uart_init(flashConfig.baud_rate, 115200);
+//  logInit(); // must come after init of uart
   // say hello (leave some time to cause break in TX after boot loader's msg
   os_delay_us(10000L);
   os_printf("\n\n** %s\n", esp_link_version);

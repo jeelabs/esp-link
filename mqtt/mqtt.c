@@ -57,6 +57,11 @@ sint8 espconn_secure_sent(struct espconn *espconn, uint8 *psent, uint16 length) 
 // max message size for sending (except publish)
 #define MQTT_MAX_SHORT_MESSAGE 128
 
+static char* mqtt_msg_type[] = {
+  "NULL", "TYPE_CONNECT", "CONNACK", "PUBLISH", "PUBACK", "PUBREC", "PUBREL", "PUBCOMP",
+  "SUBSCRIBE", "SUBACK", "UNSUBSCRIBE", "UNSUBACK", "PINGREQ", "PINGRESP", "DISCONNECT", "RESV",
+};
+
 // forward declarations
 static void mqtt_enq_message(MQTT_Client *client, const uint8_t *data, uint16_t len);
 static void mqtt_send_message(MQTT_Client* client);
@@ -143,8 +148,8 @@ mqtt_tcpclient_recv(void* arg, char* pdata, unsigned short len) {
       pending_msg_id = mqtt_get_id(client->pending_buffer->data, client->pending_buffer->filled);
     }
 
-    os_printf("MQTT: Recv type=%d id=%04X len=%d; Pend type=%d id=%02X\n",
-        msg_type, msg_id, msg_len, pending_msg_type, pending_msg_id);
+    os_printf("MQTT: Recv type=%s id=%04X len=%d; Pend type=%s id=%02X\n",
+        mqtt_msg_type[msg_type], msg_id, msg_len, mqtt_msg_type[pending_msg_type], pending_msg_id);
 
     switch (msg_type) {
     case MQTT_MSG_TYPE_CONNACK:
@@ -177,7 +182,7 @@ mqtt_tcpclient_recv(void* arg, char* pdata, unsigned short len) {
 
     case MQTT_MSG_TYPE_PUBREC: // rec for a publish we sent
       if (pending_msg_type == MQTT_MSG_TYPE_PUBLISH && pending_msg_id == msg_id) {
-        os_printf("MQTT: Recv PUBREC, cont QoS2 publish\n");
+        os_printf("MQTT: QoS2 publish cont\n");
         client->pending_buffer = PktBuf_ShiftFree(client->pending_buffer);
         // we need to send PUBREL
         mqtt_msg_pubrel(&client->mqtt_connection, msg_id);
@@ -202,7 +207,6 @@ mqtt_tcpclient_recv(void* arg, char* pdata, unsigned short len) {
         if (msg_qos == 1) mqtt_msg_puback(&client->mqtt_connection, msg_id);
         if (msg_qos == 2) mqtt_msg_pubrec(&client->mqtt_connection, msg_id);
         if (msg_qos == 1 || msg_qos == 2) {
-          os_printf("MQTT: Queue response QoS: %d\n", msg_qos);
           mqtt_enq_message(client, client->mqtt_connection.message.data,
               client->mqtt_connection.message.length);
         }
@@ -213,7 +217,7 @@ mqtt_tcpclient_recv(void* arg, char* pdata, unsigned short len) {
 
     case MQTT_MSG_TYPE_PUBREL: // rel for a rec we sent (originally publish received)
       if (pending_msg_type == MQTT_MSG_TYPE_PUBREC && pending_msg_id == msg_id) {
-        os_printf("MQTT: Recv PUBREL, cont QoS2 recv\n");
+        os_printf("MQTT: Cont QoS2 recv\n");
         client->pending_buffer = PktBuf_ShiftFree(client->pending_buffer);
         // we need to send PUBCOMP
         mqtt_msg_pubcomp(&client->mqtt_connection, msg_id);
@@ -223,7 +227,6 @@ mqtt_tcpclient_recv(void* arg, char* pdata, unsigned short len) {
       break;
 
     case MQTT_MSG_TYPE_PINGRESP:
-      os_printf("MQTT: Recv PINGRESP\n");
       client->keepAliveAckTick = 0;
       break;
     }
@@ -299,7 +302,7 @@ mqtt_timer(void* arg) {
     // check whether we need to send a keep-alive message
     if (client->keepAliveTick > 0 && --client->keepAliveTick == 0) {
       // timeout: we need to send a ping message
-      os_printf("MQTT: Send keepalive to %s:%d\n", client->host, client->port);
+      //os_printf("MQTT: Send keepalive\n");
       mqtt_msg_pingreq(&client->mqtt_connection);
       PktBuf *buf = PktBuf_New(client->mqtt_connection.message.length);
       os_memcpy(buf->data, client->mqtt_connection.message.data,
@@ -432,7 +435,7 @@ mqtt_send_message(MQTT_Client* client) {
   // get some details about the message
   uint16_t msg_type = mqtt_get_type(buf->data);
   uint8_t  msg_id = mqtt_get_id(buf->data, buf->filled);
-  os_printf("MQTT: Send type=%d, id=%04X len=%d\n", msg_type, msg_id, buf->filled);
+  os_printf("MQTT: Send type=%s id=%04X len=%d\n", mqtt_msg_type[msg_type], msg_id, buf->filled);
 #if 0
   for (int i=0; i<buf->filled; i++) {
     if (buf->data[i] >= ' ' && buf->data[i] <= '~') os_printf("%c", buf->data[i]);
