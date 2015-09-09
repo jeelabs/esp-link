@@ -39,12 +39,12 @@
     <IntDir>build</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
-    <NMakeBuildCommandLine>espmake flash</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>espmake all wiflash</NMakeBuildCommandLine>
     <NMakeReBuildCommandLine>espmake clean all</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>espmake clean</NMakeCleanCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
-    <NMakeBuildCommandLine>espmake all wiflash</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>espmake clean all wiflash</NMakeBuildCommandLine>
     <NMakeReBuildCommandLine>espmake clean all</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>espmake clean</NMakeCleanCommandLine>
   </PropertyGroup>
@@ -65,8 +65,8 @@
   <ItemGroup>
     <ClCompile Include="cmd\cmd.c" />
     <ClCompile Include="cmd\handlers.c" />
-    <ClCompile Include="cmd\mqtt_cmd.c" />
-    <ClCompile Include="cmd\rest.c" />
+    <ClCompile Include="mqtt\mqtt_cmd.c" />
+    <ClCompile Include="rest\rest.c" />
     <ClCompile Include="cmd\tcpclient.c" />
     <ClCompile Include="espfs\espfs.c" />
     <ClCompile Include="espfs\mkespfsimage\main.c" />
@@ -111,8 +111,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cmd\cmd.h" />
-    <ClInclude Include="cmd\mqtt_cmd.h" />
-    <ClInclude Include="cmd\rest.h" />
+    <ClInclude Include="mqtt\mqtt_cmd.h" />
+    <ClInclude Include="rest\rest.h" />
     <ClInclude Include="cmd\tcpclient.h" />
     <ClInclude Include="espfs\espfs.h" />
     <ClInclude Include="espfs\espfsformat.h" />

@@ -36,6 +36,5 @@ typedef struct {
 uint32_t REST_Setup(CmdPacket *cmd);
 uint32_t REST_Request(CmdPacket *cmd);
 uint32_t REST_SetHeader(CmdPacket *cmd);
-uint8_t UTILS_StrToIP(const char* str, void *ip);
 
 #endif /* MODULES_INCLUDE_API_H_ */

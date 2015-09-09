@@ -10,6 +10,7 @@
 #
 # Makefile heavily adapted to esp-link and wireless flashing by Thorsten von Eicken
 # Original from esphttpd and others...
+#VERBOSE=1
 
 # --------------- toolchain configuration ---------------
 
@@ -128,6 +129,8 @@ GZIP_COMPRESSION ?= yes
 COMPRESS_W_YUI ?= yes
 YUI-COMPRESSOR ?= yuicompressor-2.4.8.jar
 
+# Optional Modules
+MODULES ?=
 
 # -------------- End of config options -------------
 
@@ -142,6 +145,17 @@ TARGET		= httpd
 # espressif tool to concatenate sections for OTA upload using bootloader v1.2+
 APPGEN_TOOL	?= gen_appbin.py
 
+CFLAGS=
+
+# set defines for optional modules
+ifneq (,$(findstring mqtt,$(MODULES)))
+	CFLAGS		+= -DMQTT
+endif
+
+ifneq (,$(findstring rest,$(MODULES)))
+	CFLAGS		+= -DREST
+endif
+
 # which modules (subdirectories) of the project to include in compiling
 LIBRARIES_DIR = libraries
 MODULES		   = espfs httpd user serial cmd mqtt esp-link
@@ -152,8 +166,9 @@ EXTRA_INCDIR = include . include/json
 LIBS		= c gcc hal phy pp net80211 wpa main lwip json
 
 # compiler flags using during compilation of source files
-CFLAGS		= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
+CFLAGS		+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
 		-nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections \
+    -Wno-unused-function \
 		-D__ets__ -DICACHE_FLASH -D_STDINT_H -Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX) \
 		-DMCU_RESET_PIN=$(MCU_RESET_PIN) -DMCU_ISP_PIN=$(MCU_ISP_PIN) \
 		-DLED_CONN_PIN=$(LED_CONN_PIN) -DLED_SERIAL_PIN=$(LED_SERIAL_PIN) \

@@ -12,11 +12,15 @@ Some random cgi routines.
  * Heavily modified and enhanced by Thorsten von Eicken in 2015
  * ----------------------------------------------------------------------------
  */
-
-
-#include <esp8266.h>
 #include "cgi.h"
-#include "espfs.h"
+static char* chipIdStr = "";
+char* ICACHE_FLASH_ATTR system_get_chip_id_str(){
+  if (os_strlen(chipIdStr) == 0) {
+    chipIdStr = (char*)os_zalloc(9);
+    os_sprintf(chipIdStr, "%06x", system_get_chip_id());
+  }
+  return chipIdStr;
+}
 
 void ICACHE_FLASH_ATTR
 jsonHeader(HttpdConnData *connData, int code) {
@@ -26,6 +30,44 @@ jsonHeader(HttpdConnData *connData, int code) {
 	httpdHeader(connData, "Expires", "0");
 	httpdHeader(connData, "Content-Type", "application/json");
 	httpdEndHeaders(connData);
+}
+
+uint8_t ICACHE_FLASH_ATTR
+UTILS_StrToIP(const char* str, void *ip){
+  /* The count of the number of bytes processed. */
+  int i;
+  /* A pointer to the next digit to process. */
+  const char * start;
+
+  start = str;
+  for (i = 0; i < 4; i++) {
+    /* The digit being processed. */
+    char c;
+    /* The value of this byte. */
+    int n = 0;
+    while (1) {
+      c = *start;
+      start++;
+      if (c >= '0' && c <= '9') {
+        n *= 10;
+        n += c - '0';
+      }
+      /* We insist on stopping at "." if we are still parsing
+      the first, second, or third numbers. If we have reached
+      the end of the numbers, we will allow any character. */
+      else if ((i < 3 && c == '.') || i == 3) {
+        break;
+      }
+      else {
+        return 0;
+      }
+    }
+    if (n >= 256) {
+      return 0;
+    }
+    ((uint8_t*)ip)[i] = n;
+  }
+  return 1;
 }
 
 #define TOKEN(x) (os_strcmp(token, x) == 0)
