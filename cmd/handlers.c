@@ -94,7 +94,7 @@ cmdCallback* ICACHE_FLASH_ATTR
 CMD_GetCbByName(char* name) {
   char checkname[16];
   os_strncpy(checkname, name, sizeof(checkname));
-  for (uint8_t i = 0; i < sizeof(commands); i++) {
+  for (uint8_t i = 0; i < MAX_CALLBACKS; i++) {
     //os_printf("CMD_GetCbByName: index %d name=%s cb=%p\n", i, callbacks[i].name,
     //  (void *)callbacks[i].callback);
     // if callback doesn't exist or it's null
