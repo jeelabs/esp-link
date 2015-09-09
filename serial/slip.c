@@ -4,11 +4,10 @@
 #include "uart.h"
 #include "crc16.h"
 #include "serbridge.h"
-#include "serled.h"
 #include "console.h"
 #include "cmd.h"
 
-uint8_t slip_disabled;   // disable slip to allow flashing of attached MCU
+uint8_t slip_disabled;   // temporarily disable slip to allow flashing of attached MCU
 
 extern void ICACHE_FLASH_ATTR console_process(char *buf, short len);
 
@@ -115,18 +114,7 @@ slip_parse_char(char c) {
 
 // callback with a buffer of characters that have arrived on the uart
 void ICACHE_FLASH_ATTR
-serbridgeUartCb(char *buf, short length) {
-  if (slip_disabled > 0) {
-    //os_printf("SLIP: disabled got %d\n", length);
-    console_process(buf, length);
-    for (short i=0; i<length; i++)
-      if (buf[i] == SLIP_START) {
-        os_printf("SLIP: START while disabled=%d\n", slip_disabled);
-        break;
-      }
-    return;
-  }
-
+slip_parse_buf(char *buf, short length) {
   // do SLIP parsing
   for (short i=0; i<length; i++)
     slip_parse_char(buf[i]);
@@ -136,6 +124,5 @@ serbridgeUartCb(char *buf, short length) {
     slip_process();
     slip_reset();
   }
-
-  serledFlash(50); // short blink on serial LED
 }
+

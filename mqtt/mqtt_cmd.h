@@ -2,7 +2,6 @@
 #define MODULES_MQTT_CMD_H_
 
 #include "cmd.h"
-#include "mqtt.h"
 
 typedef struct {
   uint32_t connectedCb;

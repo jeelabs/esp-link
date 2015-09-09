@@ -316,44 +316,44 @@ function createInputForPin(pin) {
   input.type = "radio";
   input.name = "pins";
   input.data = pin.name;
-	input.className = "pin-input";
+  input.className = "pin-input";
   input.value= pin.value;
   input.id   = "opt-" + pin.value;
   if (currPin == pin.name) input.checked = "1";
 
-	var descr = m('<label for="opt-'+pin.value+'"><b>'+pin.name+":</b>"+pin.descr+"</label>");
-	var div = document.createElement("div");
-	div.appendChild(input);
-	div.appendChild(descr);
-	return div;
+  var descr = m('<label for="opt-'+pin.value+'"><b>'+pin.name+":</b>"+pin.descr+"</label>");
+  var div = document.createElement("div");
+  div.appendChild(input);
+  div.appendChild(descr);
+  return div;
 }
 
 function displayPins(resp) {
-	var po = $("#pin-mux");
-	po.innerHTML = "";
-	currPin = resp.curr;
-	resp.map.forEach(function(v) {
-		po.appendChild(createInputForPin(v));
-	});
-	var i, inputs = $(".pin-input");
-	for (i=0; i<inputs.length; i++) {
-		inputs[i].onclick = function() { setPins(this.value, this.data) };
-	};
+  var po = $("#pin-mux");
+  po.innerHTML = "";
+  currPin = resp.curr;
+  resp.map.forEach(function(v) {
+    po.appendChild(createInputForPin(v));
+  });
+  var i, inputs = $(".pin-input");
+  for (i=0; i<inputs.length; i++) {
+    inputs[i].onclick = function() { setPins(this.value, this.data) };
+  };
 }
 
 function fetchPins() {
   ajaxJson("GET", "/pins", displayPins, function() {
-		window.setTimeout(fetchPins, 1000);
-	});
+    window.setTimeout(fetchPins, 1000);
+  });
 }
 
 function setPins(v, name) {
   ajaxSpin("POST", "/pins?map="+v, function() {
-		showNotification("Pin assignment changed to " + name);
-	}, function() {
-		showNotification("Pin assignment change failed");
-		window.setTimeout(fetchPins, 100);
-	});
+    showNotification("Pin assignment changed to " + name);
+  }, function() {
+    showNotification("Pin assignment change failed");
+    window.setTimeout(fetchPins, 100);
+  });
 }
 
 //===== TCP client card
@@ -374,11 +374,11 @@ function changeTcpClient(e) {
   addClass(cb, 'pure-button-disabled');
   ajaxSpin("POST", url, function(resp) {
       removeClass(cb, 'pure-button-disabled');
-      getWifiInfo();
+      fetchTcpClient();
     }, function(s, st) {
       showWarning("Error: "+st);
       removeClass(cb, 'pure-button-disabled');
-      getWifiInfo();
+      fetchTcpClient();
     });
 }
 
@@ -390,8 +390,84 @@ function displayTcpClient(resp) {
 
 function fetchTcpClient() {
   ajaxJson("GET", "/tcpclient", displayTcpClient, function() {
-		window.setTimeout(fetchTcpClient, 1000);
-	});
+    window.setTimeout(fetchTcpClient, 1000);
+  });
 }
 
+//===== MQTT cards
+
+function changeMqtt(e) {
+  e.preventDefault();
+  var url = "mqtt?1=1";
+  var i, inputs = document.querySelectorAll('#mqtt-form input');
+  for (i=0; i<inputs.length; i++) {
+    if (inputs[i].type != "checkbox")
+      url += "&" + inputs[i].name + "=" + inputs[i].value;
+  };
+
+  hideWarning();
+  var cb = $("#mqtt-button");
+  addClass(cb, 'pure-button-disabled');
+  ajaxSpin("POST", url, function(resp) {
+      showNotification("MQTT updated");
+      removeClass(cb, 'pure-button-disabled');
+    }, function(s, st) {
+      showWarning("Error: "+st);
+      removeClass(cb, 'pure-button-disabled');
+      window.setTimeout(fetchMqtt, 100);
+    });
+}
+
+function displayMqtt(data) {
+  Object.keys(data).forEach(function(v) {
+    el = $("#" + v);
+    if (el != null) {
+      if (el.nodeName === "INPUT") el.value = data[v];
+      else el.innerHTML = data[v];
+      return;
+    }
+    el = document.querySelector('input[name="' + v + '"]');
+    if (el != null) {
+      if (el.type == "checkbox") el.checked = data[v] > 0;
+      else el.value = data[v];
+    }
+  });
+  $("#mqtt-spinner").setAttribute("hidden", "");
+  $("#mqtt-status-spinner").setAttribute("hidden", "");
+  $("#mqtt-form").removeAttribute("hidden");
+  $("#mqtt-status-form").removeAttribute("hidden");
+
+  var i, inputs = $("input");
+  for (i=0; i<inputs.length; i++) {
+    if (inputs[i].type == "checkbox")
+      inputs[i].onclick = function() { console.log(this); setMqtt(this.name, this.checked) };
+  }
+}
+
+function fetchMqtt() {
+  ajaxJson("GET", "/mqtt", displayMqtt, function() {
+    window.setTimeout(fetchMqtt, 1000);
+  });
+}
+
+function changeMqttStatus(e) {
+  e.preventDefault();
+  var v = document.querySelector('input[name="mqtt-status-topic"]').value;
+  ajaxSpin("POST", "/mqtt?mqtt-status-topic=" + v, function() {
+    showNotification("MQTT status settings updated");
+    }, function(s, st) {
+      showWarning("Error: "+st);
+      window.setTimeout(fetchMqtt, 100);
+    });
+}
+
+function setMqtt(name, v) {
+  ajaxSpin("POST", "/mqtt?" + name + "=" + (v ? 1 : 0), function() {
+    var n = name.replace("-enable", "");
+    showNotification(n + " is now " + (v ? "enabled" : "disabled"));
+    }, function() {
+      showWarning("Enable/disable failed");
+      window.setTimeout(fetchMqtt, 100);
+    });
+}
 

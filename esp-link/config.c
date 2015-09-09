@@ -5,26 +5,27 @@
 #include <osapi.h>
 #include "config.h"
 #include "espfs.h"
-
-// hack: this from LwIP
-extern uint16_t inet_chksum(void *dataptr, uint16_t len);
+#include "crc16.h"
 
 FlashConfig flashConfig;
 FlashConfig flashDefault = {
   33, 0, 0,
   MCU_RESET_PIN, MCU_ISP_PIN, LED_CONN_PIN, LED_SERIAL_PIN,
   115200,
-  "esp-link\0                       ", // hostname
+  "esp-link\0",                        // hostname
   0, 0x00ffffff, 0,                    // static ip, netmask, gateway
   0,                                   // log mode
   0,                                   // swap uart (don't by default)
   1, 0,                                // tcp_enable, rssi_enable
   "\0",                                // api_key
+  0, 0, 0,                             // slip_enable, mqtt_enable, mqtt_status_enable
+  1833,                                // mqtt port
+  "\0", "\0", "\0", "\0", "\0",        // mqtt host, client, user, password, status-topic
 };
 
 typedef union {
   FlashConfig fc;
-  uint8_t     block[128];
+  uint8_t     block[1024];
 } FlashFull;
 
 // magic number to recognize thet these are our flash settings as opposed to some random stuff
@@ -63,7 +64,7 @@ bool ICACHE_FLASH_ATTR configSave(void) {
   ff.fc.crc = 0;
   //os_printf("cksum of: ");
   //memDump(&ff, sizeof(ff));
-  ff.fc.crc = inet_chksum(&ff, sizeof(ff));
+  ff.fc.crc = crc16_data((unsigned char*)&ff, sizeof(ff), 0);
   //os_printf("cksum is %04x\n", ff.fc.crc);
   // write primary with incorrect seq
   ff.fc.seq = 0xffffffff;
@@ -121,12 +122,16 @@ static int ICACHE_FLASH_ATTR selectPrimary(FlashFull *ff0, FlashFull *ff1) {
   // check CRC of ff0
   uint16_t crc = ff0->fc.crc;
   ff0->fc.crc = 0;
-  bool ff0_crc_ok = inet_chksum(ff0, sizeof(FlashFull)) == crc;
+  bool ff0_crc_ok = crc16_data((unsigned char*)ff0, sizeof(FlashFull), 0) == crc;
+
+  os_printf("FLASH chk=0x%04x crc=0x%04x full_sz=%d sz=%d\n",
+      crc16_data((unsigned char*)ff0, sizeof(FlashFull), 0),
+      crc, sizeof(FlashFull), sizeof(FlashConfig));
 
   // check CRC of ff1
   crc = ff1->fc.crc;
   ff1->fc.crc = 0;
-  bool ff1_crc_ok = inet_chksum(ff1, sizeof(FlashFull)) == crc;
+  bool ff1_crc_ok = crc16_data((unsigned char*)ff1, sizeof(FlashFull), 0) == crc;
 
   // decided which we like better
   if (ff0_crc_ok)

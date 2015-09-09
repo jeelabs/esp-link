@@ -24,9 +24,9 @@ static const int num_map_func = sizeof(map_func)/sizeof(char*);
 
 // Cgi to return choice of pin assignments
 int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
-	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted
+  if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted
 
-	char buff[2048];
+  char buff[2048];
   int len;
 
   // figure out current mapping
@@ -62,27 +62,27 @@ int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
   }
   len += os_sprintf(buff+len, "\n] }");
 
-	jsonHeader(connData, 200);
-	httpdSend(connData, buff, len);
-	return HTTPD_CGI_DONE;
+  jsonHeader(connData, 200);
+  httpdSend(connData, buff, len);
+  return HTTPD_CGI_DONE;
 }
 
 // Cgi to change choice of pin assignments
 int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
-	if (connData->conn==NULL) {
-		return HTTPD_CGI_DONE; // Connection aborted
-	}
+  if (connData->conn==NULL) {
+    return HTTPD_CGI_DONE; // Connection aborted
+  }
 
   char buff[128];
-	int len = httpdFindArg(connData->getArgs, "map", buff, sizeof(buff));
-	if (len <= 0) {
-	  jsonHeader(connData, 400);
+  int len = httpdFindArg(connData->getArgs, "map", buff, sizeof(buff));
+  if (len <= 0) {
+    jsonHeader(connData, 400);
     return HTTPD_CGI_DONE;
   }
 
   int m = atoi(buff);
-	if (m < 0 || m >= num_map_names) {
-	  jsonHeader(connData, 400);
+  if (m < 0 || m >= num_map_names) {
+    jsonHeader(connData, 400);
     return HTTPD_CGI_DONE;
   }
 
@@ -106,17 +106,17 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
     httpdEndHeaders(connData);
     httpdSend(connData, "Failed to save config", -1);
   }
-	return HTTPD_CGI_DONE;
+  return HTTPD_CGI_DONE;
 }
 
 int ICACHE_FLASH_ATTR cgiPins(HttpdConnData *connData) {
-	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
-	if (connData->requestType == HTTPD_METHOD_GET) {
-		return cgiPinsGet(connData);
-	} else if (connData->requestType == HTTPD_METHOD_POST) {
-		return cgiPinsSet(connData);
-	} else {
-		jsonHeader(connData, 404);
-		return HTTPD_CGI_DONE;
-	}
+  if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+  if (connData->requestType == HTTPD_METHOD_GET) {
+    return cgiPinsGet(connData);
+  } else if (connData->requestType == HTTPD_METHOD_POST) {
+    return cgiPinsSet(connData);
+  } else {
+    jsonHeader(connData, 404);
+    return HTTPD_CGI_DONE;
+  }
 }

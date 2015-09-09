@@ -26,6 +26,28 @@ Many thanks to https://github.com/brunnels for contributions around the espduino
 For quick support and questions:
 [![Chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jeelabs/esp-link?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
+Esp-link uses
+-------------
+The simplest use of esp-link is as a transparent serial to wifi bridge. You can flash an attached
+uC over wifi and you can watch the uC's serial debug output by connecting to port 23 or looking
+at the uC Console web page.
+
+The next level is to use the outbound connectivity of esp-link in the uC code. For example, the
+uC can use REST requests to services like thingspeak.com to send sensor values that then get
+stored and plotted by the external service.
+The uC can also use REST requests to retrieve simple configuration
+information or push other forms of notifications. (MQTT functionality is forthcoming.)
+
+An additional option is to add code to esp-link to customize it and put all the communication
+code into esp-link and only keep simple sensor/actuator control in the attached uC. In this
+mode the attached uC sends custom commands to esp-link with sensor/acturator info and
+registers a set of callbacks with esp-link that control sensors/actuators. This way, custom
+commands in esp-link can receive MQTT messages, make simple callbacks into the uC to get sensor
+values or change actuators, and then respond back with MQTT. The way this is architected is that
+the attached uC registers callbacks at start-up such that the code in the esp doesn't need to 
+know which exact sensors/actuators the attached uC has, it learns thta through the initial
+callback registration.
+
 Eye Candy
 ---------
 These screen shots show the Home page, the Wifi configuration page, the console for the
@@ -237,7 +259,22 @@ The attached micro-controller can open outbound TCP connections using a simple
 [serial protocol](https://gist.github.com/tve/a46c44bf1f6b42bc572e).
 More info and sample code forthcoming...
 
+Outbound HTTP REST requests
+---------------------------
+The V2 versions of esp-link support the espduino SLIP protocol that supports simple outbound
+HTTP REST requests. The SLIP protocol consists of commands with binary arguments sent from the
+attached microcontroller to the esp8266, which then performs the command and responds back.
+The responses back use a callback address in the attached microcontroller code, i.e., the
+command sent by the uC contains a callback address and the response from the esp8266 starts
+with that callback address. This enables asynchronous communication where esp-link can notify the
+uC when requests complete or when other actions happen, such as wifi connectivity status changes.
+Support for MQTT is forthcoming.
+
+You can find a demo sketch in a fork of the espduino library at
+https://github.com/tve/espduino in the
+[examples/demo folder](https://github.com/tve/espduino/tree/master/espduino/examples/demo).
+
 Contact
 -------
 If you find problems with esp-link, please create a github issue. If you have a question, please
-use the gitter link at the top of this page.
+use the gitter chat link at the top of this page.
