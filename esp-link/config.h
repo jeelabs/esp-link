@@ -16,6 +16,11 @@ typedef struct {
   uint8_t  swap_uart;                  // swap uart0 to gpio 13&15
   uint8_t  tcp_enable, rssi_enable;    // TCP client settings
   char     api_key[48];                // RSSI submission API key (Grovestreams for now)
+  uint8_t  slip_enable, mqtt_enable,   // SLIP protocol, MQTT client
+           mqtt_status_enable;         // MQTT status reporting
+  uint16_t mqtt_port;
+  char     mqtt_hostname[32], mqtt_client[48], mqtt_username[32], mqtt_password[32];
+  char     mqtt_status_topic[32];
 } FlashConfig;
 extern FlashConfig flashConfig;
 

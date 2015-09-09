@@ -23,7 +23,7 @@
 #include "user_interface.h"
 #include "uart.h"
 
-#define recvTaskPrio        0
+#define recvTaskPrio        1
 #define recvTaskQueueLen    64
 
 // UartDev is defined and initialized in rom code.

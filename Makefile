@@ -157,9 +157,9 @@ ifneq (,$(findstring rest,$(MODULES)))
 endif
 
 # which modules (subdirectories) of the project to include in compiling
-LIBRARIES_DIR = libraries
+LIBRARIES_DIR	= libraries
 MODULES		   = espfs httpd user serial cmd mqtt esp-link
-MODULES	    += $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
+MODULES			+= $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
 EXTRA_INCDIR = include . include/json
 
 # libraries used in this project, mainly provided by the SDK
@@ -184,7 +184,7 @@ LD_SCRIPT2	:= build/eagle.esphttpd2.v6.ld
 
 # various paths from the SDK used in this project
 SDK_LIBDIR		= lib
-SDK_LDDIR			= ld
+SDK_LDDIR		= ld
 SDK_INCDIR		= include include/json
 SDK_TOOLSDIR	= tools
 
@@ -192,8 +192,8 @@ SDK_TOOLSDIR	= tools
 CC		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
 AR		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-ar
 LD		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
-OBJCP := $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objcopy
-OBJDP := $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objdump
+OBJCP	:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objcopy
+OBJDP	:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objdump
 
 
 ####
@@ -231,7 +231,7 @@ CFLAGS		+= -DGZIP_COMPRESSION
 endif
 
 ifeq ("$(CHANGE_TO_STA)","yes")
-CFLAGS          += -DCHANGE_TO_STA
+CFLAGS		+= -DCHANGE_TO_STA
 endif
 
 vpath %.c $(SRC_DIR)
@@ -373,8 +373,8 @@ release: all
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user2.bin | cut -b 1-80
 	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
 		   "$(SDK_BASE)/bin/boot_v1.4(b1).bin" wiflash release/esp-link-$(BRANCH)
-	$(Q) tar zcf esp-link-$(BRANCH)-$(FLASH_SIZE).tgz -C release esp-link-$(BRANCH)
-	$(Q) echo "Release file: esp-link-$(BRANCH)-$(FLASH_SIZE).tgz"
+	$(Q) tar zcf esp-link-$(BRANCH).tgz -C release esp-link-$(BRANCH)
+	$(Q) echo "Release file: esp-link-$(BRANCH).tgz"
 	$(Q) rm -rf release
 
 clean:
