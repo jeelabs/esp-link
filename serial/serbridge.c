@@ -14,6 +14,7 @@
 #include "serled.h"
 #include "config.h"
 #include "console.h"
+#include "slip.h"
 #include "cmd.h"
 
 static struct espconn serbridgeConn;
@@ -256,6 +257,19 @@ console_process(char *buf, short len) {
       espbuffsend(&connData[i], buf, len);
     }
   }
+}
+
+// callback with a buffer of characters that have arrived on the uart
+void ICACHE_FLASH_ATTR
+serbridgeUartCb(char *buf, short length) {
+  if (!flashConfig.slip_enable || slip_disabled > 0) {
+    //os_printf("SLIP: disabled got %d\n", length);
+    console_process(buf, length);
+  } else {
+    slip_parse_buf(buf, length);
+  }
+
+  serledFlash(50); // short blink on serial LED
 }
 
 //callback after the data are sent

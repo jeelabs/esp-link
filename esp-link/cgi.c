@@ -18,15 +18,63 @@ Some random cgi routines.
 #include "cgi.h"
 #include "espfs.h"
 
-void ICACHE_FLASH_ATTR
-jsonHeader(HttpdConnData *connData, int code) {
+void noCacheHeaders(HttpdConnData *connData, int code) {
   httpdStartResponse(connData, code);
   httpdHeader(connData, "Cache-Control", "no-cache, no-store, must-revalidate");
   httpdHeader(connData, "Pragma", "no-cache");
   httpdHeader(connData, "Expires", "0");
+}
+
+void ICACHE_FLASH_ATTR
+jsonHeader(HttpdConnData *connData, int code) {
+  noCacheHeaders(connData, code);
   httpdHeader(connData, "Content-Type", "application/json");
   httpdEndHeaders(connData);
 }
+
+void ICACHE_FLASH_ATTR
+errorResponse(HttpdConnData *connData, int code, char *message) {
+  noCacheHeaders(connData, code);
+  httpdEndHeaders(connData);
+  httpdSend(connData, message, -1);
+  os_printf("HTTP %d error response: \"%s\"\n", code, message);
+}
+
+// look for the HTTP arg 'name' and store it at 'config' with max length 'max_len' (incl
+// terminating zero), returns -1 on error, 0 if not found, 1 if found and OK
+int ICACHE_FLASH_ATTR
+getStringArg(HttpdConnData *connData, char *name, char *config, int max_len) {
+  char buff[128];
+  int len = httpdFindArg(connData->getArgs, name, buff, sizeof(buff));
+  if (len < 0) return 0; // not found, skip
+  if (len >= max_len) {
+    os_sprintf(buff, "Value for %s too long (%d > %d allowed)", name, len, max_len-1);
+    errorResponse(connData, 400, buff);
+    return -1;
+  }
+  strcpy(config, buff);
+  return 1;
+}
+
+int ICACHE_FLASH_ATTR
+getBoolArg(HttpdConnData *connData, char *name, bool*config) {
+  char buff[64];
+  int len = httpdFindArg(connData->getArgs, name, buff, sizeof(buff));
+  if (len < 0) return 0; // not found, skip
+
+  if (strcmp(buff, "1") == 0 || strcmp(buff, "true") == 0) {
+    *config = true;
+    return 1;
+  }
+  if (strcmp(buff, "0") == 0 || strcmp(buff, "false") == 0) {
+    *config = false;
+    return 1;
+  }
+  os_sprintf(buff, "Invalid value for %s", name);
+  errorResponse(connData, 400, buff);
+  return -1;
+}
+
 
 #define TOKEN(x) (os_strcmp(token, x) == 0)
 #if 0

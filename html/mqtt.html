@@ -71,18 +71,17 @@
               <div class="pure-form-stacked">
                 <label>Topic prefix</label>
                 <input type="text" name="mqtt-status-topic"/>
+                Suffixes: rssi, heap-free, ...
               </div>
+              <button id="mqtt-status-button" type="submit" class="pure-button button-primary">
+                Update status settings!
+              </button>
             </form>
           </div>
           <div class="card">
             <h1>REST</h1>
             <p>REST requests are enabled as soon as SLIP is enabled.
             There are no REST-specific settings.</p>
-            <!-- div id="rest-spinner" class="spinner spinner-small"></div>
-            <div class="form-horizontal">
-              <input type="checkbox" name="tcp-enable"/>
-              <label>Enable REST client</label>
-            </div -->
           </div>
         </div>
       </div>
@@ -94,6 +93,7 @@
 onLoad(function() {
   fetchMqtt();
   bnd($("#mqtt-form"), "submit", changeMqtt);
+  bnd($("#mqtt-status-form"), "submit", changeMqttStatus);
 });
 </script>
 </body></html>

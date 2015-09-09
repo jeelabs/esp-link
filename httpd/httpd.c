@@ -191,7 +191,7 @@ int ICACHE_FLASH_ATTR httpdFindArg(char *line, char *arg, char *buff, int buffLe
 		p=(char*)os_strstr(p, "&");
 		if (p!=NULL) p+=1;
 	}
-	os_printf("Finding %s in %s: Not found :/\n", arg, line);
+	//os_printf("Finding %s in %s: Not found :/\n", arg, line);
 	return -1; //not found
 }
 
