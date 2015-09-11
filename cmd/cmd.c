@@ -2,10 +2,8 @@
 //
 // Adapted from: github.com/tuanpmt/esp_bridge, Created on: Jan 9, 2015, Author: Minh
 
-#include "esp8266.h"
 #include "cmd.h"
 #include "crc16.h"
-#include "serbridge.h"
 #include "uart.h"
 
 extern const CmdList commands[];

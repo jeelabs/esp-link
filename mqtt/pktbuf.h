@@ -24,6 +24,4 @@ PktBuf *PktBuf_Shift(PktBuf *headBuf);
 // Shift first buffer off queue, free it, return new head
 PktBuf *PktBuf_ShiftFree(PktBuf *headBuf);
 
-void PktBuf_Print(PktBuf *buf);
-
 #endif

@@ -35,7 +35,9 @@ void ICACHE_FLASH_ATTR serledInit(void) {
     gpio_output_set(0, 0, (1<<pin), 0);
     serledFlash(1000); // turn it on for 1 second
   }
+#ifdef SERLED_DBG
 	os_printf("SER led=%d\n", pin);
+#endif
 }
 
 // Make a pin be GPIO, i.e. set the mux so the pin has the gpio function

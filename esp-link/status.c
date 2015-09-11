@@ -4,8 +4,9 @@
 #include "config.h"
 #include "serled.h"
 #include "cgiwifi.h"
-#include "tcpclient.h"
-
+#ifdef TCPCLIENT
+#include <tcpclient.h>
+#endif
 //===== "CONN" LED status indication
 
 static ETSTimer ledTimer;
@@ -66,6 +67,8 @@ void ICACHE_FLASH_ATTR statusWifiUpdate(uint8_t state) {
   os_timer_arm(&ledTimer, 500, 0);
 }
 
+#ifdef TCPCLIENT
+
 //===== RSSI Status update sent to GroveStreams
 
 #define RSSI_INTERVAL (60*1000)
@@ -112,6 +115,7 @@ static void ICACHE_FLASH_ATTR rssiTimerCb(void *v) {
   }
   tcpClientSendPush(chan);
 }
+#endif // TCPCLIENT
 
 //===== Init status stuff
 
@@ -120,15 +124,20 @@ void ICACHE_FLASH_ATTR statusInit(void) {
     makeGpio(flashConfig.conn_led_pin);
     setLed(1);
   }
+#ifdef STATUS_DBG
   os_printf("CONN led=%d\n", flashConfig.conn_led_pin);
+#endif
 
   os_timer_disarm(&ledTimer);
   os_timer_setfn(&ledTimer, ledTimerCb, NULL);
   os_timer_arm(&ledTimer, 2000, 0);
-
+#ifdef TCPCLIENT
   os_timer_disarm(&rssiTimer);
   os_timer_setfn(&rssiTimer, rssiTimerCb, NULL);
   os_timer_arm(&rssiTimer, RSSI_INTERVAL, 1); // recurring timer
+#endif // TCPCLIENT
 }
+
+
 
 

@@ -55,8 +55,8 @@ typedef enum {
   CMD_REST_REQUEST,
   CMD_REST_SETHEADER,
   CMD_REST_EVENTS,
-  CMD_ADD_CALLBACK,   // 15
-  CMD_SENSOR_EVENTS
+  CMD_CB_ADD,         // 15
+  CMD_CB_EVENTS
 } CmdName;
 
 typedef uint32_t (*cmdfunc_t)(CmdPacket *cmd);

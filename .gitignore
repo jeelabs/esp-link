@@ -15,3 +15,4 @@ esp-link.opensdf
 esp-link.sdf
 espfs/mkespfsimage/mman-win32/libmman.a
 .localhistory/
+tools/

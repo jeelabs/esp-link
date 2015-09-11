@@ -41,7 +41,7 @@ const CmdList commands[] = {
   {CMD_REST_REQUEST,    REST_Request},
   {CMD_REST_SETHEADER,  REST_SetHeader},
 #endif
-  { CMD_CB_ADD,         CMD_AddCallback },
+  {CMD_CB_ADD,          CMD_AddCallback},
   {CMD_NULL,            NULL}
 };
 
@@ -52,14 +52,18 @@ cmdCallback callbacks[MAX_CALLBACKS]; // cleared in CMD_Reset
 // Command handler for IsReady (healthcheck) command
 static uint32_t ICACHE_FLASH_ATTR
 CMD_IsReady(CmdPacket *cmd) {
+#ifdef CMD_DBG
   os_printf("CMD_IsReady: Check ready\n");
+#endif
   return 1;
 }
 
 // Command handler for Null command
 static uint32_t ICACHE_FLASH_ATTR
 CMD_Null(CmdPacket *cmd) {
+#ifdef CMD_DBG
   os_printf("CMD_Null: NULL/unsupported command\n");
+#endif
   return 1;
 }
 
@@ -68,7 +72,9 @@ CMD_Null(CmdPacket *cmd) {
 // uC.
 static uint32_t ICACHE_FLASH_ATTR
 CMD_Reset(CmdPacket *cmd) {
+#ifdef CMD_DBG
   os_printf("CMD_Reset\n");
+#endif
   // clear callbacks table
   os_memset(callbacks, 0, sizeof(callbacks));
   return 1;
@@ -83,7 +89,9 @@ CMD_AddCb(char* name, uint32_t cb) {
     if (os_strcmp(callbacks[i].name, name) == 0 || callbacks[i].name[0] == '\0') {
       os_strncpy(callbacks[i].name, name, sizeof(callbacks[i].name));
       callbacks[i].callback = cb;
+#ifdef CMD_DBG
       os_printf("CMD_AddCb: cb %s added at index %d\n", callbacks[i].name, i);
+#endif
       return 1;
     }
   }
@@ -99,7 +107,9 @@ CMD_GetCbByName(char* name) {
     //  (void *)callbacks[i].callback);
     // if callback doesn't exist or it's null
     if (os_strcmp(callbacks[i].name, checkname) == 0) {
+#ifdef CMD_DBG
       os_printf("CMD_GetCbByName: cb %s found at index %d\n", callbacks[i].name, i);
+#endif
       return &callbacks[i];
     }
   }
@@ -111,7 +121,9 @@ CMD_GetCbByName(char* name) {
 static void ICACHE_FLASH_ATTR
 CMD_WifiCb(uint8_t wifiStatus) {
   if (wifiStatus != lastWifiStatus){
+#ifdef CMD_DBG
     os_printf("CMD_WifiCb: wifiStatus=%d\n", wifiStatus);
+#endif
     lastWifiStatus = wifiStatus;
     cmdCallback *wifiCb = CMD_GetCbByName("wifiCb");
     if ((uint32_t)wifiCb->callback != -1) {
@@ -128,7 +140,9 @@ static uint32_t ICACHE_FLASH_ATTR
 CMD_WifiConnect(CmdPacket *cmd) {
   CmdRequest req;
   CMD_Request(&req, cmd);
+#ifdef CMD_DBG
   os_printf("CMD_WifiConnect: setup argc=%ld\n", CMD_GetArgc(&req));
+#endif
 	if(cmd->argc != 2 || cmd->callback == 0)
 		return 0;
 
@@ -148,7 +162,9 @@ static uint32_t ICACHE_FLASH_ATTR
 CMD_AddCallback(CmdPacket *cmd) {
   CmdRequest req;
   CMD_Request(&req, cmd);
+#ifdef CMD_DBG
   os_printf("CMD_AddCallback: setup argc=%ld\n", CMD_GetArgc(&req));
+#endif
   if (cmd->argc != 1 || cmd->callback == 0)
     return 0;
 
@@ -157,11 +173,15 @@ CMD_AddCallback(CmdPacket *cmd) {
 
   // get the sensor name
   len = CMD_ArgLen(&req);
+#ifdef CMD_DBG
   os_printf("CMD_AddCallback: name len=%d\n", len);
+#endif
   if (len > 15) return 0; // max size of name is 15 characters
   if (CMD_PopArg(&req, (uint8_t *)name, len)) return 0;
   name[len] = 0;
+#ifdef CMD_DBG
   os_printf("CMD_AddCallback: name=%s\n", name);
+#endif
 
   return CMD_AddCb(name, (uint32_t)cmd->callback); // save the sensor callback
 }

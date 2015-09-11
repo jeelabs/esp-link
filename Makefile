@@ -32,7 +32,7 @@ ESPBAUD		?= 230400
 # --------------- chipset configuration   ---------------
 
 # Pick your flash size: "512KB", "1MB", or "4MB"
-FLASH_SIZE ?= 512KB
+FLASH_SIZE ?= 4MB
 
 ifeq ("$(FLASH_SIZE)","512KB")
 # Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
@@ -70,7 +70,7 @@ ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless set
 endif
 
 # hostname or IP address for wifi flashing
-ESP_HOSTNAME        ?= esp-link
+ESP_HOSTNAME        ?= esp-nodemcu
 
 # The pin assignments below are used when the settings in flash are invalid, they
 # can be changed via the web interface
@@ -122,15 +122,20 @@ CHANGE_TO_STA ?= yes
 #Static gzipping is disabled by default.
 GZIP_COMPRESSION ?= yes
 
-# If COMPRESS_W_YUI is set to "yes" then the static css and js files will be compressed with
-# yui-compressor. This option works only when GZIP_COMPRESSION is set to "yes".
+# If COMPRESS_W_HTMLCOMPRESSOR is set to "yes" then the static css and js files will be compressed with
+# htmlcompressor and yui-compressor. This option works only when GZIP_COMPRESSION is set to "yes".
+# https://code.google.com/p/htmlcompressor/#For_Non-Java_Projects
 # http://yui.github.io/yuicompressor/
-#Disabled by default.
-COMPRESS_W_YUI ?= yes
+# enabled by default.
+COMPRESS_W_HTMLCOMPRESSOR ?= yes
+HTML-COMPRESSOR ?= htmlcompressor-1.5.3.jar
 YUI-COMPRESSOR ?= yuicompressor-2.4.8.jar
 
+HTML_PATH = $(abspath ./html)/
+WIFI_PATH = $(HTML_PATH)wifi/
+
 # Optional Modules
-MODULES ?=
+MODULES ?= mqtt rest
 
 # -------------- End of config options -------------
 
@@ -144,7 +149,6 @@ TARGET		= httpd
 
 # espressif tool to concatenate sections for OTA upload using bootloader v1.2+
 APPGEN_TOOL	?= gen_appbin.py
-
 CFLAGS=
 
 # set defines for optional modules
@@ -156,19 +160,23 @@ ifneq (,$(findstring rest,$(MODULES)))
 	CFLAGS		+= -DREST
 endif
 
+ifneq (,$(findstring tcpclient,$(MODULES)))
+	CFLAGS		+= -DTCPCLIENT
+endif
+
 # which modules (subdirectories) of the project to include in compiling
-LIBRARIES_DIR	= libraries
-MODULES		   = espfs httpd user serial cmd mqtt esp-link
+LIBRARIES_DIR 	= libraries
+MODULES		  	+= espfs httpd user serial cmd esp-link
 MODULES			+= $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
-EXTRA_INCDIR = include . include/json
+EXTRA_INCDIR 	= include .
 
 # libraries used in this project, mainly provided by the SDK
-LIBS		= c gcc hal phy pp net80211 wpa main lwip json
+LIBS = c gcc hal phy pp net80211 wpa main lwip 
 
 # compiler flags using during compilation of source files
-CFLAGS		+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
+CFLAGS	+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
 		-nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections \
-    -Wno-unused-function \
+		-Wno-unused-function -Wno-unused-variable \
 		-D__ets__ -DICACHE_FLASH -D_STDINT_H -Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX) \
 		-DMCU_RESET_PIN=$(MCU_RESET_PIN) -DMCU_ISP_PIN=$(MCU_ISP_PIN) \
 		-DLED_CONN_PIN=$(LED_CONN_PIN) -DLED_SERIAL_PIN=$(LED_SERIAL_PIN) \
@@ -203,17 +211,17 @@ BUILD_DIR	:= $(addprefix $(BUILD_BASE)/,$(MODULES))
 SDK_LIBDIR	:= $(addprefix $(SDK_BASE)/,$(SDK_LIBDIR))
 SDK_LDDIR 	:= $(addprefix $(SDK_BASE)/,$(SDK_LDDIR))
 SDK_INCDIR	:= $(addprefix -I$(SDK_BASE)/,$(SDK_INCDIR))
-SDK_TOOLS		:= $(addprefix $(SDK_BASE)/,$(SDK_TOOLSDIR))
+SDK_TOOLS	:= $(addprefix $(SDK_BASE)/,$(SDK_TOOLSDIR))
 APPGEN_TOOL	:= $(addprefix $(SDK_TOOLS)/,$(APPGEN_TOOL))
 
-SRC		:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.c))
-OBJ		:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC)) $(BUILD_BASE)/espfs_img.o
+SRC			:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.c))
+OBJ			:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC)) $(BUILD_BASE)/espfs_img.o
 LIBS		:= $(addprefix -l,$(LIBS))
 APP_AR		:= $(addprefix $(BUILD_BASE)/,$(TARGET)_app.a)
 USER1_OUT 	:= $(addprefix $(BUILD_BASE)/,$(TARGET).user1.out)
 USER2_OUT 	:= $(addprefix $(BUILD_BASE)/,$(TARGET).user2.out)
 
-INCDIR	:= $(addprefix -I,$(SRC_DIR))
+INCDIR			:= $(addprefix -I,$(SRC_DIR))
 EXTRA_INCDIR	:= $(addprefix -I,$(EXTRA_INCDIR))
 MODULE_INCDIR	:= $(addsuffix /include,$(INCDIR))
 
@@ -275,7 +283,7 @@ $(FW_BASE)/user1.bin: $(USER1_OUT) $(FW_BASE)
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
-	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
+	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; true; fi
 
 $(FW_BASE)/user2.bin: $(USER2_OUT) $(FW_BASE)
 	$(Q) $(OBJCP) --only-section .text -O binary $(USER2_OUT) eagle.app.v6.text.bin
@@ -285,7 +293,7 @@ $(FW_BASE)/user2.bin: $(USER2_OUT) $(FW_BASE)
 	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER2_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE)
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
-	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
+	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; true; fi
 
 $(APP_AR): $(OBJ)
 	$(vecho) "AR $@"
@@ -306,35 +314,52 @@ flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
-
-yui/$(YUI-COMPRESSOR):
-	$(Q) mkdir -p yui
+	  
+tools/$(HTML-COMPRESSOR):
+	$(Q) mkdir -p tools
   ifeq ($(OS),Windows_NT)
-	cd yui; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR) -O $(YUI-COMPRESSOR)
+	cd tools; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR) -O $(YUI-COMPRESSOR)
+	cd tools; wget --no-check-certificate https://htmlcompressor.googlecode.com/files/$(HTML-COMPRESSOR) -O $(HTML-COMPRESSOR)
   else
-	cd yui; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR)
+	cd tools; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR)
+	cd tools; wget https://htmlcompressor.googlecode.com/files/$(HTML-COMPRESSOR)
   endif
 
-ifeq ("$(COMPRESS_W_YUI)","yes")
-$(BUILD_BASE)/espfs_img.o: yui/$(YUI-COMPRESSOR)
+ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
+$(BUILD_BASE)/espfs_img.o: tools/$(HTML-COMPRESSOR)
 endif
 
 $(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
-	$(Q) rm -rf html_compressed;
-	$(Q) cp -r html html_compressed;
-	$(Q) for file in `find html_compressed -type f -name "*.htm*"`; do \
-			cat html_compressed/head- $$file >$${file}-; \
-			mv $$file- $$file; \
-		done
-ifeq ("$(COMPRESS_W_YUI)","yes")
+	$(Q) rm -rf html_compressed; mkdir html_compressed; mkdir html_compressed/wifi;
+	$(Q) cp -r html/*.ico html_compressed;
+	$(Q) cp -r html/*.css html_compressed;
+	$(Q) cp -r html/*.js html_compressed;
+	$(Q) cp -r html/wifi/*.png html_compressed/wifi;
+	$(Q) cp -r html/wifi/*.js html_compressed/wifi;
+ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
+	$(Q) echo "Compression assets with htmlcompressor. This may take a while..."
+		$(Q) java -jar tools/$(HTML-COMPRESSOR) \
+		-t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
+		-o $(abspath ./html_compressed)/ \
+		$(HTML_PATH)head- \
+		$(HTML_PATH)*.html
+	$(Q) java -jar tools/$(HTML-COMPRESSOR) \
+		-t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
+		-o $(abspath ./html_compressed)/wifi/ \
+		$(WIFI_PATH)*.html
 	$(Q) echo "Compression assets with yui-compressor. This may take a while..."
 	$(Q) for file in `find html_compressed -type f -name "*.js"`; do \
-			java -jar yui/$(YUI-COMPRESSOR) $$file --nomunge --line-break 40 -o $$file; \
+			java -jar tools/$(YUI-COMPRESSOR) $$file -o $$file; \
 		done
 	$(Q) for file in `find html_compressed -type f -name "*.css"`; do \
-			java -jar yui/$(YUI-COMPRESSOR) $$file -o $$file; \
+			java -jar tools/$(YUI-COMPRESSOR) $$file -o $$file; \
 		done
 endif
+	$(Q) for file in `find html_compressed -type f -name "*.htm*"`; do \
+		cat html_compressed/head- $$file >$${file}-; \
+		mv $$file- $$file; \
+	done
+	$(Q) rm html_compressed/head-
 	$(Q) cd html_compressed; find . \! -name \*- | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..;
 	$(Q) ls -sl build/espfs.img
 	$(Q) cd build; $(OBJCP) -I binary -O elf32-xtensa-le -B xtensa --rename-section .data=.espfs \
@@ -384,7 +409,7 @@ clean:
 	$(Q) make -C espfs/mkespfsimage/ clean
 	$(Q) rm -rf $(FW_BASE)
 	$(Q) rm -f webpages.espfs
-ifeq ("$(COMPRESS_W_YUI)","yes")
+ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 	$(Q) rm -rf html_compressed
 endif
 

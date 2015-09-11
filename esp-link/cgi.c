@@ -16,14 +16,6 @@ Some random cgi routines.
 
 #include <esp8266.h>
 #include "cgi.h"
-static char* chipIdStr = "";
-char* ICACHE_FLASH_ATTR system_get_chip_id_str(){
-  if (os_strlen(chipIdStr) == 0) {
-    chipIdStr = (char*)os_zalloc(9);
-    os_sprintf(chipIdStr, "%06x", system_get_chip_id());
-  }
-  return chipIdStr;
-}
 
 void noCacheHeaders(HttpdConnData *connData, int code) {
 	httpdStartResponse(connData, code);
@@ -44,7 +36,9 @@ errorResponse(HttpdConnData *connData, int code, char *message) {
   noCacheHeaders(connData, code);
   httpdEndHeaders(connData);
   httpdSend(connData, message, -1);
+#ifdef CGI_DBG
   os_printf("HTTP %d error response: \"%s\"\n", code, message);
+#endif
 }
 
 // look for the HTTP arg 'name' and store it at 'config' with max length 'max_len' (incl
@@ -58,7 +52,7 @@ getStringArg(HttpdConnData *connData, char *name, char *config, int max_len) {
     os_sprintf(buff, "Value for %s too long (%d > %d allowed)", name, len, max_len-1);
     errorResponse(connData, 400, buff);
     return -1;
-      }
+  }
   strcpy(config, buff);
   return 1;
 }

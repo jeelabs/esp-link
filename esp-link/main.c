@@ -30,7 +30,7 @@
 #include "log.h"
 #include <gpio.h>
 
-#define SHOW_HEAP_USE
+//#define SHOW_HEAP_USE
 
 //Function that tells the authentication system what users/passwords live on the system.
 //This is disabled in the default build; if you want to try it, enable the authBasic line in
@@ -96,9 +96,6 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
 };
-
-
-//#define SHOW_HEAP_USE
 
 #ifdef SHOW_HEAP_USE
 static ETSTimer prHeapTimer;

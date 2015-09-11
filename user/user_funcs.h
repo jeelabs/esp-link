@@ -7,4 +7,5 @@ bool pwmPinStateForSchedule(uint8_t onHour, uint8_t onMinute, uint8_t offHour, u
 const char* byteToBin(uint8_t num);
 const uint8_t binToByte(char* bin_str);
 
+
 #endif // _USER_FUNCS_H_
