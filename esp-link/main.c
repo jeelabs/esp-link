@@ -117,12 +117,17 @@ extern uint32_t _binary_espfs_img_start;
 static char *rst_codes[] = {
   "normal", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", "external",
 };
+static char *flash_maps[] = {
+  "512KB:256/256", "256KB", "1MB:512/512", "2MB:512/512", "4MB:512/512",
+  "2MB:1024/1024", "4MB:1024/1024"
+};
 
 # define VERS_STR_STR(V) #V
 # define VERS_STR(V) VERS_STR_STR(V)
 char* esp_link_version = VERS_STR(VERSION);
 
 extern void app_init(void);
+extern void mqtt_client_init(void);
 
 // Main routine to initialize esp-link.
 void user_init(void) {
@@ -167,9 +172,13 @@ void user_init(void) {
   os_printf("exccause=%d epc1=0x%x epc2=0x%x epc3=0x%x excvaddr=0x%x depc=0x%x\n",
     rst_info->exccause, rst_info->epc1, rst_info->epc2, rst_info->epc3,
     rst_info->excvaddr, rst_info->depc);
-  os_printf("Flash map %d, chip %08X\n", system_get_flash_size_map(), spi_flash_get_id());
+  uint32_t fid = spi_flash_get_id();
+  os_printf("Flash map %s, manuf 0x%02lX chip 0x%04lX\n", flash_maps[system_get_flash_size_map()],
+      fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
 
   os_printf("** esp-link ready\n");
+
+  mqtt_client_init();
 
   app_init();
 }

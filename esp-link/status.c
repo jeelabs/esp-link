@@ -4,7 +4,9 @@
 #include "config.h"
 #include "serled.h"
 #include "cgiwifi.h"
-#include "tcpclient.h"
+#include "mqtt.h"
+
+extern MQTT_Client mqttClient;
 
 //===== "CONN" LED status indication
 
@@ -66,51 +68,36 @@ void ICACHE_FLASH_ATTR statusWifiUpdate(uint8_t state) {
   os_timer_arm(&ledTimer, 500, 0);
 }
 
-//===== RSSI Status update sent to GroveStreams
+//===== MQTT Status update
 
-#define RSSI_INTERVAL (60*1000)
+// Every minute...
+#define MQTT_STATUS_INTERVAL (60*1000)
 
-static ETSTimer rssiTimer;
+static ETSTimer mqttStatusTimer;
 
-#define GS_STREAM  "rssi"
+static int ICACHE_FLASH_ATTR
+mqttStatusMsg(char *buf) {
+  sint8 rssi = wifi_station_get_rssi();
+  if (rssi > 0) rssi = 0; // not connected or other error
+  //os_printf("timer rssi=%d\n", rssi);
+
+  // compose MQTT message
+  return os_sprintf(buf,
+      "{\"rssi\":%d, \"heap_free\":%ld}",
+      rssi, (unsigned long)system_get_free_heap_size());
+}
 
 // Timer callback to send an RSSI update to a monitoring system
-static void ICACHE_FLASH_ATTR rssiTimerCb(void *v) {
-  if (!flashConfig.rssi_enable || !flashConfig.tcp_enable || flashConfig.api_key[0]==0)
+static void ICACHE_FLASH_ATTR mqttStatusCb(void *v) {
+  if (!flashConfig.mqtt_status_enable || os_strlen(flashConfig.mqtt_status_topic) == 0 ||
+      mqttClient.connState != MQTT_CONNECTED)
     return;
 
-  sint8 rssi = wifi_station_get_rssi();
-  os_printf("timer rssi=%d\n", rssi);
-  if (rssi >= 0) return; // not connected or other error
+  char buf[128];
+  mqttStatusMsg(buf);
+  MQTT_Publish(&mqttClient, flashConfig.mqtt_status_topic, buf, 1, 0);
 
-  // compose TCP command
-  uint8_t chan = MAX_TCP_CHAN-1;
-  tcpClientCommand(chan, 'T', "grovestreams.com:80");
-
-  // compose http header
-  char buf[1024];
-  int hdrLen = os_sprintf(buf,
-      "PUT /api/feed?api_key=%s HTTP/1.0\r\n"
-      "Content-Type: application/json\r\n"
-      "Content-Length: XXXXX\r\n\r\n",
-      flashConfig.api_key);
-
-  // http body
-  int dataLen = os_sprintf(buf+hdrLen,
-      "[{\"compId\":\"%s\", \"streamId\":\"%s\", \"data\":%d}]\r",
-      flashConfig.hostname, GS_STREAM, rssi);
-  buf[hdrLen+dataLen++] = 0;
-  buf[hdrLen+dataLen++] = '\n';
-
-  // hackish way to fill in the content-length
-  os_sprintf(buf+hdrLen-9, "%5d", dataLen);
-  buf[hdrLen-4] = '\r'; // fix-up the \0 inserted by sprintf (hack!)
-
-  // send the request off and forget about it...
-  for (short i=0; i<hdrLen+dataLen; i++) {
-    tcpClientSendChar(chan, buf[i]);
-  }
-  tcpClientSendPush(chan);
+  //espconn_disconnect(mqttClient.pCon);
 }
 
 //===== Init status stuff
@@ -126,9 +113,9 @@ void ICACHE_FLASH_ATTR statusInit(void) {
   os_timer_setfn(&ledTimer, ledTimerCb, NULL);
   os_timer_arm(&ledTimer, 2000, 0);
 
-  os_timer_disarm(&rssiTimer);
-  os_timer_setfn(&rssiTimer, rssiTimerCb, NULL);
-  os_timer_arm(&rssiTimer, RSSI_INTERVAL, 1); // recurring timer
+  os_timer_disarm(&mqttStatusTimer);
+  os_timer_setfn(&mqttStatusTimer, mqttStatusCb, NULL);
+  os_timer_arm(&mqttStatusTimer, MQTT_STATUS_INTERVAL, 1); // recurring timer
 }
 
 

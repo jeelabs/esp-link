@@ -1,14 +1,39 @@
 #include <esp8266.h>
 #include "cgiwifi.h"
+#include "config.h"
 #include "mqtt.h"
 
-// initialize the custom stuff that goes beyond esp-link
-void app_init() {
+MQTT_Client mqttClient;
 
+static ETSTimer mqttTimer;
+
+static int once = 0;
+static void ICACHE_FLASH_ATTR mqttTimerCb(void *arg) {
+  if (once++ > 0) return;
+  MQTT_Init(&mqttClient, flashConfig.mqtt_hostname, flashConfig.mqtt_port, 0, 2,
+      flashConfig.mqtt_client, flashConfig.mqtt_username, flashConfig.mqtt_password, 60);
+  MQTT_Connect(&mqttClient);
+  MQTT_Subscribe(&mqttClient, "system/time", 0);
 }
 
-#if 0
+void ICACHE_FLASH_ATTR
+wifiStateChangeCb(uint8_t status)
+{
+  if (status == wifiGotIP) {
+    os_timer_disarm(&mqttTimer);
+    os_timer_setfn(&mqttTimer, mqttTimerCb, NULL);
+    os_timer_arm(&mqttTimer, 200, 0);
+  }
+}
 
+
+// initialize the custom stuff that goes beyond esp-link
+void mqtt_client_init() {
+  wifiAddStateChangeCb(wifiStateChangeCb);
+}
+
+
+#if 0
 MQTT_Client mqttClient;
 
 void ICACHE_FLASH_ATTR

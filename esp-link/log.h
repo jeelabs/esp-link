@@ -12,4 +12,6 @@ void log_uart(bool enable);
 int ajaxLog(HttpdConnData *connData);
 int ajaxLogDbg(HttpdConnData *connData);
 
+void dumpMem(void *addr, int len);
+
 #endif
