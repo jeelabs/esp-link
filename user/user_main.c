@@ -2,6 +2,8 @@
 #include "cgiwifi.h"
 #include "mqtt.h"
 
+#if 0
+
 MQTT_Client mqttClient;
 
 static ETSTimer mqttTimer;
@@ -31,7 +33,6 @@ void app_init() {
 }
 
 
-#if 0
 MQTT_Client mqttClient;
 
 void ICACHE_FLASH_ATTR

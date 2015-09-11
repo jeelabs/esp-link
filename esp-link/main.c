@@ -127,6 +127,7 @@ static char *flash_maps[] = {
 char* esp_link_version = VERS_STR(VERSION);
 
 extern void app_init(void);
+extern void mqtt_client_init(void);
 
 // Main routine to initialize esp-link.
 void user_init(void) {
@@ -176,6 +177,8 @@ void user_init(void) {
       fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
 
   os_printf("** esp-link ready\n");
+
+  mqtt_client_init();
 
   app_init();
 }
