@@ -41,6 +41,8 @@
 #include "pktbuf.h"
 #include "mqtt.h"
 
+extern void dumpMem(void *buf, int len);
+
 // HACK
 sint8 espconn_secure_connect(struct espconn *espconn) {
   return espconn_connect(espconn);
@@ -148,7 +150,7 @@ mqtt_tcpclient_recv(void* arg, char* pdata, unsigned short len) {
       pending_msg_id = mqtt_get_id(client->pending_buffer->data, client->pending_buffer->filled);
     }
 
-    os_printf("MQTT: Recv type=%s id=%04X len=%d; Pend type=%s id=%02X\n",
+    os_printf("MQTT: Recv type=%s id=%04X len=%d; Pend type=%s id=%04X\n",
         mqtt_msg_type[msg_type], msg_id, msg_len, mqtt_msg_type[pending_msg_type], pending_msg_id);
 
     switch (msg_type) {
@@ -553,8 +555,12 @@ MQTT_Publish(MQTT_Client* client, const char* topic, const char* data, uint8_t q
     return FALSE;
   }
   client->mqtt_connection.message_id = msg.message_id;
+  if (msg.message.data != buf->data)
+    os_memcpy(buf->data, msg.message.data, msg.message.length);
+  buf->filled = msg.message.length;
 
   os_printf("MQTT: Publish, topic: \"%s\", length: %d\n", topic, msg.message.length);
+  dumpMem(buf, buf_len);
   client->msgQueue = PktBuf_Push(client->msgQueue, buf);
 
   if (!client->sending && client->pending_buffer == NULL) {
