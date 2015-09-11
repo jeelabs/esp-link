@@ -11,8 +11,7 @@ static int once = 0;
 static void ICACHE_FLASH_ATTR mqttTimerCb(void *arg) {
   if (once++ > 0) return;
   MQTT_Init(&mqttClient, flashConfig.mqtt_hostname, flashConfig.mqtt_port, 0, 2,
-      flashConfig.mqtt_client, flashConfig.mqtt_username, flashConfig.mqtt_password,
-      60, 1);
+      flashConfig.mqtt_client, flashConfig.mqtt_username, flashConfig.mqtt_password, 60);
   MQTT_Connect(&mqttClient);
   MQTT_Subscribe(&mqttClient, "system/time", 0);
 }

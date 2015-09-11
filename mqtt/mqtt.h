@@ -96,7 +96,7 @@ typedef struct {
 void MQTT_Init(MQTT_Client* mqttClient, char* host, uint32 port,
     uint8_t security, uint8_t sendTimeout,
     char* client_id, char* client_user, char* client_pass,
-    uint8_t keepAliveTime, uint8_t cleanSession);
+    uint8_t keepAliveTime);
 
 // Set Last Will Topic on client, must be called before MQTT_InitConnection
 void MQTT_InitLWT(MQTT_Client* mqttClient, char* will_topic, char* will_msg,

@@ -325,6 +325,7 @@ mqtt_timer(void* arg) {
         client->msgQueue = PktBuf_Unshift(client->msgQueue, client->pending_buffer);
         client->pending_buffer = NULL;
       }
+      client->connect_info.clean_session = 0; // ask server to keep state
       MQTT_Connect(client);
     }
   }
@@ -607,7 +608,7 @@ MQTT_Subscribe(MQTT_Client* client, char* topic, uint8_t qos) {
 void ICACHE_FLASH_ATTR
 MQTT_Init(MQTT_Client* mqttClient, char* host, uint32 port, uint8_t security, uint8_t sendTimeout,
     char* client_id, char* client_user, char* client_pass,
-    uint8_t keepAliveTime, uint8_t cleanSession) {
+    uint8_t keepAliveTime) {
   os_printf("MQTT_Init\n");
 
   os_memset(mqttClient, 0, sizeof(MQTT_Client));
@@ -633,7 +634,7 @@ MQTT_Init(MQTT_Client* mqttClient, char* host, uint32 port, uint8_t security, ui
   os_strcpy(mqttClient->connect_info.password, client_pass);
 
   mqttClient->connect_info.keepalive = keepAliveTime;
-  mqttClient->connect_info.clean_session = cleanSession;
+  mqttClient->connect_info.clean_session = 1;
 
   mqttClient->in_buffer = (uint8_t *)os_zalloc(MQTT_MAX_RCV_MESSAGE);
   mqttClient->in_buffer_size = MQTT_MAX_RCV_MESSAGE;
@@ -708,7 +709,6 @@ MQTT_Connect(MQTT_Client* mqttClient) {
   mqttClient->connState = TCP_CONNECTING;
   mqttClient->timeoutTick = 20; // generous timeout to allow for DNS, etc
   mqttClient->sending = FALSE;
-  mqttClient->msgQueue = NULL;
 }
 
 static void ICACHE_FLASH_ATTR
@@ -741,6 +741,8 @@ MQTT_Disconnect(MQTT_Client* mqttClient) {
     return;
   }
   mqtt_doAbort(mqttClient);
+  //void *out_buffer = mqttClient->mqtt_connection.buffer;
+  //if (out_buffer != NULL) os_free(out_buffer);
   mqttClient->connState = MQTT_DISCONNECTED; // ensure we don't automatically reconnect
 }
 
