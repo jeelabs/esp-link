@@ -107,7 +107,9 @@ void ICACHE_FLASH_ATTR statusInit(void) {
     makeGpio(flashConfig.conn_led_pin);
     setLed(1);
   }
+#ifdef STATUS_DBG
   os_printf("CONN led=%d\n", flashConfig.conn_led_pin);
+#endif
 
   os_timer_disarm(&ledTimer);
   os_timer_setfn(&ledTimer, ledTimerCb, NULL);

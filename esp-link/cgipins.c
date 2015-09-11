@@ -85,8 +85,9 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
     jsonHeader(connData, 400);
     return HTTPD_CGI_DONE;
   }
-
+#ifdef CGIPINS_DBG
   os_printf("Switching pin map to %s (%d)\n", map_names[m], m);
+#endif
   int8_t *map = map_asn[m];
   flashConfig.reset_pin    = map[0];
   flashConfig.isp_pin      = map[1];

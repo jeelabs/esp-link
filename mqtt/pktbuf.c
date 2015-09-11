@@ -3,7 +3,8 @@
 #include <esp8266.h>
 #include "pktbuf.h"
 
-void ICACHE_FLASH_ATTR
+#ifdef PKTBUF_DBG
+static void ICACHE_FLASH_ATTR
 PktBuf_Print(PktBuf *buf) {
   os_printf("PktBuf:");
   for (int i=-16; i<0; i++)
@@ -15,6 +16,7 @@ PktBuf_Print(PktBuf *buf) {
   os_printf("PktBuf: next=%p len=0x%04x\n",
       ((void**)buf)[-4], ((uint16_t*)buf)[-6]);
 }
+#endif
 
 
 PktBuf * ICACHE_FLASH_ATTR

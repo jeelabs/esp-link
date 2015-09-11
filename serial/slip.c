@@ -46,7 +46,9 @@ slip_process() {
       if (crc == rcv) {
         CMD_parse_packet((uint8_t*)slip_buf, slip_len-2);
       } else {
+#ifdef SLIP_DBG
         os_printf("SLIP: bad CRC, crc=%x rcv=%x\n", crc, rcv);
+
         for (short i=0; i<slip_len; i++) {
           if (slip_buf[i] >= ' ' && slip_buf[i] <= '~')
             os_printf("%c", slip_buf[i]);
@@ -54,6 +56,7 @@ slip_process() {
             os_printf("\\%02X", slip_buf[i]);
         }
         os_printf("\n");
+#endif
       }
     }
   }
@@ -83,7 +86,9 @@ slip_parse_char(char c) {
       if (slip_len > 0) console_process(slip_buf, slip_len);
       slip_reset();
       slip_inpkt = true;
+#ifdef SLIP_DBG
       os_printf("SLIP: start\n");
+#endif
       return;
     }
   } else if (slip_escaped) {

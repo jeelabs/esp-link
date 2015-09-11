@@ -28,7 +28,7 @@
   <PropertyGroup>
     <NMakeOutput />
     <NMakePreprocessorDefinitions>__ets__;_STDINT_H;ICACHE_FLASH;__MINGW32__;__WIN32__</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>.\esp-link;.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.3.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>.\rest;.\esp-link;.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.3.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
     <ExecutablePath />
     <ReferencePath />
     <LibraryPath />
@@ -39,12 +39,12 @@
     <IntDir>build</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
-    <NMakeBuildCommandLine>espmake flash</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>espmake all wiflash</NMakeBuildCommandLine>
     <NMakeReBuildCommandLine>espmake clean all</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>espmake clean</NMakeCleanCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
-    <NMakeBuildCommandLine>espmake all wiflash</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>espmake clean all wiflash</NMakeBuildCommandLine>
     <NMakeReBuildCommandLine>espmake clean all</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>espmake clean</NMakeCleanCommandLine>
   </PropertyGroup>
@@ -65,9 +65,11 @@
   <ItemGroup>
     <ClCompile Include="cmd\cmd.c" />
     <ClCompile Include="cmd\handlers.c" />
+    <ClCompile Include="esp-link\cgimqtt.c" />
+    <ClCompile Include="esp-link\mqtt_client.c" />
     <ClCompile Include="mqtt\mqtt_cmd.c" />
+    <ClCompile Include="mqtt\pktbuf.c" />
     <ClCompile Include="rest\rest.c" />
-    <ClCompile Include="cmd\tcpclient.c" />
     <ClCompile Include="espfs\espfs.c" />
     <ClCompile Include="espfs\mkespfsimage\main.c" />
     <ClCompile Include="espfs\mkespfsimage\mman-win32\mman.c" />
@@ -76,6 +78,7 @@
     <ClCompile Include="httpd\base64.c" />
     <ClCompile Include="httpd\httpd.c" />
     <ClCompile Include="httpd\httpdespfs.c" />
+    <ClCompile Include="libraries\Time\Time.c" />
     <ClCompile Include="mqtt\mqtt.c" />
     <ClCompile Include="mqtt\mqtt_msg.c" />
     <ClCompile Include="mqtt\proto.c" />
@@ -108,9 +111,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cmd\cmd.h" />
+    <ClInclude Include="esp-link\cgimqtt.h" />
     <ClInclude Include="mqtt\mqtt_cmd.h" />
+    <ClInclude Include="mqtt\pktbuf.h" />
     <ClInclude Include="rest\rest.h" />
-    <ClInclude Include="cmd\tcpclient.h" />
+    <ClInclude Include="serial\slip.h" />
     <ClInclude Include="espfs\espfs.h" />
     <ClInclude Include="espfs\espfsformat.h" />
     <ClInclude Include="espfs\mkespfsimage\mman-win32\mman.h" />
@@ -122,6 +127,7 @@
     <ClInclude Include="include\espmissingincludes.h" />
     <ClInclude Include="include\uart_hw.h" />
     <ClInclude Include="include\user_config.h" />
+    <ClInclude Include="libraries\Time\Time.h" />
     <ClInclude Include="mqtt\mqtt.h" />
     <ClInclude Include="mqtt\mqtt_msg.h" />
     <ClInclude Include="mqtt\proto.h" />
