@@ -75,7 +75,7 @@ void ICACHE_FLASH_ATTR statusWifiUpdate(uint8_t state) {
 
 static ETSTimer mqttStatusTimer;
 
-static int ICACHE_FLASH_ATTR
+int ICACHE_FLASH_ATTR
 mqttStatusMsg(char *buf) {
   sint8 rssi = wifi_station_get_rssi();
   if (rssi > 0) rssi = 0; // not connected or other error

@@ -8,7 +8,9 @@ MQTT_Client mqttClient;
 static ETSTimer mqttTimer;
 
 static int once = 0;
-static void ICACHE_FLASH_ATTR mqttTimerCb(void *arg) {
+static void ICACHE_FLASH_ATTR
+mqttTimerCb(void *arg)
+{
   if (once++ > 0) return;
   MQTT_Init(&mqttClient, flashConfig.mqtt_hostname, flashConfig.mqtt_port, 0, 2,
       flashConfig.mqtt_client, flashConfig.mqtt_username, flashConfig.mqtt_password, 60);
@@ -28,7 +30,9 @@ wifiStateChangeCb(uint8_t status)
 
 
 // initialize the custom stuff that goes beyond esp-link
-void mqtt_client_init() {
+void ICACHE_FLASH_ATTR
+mqtt_client_init()
+{
   wifiAddStateChangeCb(wifiStateChangeCb);
 }
 

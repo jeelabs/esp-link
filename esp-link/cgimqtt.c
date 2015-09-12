@@ -4,18 +4,39 @@
 #include <esp8266.h>
 #include "cgi.h"
 #include "config.h"
+#include "status.h"
+#include "mqtt_client.h"
 #include "cgimqtt.h"
+
+static char *mqtt_states[] = {
+  "disconnected", "reconnecting", "connecting", "connected",
+};
 
 // Cgi to return MQTT settings
 int ICACHE_FLASH_ATTR cgiMqttGet(HttpdConnData *connData) {
-  char buff[2048];
+  char buff[1024];
   int len;
 
   if (connData->conn==NULL) return HTTPD_CGI_DONE;
 
+  // get the current status topic for display
+  char status_buf1[128], *sb1=status_buf1;
+  char status_buf2[128], *sb2=status_buf2;
+  mqttStatusMsg(status_buf1);
+  // quote all " for the json, sigh...
+  for (int i=0; i<127 && *sb1; i++) {
+    if (*sb1 == '"') {
+      *sb2++ = '\\';
+      i++;
+    }
+    *sb2++ = *sb1++;
+  }
+  *sb2 = 0;
+
   len = os_sprintf(buff, "{ "
       "\"slip-enable\":%d, "
       "\"mqtt-enable\":%d, "
+      "\"mqtt-state\":\"%s\", "
       "\"mqtt-status-enable\":%d, "
       "\"mqtt-port\":%d, "
       "\"mqtt-host\":\"%s\", "
@@ -23,11 +44,12 @@ int ICACHE_FLASH_ATTR cgiMqttGet(HttpdConnData *connData) {
       "\"mqtt-username\":\"%s\", "
       "\"mqtt-password\":\"%s\", "
       "\"mqtt-status-topic\":\"%s\", "
-      "\"mqtt-state\":\"%s\" }",
-      flashConfig.slip_enable, flashConfig.mqtt_enable, flashConfig.mqtt_status_enable,
+      "\"mqtt-status-value\":\"%s\" }",
+      flashConfig.slip_enable, flashConfig.mqtt_enable,
+      mqtt_states[mqttClient.connState], flashConfig.mqtt_status_enable,
       flashConfig.mqtt_port, flashConfig.mqtt_hostname, flashConfig.mqtt_client,
       flashConfig.mqtt_username, flashConfig.mqtt_password,
-      flashConfig.mqtt_status_topic, "connected");
+      flashConfig.mqtt_status_topic, status_buf2);
 
   jsonHeader(connData, 200);
   httpdSend(connData, buff, len);
