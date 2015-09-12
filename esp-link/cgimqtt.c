@@ -50,7 +50,9 @@ int ICACHE_FLASH_ATTR cgiMqttGet(HttpdConnData *connData) {
       "\"mqtt-status-value\":\"%s\" }",
       flashConfig.slip_enable, flashConfig.mqtt_enable,
       mqtt_states[mqttClient.connState], flashConfig.mqtt_status_enable,
-      flashConfig.mqtt_port, flashConfig.mqtt_hostname, flashConfig.mqtt_client,
+      flashConfig.mqtt_clean_session, flashConfig.mqtt_port,
+      flashConfig.mqtt_timeout, flashConfig.mqtt_keepalive,
+      flashConfig.mqtt_host, flashConfig.mqtt_clientid,
       flashConfig.mqtt_username, flashConfig.mqtt_password,
       flashConfig.mqtt_status_topic, status_buf2);
 
