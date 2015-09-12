@@ -8,8 +8,8 @@
 #define MAX_CONN 4
 #define SER_BRIDGE_TIMEOUT 28799
 
-//Max send buffer len
-#define MAX_TXBUFFER 1024
+// Send buffer size
+#define MAX_TXBUFFER 2048
 
 typedef struct serbridgeConnData serbridgeConnData;
 
@@ -25,10 +25,11 @@ enum connModes {
 
 struct serbridgeConnData {
 	struct espconn *conn;
-	enum connModes conn_mode;   // connection mode
-	char           *txbuffer;   // buffer for the data to send
-	uint16         txbufferlen; // length of data in txbuffer
-	bool           readytosend; // true, if txbuffer can send by espconn_sent
+	enum connModes conn_mode;     // connection mode
+	char           *txbuffer;     // buffer for the data to send
+	uint16         txbufferlen;   // length of data in txbuffer
+  char           *sentbuffer;   // buffer sent, awaiting callback to get freed
+	bool           readytosend;   // true, if txbuffer can be sent by espconn_sent
   uint8_t        telnet_state;
 };
 
