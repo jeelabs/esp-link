@@ -67,7 +67,7 @@ sint8 ICACHE_FLASH_ATTR espbuffsend(serbridgeConnData *conn, const char *data, u
   // add to send buffer
   uint16_t avail = conn->txbufferlen+len > MAX_TXBUFFER ? MAX_TXBUFFER-conn->txbufferlen : len;
   os_memcpy(conn->txbuffer + conn->txbufferlen, data, avail);
-  conn->txbufferlen += len;
+  conn->txbufferlen += avail;
 
   // try to send
   sint8 result = ESPCONN_OK;
