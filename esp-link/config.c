@@ -19,8 +19,9 @@ FlashConfig flashDefault = {
   1, 0,                                // tcp_enable, rssi_enable
   "\0",                                // api_key
   0, 0, 0,                             // slip_enable, mqtt_enable, mqtt_status_enable
-  1833,                                // mqtt port
-  "\0", "\0", "\0", "\0", "\0",        // mqtt host, client, user, password, status-topic
+  2, 1,                                // mqtt_timeout, mqtt_clean_session
+  1833, 600,                           // mqtt port, mqtt_keepalive
+  "\0", "\0", "\0", "\0", "\0",        // mqtt host, client_id, user, password, status-topic
 };
 
 typedef union {
@@ -51,8 +52,8 @@ static void memDump(void *addr, int len) {
 
 bool ICACHE_FLASH_ATTR configSave(void) {
   FlashFull ff;
-  memset(&ff, 0, sizeof(ff));
-  memcpy(&ff, &flashConfig, sizeof(FlashConfig));
+  os_memset(&ff, 0, sizeof(ff));
+  os_memcpy(&ff, &flashConfig, sizeof(FlashConfig));
   uint32_t seq = ff.fc.seq+1;
   // erase secondary
   uint32_t addr = FLASH_ADDR + (1-flash_pri)*FLASH_SECT;
@@ -87,7 +88,9 @@ bool ICACHE_FLASH_ATTR configSave(void) {
   spi_flash_write(addr, (void *)&ff, sizeof(uint32_t));
   return true;
 fail:
+#ifdef CONFIG_DBG
   os_printf("*** Failed to save config ***\n");
+#endif
   return false;
 }
 
@@ -102,19 +105,28 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
   FlashFull ff0, ff1;
   // read both flash sectors
   if (spi_flash_read(FLASH_ADDR, (void *)&ff0, sizeof(ff0)) != SPI_FLASH_RESULT_OK)
-    memset(&ff0, 0, sizeof(ff0)); // clear in case of error
+    os_memset(&ff0, 0, sizeof(ff0)); // clear in case of error
   if (spi_flash_read(FLASH_ADDR+FLASH_SECT, (void *)&ff1, sizeof(ff1)) != SPI_FLASH_RESULT_OK)
-    memset(&ff1, 0, sizeof(ff1)); // clear in case of error
+    os_memset(&ff1, 0, sizeof(ff1)); // clear in case of error
   // figure out which one is good
   flash_pri = selectPrimary(&ff0, &ff1);
   // if neither is OK, we revert to defaults
   if (flash_pri < 0) {
-    memcpy(&flashConfig, &flashDefault, sizeof(FlashConfig));
+    os_memcpy(&flashConfig, &flashDefault, sizeof(FlashConfig));
+    char chipIdStr[6];
+    os_sprintf(chipIdStr, "%06x", system_get_chip_id());
+    os_memcpy(&flashConfig.mqtt_clientid, chipIdStr, os_strlen(chipIdStr));
+#ifdef CHIP_IN_HOSTNAME
+    char hostname[16]; 
+    os_strcpy(hostname, "esp-link-");
+    os_strcat(hostname, chipIdStr);
+    os_memcpy(&flashConfig.hostname, hostname, os_strlen(hostname));
+#endif
     flash_pri = 0;
     return false;
   }
   // copy good one into global var and return
-  memcpy(&flashConfig, flash_pri == 0 ? &ff0.fc : &ff1.fc, sizeof(FlashConfig));
+  os_memcpy(&flashConfig, flash_pri == 0 ? &ff0.fc : &ff1.fc, sizeof(FlashConfig));
   return true;
 }
 
@@ -123,10 +135,14 @@ static int ICACHE_FLASH_ATTR selectPrimary(FlashFull *ff0, FlashFull *ff1) {
   uint16_t crc = ff0->fc.crc;
   ff0->fc.crc = 0;
   bool ff0_crc_ok = crc16_data((unsigned char*)ff0, sizeof(FlashFull), 0) == crc;
-
-  os_printf("FLASH chk=0x%04x crc=0x%04x full_sz=%d sz=%d\n",
+#ifdef CONFIG_DBG
+  os_printf("FLASH chk=0x%04x crc=0x%04x full_sz=%d sz=%d chip_sz=%d\n",
       crc16_data((unsigned char*)ff0, sizeof(FlashFull), 0),
-      crc, sizeof(FlashFull), sizeof(FlashConfig));
+      crc, 
+      sizeof(FlashFull), 
+      sizeof(FlashConfig),
+      getFlashSize());
+#endif
 
   // check CRC of ff1
   crc = ff1->fc.crc;
@@ -141,4 +157,16 @@ static int ICACHE_FLASH_ATTR selectPrimary(FlashFull *ff0, FlashFull *ff1) {
       return 1; // second sector is newer
   else
     return ff1_crc_ok ? 1 : -1;
+}
+
+// returns the flash chip's size, in BYTES
+const size_t ICACHE_FLASH_ATTR
+getFlashSize() {
+  uint32_t id = spi_flash_get_id();
+  uint8_t mfgr_id = id & 0xff;
+  uint8_t type_id = (id >> 8) & 0xff; // not relevant for size calculation
+  uint8_t size_id = (id >> 16) & 0xff; // lucky for us, WinBond ID's their chips as a form that lets us calculate the size
+  if (mfgr_id != 0xEF) // 0xEF is WinBond; that's all we care about (for now)
+    return 0;
+  return 1 << size_id;
 }

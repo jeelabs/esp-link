@@ -28,27 +28,30 @@
               <div id="mqtt-spinner" class="spinner spinner-small"></div>
             </h1>
             <form action="#" id="mqtt-form" class="pure-form" hidden>
-              <div class="form-horizontal">
-                <input type="checkbox" name="mqtt-enable"/>
-                <label>Enable MQTT client</label>
-              </div>
-              <div class="form-horizontal">
-                <label>MQTT client state: </label>
-                <b id="mqtt-state"></b>
-              </div>
+              <input type="checkbox" name="mqtt-enable"/>
+              <label>Enable MQTT client</label>
+              <br>
+              <label>MQTT client state: </label>
+              <b id="mqtt-state"></b>
               <br>
               <legend>MQTT server settings</legend>
               <div class="pure-form-stacked">
-                <label>Server hostname/ip</label>
+                <label>Server hostname or IP</label>
                 <input type="text" name="mqtt-host"/>
-                <label>Server port/ip</label>
+                <label>Server port</label>
                 <input type="text" name="mqtt-port"/>
+                <label>Client Timeout</label>
+                <input type="text" name="mqtt-timeout" />
                 <label>Client ID</label>
                 <input type="text" name="mqtt-client-id"/>
                 <label>Username</label>
                 <input type="text" name="mqtt-username"/>
                 <label>Password</label>
                 <input type="password" name="mqtt-password"/>
+                <label>Keep Alive Interval (seconds)</label>
+                <input type="text" name="mqtt-keepalive" />
+                <input type="checkbox" name="mqtt-clean-session" />
+                <label>Clean Session?</label>
               </div>
               <button id="mqtt-button" type="submit" class="pure-button button-primary">
                 Update server settings!

@@ -16,7 +16,6 @@ Some random cgi routines.
 
 #include <esp8266.h>
 #include "cgi.h"
-#include "espfs.h"
 
 void noCacheHeaders(HttpdConnData *connData, int code) {
   httpdStartResponse(connData, code);
@@ -37,7 +36,9 @@ errorResponse(HttpdConnData *connData, int code, char *message) {
   noCacheHeaders(connData, code);
   httpdEndHeaders(connData);
   httpdSend(connData, message, -1);
+#ifdef CGI_DBG
   os_printf("HTTP %d error response: \"%s\"\n", code, message);
+#endif
 }
 
 // look for the HTTP arg 'name' and store it at 'config' with max length 'max_len' (incl
@@ -65,16 +66,53 @@ getBoolArg(HttpdConnData *connData, char *name, bool*config) {
   if (strcmp(buff, "1") == 0 || strcmp(buff, "true") == 0) {
     *config = true;
     return 1;
-  }
+      }
   if (strcmp(buff, "0") == 0 || strcmp(buff, "false") == 0) {
     *config = false;
     return 1;
-  }
+      }
   os_sprintf(buff, "Invalid value for %s", name);
   errorResponse(connData, 400, buff);
   return -1;
 }
 
+uint8_t ICACHE_FLASH_ATTR
+UTILS_StrToIP(const char* str, void *ip){
+  /* The count of the number of bytes processed. */
+  int i;
+  /* A pointer to the next digit to process. */
+  const char * start;
+
+  start = str;
+  for (i = 0; i < 4; i++) {
+    /* The digit being processed. */
+    char c;
+    /* The value of this byte. */
+    int n = 0;
+    while (1) {
+      c = *start;
+      start++;
+      if (c >= '0' && c <= '9') {
+        n *= 10;
+        n += c - '0';
+      }
+      /* We insist on stopping at "." if we are still parsing
+      the first, second, or third numbers. If we have reached
+      the end of the numbers, we will allow any character. */
+      else if ((i < 3 && c == '.') || i == 3) {
+        break;
+      }
+      else {
+        return 0;
+      }
+    }
+    if (n >= 256) {
+      return 0;
+    }
+    ((uint8_t*)ip)[i] = n;
+  }
+  return 1;
+}
 
 #define TOKEN(x) (os_strcmp(token, x) == 0)
 #if 0

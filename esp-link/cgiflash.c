@@ -22,8 +22,10 @@ Some flash handling cgi routines. Used for reading the existing flash and updati
 // Check that the header of the firmware blob looks like actual firmware...
 static char* ICACHE_FLASH_ATTR check_header(void *buf) {
 	uint8_t *cd = (uint8_t *)buf;
+#ifdef CGIFLASH_DBG
 	uint32_t *buf32 = buf;
 	os_printf("%p: %08lX %08lX %08lX %08lX\n", buf, buf32[0], buf32[1], buf32[2], buf32[3]);
+#endif
 	if (cd[0] != 0xEA) return "IROM magic missing";
 	if (cd[1] != 4 || cd[2] > 3 || (cd[3]>>4) > 6) return "bad flash header";
 	if (((uint16_t *)buf)[3] != 0x4010) return "Invalid entry addr";
@@ -42,7 +44,9 @@ int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
 	httpdEndHeaders(connData);
 	char *next = id == 1 ? "user1.bin" : "user2.bin";
 	httpdSend(connData, next, -1);
+#ifdef CGIFLASH_DBG
 	os_printf("Next firmware: %s (got %d)\n", next, id);
+#endif
 
 	return HTTPD_CGI_DONE;
 }
@@ -80,7 +84,9 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 
 	// return an error if there is one
 	if (err != NULL) {
+#ifdef CGIFLASH_DBG
 		os_printf("Error %d: %s\n", code, err);
+#endif
 		httpdStartResponse(connData, code);
 		httpdHeader(connData, "Content-Type", "text/plain");
 		//httpdHeader(connData, "Content-Length", strlen(err)+2);
@@ -99,7 +105,9 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 
 	// erase next flash block if necessary
 	if (address % SPI_FLASH_SEC_SIZE == 0){
+#ifdef CGIFLASH_DBG
 		os_printf("Flashing 0x%05x (id=%d)\n", address, 2-id);
+#endif
 		spi_flash_erase_sector(address/SPI_FLASH_SEC_SIZE);
 	}
 
@@ -129,11 +137,15 @@ int ICACHE_FLASH_ATTR cgiRebootFirmware(HttpdConnData *connData) {
 	int address = id == 1 ? 4*1024                   // either start after 4KB boot partition
 	    : 4*1024 + FIRMWARE_SIZE + 16*1024 + 4*1024; // 4KB boot, fw1, 16KB user param, 4KB reserved
 	uint32 buf[8];
+#ifdef CGIFLASH_DBG
 	os_printf("Checking %p\n", (void *)address);
+#endif
 	spi_flash_read(address, buf, sizeof(buf));
 	char *err = check_header(buf);
 	if (err != NULL) {
+#ifdef CGIFLASH_DBG
 		os_printf("Error %d: %s\n", 400, err);
+#endif
 		httpdStartResponse(connData, 400);
 		httpdHeader(connData, "Content-Type", "text/plain");
 		//httpdHeader(connData, "Content-Length", strlen(err)+2);

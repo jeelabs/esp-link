@@ -93,10 +93,15 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
       switch (c) {
       case DTR_ON:
         if (mcu_reset_pin >= 0) {
+#ifdef SERBR_DBG
           os_printf("MCU reset gpio%d\n", mcu_reset_pin);
+#endif
           GPIO_OUTPUT_SET(mcu_reset_pin, 0);
           os_delay_us(100L);
-        } else os_printf("MCU reset: no pin\n");
+        }
+#ifdef SERBR_DBG
+        else os_printf("MCU reset: no pin\n");
+#endif
         break;
       case DTR_OFF:
         if (mcu_reset_pin >= 0) {
@@ -106,10 +111,15 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
         break;
       case RTS_ON:
         if (mcu_isp_pin >= 0) {
+#ifdef SERBR_DBG
           os_printf("MCU ISP gpio%d\n", mcu_isp_pin);
+#endif
           GPIO_OUTPUT_SET(mcu_isp_pin, 0);
           os_delay_us(100L);
-        } else os_printf("MCU isp: no pin\n");
+        }
+#ifdef SERBR_DBG
+        else os_printf("MCU isp: no pin\n");
+#endif
         slip_disabled++;
         break;
       case RTS_OFF:
@@ -132,11 +142,16 @@ void ICACHE_FLASH_ATTR
 serbridgeReset()
 {
   if (mcu_reset_pin >= 0) {
+#ifdef SERBR_DBG
     os_printf("MCU reset gpio%d\n", mcu_reset_pin);
+#endif
     GPIO_OUTPUT_SET(mcu_reset_pin, 0);
     os_delay_us(100L);
     GPIO_OUTPUT_SET(mcu_reset_pin, 1);
-  } else os_printf("MCU reset: no pin\n");
+  }
+#ifdef SERBR_DBG
+  else os_printf("MCU reset: no pin\n");
+#endif
 }
 
 // Receive callback
@@ -159,7 +174,9 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
     if ((len == 2 && strncmp(data, "0 ", 2) == 0) ||
         (len == 2 && strncmp(data, "?\n", 2) == 0) ||
         (len == 3 && strncmp(data, "?\r\n", 3) == 0)) {
+#ifdef SERBR_DBG
       os_printf("MCU Reset=gpio%d ISP=gpio%d\n", mcu_reset_pin, mcu_isp_pin);
+#endif
       os_delay_us(2*1000L); // time for os_printf to happen
       // send reset to arduino/ARM
       if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 0);
@@ -174,14 +191,18 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
       slip_disabled++; // disable SLIP so it doesn't interfere with flashing
 
     // If the connection starts with a telnet negotiation we will do telnet
-    } else if (len >= 3 && strncmp(data, (char[]){IAC, WILL, ComPortOpt}, 3) == 0) {
+    }
+    else if (len >= 3 && strncmp(data, (char[]){IAC, WILL, ComPortOpt}, 3) == 0) {
       conn->conn_mode = cmTelnet;
       conn->telnet_state = TN_normal;
       // note that the three negotiation chars will be gobbled-up by telnetUnwrap
+#ifdef SERBR_DBG
       os_printf("telnet mode\n");
+#endif
 
     // looks like a plain-vanilla connection!
-    } else {
+    }
+    else {
       conn->conn_mode = cmTransparent;
     }
 
@@ -210,8 +231,11 @@ sendtxbuffer(serbridgeConnData *conn)
     //os_printf("%d TX %d\n", system_get_time(), conn->txbufferlen);
     conn->readytosend = false;
     result = espconn_sent(conn->conn, (uint8_t*)conn->txbuffer, conn->txbufferlen);
+    conn->txbufferlen = 0;
     if (result != ESPCONN_OK) {
+#ifdef SERBR_DBG
       os_printf("sendtxbuffer: espconn_sent error %d on conn %p\n", result, conn);
+#endif
       conn->txbufferlen = 0;
     } else {
       conn->sentbuffer = conn->txbuffer;
@@ -227,11 +251,13 @@ sendtxbuffer(serbridgeConnData *conn)
 // Returns ESPCONN_OK (0) for success, -128 if buffer is full or error from  espconn_sent
 // Use espbuffsend instead of espconn_sent as it solves the problem that espconn_sent must
 // only be called *after* receiving an espconn_sent_callback for the previous packet.
-sint8 ICACHE_FLASH_ATTR
+static sint8 ICACHE_FLASH_ATTR
 espbuffsend(serbridgeConnData *conn, const char *data, uint16 len)
 {
   if (conn->txbufferlen >= MAX_TXBUFFER) {
+#ifdef SERBR_DBG
     os_printf("espbuffsend: txbuffer full on conn %p\n", conn);
+#endif
     return -128;
   }
 
@@ -344,10 +370,14 @@ serbridgeConnectCb(void *arg)
   // Find empty conndata in pool
   int i;
   for (i=0; i<MAX_CONN; i++) if (connData[i].conn==NULL) break;
+#ifdef SERBR_DBG
   os_printf("Accept port 23, conn=%p, pool slot %d\n", conn, i);
+#endif
 
   if (i==MAX_CONN) {
+#ifdef SERBR_DBG
     os_printf("Aiee, conn pool overflow!\n");
+#endif
     espconn_disconnect(conn);
     return;
   }
@@ -373,8 +403,10 @@ serbridgeInitPins()
 {
   mcu_reset_pin = flashConfig.reset_pin;
   mcu_isp_pin = flashConfig.isp_pin;
+#ifdef SERBR_DBG
   os_printf("Serbridge pins: reset=%d isp=%d swap=%d\n",
       mcu_reset_pin, mcu_isp_pin, flashConfig.swap_uart);
+#endif
 
   if (flashConfig.swap_uart) {
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 4);

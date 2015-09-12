@@ -38,7 +38,10 @@ int ICACHE_FLASH_ATTR cgiMqttGet(HttpdConnData *connData) {
       "\"mqtt-enable\":%d, "
       "\"mqtt-state\":\"%s\", "
       "\"mqtt-status-enable\":%d, "
+      "\"mqtt-clean-session\":%d, "
       "\"mqtt-port\":%d, "
+      "\"mqtt-timeout\":%d, "
+      "\"mqtt-keepalive\":%d, "
       "\"mqtt-host\":\"%s\", "
       "\"mqtt-client-id\":\"%s\", "
       "\"mqtt-username\":\"%s\", "
@@ -63,22 +66,29 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
   // handle MQTT server settings
   int mqtt_server = 0; // accumulator for changes/errors
   mqtt_server |= getStringArg(connData, "mqtt-host",
-      flashConfig.mqtt_hostname, sizeof(flashConfig.mqtt_hostname));
+      flashConfig.mqtt_host, sizeof(flashConfig.mqtt_host));
   if (mqtt_server < 0) return HTTPD_CGI_DONE;
   mqtt_server |= getStringArg(connData, "mqtt-client-id",
-      flashConfig.mqtt_client, sizeof(flashConfig.mqtt_client));
+      flashConfig.mqtt_clientid, sizeof(flashConfig.mqtt_clientid));
+
   if (mqtt_server < 0) return HTTPD_CGI_DONE;
   mqtt_server |= getStringArg(connData, "mqtt-username",
       flashConfig.mqtt_username, sizeof(flashConfig.mqtt_username));
   if (mqtt_server < 0) return HTTPD_CGI_DONE;
   mqtt_server |= getStringArg(connData, "mqtt-password",
       flashConfig.mqtt_password, sizeof(flashConfig.mqtt_password));
+
+  if (mqtt_server < 0) return HTTPD_CGI_DONE;
+  mqtt_server |= getBoolArg(connData, "mqtt-clean-session",
+      &flashConfig.mqtt_clean_session);
+
   if (mqtt_server < 0) return HTTPD_CGI_DONE;
   mqtt_server |= getBoolArg(connData, "mqtt-enable",
       &flashConfig.mqtt_enable);
 
-  // handle mqtt port
   char buff[16];
+
+  // handle mqtt port
   if (httpdFindArg(connData->getArgs, "mqtt-port", buff, sizeof(buff)) > 0) {
     int32_t port = atoi(buff);
     if (port > 0 && port < 65536) {
@@ -90,9 +100,23 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
     }
   }
 
+  // handle mqtt timeout
+  if (httpdFindArg(connData->getArgs, "mqtt-timeout", buff, sizeof(buff)) > 0) {
+    int32_t timeout = atoi(buff);
+    flashConfig.mqtt_timeout = timeout;
+  }
+
+  // handle mqtt keepalive
+  if (httpdFindArg(connData->getArgs, "mqtt-keepalive", buff, sizeof(buff)) > 0) {
+    int32_t keepalive = atoi(buff);
+    flashConfig.mqtt_keepalive = keepalive;
+  }
+
   // if server setting changed, we need to "make it so"
   if (mqtt_server) {
+#ifdef CGIMQTT_DBG
     os_printf("MQTT server settings changed, enable=%d\n", flashConfig.mqtt_enable);
+#endif
     // TODO
   }
 
@@ -107,9 +131,11 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
   // if SLIP-enable is toggled it gets picked-up immediately by the parser
   int slip_update = getBoolArg(connData, "slip-enable", &flashConfig.slip_enable);
   if (slip_update < 0) return HTTPD_CGI_DONE;
+#ifdef CGIMQTT_DBG
   if (slip_update > 0) os_printf("SLIP-enable changed: %d\n", flashConfig.slip_enable);
 
   os_printf("Saving config\n");
+#endif
   if (configSave()) {
     httpdStartResponse(connData, 200);
     httpdEndHeaders(connData);

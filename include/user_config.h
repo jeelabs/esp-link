@@ -1,4 +1,36 @@
 #ifndef _USER_CONFIG_H_
 #define _USER_CONFIG_H_
+#include <c_types.h>
+#ifdef __WIN32__
+#include <_mingw.h>
+#endif
+
+#define DEBUGIP
+
+#define CMD_DBG
+#define ESPFS_DBG
+#define CGI_DBG
+#define CGIFLASH_DBG
+#define CGIMQTT_DBG
+#define CGIPINS_DBG
+#define CGIWIFI_DBG
+#define CONFIG_DBG
+#define LOG_DBG
+#define STATUS_DBG
+#define HTTPD_DBG
+#define MQTT_DBG
+#define MQTTCMD_DBG
+#define PKTBUF_DBG
+#define REST_DBG
+#define RESTCMD_DBG
+#define SERBR_DBG
+#define SERLED_DBG
+#define SLIP_DBG
+#define UART_DBG
+
+#define CHIP_IN_HOSTNAME
+
+extern char* esp_link_version;
+extern uint8_t UTILS_StrToIP(const char* str, void *ip);
 
 #endif
