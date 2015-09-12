@@ -23,15 +23,8 @@ static int8_t mcu_reset_pin, mcu_isp_pin;
 
 extern uint8_t slip_disabled;   // disable slip to allow flashing of attached MCU
 
-static sint8 ICACHE_FLASH_ATTR espbuffsend(serbridgeConnData *conn, const char *data, uint16 len);
-
 // Connection pool
 serbridgeConnData connData[MAX_CONN];
-// Given a pointer to an espconn struct find the connection that correcponds to it
-static serbridgeConnData ICACHE_FLASH_ATTR *serbridgeFindConnData(void *arg) {
-  struct espconn *conn = arg;
-  return arg == NULL ? NULL : (serbridgeConnData *)conn->reverse;
-}
 
 //===== TCP -> UART
 
@@ -135,7 +128,9 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
 }
 
 // Generate a reset pulse for the attached microcontroller
-void ICACHE_FLASH_ATTR serbridgeReset() {
+void ICACHE_FLASH_ATTR
+serbridgeReset()
+{
   if (mcu_reset_pin >= 0) {
     os_printf("MCU reset gpio%d\n", mcu_reset_pin);
     GPIO_OUTPUT_SET(mcu_reset_pin, 0);
@@ -145,8 +140,10 @@ void ICACHE_FLASH_ATTR serbridgeReset() {
 }
 
 // Receive callback
-static void ICACHE_FLASH_ATTR serbridgeRecvCb(void *arg, char *data, unsigned short len) {
-  serbridgeConnData *conn = serbridgeFindConnData(arg);
+static void ICACHE_FLASH_ATTR
+serbridgeRecvCb(void *arg, char *data, unsigned short len)
+{
+  serbridgeConnData *conn = ((struct espconn*)arg)->reverse;
   //os_printf("Receive callback on conn %p\n", conn);
   if (conn == NULL) return;
 
@@ -188,8 +185,6 @@ static void ICACHE_FLASH_ATTR serbridgeRecvCb(void *arg, char *data, unsigned sh
       conn->conn_mode = cmTransparent;
     }
 
-  // Process return data on TCP client connections
-  } else if (conn->conn_mode == cmTcpClient) {
   }
 
   // write the buffer to the uart
@@ -204,22 +199,24 @@ static void ICACHE_FLASH_ATTR serbridgeRecvCb(void *arg, char *data, unsigned sh
 
 //===== UART -> TCP
 
-// Transmit buffers for the connection pool
-static char txbuffer[MAX_CONN][MAX_TXBUFFER];
-
 // Send all data in conn->txbuffer
 // returns result from espconn_sent if data in buffer or ESPCONN_OK (0)
 // Use only internally from espbuffsend and serbridgeSentCb
 static sint8 ICACHE_FLASH_ATTR
-sendtxbuffer(serbridgeConnData *conn) {
+sendtxbuffer(serbridgeConnData *conn)
+{
   sint8 result = ESPCONN_OK;
   if (conn->txbufferlen != 0) {
     //os_printf("%d TX %d\n", system_get_time(), conn->txbufferlen);
     conn->readytosend = false;
     result = espconn_sent(conn->conn, (uint8_t*)conn->txbuffer, conn->txbufferlen);
-    conn->txbufferlen = 0;
     if (result != ESPCONN_OK) {
       os_printf("sendtxbuffer: espconn_sent error %d on conn %p\n", result, conn);
+      conn->txbufferlen = 0;
+    } else {
+      conn->sentbuffer = conn->txbuffer;
+      conn->txbuffer = NULL;
+      conn->txbufferlen = 0;
     }
   }
   return result;
@@ -230,30 +227,65 @@ sendtxbuffer(serbridgeConnData *conn) {
 // Returns ESPCONN_OK (0) for success, -128 if buffer is full or error from  espconn_sent
 // Use espbuffsend instead of espconn_sent as it solves the problem that espconn_sent must
 // only be called *after* receiving an espconn_sent_callback for the previous packet.
-static sint8 ICACHE_FLASH_ATTR
-espbuffsend(serbridgeConnData *conn, const char *data, uint16 len) {
-  if (conn->txbufferlen + len > MAX_TXBUFFER) {
+sint8 ICACHE_FLASH_ATTR
+espbuffsend(serbridgeConnData *conn, const char *data, uint16 len)
+{
+  if (conn->txbufferlen >= MAX_TXBUFFER) {
     os_printf("espbuffsend: txbuffer full on conn %p\n", conn);
     return -128;
   }
-  os_memcpy(conn->txbuffer + conn->txbufferlen, data, len);
-  conn->txbufferlen += len;
-  if (conn->readytosend) {
-    return sendtxbuffer(conn);
-  } else {
-    //os_printf("%d QU %d\n", system_get_time(), conn->txbufferlen);
+
+  // make sure we indeed have a buffer
+  if (conn->txbuffer == NULL) conn->txbuffer = os_zalloc(MAX_TXBUFFER);
+  if (conn->txbuffer == NULL) {
+    os_printf("espbuffsend: cannot alloc tx buffer\n");
+    return -128;
   }
-  return ESPCONN_OK;
+
+  // add to send buffer
+  uint16_t avail = conn->txbufferlen+len > MAX_TXBUFFER ? MAX_TXBUFFER-conn->txbufferlen : len;
+  os_memcpy(conn->txbuffer + conn->txbufferlen, data, avail);
+  conn->txbufferlen += avail;
+
+  // try to send
+  sint8 result = ESPCONN_OK;
+  if (conn->readytosend) result = sendtxbuffer(conn);
+
+  if (avail < len) {
+    // some data didn't fit into the buffer
+    if (conn->txbufferlen == 0) {
+      // we sent the prior buffer, so try again
+      return espbuffsend(conn, data+avail, len-avail);
+    }
+    os_printf("espbuffsend: txbuffer full on conn %p\n", conn);
+    return -128;
+  }
+  return result;
+}
+
+//callback after the data are sent
+static void ICACHE_FLASH_ATTR
+serbridgeSentCb(void *arg)
+{
+  serbridgeConnData *conn = ((struct espconn*)arg)->reverse;
+  //os_printf("Sent callback on conn %p\n", conn);
+  if (conn == NULL) return;
+  //os_printf("%d ST\n", system_get_time());
+  if (conn->sentbuffer != NULL) os_free(conn->sentbuffer);
+  conn->sentbuffer = NULL;
+  conn->readytosend = true;
+  sendtxbuffer(conn); // send possible new data in txbuffer
 }
 
 void ICACHE_FLASH_ATTR
-console_process(char *buf, short len) {
+console_process(char *buf, short len)
+{
   // push buffer into web-console
   for (short i=0; i<len; i++)
     console_write_char(buf[i]);
   // push the buffer into each open connection
   for (short i=0; i<MAX_CONN; i++) {
-    if (connData[i].conn && connData[i].conn_mode != cmTcpClient) {
+    if (connData[i].conn) {
       espbuffsend(&connData[i], buf, len);
     }
   }
@@ -261,7 +293,8 @@ console_process(char *buf, short len) {
 
 // callback with a buffer of characters that have arrived on the uart
 void ICACHE_FLASH_ATTR
-serbridgeUartCb(char *buf, short length) {
+serbridgeUartCb(char *buf, short length)
+{
   if (!flashConfig.slip_enable || slip_disabled > 0) {
     //os_printf("SLIP: disabled got %d\n", length);
     console_process(buf, length);
@@ -272,53 +305,41 @@ serbridgeUartCb(char *buf, short length) {
   serledFlash(50); // short blink on serial LED
 }
 
-//callback after the data are sent
-static void ICACHE_FLASH_ATTR
-serbridgeSentCb(void *arg) {
-  serbridgeConnData *conn = serbridgeFindConnData(arg);
-  //os_printf("Sent callback on conn %p\n", conn);
-  if (conn == NULL) return;
-  //os_printf("%d ST\n", system_get_time());
-  conn->readytosend = true;
-  sendtxbuffer(conn); // send possible new data in txbuffer
-}
-
 //===== Connect / disconnect
 
-// Error callback (it's really poorly named, it's not a "connection reconnected" callback,
-// it's really a "connection broken, please reconnect" callback)
-// Note that there is no DisconCb after a ReconCb
-static void ICACHE_FLASH_ATTR serbridgeReconCb(void *arg, sint8 err) {
-  serbridgeConnData *sbConn = serbridgeFindConnData(arg);
-  if (sbConn == NULL) return;
-  if (sbConn->conn_mode == cmAVR) {
-    if (slip_disabled > 0) slip_disabled--;
+// Disconnection callback
+static void ICACHE_FLASH_ATTR
+serbridgeDisconCb(void *arg)
+{
+  serbridgeConnData *conn = ((struct espconn*)arg)->reverse;
+  if (conn == NULL) return;
+  // Free buffers
+  if (conn->sentbuffer != NULL) os_free(conn->sentbuffer);
+  conn->sentbuffer = NULL;
+  if (conn->txbuffer != NULL) os_free(conn->txbuffer);
+  conn->txbuffer = NULL;
+  conn->txbufferlen = 0;
+  // Send reset to attached uC if it was in programming mode
+  if (conn->conn_mode == cmAVR && mcu_reset_pin >= 0) {
+    GPIO_OUTPUT_SET(mcu_reset_pin, 0);
+    os_delay_us(100L);
+    GPIO_OUTPUT_SET(mcu_reset_pin, 1);
   }
-  // Close the connection
-  espconn_disconnect(sbConn->conn);
-  // free connection slot
-  sbConn->conn = NULL;
+  conn->conn = NULL;
 }
 
-// Disconnection callback
-static void ICACHE_FLASH_ATTR serbridgeDisconCb(void *arg) {
-  serbridgeConnData *sbConn = serbridgeFindConnData(arg);
-  if (sbConn == NULL) return;
-  // send reset to arduino/ARM
-  if (sbConn->conn_mode == cmAVR) {
-    if (slip_disabled > 0) slip_disabled--;
-    if (mcu_reset_pin >= 0) {
-      GPIO_OUTPUT_SET(mcu_reset_pin, 0);
-      os_delay_us(100L);
-      GPIO_OUTPUT_SET(mcu_reset_pin, 1);
-    }
-  }
-  // free connection slot
-  sbConn->conn = NULL;
+// Connection reset callback (note that there will be no DisconCb)
+static void ICACHE_FLASH_ATTR
+serbridgeResetCb(void *arg, sint8 err)
+{
+  os_printf("serbridge: connection reset err=%d\n", err);
+  serbridgeDisconCb(arg);
 }
 
 // New connection callback, use one of the connection descriptors, if we have one left.
-static void ICACHE_FLASH_ATTR serbridgeConnectCb(void *arg) {
+static void ICACHE_FLASH_ATTR
+serbridgeConnectCb(void *arg)
+{
   struct espconn *conn = arg;
   // Find empty conndata in pool
   int i;
@@ -331,16 +352,15 @@ static void ICACHE_FLASH_ATTR serbridgeConnectCb(void *arg) {
     return;
   }
 
-  conn->reverse = connData+i;
+  os_memset(connData+i, 0, sizeof(struct serbridgeConnData));
   connData[i].conn = conn;
-  connData[i].txbufferlen = 0;
+  conn->reverse = connData+i;
   connData[i].readytosend = true;
-  connData[i].telnet_state = 0;
   connData[i].conn_mode = cmInit;
 
   espconn_regist_recvcb(conn, serbridgeRecvCb);
-  espconn_regist_reconcb(conn, serbridgeReconCb);
   espconn_regist_disconcb(conn, serbridgeDisconCb);
+  espconn_regist_reconcb(conn, serbridgeResetCb);
   espconn_regist_sentcb(conn, serbridgeSentCb);
 
   espconn_set_opt(conn, ESPCONN_REUSEADDR|ESPCONN_NODELAY);
@@ -348,7 +368,9 @@ static void ICACHE_FLASH_ATTR serbridgeConnectCb(void *arg) {
 
 //===== Initialization
 
-void ICACHE_FLASH_ATTR serbridgeInitPins() {
+void ICACHE_FLASH_ATTR
+serbridgeInitPins()
+{
   mcu_reset_pin = flashConfig.reset_pin;
   mcu_isp_pin = flashConfig.isp_pin;
   os_printf("Serbridge pins: reset=%d isp=%d swap=%d\n",
@@ -375,13 +397,13 @@ void ICACHE_FLASH_ATTR serbridgeInitPins() {
 }
 
 // Start transparent serial bridge TCP server on specified port (typ. 23)
-void ICACHE_FLASH_ATTR serbridgeInit(int port) {
+void ICACHE_FLASH_ATTR
+serbridgeInit(int port)
+{
   serbridgeInitPins();
 
-  int i;
-  for (i = 0; i < MAX_CONN; i++) {
+  for (int i = 0; i < MAX_CONN; i++) {
     connData[i].conn = NULL;
-    connData[i].txbuffer = txbuffer[i];
   }
   serbridgeConn.type = ESPCONN_TCP;
   serbridgeConn.state = ESPCONN_NONE;
