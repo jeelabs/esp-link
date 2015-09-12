@@ -7,6 +7,11 @@ input[type="text"], input[type="password"] {
 	width: 100%;
 }
 
+input[type=checkbox] {
+  float: left;
+  margin: .35em 0.4em;
+}
+
 body {
     color: #777;
 }

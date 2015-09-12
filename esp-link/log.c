@@ -25,14 +25,18 @@ log_uart(bool enable) {
   if (!enable && !log_no_uart && flashConfig.log_mode != LOG_MODE_ON) {
     // we're asked to turn uart off, and uart is on, and the flash setting isn't always-on
 #if 1
+#ifdef LOG_DBG
     os_printf("Turning OFF uart log\n");
+#endif
     os_delay_us(4*1000L); // time for uart to flush
     log_no_uart = !enable;
 #endif
   } else if (enable && log_no_uart && flashConfig.log_mode != LOG_MODE_OFF) {
     // we're asked to turn uart on, and uart is off, and the flash setting isn't always-off
     log_no_uart = !enable;
+#ifdef LOG_DBG
     os_printf("Turning ON uart log\n");
+#endif
   }
 }
 

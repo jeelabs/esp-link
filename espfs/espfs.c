@@ -109,7 +109,9 @@ void ICACHE_FLASH_ATTR memcpyAligned(char *dst, char *src, int len) {
 // Returns flags of opened file.
 int ICACHE_FLASH_ATTR espFsFlags(EspFsFile *fh) {
 	if (fh == NULL) {
+#ifdef ESPFS_DBG
 		os_printf("File handle not ready\n");
+#endif
 		return -1;
 	}
 
@@ -121,7 +123,9 @@ int ICACHE_FLASH_ATTR espFsFlags(EspFsFile *fh) {
 //Open a file and return a pointer to the file desc struct.
 EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 	if (espFsData == NULL) {
+#ifdef ESPFS_DBG
 		os_printf("Call espFsInit first!\n");
+#endif
 		return NULL;
 	}
 	char *p=espFsData;
@@ -137,7 +141,9 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 		//Grab the next file header.
 		os_memcpy(&h, p, sizeof(EspFsHeader));
 		if (h.magic!=ESPFS_MAGIC) {
+#ifdef ESPFS_DBG
 			os_printf("Magic mismatch. EspFS image broken.\n");
+#endif
 			return NULL;
 		}
 		if (h.flags&FLAG_LASTFILE) {
@@ -163,7 +169,9 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 			if (h.compression==COMPRESS_NONE) {
 				r->decompData=NULL;
 			} else {
+#ifdef ESPFS_DBG
 				os_printf("Invalid compression: %d\n", h.compression);
+#endif
 				return NULL;
 			}
 			return r;
