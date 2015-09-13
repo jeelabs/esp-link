@@ -3,73 +3,53 @@
 #include "config.h"
 #include "mqtt.h"
 
+#ifdef MQTTCLIENT_DBG
+#define DBG_MQTTCLIENT(format, ...) os_printf(format, ## __VA_ARGS__)
+#else
+#define DBG_MQTTCLIENT(format, ...) do { } while(0)
+#endif
+
 MQTT_Client mqttClient;
+char* statusTopicStr;
+static char* onlineMsgStr;
 
-static ETSTimer mqttTimer;
-
-static int once = 0;
-static void ICACHE_FLASH_ATTR
-mqttTimerCb(void *arg)
-{
-  if (once++ > 0) return;
-  MQTT_Init(&mqttClient, flashConfig.mqtt_host, flashConfig.mqtt_port, 0, 2,
-      flashConfig.mqtt_clientid, flashConfig.mqtt_username, flashConfig.mqtt_password, 60);
-  MQTT_Connect(&mqttClient);
-  MQTT_Subscribe(&mqttClient, "system/time", 0);
-}
-
-void ICACHE_FLASH_ATTR
-wifiStateChangeCb(uint8_t status)
-{
-  if (status == wifiGotIP) {
-    os_timer_disarm(&mqttTimer);
-    os_timer_setfn(&mqttTimer, mqttTimerCb, NULL);
-    os_timer_arm(&mqttTimer, 200, 0);
-  }
-}
-
-
-// initialize the custom stuff that goes beyond esp-link
-void ICACHE_FLASH_ATTR
-mqtt_client_init()
-{
-  wifiAddStateChangeCb(wifiStateChangeCb);
-}
-
-
-#if 0
-MQTT_Client mqttClient;
+static MqttCallback connected_cb;
+static MqttCallback disconnected_cb;
+static MqttCallback published_cb;
+static MqttDataCallback data_cb;
 
 void ICACHE_FLASH_ATTR
 mqttConnectedCb(uint32_t *args) {
   MQTT_Client* client = (MQTT_Client*)args;
-  MQTT_Publish(client, "announce/all", "Hello World!", 0, 0);
+  DBG_MQTTCLIENT("MQTT Client: Connected\n");
+  MQTT_Subscribe(client, "system/time", 0);
+  MQTT_Publish(client, "announce/all", onlineMsgStr, 0, 0);
+  if (connected_cb)
+    connected_cb(args);
 }
 
 void ICACHE_FLASH_ATTR
 mqttDisconnectedCb(uint32_t *args) {
 //  MQTT_Client* client = (MQTT_Client*)args;
-  os_printf("MQTT Disconnected\n");
-}
-
-void ICACHE_FLASH_ATTR
-mqttTcpDisconnectedCb(uint32_t *args) {
-//  MQTT_Client* client = (MQTT_Client*)args;
-  os_printf("MQTT TCP Disconnected\n");
+  DBG_MQTTCLIENT("MQTT Client: Disconnected\n");
+  if (disconnected_cb)
+    disconnected_cb(args);
 }
 
 void ICACHE_FLASH_ATTR
 mqttPublishedCb(uint32_t *args) {
 //  MQTT_Client* client = (MQTT_Client*)args;
-  os_printf("MQTT Published\n");
+  DBG_MQTTCLIENT("MQTT Client: Published\n");
+  if (published_cb)
+    published_cb(args);
 }
 
 void ICACHE_FLASH_ATTR
 mqttDataCb(uint32_t *args, const char* topic, uint32_t topic_len, const char *data, uint32_t data_len) {
+  //  MQTT_Client* client = (MQTT_Client*)args;
+
   char *topicBuf = (char*)os_zalloc(topic_len + 1);
   char *dataBuf = (char*)os_zalloc(data_len + 1);
-
-//  MQTT_Client* client = (MQTT_Client*)args;
 
   os_memcpy(topicBuf, topic, topic_len);
   topicBuf[topic_len] = 0;
@@ -77,17 +57,83 @@ mqttDataCb(uint32_t *args, const char* topic, uint32_t topic_len, const char *da
   os_memcpy(dataBuf, data, data_len);
   dataBuf[data_len] = 0;
 
-  os_printf("Receive topic: %s, data: %s\n", topicBuf, dataBuf);
+  DBG_MQTTCLIENT("MQTT Client: Received topic: %s, data: %s\n", topicBuf, dataBuf);
   os_free(topicBuf);
   os_free(dataBuf);
+
+  if (data_cb)
+    data_cb(args, topic, topic_len, data, data_len);
 }
 
-  MQTT_InitConnection(&mqttClient, MQTT_HOST, MQTT_PORT, MQTT_SECURITY);
-  MQTT_InitClient(&mqttClient, MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS, MQTT_KEEPALIVE, MQTT_CLSESSION);
-  MQTT_InitLWT(&mqttClient, "/lwt", "offline", 0, 0);
-  MQTT_OnConnected(&mqttClient, mqttConnectedCb);
-  MQTT_OnDisconnected(&mqttClient, mqttDisconnectedCb);
-  MQTT_OnDisconnected(&mqttClient, mqttTcpDisconnectedCb);
-  MQTT_OnPublished(&mqttClient, mqttPublishedCb);
-  MQTT_OnData(&mqttClient, mqttDataCb);
-#endif
+void ICACHE_FLASH_ATTR
+wifiStateChangeCb(uint8_t status)
+{
+  if (flashConfig.mqtt_enable) {
+    if (status == wifiGotIP  && mqttClient.connState != TCP_CONNECTING) {
+      MQTT_Connect(&mqttClient);
+    }
+    else if (status == wifiIsDisconnected && mqttClient.connState == TCP_CONNECTING) {
+      MQTT_Disconnect(&mqttClient);
+    }
+  }
+}
+
+void ICACHE_FLASH_ATTR
+mqtt_client_init()
+{
+  if (flashConfig.mqtt_enable) {
+    MQTT_Init(&mqttClient, flashConfig.mqtt_host, flashConfig.mqtt_port, 0, flashConfig.mqtt_timeout,
+      flashConfig.mqtt_clientid, flashConfig.mqtt_username, flashConfig.mqtt_password,
+      flashConfig.mqtt_keepalive);
+
+    if (flashConfig.mqtt_status_enable) {
+      statusTopicStr = (char*)os_zalloc(strlen(flashConfig.mqtt_clientid) + strlen(flashConfig.mqtt_status_topic) + 2);
+      os_strcpy(statusTopicStr, flashConfig.mqtt_clientid);
+      os_strcat(statusTopicStr, "/");
+      os_strcat(statusTopicStr, flashConfig.mqtt_status_topic);
+    }
+
+    char* onlineMsg = " is online";
+    onlineMsgStr = (char*)os_zalloc(strlen(flashConfig.mqtt_clientid) + strlen(onlineMsg) + 1);
+    os_strcpy(onlineMsgStr, flashConfig.mqtt_clientid);
+    os_strcat(onlineMsgStr, onlineMsg);
+
+    char* offlineMsg = " is offline";
+    char* offlineMsgStr = (char*)os_zalloc(strlen(flashConfig.mqtt_clientid) + strlen(offlineMsg) + 1);
+    os_strcpy(offlineMsgStr, flashConfig.mqtt_clientid);
+    os_strcat(offlineMsgStr, offlineMsg);
+
+    char* lwt = "/lwt";
+    char *lwtMsgStr = (char*)os_zalloc(strlen(flashConfig.mqtt_clientid) + strlen(lwt) + 1);
+    os_strcpy(lwtMsgStr, flashConfig.mqtt_clientid);
+    os_strcat(lwtMsgStr, lwt);
+    MQTT_InitLWT(&mqttClient, lwtMsgStr, offlineMsg, 0, 0);
+
+    MQTT_OnConnected(&mqttClient, mqttConnectedCb);
+    MQTT_OnDisconnected(&mqttClient, mqttDisconnectedCb);
+    MQTT_OnPublished(&mqttClient, mqttPublishedCb);
+    MQTT_OnData(&mqttClient, mqttDataCb);
+  }
+
+  wifiAddStateChangeCb(wifiStateChangeCb);
+}
+
+void ICACHE_FLASH_ATTR
+mqtt_client_on_connected(MqttCallback connectedCb) {
+  connected_cb = connectedCb;
+}
+
+void ICACHE_FLASH_ATTR
+mqtt_client_on_disconnected(MqttCallback disconnectedCb) {
+  disconnected_cb = disconnectedCb;
+}
+
+void ICACHE_FLASH_ATTR
+mqtt_client_on_published(MqttCallback publishedCb) {
+  published_cb = publishedCb;
+}
+
+void ICACHE_FLASH_ATTR
+mqtt_client_on_data(MqttDataCallback dataCb) {
+  data_cb = dataCb;
+}

@@ -5,6 +5,7 @@
 #include "serled.h"
 #include "cgiwifi.h"
 #include "mqtt.h"
+#include "mqtt_client.h"
 
 extern MQTT_Client mqttClient;
 
@@ -95,9 +96,7 @@ static void ICACHE_FLASH_ATTR mqttStatusCb(void *v) {
 
   char buf[128];
   mqttStatusMsg(buf);
-  MQTT_Publish(&mqttClient, flashConfig.mqtt_status_topic, buf, 1, 0);
-
-  //espconn_disconnect(mqttClient.pCon);
+  MQTT_Publish(&mqttClient, statusTopicStr, buf, 1, 0);
 }
 
 //===== Init status stuff
