@@ -8,8 +8,8 @@
 #define DEBUGIP
 
 #define CMD_DBG
-#define ESPFS_DBG
-#define CGI_DBG
+#undef ESPFS_DBG
+#undef CGI_DBG
 #define CGIFLASH_DBG
 #define CGIMQTT_DBG
 #define CGIPINS_DBG
@@ -20,7 +20,7 @@
 #define HTTPD_DBG
 #define MQTT_DBG
 #define MQTTCMD_DBG
-#define PKTBUF_DBG
+#undef PKTBUF_DBG
 #define REST_DBG
 #define RESTCMD_DBG
 #define SERBR_DBG
@@ -28,7 +28,8 @@
 #define SLIP_DBG
 #define UART_DBG
 
-#define CHIP_IN_HOSTNAME
+// If defined, the default hostname for DHCP will include the chip ID to make it unique
+#undef CHIP_IN_HOSTNAME
 
 extern char* esp_link_version;
 extern uint8_t UTILS_StrToIP(const char* str, void *ip);

@@ -117,7 +117,7 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
     os_sprintf(chipIdStr, "%06x", system_get_chip_id());
     os_memcpy(&flashConfig.mqtt_clientid, chipIdStr, os_strlen(chipIdStr));
 #ifdef CHIP_IN_HOSTNAME
-    char hostname[16]; 
+    char hostname[16];
     os_strcpy(hostname, "esp-link-");
     os_strcat(hostname, chipIdStr);
     os_memcpy(&flashConfig.hostname, hostname, os_strlen(hostname));
@@ -138,8 +138,8 @@ static int ICACHE_FLASH_ATTR selectPrimary(FlashFull *ff0, FlashFull *ff1) {
 #ifdef CONFIG_DBG
   os_printf("FLASH chk=0x%04x crc=0x%04x full_sz=%d sz=%d chip_sz=%d\n",
       crc16_data((unsigned char*)ff0, sizeof(FlashFull), 0),
-      crc, 
-      sizeof(FlashFull), 
+      crc,
+      sizeof(FlashFull),
       sizeof(FlashConfig),
       getFlashSize());
 #endif
@@ -164,7 +164,7 @@ const size_t ICACHE_FLASH_ATTR
 getFlashSize() {
   uint32_t id = spi_flash_get_id();
   uint8_t mfgr_id = id & 0xff;
-  uint8_t type_id = (id >> 8) & 0xff; // not relevant for size calculation
+  //uint8_t type_id = (id >> 8) & 0xff; // not relevant for size calculation
   uint8_t size_id = (id >> 16) & 0xff; // lucky for us, WinBond ID's their chips as a form that lets us calculate the size
   if (mfgr_id != 0xEF) // 0xEF is WinBond; that's all we care about (for now)
     return 0;

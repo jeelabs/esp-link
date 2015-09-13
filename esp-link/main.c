@@ -32,24 +32,6 @@
 
 //#define SHOW_HEAP_USE
 
-//Function that tells the authentication system what users/passwords live on the system.
-//This is disabled in the default build; if you want to try it, enable the authBasic line in
-//the builtInUrls below.
-//int myPassFn(HttpdConnData *connData, int no, char *user, int userLen, char *pass, int passLen) {
-//  if (no == 0) {
-//    os_strcpy(user, "admin");
-//    os_strcpy(pass, "s3cr3t");
-//    return 1;
-    //Add more users this way. Check against incrementing no for each user added.
-    //	} else if (no==1) {
-    //		os_strcpy(user, "user1");
-    //		os_strcpy(pass, "something");
-    //		return 1;
-//  }
-//  return 0;
-//}
-
-
 /*
 This is the main url->function dispatching data struct.
 In short, it's a struct with various URLs plus their handlers. The handlers can
@@ -66,23 +48,15 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/flash/next", cgiGetFirmwareNext, NULL },
   { "/flash/upload", cgiUploadFirmware, NULL },
   { "/flash/reboot", cgiRebootFirmware, NULL },
-  //{"/home.html", cgiEspFsHtml, NULL},
-  //{"/log.html", cgiEspFsHtml, NULL},
   { "/log/text", ajaxLog, NULL },
   { "/log/dbg", ajaxLogDbg, NULL },
-  //{"/console.html", cgiEspFsHtml, NULL},
   { "/console/reset", ajaxConsoleReset, NULL },
   { "/console/baud", ajaxConsoleBaud, NULL },
   { "/console/text", ajaxConsole, NULL },
-
-  //Routines to make the /wifi URL and everything beneath it work.
-
   //Enable the line below to protect the WiFi configuration with an username/password combo.
   //	{"/wifi/*", authBasic, myPassFn},
-
   { "/wifi", cgiRedirect, "/wifi/wifi.html" },
   { "/wifi/", cgiRedirect, "/wifi/wifi.html" },
-  //{"/wifi/wifi.html", cgiEspFsHtml, NULL},
   { "/wifi/info", cgiWifiInfo, NULL },
   { "/wifi/scan", cgiWiFiScan, NULL },
   { "/wifi/connect", cgiWiFiConnect, NULL },
@@ -128,9 +102,6 @@ extern void mqtt_client_init(void);
 
 // Main routine to initialize esp-link.
 void user_init(void) {
-  uart_init(115200, 115200);
-  logInit(); // must come after init of uart
-  os_delay_us(10000L);
   // get the flash config so we know how to init things
   //configWipe(); // uncomment to reset the config for testing purposes
   bool restoreOk = configRestore();
@@ -138,8 +109,8 @@ void user_init(void) {
   gpio_init();
   gpio_output_set(0, 0, 0, (1<<15)); // some people tie it GND, gotta ensure it's disabled
   // init UART
-//  uart_init(flashConfig.baud_rate, 115200);
-//  logInit(); // must come after init of uart
+  uart_init(flashConfig.baud_rate, 115200);
+  logInit(); // must come after init of uart
   // say hello (leave some time to cause break in TX after boot loader's msg
   os_delay_us(10000L);
   os_printf("\n\n** %s\n", esp_link_version);

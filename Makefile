@@ -175,10 +175,6 @@ ifneq (,$(findstring rest,$(MODULES)))
 	CFLAGS		+= -DREST
 endif
 
-ifneq (,$(findstring tcpclient,$(MODULES)))
-	CFLAGS		+= -DTCPCLIENT
-endif
-
 # which modules (subdirectories) of the project to include in compiling
 LIBRARIES_DIR 	= libraries
 MODULES		  	+= espfs httpd user serial cmd esp-link

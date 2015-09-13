@@ -6,6 +6,13 @@
 #include "rest.h"
 #include "cmd.h"
 
+#ifdef REST_DBG
+#define DBG_REST(format, ...) os_printf(format, ## __VA_ARGS__)
+#else
+#define DBG_REST(format, ...) do { } while(0)
+#endif
+
+
 // Connection pool for REST clients. Attached MCU's just call REST_setup and this allocates
 // a connection, They never call any 'free' and given that the attached MCU could restart at
 // any time, we cannot really rely on the attached MCU to call 'free' ever, so better do without.
@@ -15,15 +22,6 @@
 static RestClient restClient[MAX_REST];
 static uint8_t restNum = 0xff; // index into restClient for next slot to allocate
 #define REST_CB 0xbeef0000 // fudge added to callback for arduino so we can detect problems
-
-static void ICACHE_FLASH_ATTR
-tcpclient_discon_cb(void *arg) {
-  struct espconn *pespconn = (struct espconn *)arg;
-  RestClient* client = (RestClient *)pespconn->reverse;
-  // free the data buffer, if we have one
-  if (client->data) os_free(client->data);
-  client->data = 0;
-}
 
 // Receive HTTP response - this hacky function assumes that the full response is received in
 // one go. Sigh...
@@ -73,16 +71,14 @@ tcpclient_recv(void *arg, char *pdata, unsigned short len) {
   // collect body and send it
   uint16_t crc;
   int body_len = len-pi;
-#ifdef REST_DBG
-  os_printf("REST: status=%ld, body=%d\n", code, body_len);
-#endif
+  DBG_REST("REST: status=%ld, body=%d\n", code, body_len);
   if (pi == len) {
     crc = CMD_ResponseStart(CMD_REST_EVENTS, client->resp_cb, code, 0);
   } else {
     crc = CMD_ResponseStart(CMD_REST_EVENTS, client->resp_cb, code, 1);
     crc = CMD_ResponseBody(crc, (uint8_t*)(pdata+pi), body_len);
     CMD_ResponseEnd(crc);
-#ifdef REST_DBG
+#if 0
     os_printf("REST: body=");
     for (int j=pi; j<len; j++) os_printf(" %02x", pdata[j]);
     os_printf("\n");
@@ -100,9 +96,7 @@ static void ICACHE_FLASH_ATTR
 tcpclient_sent_cb(void *arg) {
   struct espconn *pCon = (struct espconn *)arg;
   RestClient* client = (RestClient *)pCon->reverse;
-#ifdef REST_DBG
-  os_printf("REST: Sent\n");
-#endif
+  DBG_REST("REST: Sent\n");
   if (client->data_sent != client->data_len) {
     // we only sent part of the buffer, send the rest
     espconn_sent(client->pCon, (uint8_t*)(client->data+client->data_sent),
@@ -116,20 +110,35 @@ tcpclient_sent_cb(void *arg) {
 }
 
 static void ICACHE_FLASH_ATTR
+tcpclient_discon_cb(void *arg) {
+  struct espconn *pespconn = (struct espconn *)arg;
+  RestClient* client = (RestClient *)pespconn->reverse;
+  // free the data buffer, if we have one
+  if (client->data) os_free(client->data);
+  client->data = 0;
+}
+
+static void ICACHE_FLASH_ATTR
+tcpclient_recon_cb(void *arg, sint8 errType) {
+  struct espconn *pCon = (struct espconn *)arg;
+  RestClient* client = (RestClient *)pCon->reverse;
+  os_printf("REST #%d: conn reset, err=%d\n", client-restClient, errType);
+  // free the data buffer, if we have one
+  if (client->data) os_free(client->data);
+  client->data = 0;
+}
+
+static void ICACHE_FLASH_ATTR
 tcpclient_connect_cb(void *arg) {
   struct espconn *pCon = (struct espconn *)arg;
   RestClient* client = (RestClient *)pCon->reverse;
-#ifdef REST_DBG
-  os_printf("REST #%d: connected\n", client-restClient);
-#endif
+  DBG_REST("REST #%d: connected\n", client-restClient);
   espconn_regist_disconcb(client->pCon, tcpclient_discon_cb);
   espconn_regist_recvcb(client->pCon, tcpclient_recv);
   espconn_regist_sentcb(client->pCon, tcpclient_sent_cb);
 
   client->data_sent = client->data_len <= 1400 ? client->data_len : 1400;
-#ifdef REST_DBG
-  os_printf("REST #%d: sending %d\n", client-restClient, client->data_sent);
-#endif
+  DBG_REST("REST #%d: sending %d\n", client-restClient, client->data_sent);
   //if(client->security){
   //  espconn_secure_sent(client->pCon, client->data, client->data_sent);
   //}
@@ -139,32 +148,19 @@ tcpclient_connect_cb(void *arg) {
 }
 
 static void ICACHE_FLASH_ATTR
-tcpclient_recon_cb(void *arg, sint8 errType) {
-  struct espconn *pCon = (struct espconn *)arg;
-  RestClient* client = (RestClient *)pCon->reverse;
-#ifdef REST_DBG
-  os_printf("REST #%d: conn reset\n", client-restClient);
-#endif
-}
-
-static void ICACHE_FLASH_ATTR
 rest_dns_found(const char *name, ip_addr_t *ipaddr, void *arg) {
   struct espconn *pConn = (struct espconn *)arg;
   RestClient* client = (RestClient *)pConn->reverse;
 
   if(ipaddr == NULL) {
-#ifdef REST_DBG
     os_printf("REST DNS: Got no ip, try to reconnect\n");
-#endif
     return;
   }
-#ifdef REST_DBG
-  os_printf("REST DNS: found ip %d.%d.%d.%d\n",
+  DBG_REST("REST DNS: found ip %d.%d.%d.%d\n",
       *((uint8 *) &ipaddr->addr),
       *((uint8 *) &ipaddr->addr + 1),
       *((uint8 *) &ipaddr->addr + 2),
       *((uint8 *) &ipaddr->addr + 3));
-#endif
   if(client->ip.addr == 0 && ipaddr->addr != 0) {
     os_memcpy(client->pCon->proto.tcp->remote_ip, &ipaddr->addr, 4);
 #ifdef CLIENT_SSL_ENABLE
@@ -173,9 +169,7 @@ rest_dns_found(const char *name, ip_addr_t *ipaddr, void *arg) {
     } else
 #endif
     espconn_connect(client->pCon);
-#ifdef REST_DBG
-    os_printf("REST: connecting...\n");
-#endif
+    DBG_REST("REST: connecting...\n");
   }
 }
 
@@ -228,9 +222,7 @@ REST_Setup(CmdPacket *cmd) {
     os_free(client->pCon);
   }
   os_memset(client, 0, sizeof(RestClient));
-#ifdef CMDREST_DBG
-  os_printf("REST: setup #%d host=%s port=%ld security=%ld\n", clientNum, rest_host, port, security);
-#endif
+  DBG_REST("REST: setup #%d host=%s port=%ld security=%ld\n", clientNum, rest_host, port, security);
 
   client->resp_cb = cmd->callback;
 
@@ -289,9 +281,7 @@ REST_SetHeader(CmdPacket *cmd) {
     client->header[len] = '\r';
     client->header[len+1] = '\n';
     client->header[len+2] = 0;
-#ifdef CMDREST_DBG
-    os_printf("REST: Set header: %s\r\n", client->header);
-#endif
+    DBG_REST("REST: Set header: %s\r\n", client->header);
     break;
   case HEADER_CONTENT_TYPE:
     if(client->content_type) os_free(client->content_type);
@@ -300,9 +290,7 @@ REST_SetHeader(CmdPacket *cmd) {
     client->content_type[len] = '\r';
     client->content_type[len+1] = '\n';
     client->content_type[len+2] = 0;
-#ifdef CMDREST_DBG
-    os_printf("REST: Set content_type: %s\r\n", client->content_type);
-#endif
+    DBG_REST("REST: Set content_type: %s\r\n", client->content_type);
     break;
   case HEADER_USER_AGENT:
     if(client->user_agent) os_free(client->user_agent);
@@ -311,9 +299,7 @@ REST_SetHeader(CmdPacket *cmd) {
     client->user_agent[len] = '\r';
     client->user_agent[len+1] = '\n';
     client->user_agent[len+2] = 0;
-#ifdef CMDREST_DBG
-    os_printf("REST: Set user_agent: %s\r\n", client->user_agent);
-#endif
+    DBG_REST("REST: Set user_agent: %s\r\n", client->user_agent);
     break;
   }
   return 1;
@@ -323,36 +309,28 @@ uint32_t ICACHE_FLASH_ATTR
 REST_Request(CmdPacket *cmd) {
   CmdRequest req;
   CMD_Request(&req, cmd);
-#ifdef CMDREST_DBG
-  os_printf("REST: request");
-#endif
+  DBG_REST("REST: request");
   // Get client
   uint32_t clientNum;
   if (CMD_PopArg(&req, (uint8_t*)&clientNum, 4)) goto fail;
   if ((clientNum & 0xffff0000) != REST_CB) goto fail;
   clientNum &= 0xffff;
   RestClient *client = restClient + clientNum % MAX_REST;
-#ifdef CMDREST_DBG
-  os_printf(" #%ld", clientNum);
-#endif
+  DBG_REST(" #%ld", clientNum);
   // Get HTTP method
   uint16_t len = CMD_ArgLen(&req);
   if (len > 15) goto fail;
   char method[16];
   CMD_PopArg(&req, method, len);
   method[len] = 0;
-#ifdef CMDREST_DBG
-  os_printf(" method=%s", method);
-#endif
+  DBG_REST(" method=%s", method);
   // Get HTTP path
   len = CMD_ArgLen(&req);
   if (len > 1023) goto fail;
   char path[1024];
   CMD_PopArg(&req, path, len);
   path[len] = 0;
-#ifdef CMDREST_DBG
-  os_printf(" path=%s", path);
-#endif
+  DBG_REST(" path=%s", path);
   // Get HTTP body
   uint32_t realLen = 0;
   if (CMD_GetArgc(&req) == 3) {
@@ -364,9 +342,7 @@ REST_Request(CmdPacket *cmd) {
     len = CMD_ArgLen(&req);
     if (len > 2048 || realLen > len) goto fail;
   }
-#ifdef CMDREST_DBG
-  os_printf(" bodyLen=%ld", realLen);
-#endif
+  DBG_REST(" bodyLen=%ld", realLen);
 
   // we need to allocate memory for the header plus the body. First we count the length of the
   // header (including some extra counted "%s" and then we add the body length. We allocate the
@@ -381,40 +357,30 @@ REST_Request(CmdPacket *cmd) {
                     "User-Agent: %s\r\n\r\n";
   uint16_t headerLen = strlen(headerFmt) + strlen(method) + strlen(path) + strlen(client->host) +
       strlen(client->header) + strlen(client->content_type) + strlen(client->user_agent);
-#ifdef CMDREST_DBG
-  os_printf(" hdrLen=%d", headerLen);
-#endif
+  DBG_REST(" hdrLen=%d", headerLen);
   if (client->data) os_free(client->data);
   client->data = (char*)os_zalloc(headerLen + realLen);
   if (client->data == NULL) goto fail;
-#ifdef CMDREST_DBG
-  os_printf(" totLen=%ld data=%p", headerLen + realLen, client->data);
-#endif
+  DBG_REST(" totLen=%ld data=%p", headerLen + realLen, client->data);
   client->data_len = os_sprintf((char*)client->data, headerFmt, method, path, client->host,
       client->header, realLen, client->content_type, client->user_agent);
-#ifdef CMDREST_DBG
-  os_printf(" hdrLen=%d", client->data_len);
-#endif
+  DBG_REST(" hdrLen=%d", client->data_len);
 
   if (realLen > 0) {
     CMD_PopArg(&req, client->data + client->data_len, realLen);
     client->data_len += realLen;
   }
-#ifdef CMDREST_DBG
-  os_printf("\n");
+  DBG_REST("\n");
 
-  //os_printf("REST request: %s", (char*)client->data);
+  //DBG_REST("REST request: %s", (char*)client->data);
 
-  os_printf("REST: pCon state=%d\n", client->pCon->state);
-#endif
+  DBG_REST("REST: pCon state=%d\n", client->pCon->state);
   client->pCon->state = ESPCONN_NONE;
   espconn_regist_connectcb(client->pCon, tcpclient_connect_cb);
   espconn_regist_reconcb(client->pCon, tcpclient_recon_cb);
 
   if(UTILS_StrToIP((char *)client->host, &client->pCon->proto.tcp->remote_ip)) {
-#ifdef CMDREST_DBG
-    os_printf("REST: Connect to ip %s:%ld\n",client->host, client->port);
-#endif
+    DBG_REST("REST: Connect to ip %s:%ld\n",client->host, client->port);
     //if(client->security){
     //  espconn_secure_connect(client->pCon);
     //}
@@ -422,17 +388,13 @@ REST_Request(CmdPacket *cmd) {
       espconn_connect(client->pCon);
     //}
   } else {
-#ifdef CMDREST_DBG
-    os_printf("REST: Connect to host %s:%ld\n", client->host, client->port);
-#endif
+    DBG_REST("REST: Connect to host %s:%ld\n", client->host, client->port);
     espconn_gethostbyname(client->pCon, (char *)client->host, &client->ip, rest_dns_found);
   }
 
   return 1;
 
 fail:
-#ifdef CMDREST_DBG
-  os_printf("\n");
-#endif
+  DBG_REST("\n");
   return 0;
 }

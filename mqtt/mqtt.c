@@ -162,7 +162,7 @@ mqtt_tcpclient_recv(void* arg, char* pdata, unsigned short len) {
 
     switch (msg_type) {
     case MQTT_MSG_TYPE_CONNACK:
-      DBG_MQTT("MQTT: Connect successful\n");
+      //DBG_MQTT("MQTT: Connect successful\n");
       // callbacks for internal and external clients
       if (client->connectedCb) client->connectedCb((uint32_t*)client);
       if (client->cmdConnectedCb) client->cmdConnectedCb((uint32_t*)client);
@@ -170,28 +170,28 @@ mqtt_tcpclient_recv(void* arg, char* pdata, unsigned short len) {
 
     case MQTT_MSG_TYPE_SUBACK:
       if (pending_msg_type == MQTT_MSG_TYPE_SUBSCRIBE && pending_msg_id == msg_id) {
-        DBG_MQTT("MQTT: Subscribe successful\n");
+        //DBG_MQTT("MQTT: Subscribe successful\n");
         client->pending_buffer = PktBuf_ShiftFree(client->pending_buffer);
       }
       break;
 
     case MQTT_MSG_TYPE_UNSUBACK:
       if (pending_msg_type == MQTT_MSG_TYPE_UNSUBSCRIBE && pending_msg_id == msg_id) {
-        DBG_MQTT("MQTT: Unsubscribe successful\n");
+        //DBG_MQTT("MQTT: Unsubscribe successful\n");
         client->pending_buffer = PktBuf_ShiftFree(client->pending_buffer);
       }
       break;
 
     case MQTT_MSG_TYPE_PUBACK: // ack for a publish we sent
       if (pending_msg_type == MQTT_MSG_TYPE_PUBLISH && pending_msg_id == msg_id) {
-        DBG_MQTT("MQTT: QoS1 Publish successful\n");
+        //DBG_MQTT("MQTT: QoS1 Publish successful\n");
         client->pending_buffer = PktBuf_ShiftFree(client->pending_buffer);
       }
       break;
 
     case MQTT_MSG_TYPE_PUBREC: // rec for a publish we sent
       if (pending_msg_type == MQTT_MSG_TYPE_PUBLISH && pending_msg_id == msg_id) {
-        DBG_MQTT("MQTT: QoS2 publish cont\n");
+        //DBG_MQTT("MQTT: QoS2 publish cont\n");
         client->pending_buffer = PktBuf_ShiftFree(client->pending_buffer);
         // we need to send PUBREL
         mqtt_msg_pubrel(&client->mqtt_connection, msg_id);
@@ -202,7 +202,7 @@ mqtt_tcpclient_recv(void* arg, char* pdata, unsigned short len) {
 
     case MQTT_MSG_TYPE_PUBCOMP: // comp for a pubrel we sent (originally publish we sent)
       if (pending_msg_type == MQTT_MSG_TYPE_PUBREL && pending_msg_id == msg_id) {
-        DBG_MQTT("MQTT: QoS2 Publish successful\n");
+        //DBG_MQTT("MQTT: QoS2 Publish successful\n");
         client->pending_buffer = PktBuf_ShiftFree(client->pending_buffer);
       }
       break;
@@ -228,7 +228,7 @@ mqtt_tcpclient_recv(void* arg, char* pdata, unsigned short len) {
 
     case MQTT_MSG_TYPE_PUBREL: // rel for a rec we sent (originally publish received)
       if (pending_msg_type == MQTT_MSG_TYPE_PUBREC && pending_msg_id == msg_id) {
-        DBG_MQTT("MQTT: Cont QoS2 recv\n");
+        //DBG_MQTT("MQTT: Cont QoS2 recv\n");
         client->pending_buffer = PktBuf_ShiftFree(client->pending_buffer);
         // we need to send PUBCOMP
         mqtt_msg_pubcomp(&client->mqtt_connection, msg_id);
@@ -446,11 +446,13 @@ mqtt_send_message(MQTT_Client* client) {
   msg_id = msg_id;
 #ifdef MQTT_DBG
   os_printf("MQTT: Send type=%s id=%04X len=%d\n", mqtt_msg_type[msg_type], msg_id, buf->filled);
+#if 0
   for (int i=0; i<buf->filled; i++) {
     if (buf->data[i] >= ' ' && buf->data[i] <= '~') os_printf("%c", buf->data[i]);
     else os_printf("\\x%02X", buf->data[i]);
   }
   os_printf("\n");
+#endif
 #endif
 
   // send the message out
@@ -566,7 +568,7 @@ MQTT_Publish(MQTT_Client* client, const char* topic, const char* data, uint8_t q
   buf->filled = msg.message.length;
 
   DBG_MQTT("MQTT: Publish, topic: \"%s\", length: %d\n", topic, msg.message.length);
-  dumpMem(buf, buf_len);
+  //dumpMem(buf, buf_len);
   client->msgQueue = PktBuf_Push(client->msgQueue, buf);
 
   if (!client->sending && client->pending_buffer == NULL) {
