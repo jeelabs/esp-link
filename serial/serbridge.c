@@ -17,8 +17,9 @@
 #include "slip.h"
 #include "cmd.h"
 
-static struct espconn serbridgeConn;
-static esp_tcp serbridgeTcp;
+static struct espconn serbridgeConn1; // plain bridging port
+static struct espconn serbridgeConn2; // programming port
+static esp_tcp serbridgeTcp1, serbridgeTcp2;
 static int8_t mcu_reset_pin, mcu_isp_pin;
 
 extern uint8_t slip_disabled;   // disable slip to allow flashing of attached MCU
@@ -162,6 +163,8 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
   //os_printf("Receive callback on conn %p\n", conn);
   if (conn == NULL) return;
 
+  bool startPGM = false;
+
   // at the start of a connection we're in cmInit mode and we wait for the first few characters
   // to arrive in order to decide what type of connection this is.. The following if statements
   // do this dispatch. An issue here is that we assume that the first few characters all arrive
@@ -174,21 +177,8 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
     if ((len == 2 && strncmp(data, "0 ", 2) == 0) ||
         (len == 2 && strncmp(data, "?\n", 2) == 0) ||
         (len == 3 && strncmp(data, "?\r\n", 3) == 0)) {
-#ifdef SERBR_DBG
-      os_printf("MCU Reset=gpio%d ISP=gpio%d\n", mcu_reset_pin, mcu_isp_pin);
-#endif
-      os_delay_us(2*1000L); // time for os_printf to happen
-      // send reset to arduino/ARM
-      if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 0);
-      os_delay_us(100L);
-      if (mcu_isp_pin >= 0) GPIO_OUTPUT_SET(mcu_isp_pin, 0);
-      os_delay_us(100L);
-      if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 1);
-      os_delay_us(100L);
-      if (mcu_isp_pin >= 0) GPIO_OUTPUT_SET(mcu_isp_pin, 1);
-      os_delay_us(1000L);
-      conn->conn_mode = cmAVR;
-      slip_disabled++; // disable SLIP so it doesn't interfere with flashing
+      startPGM = true;
+      conn->conn_mode = cmPGM;
 
     // If the connection starts with a telnet negotiation we will do telnet
     }
@@ -206,7 +196,32 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
       conn->conn_mode = cmTransparent;
     }
 
+  // if we start out in cmPGM mode due to a connection to the second port we need to do the
+  // reset dance right away
+  } else if (conn->conn_mode == cmPGMInit) {
+    conn->conn_mode = cmPGM;
+    startPGM = true;
   }
+
+  // do the programming reset dance
+  if (startPGM) {
+#ifdef SERBR_DBG
+    os_printf("MCU Reset=gpio%d ISP=gpio%d\n", mcu_reset_pin, mcu_isp_pin);
+    os_delay_us(2*1000L); // time for os_printf to happen
+#endif
+    // send reset to arduino/ARM, send "ISP" signal for the duration of the programming
+    if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 0);
+    os_delay_us(100L);
+    if (mcu_isp_pin >= 0) GPIO_OUTPUT_SET(mcu_isp_pin, 0);
+    os_delay_us(100L);
+    if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+    //os_delay_us(100L);
+    //if (mcu_isp_pin >= 0) GPIO_OUTPUT_SET(mcu_isp_pin, 1);
+    os_delay_us(1000L); // wait a millisecond before writing to the UART below
+    conn->conn_mode = cmPGM;
+    slip_disabled++; // disable SLIP so it doesn't interfere with flashing
+  }
+
 
   // write the buffer to the uart
   if (conn->conn_mode == cmTelnet) {
@@ -346,7 +361,9 @@ serbridgeDisconCb(void *arg)
   conn->txbuffer = NULL;
   conn->txbufferlen = 0;
   // Send reset to attached uC if it was in programming mode
-  if (conn->conn_mode == cmAVR && mcu_reset_pin >= 0) {
+  if (conn->conn_mode == cmPGM && mcu_reset_pin >= 0) {
+    if (mcu_isp_pin >= 0) GPIO_OUTPUT_SET(mcu_isp_pin, 1);
+    os_delay_us(100L);
     GPIO_OUTPUT_SET(mcu_reset_pin, 0);
     os_delay_us(100L);
     GPIO_OUTPUT_SET(mcu_reset_pin, 1);
@@ -387,6 +404,9 @@ serbridgeConnectCb(void *arg)
   conn->reverse = connData+i;
   connData[i].readytosend = true;
   connData[i].conn_mode = cmInit;
+  // if it's the second port we start out in programming mode
+  if (conn->proto.tcp->local_port == serbridgeConn2.proto.tcp->local_port)
+    connData[i].conn_mode = cmPGMInit;
 
   espconn_regist_recvcb(conn, serbridgeRecvCb);
   espconn_regist_disconcb(conn, serbridgeDisconCb);
@@ -430,20 +450,33 @@ serbridgeInitPins()
 
 // Start transparent serial bridge TCP server on specified port (typ. 23)
 void ICACHE_FLASH_ATTR
-serbridgeInit(int port)
+serbridgeInit(int port1, int port2)
 {
   serbridgeInitPins();
 
-  for (int i = 0; i < MAX_CONN; i++) {
-    connData[i].conn = NULL;
-  }
-  serbridgeConn.type = ESPCONN_TCP;
-  serbridgeConn.state = ESPCONN_NONE;
-  serbridgeTcp.local_port = port;
-  serbridgeConn.proto.tcp = &serbridgeTcp;
+  os_memset(connData, 0, sizeof(connData));
+  os_memset(&serbridgeTcp1, 0, sizeof(serbridgeTcp1));
+  os_memset(&serbridgeTcp2, 0, sizeof(serbridgeTcp2));
 
-  espconn_regist_connectcb(&serbridgeConn, serbridgeConnectCb);
-  espconn_accept(&serbridgeConn);
-  espconn_tcp_set_max_con_allow(&serbridgeConn, MAX_CONN);
-  espconn_regist_time(&serbridgeConn, SER_BRIDGE_TIMEOUT, 0);
+  // set-up the primary port for plain bridging
+  serbridgeConn1.type = ESPCONN_TCP;
+  serbridgeConn1.state = ESPCONN_NONE;
+  serbridgeTcp1.local_port = port1;
+  serbridgeConn1.proto.tcp = &serbridgeTcp1;
+
+  espconn_regist_connectcb(&serbridgeConn1, serbridgeConnectCb);
+  espconn_accept(&serbridgeConn1);
+  espconn_tcp_set_max_con_allow(&serbridgeConn1, MAX_CONN);
+  espconn_regist_time(&serbridgeConn1, SER_BRIDGE_TIMEOUT, 0);
+
+  // set-up the secondary port for programming
+  serbridgeConn2.type = ESPCONN_TCP;
+  serbridgeConn2.state = ESPCONN_NONE;
+  serbridgeTcp2.local_port = port2;
+  serbridgeConn2.proto.tcp = &serbridgeTcp2;
+
+  espconn_regist_connectcb(&serbridgeConn2, serbridgeConnectCb);
+  espconn_accept(&serbridgeConn2);
+  espconn_tcp_set_max_con_allow(&serbridgeConn2, MAX_CONN);
+  espconn_regist_time(&serbridgeConn2, SER_BRIDGE_TIMEOUT, 0);
 }
