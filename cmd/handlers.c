@@ -52,18 +52,12 @@ cmdCallback callbacks[MAX_CALLBACKS]; // cleared in CMD_Reset
 // Command handler for IsReady (healthcheck) command
 static uint32_t ICACHE_FLASH_ATTR
 CMD_IsReady(CmdPacket *cmd) {
-#ifdef CMD_DBG
-  os_printf("CMD_IsReady: Check ready\n");
-#endif
   return 1;
 }
 
 // Command handler for Null command
 static uint32_t ICACHE_FLASH_ATTR
 CMD_Null(CmdPacket *cmd) {
-#ifdef CMD_DBG
-  os_printf("CMD_Null: NULL/unsupported command\n");
-#endif
   return 1;
 }
 
@@ -72,9 +66,6 @@ CMD_Null(CmdPacket *cmd) {
 // uC.
 static uint32_t ICACHE_FLASH_ATTR
 CMD_Reset(CmdPacket *cmd) {
-#ifdef CMD_DBG
-  os_printf("CMD_Reset\n");
-#endif
   // clear callbacks table
   os_memset(callbacks, 0, sizeof(callbacks));
   return 1;
@@ -140,9 +131,6 @@ static uint32_t ICACHE_FLASH_ATTR
 CMD_WifiConnect(CmdPacket *cmd) {
   CmdRequest req;
   CMD_Request(&req, cmd);
-#ifdef CMD_DBG
-  os_printf("CMD_WifiConnect: setup argc=%ld\n", CMD_GetArgc(&req));
-#endif
 	if(cmd->argc != 2 || cmd->callback == 0)
 		return 0;
 
@@ -162,9 +150,6 @@ static uint32_t ICACHE_FLASH_ATTR
 CMD_AddCallback(CmdPacket *cmd) {
   CmdRequest req;
   CMD_Request(&req, cmd);
-#ifdef CMD_DBG
-  os_printf("CMD_AddCallback: setup argc=%ld\n", CMD_GetArgc(&req));
-#endif
   if (cmd->argc != 1 || cmd->callback == 0)
     return 0;
 
@@ -173,9 +158,6 @@ CMD_AddCallback(CmdPacket *cmd) {
 
   // get the sensor name
   len = CMD_ArgLen(&req);
-#ifdef CMD_DBG
-  os_printf("CMD_AddCallback: name len=%d\n", len);
-#endif
   if (len > 15) return 0; // max size of name is 15 characters
   if (CMD_PopArg(&req, (uint8_t *)name, len)) return 0;
   name[len] = 0;

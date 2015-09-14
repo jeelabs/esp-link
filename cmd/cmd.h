@@ -99,5 +99,7 @@ uint32_t CMD_GetArgc(CmdRequest *req);
 uint16_t CMD_ArgLen(CmdRequest *req);
 // Copy next arg from request into the data pointer, returns 0 on success, -1 on error
 int32_t CMD_PopArg(CmdRequest *req, void *data, uint16_t len);
+// Skip next arg
+void CMD_SkipArg(CmdRequest *req);
 
 #endif

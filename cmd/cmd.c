@@ -81,9 +81,7 @@ CMD_Exec(const CmdList *scp, CmdPacket *packet) {
   // Iterate through the command table and call the appropriate function
   while (scp->sc_function != NULL) {
     if(scp->sc_name == packet->cmd) {
-#ifdef CMD_DBG
-      os_printf("CMD: Dispatching cmd=%d\n", packet->cmd);
-#endif
+      //os_printf("CMD: Dispatching cmd=%d\n", packet->cmd);
       // call command function
       uint32_t ret = scp->sc_function(packet);
       // if requestor asked for a response, send it
@@ -108,6 +106,14 @@ CMD_Exec(const CmdList *scp, CmdPacket *packet) {
   return 0;
 }
 
+char *cmd_names[] = {
+  "NULL", "RESET", "IS_READY", "WIFI_CONNECT",
+  "MQTT_SETUP", "MQTT_CONNECT", "MQTT_DISCONNECT",
+  "MQTT_PUBLISH", "MQTT_SUBSCRIBE", "MQTT_LWT", "MQTT_EVENTS",
+  "REST_SETUP", "REST_REQUEST", "REST_SETHEADER", "REST_EVENTS",
+  "CB_ADD", "CB_EVENTS",
+};
+
 // Parse a packet and print info about it
 void ICACHE_FLASH_ATTR
 CMD_parse_packet(uint8_t *buf, short len) {
@@ -118,29 +124,25 @@ CMD_parse_packet(uint8_t *buf, short len) {
   CmdPacket *packet = (CmdPacket*)buf;
   uint8_t *data_ptr = (uint8_t*)&packet->args;
   uint8_t *data_limit = data_ptr+len;
-  uint16_t argc = packet->argc;  
 #ifdef CMD_DBG
   uint16_t argn = 0;
-  os_printf("CMD: cmd=%d argc=%d cb=%p ret=%lu\n",
-      packet->cmd, packet->argc, (void *)packet->callback, packet->_return);
+  os_printf("CMD: cmd=%d(%s) argc=%d cb=%p ret=%lu\n",
+      packet->cmd, cmd_names[packet->cmd], packet->argc, (void *)packet->callback, packet->_return);
 #endif
 
+#if 0
   // print out arguments
+  uint16_t argc = packet->argc;
   while (data_ptr+2 < data_limit && argc--) {
     short l = *(uint16_t*)data_ptr;
-#ifdef CMD_DBG
     os_printf("CMD: arg[%d] len=%d:", argn++, l);
-#endif
     data_ptr += 2;
     while (data_ptr < data_limit && l--) {
-#ifdef CMD_DBG
       os_printf(" %02X", *data_ptr++);
-#endif
     }
-#ifdef CMD_DBG
     os_printf("\n");
-#endif
   }
+#endif
 
   if (data_ptr <= data_limit) {
     CMD_Exec(commands, packet);
@@ -185,6 +187,20 @@ CMD_PopArg(CmdRequest *req, void *data, uint16_t len) {
 
   req->arg_num ++;
   return 0;
+}
+
+// Skip the next argument
+void ICACHE_FLASH_ATTR
+CMD_SkipArg(CmdRequest *req) {
+  uint16_t length;
+
+  if (req->arg_num >= req->cmd->argc) return;
+
+  length = *(uint16_t*)req->arg_ptr;
+
+  req->arg_ptr += 2;
+  req->arg_ptr += length;
+  req->arg_num ++;
 }
 
 // Return the length of the next argument

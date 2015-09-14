@@ -82,8 +82,6 @@ typedef struct {
   MqttCallback        cmdConnectedCb;
   MqttCallback        disconnectedCb;
   MqttCallback        cmdDisconnectedCb;
-  MqttCallback        tcpDisconnectedCb;
-  MqttCallback        cmdTcpDisconnectedCb;
   MqttCallback        publishedCb;
   MqttCallback        cmdPublishedCb;
   MqttDataCallback    dataCb;
@@ -101,6 +99,9 @@ void MQTT_Init(MQTT_Client* mqttClient, char* host, uint32 port,
 // Set Last Will Topic on client, must be called before MQTT_InitConnection
 void MQTT_InitLWT(MQTT_Client* mqttClient, char* will_topic, char* will_msg,
     uint8_t will_qos, uint8_t will_retain);
+
+// Disconnect and reconnect in order to change params (such as LWT)
+void MQTT_Reconnect(MQTT_Client* mqttClient);
 
 // Kick of a persistent connection to the broker, will reconnect anytime conn breaks
 void MQTT_Connect(MQTT_Client* mqttClient);

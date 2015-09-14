@@ -25,7 +25,7 @@
 #define RESTCMD_DBG
 #define SERBR_DBG
 #define SERLED_DBG
-#define SLIP_DBG
+#undef SLIP_DBG
 #define UART_DBG
 
 // If defined, the default hostname for DHCP will include the chip ID to make it unique
