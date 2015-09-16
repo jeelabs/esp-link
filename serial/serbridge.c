@@ -243,15 +243,14 @@ sendtxbuffer(serbridgeConnData *conn)
 {
   sint8 result = ESPCONN_OK;
   if (conn->txbufferlen != 0) {
-    os_printf("TX %p %d\n", conn, conn->txbufferlen);
+    //os_printf("TX %p %d\n", conn, conn->txbufferlen);
     conn->readytosend = false;
     result = espconn_sent(conn->conn, (uint8_t*)conn->txbuffer, conn->txbufferlen);
     conn->txbufferlen = 0;
     if (result != ESPCONN_OK) {
-#ifdef SERBR_DBG
       os_printf("sendtxbuffer: espconn_sent error %d on conn %p\n", result, conn);
-#endif
       conn->txbufferlen = 0;
+      if (!conn->txoverflow_at) conn->txoverflow_at = system_get_time();
     } else {
       conn->sentbuffer = conn->txbuffer;
       conn->txbuffer = NULL;
@@ -269,12 +268,7 @@ sendtxbuffer(serbridgeConnData *conn)
 static sint8 ICACHE_FLASH_ATTR
 espbuffsend(serbridgeConnData *conn, const char *data, uint16 len)
 {
-  if (conn->txbufferlen >= MAX_TXBUFFER) {
-#ifdef SERBR_DBG
-    os_printf("espbuffsend: txbuffer full on conn %p\n", conn);
-#endif
-    return -128;
-  }
+  if (conn->txbufferlen >= MAX_TXBUFFER) goto overflow;
 
   // make sure we indeed have a buffer
   if (conn->txbuffer == NULL) conn->txbuffer = os_zalloc(MAX_TXBUFFER);
@@ -298,10 +292,25 @@ espbuffsend(serbridgeConnData *conn, const char *data, uint16 len)
       // we sent the prior buffer, so try again
       return espbuffsend(conn, data+avail, len-avail);
     }
-    os_printf("espbuffsend: txbuffer full on conn %p\n", conn);
-    return -128;
+    goto overflow;
   }
   return result;
+
+overflow:
+  if (conn->txoverflow_at) {
+    // we've already been overflowing
+    if (system_get_time() - conn->txoverflow_at > 10*1000*1000) {
+      // no progress in 10 seconds, kill the connection
+      os_printf("serbridge: killing overlowing stuck conn %p\n", conn);
+      espconn_disconnect(conn->conn);
+    }
+    // else be silent, we already printed an error
+  } else {
+    // print 1-time message and take timestamp
+    os_printf("serbridge: txbuffer full, conn %p\n", conn);
+    conn->txoverflow_at = system_get_time();
+  }
+  return -128;
 }
 
 //callback after the data are sent
@@ -315,6 +324,7 @@ serbridgeSentCb(void *arg)
   if (conn->sentbuffer != NULL) os_free(conn->sentbuffer);
   conn->sentbuffer = NULL;
   conn->readytosend = true;
+  conn->txoverflow_at = 0;
   sendtxbuffer(conn); // send possible new data in txbuffer
 }
 
