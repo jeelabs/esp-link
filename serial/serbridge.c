@@ -243,7 +243,7 @@ sendtxbuffer(serbridgeConnData *conn)
 {
   sint8 result = ESPCONN_OK;
   if (conn->txbufferlen != 0) {
-    //os_printf("%d TX %d\n", system_get_time(), conn->txbufferlen);
+    os_printf("TX %p %d\n", conn, conn->txbufferlen);
     conn->readytosend = false;
     result = espconn_sent(conn->conn, (uint8_t*)conn->txbuffer, conn->txbufferlen);
     conn->txbufferlen = 0;
@@ -309,7 +309,7 @@ static void ICACHE_FLASH_ATTR
 serbridgeSentCb(void *arg)
 {
   serbridgeConnData *conn = ((struct espconn*)arg)->reverse;
-  //os_printf("Sent callback on conn %p\n", conn);
+  os_printf("Sent CB %p\n", conn);
   if (conn == NULL) return;
   //os_printf("%d ST\n", system_get_time());
   if (conn->sentbuffer != NULL) os_free(conn->sentbuffer);
