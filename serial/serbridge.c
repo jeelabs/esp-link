@@ -35,6 +35,7 @@ static sint8 ICACHE_FLASH_ATTR sendtxbuffer(serbridgeConnData *conn) {
     if (result != ESPCONN_OK) {
       os_printf("sendtxbuffer: espconn_sent error %d on conn %p\n", result, conn);
       conn->txbufferlen = 0;
+      conn->txoverflow_at = system_get_time();
     } else {
       conn->sentbuffer = conn->txbuffer;
       conn->txbuffer = NULL;
@@ -44,18 +45,13 @@ static sint8 ICACHE_FLASH_ATTR sendtxbuffer(serbridgeConnData *conn) {
   return result;
 }
 
-static char *tx_full_msg = "espbuffsend: txbuffer full on conn %p\n";
-
 // espbuffsend adds data to the send buffer. If the previous send was completed it calls
 // sendtxbuffer and espconn_sent.
 // Returns ESPCONN_OK (0) for success, -128 if buffer is full or error from  espconn_sent
 // Use espbuffsend instead of espconn_sent as it solves the problem that espconn_sent must
 // only be called *after* receiving an espconn_sent_callback for the previous packet.
 sint8 ICACHE_FLASH_ATTR espbuffsend(serbridgeConnData *conn, const char *data, uint16 len) {
-  if (conn->txbufferlen >= MAX_TXBUFFER) {
-    os_printf(tx_full_msg, conn);
-    return -128;
-  }
+  if (conn->txbufferlen >= MAX_TXBUFFER) goto overflow;
 
   // make sure we indeed have a buffer
   if (conn->txbuffer == NULL) conn->txbuffer = os_zalloc(MAX_TXBUFFER);
@@ -79,10 +75,25 @@ sint8 ICACHE_FLASH_ATTR espbuffsend(serbridgeConnData *conn, const char *data, u
       // we sent the prior buffer, so try again
       return espbuffsend(conn, data+avail, len-avail);
     }
-    os_printf(tx_full_msg, conn);
-    return -128;
+    goto overflow;
   }
   return result;
+
+overflow:
+  if (conn->txoverflow_at) {
+    // we've already been overflowing
+    if (system_get_time() - conn->txoverflow_at > 10*1000*1000) {
+      // no progress in 10 seconds, kill the connection
+      os_printf("serbridge: killing overlowing stuck conn %p\n", conn);
+      espconn_disconnect(conn->conn);
+    }
+    // else be silent, we already printed an error
+  } else {
+    // print 1-time message and take timestamp
+    os_printf("serbridge: txbuffer full, conn %p\n", conn);
+    conn->txoverflow_at = system_get_time();
+  }
+  return -128;
 }
 
 //callback after the data are sent
@@ -94,6 +105,7 @@ static void ICACHE_FLASH_ATTR serbridgeSentCb(void *arg) {
   if (conn->sentbuffer != NULL) os_free(conn->sentbuffer);
   conn->sentbuffer = NULL;
   conn->readytosend = true;
+  conn->txoverflow_at = 0;
   sendtxbuffer(conn); // send possible new data in txbuffer
 }
 

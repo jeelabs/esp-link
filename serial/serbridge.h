@@ -6,10 +6,10 @@
 #include <espconn.h>
 
 #define MAX_CONN 4
-#define SER_BRIDGE_TIMEOUT 28799
+#define SER_BRIDGE_TIMEOUT 300 // 300 seconds = 5 minutes
 
 // Send buffer size
-#define MAX_TXBUFFER 2048
+#define MAX_TXBUFFER (2*1460)
 
 typedef struct serbridgeConnData serbridgeConnData;
 
@@ -26,11 +26,12 @@ enum connModes {
 struct serbridgeConnData {
 	struct espconn *conn;
 	enum connModes conn_mode;     // connection mode
-	char           *txbuffer;     // buffer for the data to send
-	uint16         txbufferlen;   // length of data in txbuffer
-  char           *sentbuffer;   // buffer sent, awaiting callback to get freed
-	bool           readytosend;   // true, if txbuffer can be sent by espconn_sent
   uint8_t        telnet_state;
+	uint16         txbufferlen;   // length of data in txbuffer
+	char           *txbuffer;     // buffer for the data to send
+  char           *sentbuffer;   // buffer sent, awaiting callback to get freed
+  uint32_t       txoverflow_at; // when the transmitter started to overflow
+	bool           readytosend;   // true, if txbuffer can be sent by espconn_sent
 };
 
 void ICACHE_FLASH_ATTR serbridgeInit(int port);
