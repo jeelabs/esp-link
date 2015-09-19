@@ -17,10 +17,7 @@
  * ----------------------------------------------------------------------------
  * Heavily modified and enhanced by Thorsten von Eicken in 2015
  */
-#include "espmissingincludes.h"
-#include "ets_sys.h"
-#include "osapi.h"
-#include "user_interface.h"
+#include "esp8266.h"
 #include "uart.h"
 
 #ifdef UART_DBG

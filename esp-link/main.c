@@ -79,7 +79,19 @@ static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
 }
 #endif
 
+# define VERS_STR_STR(V) #V
+# define VERS_STR(V) VERS_STR_STR(V)
+char* esp_link_version = VERS_STR(VERSION);
+
 void user_rf_pre_init(void) {
+  system_set_os_print(DEBUG_SDK);
+#if defined(STA_SSID) && defined(STA_PASS)
+  struct station_config stconf;
+  os_strncpy((char*)stconf.ssid, VERS_STR(STA_SSID), 32);
+  os_strncpy((char*)stconf.password, VERS_STR(STA_PASS), 64);
+  stconf.bssid_set = 0;
+  wifi_station_set_config_current(&stconf);
+#endif
 }
 
 // address of espfs binary blob
@@ -92,10 +104,6 @@ static char *flash_maps[] = {
   "512KB:256/256", "256KB", "1MB:512/512", "2MB:512/512", "4MB:512/512",
   "2MB:1024/1024", "4MB:1024/1024"
 };
-
-# define VERS_STR_STR(V) #V
-# define VERS_STR(V) VERS_STR_STR(V)
-char* esp_link_version = VERS_STR(VERSION);
 
 extern void app_init(void);
 extern void mqtt_client_init(void);

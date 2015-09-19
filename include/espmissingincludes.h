@@ -36,9 +36,21 @@ void ets_timer_setfn(ETSTimer *t, ETSTimerFunc *fn, void *parg);
 
 void ets_update_cpu_frequency(int freqmhz);
 
-int os_printf(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
-int os_snprintf(char *str, size_t size, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
-int os_printf_plus(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
+#ifdef SDK_DBG
+#define DEBUG_SDK true
+#else
+#define DEBUG_SDK false
+#endif
+
+int os_snprintf(char *str, size_t size, const char *format, ...) __attribute__((format(printf, 3, 4)));
+int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
+
+#undef os_printf
+#define os_printf(format, ...) \
+  system_set_os_print(true); \
+  os_printf_plus(format, ## __VA_ARGS__); \
+  system_set_os_print(DEBUG_SDK); // int os_printf(const char *format, ...)
+
 
 void pvPortFree(void *ptr);
 void *pvPortMalloc(size_t xWantedSize);
