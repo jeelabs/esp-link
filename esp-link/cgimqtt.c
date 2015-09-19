@@ -119,7 +119,10 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
 #ifdef CGIMQTT_DBG
     os_printf("MQTT server settings changed, enable=%d\n", flashConfig.mqtt_enable);
 #endif
-    // TODO
+    if (flashConfig.mqtt_enable && strlen(flashConfig.mqtt_host) > 0)
+      MQTT_Reconnect(&mqttClient);
+    else
+      MQTT_Disconnect(&mqttClient);
   }
 
   // no action required if mqtt status settings change, they just get picked up at the

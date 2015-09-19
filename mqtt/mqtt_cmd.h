@@ -8,7 +8,6 @@ typedef struct {
   uint32_t disconnectedCb;
   uint32_t publishedCb;
   uint32_t dataCb;
-  uint32_t tcpDisconnectedCb;
 } MqttCmdCb;
 
 uint32_t MQTTCMD_Connect(CmdPacket *cmd);

@@ -744,7 +744,18 @@ mqtt_doAbort(MQTT_Client* client) {
 }
 
 void ICACHE_FLASH_ATTR
+MQTT_Reconnect(MQTT_Client* mqttClient) {
+  DBG_MQTT("MQTT: Reconnect requested\n");
+  if (mqttClient->connState == MQTT_DISCONNECTED)
+    MQTT_Connect(mqttClient);
+  else if (mqttClient->connState == MQTT_CONNECTED)
+    mqtt_doAbort(mqttClient);
+  // in other cases we're already in the reconnecting process
+}
+
+void ICACHE_FLASH_ATTR
 MQTT_Disconnect(MQTT_Client* mqttClient) {
+  DBG_MQTT("MQTT: Disconnect requested\n");
   os_timer_disarm(&mqttClient->mqttTimer);
   if (mqttClient->connState == MQTT_DISCONNECTED) return;
   if (mqttClient->connState == TCP_RECONNECT_REQ) {
@@ -765,11 +776,6 @@ MQTT_OnConnected(MQTT_Client* mqttClient, MqttCallback connectedCb) {
 void ICACHE_FLASH_ATTR
 MQTT_OnDisconnected(MQTT_Client* mqttClient, MqttCallback disconnectedCb) {
   mqttClient->disconnectedCb = disconnectedCb;
-}
-
-void ICACHE_FLASH_ATTR
-MQTT_OnTcpDisconnected(MQTT_Client *mqttClient, MqttCallback tcpDisconnectedCb) {
-  mqttClient->tcpDisconnectedCb = tcpDisconnectedCb;
 }
 
 void ICACHE_FLASH_ATTR
