@@ -7,6 +7,7 @@
 
 #undef SHOW_HEAP_USE
 #define DEBUGIP
+#define SDK_DBG
 
 #define CMD_DBG
 #undef ESPFS_DBG
