@@ -87,10 +87,13 @@ mqtt_client_init()
       flashConfig.mqtt_keepalive);
 
     if (flashConfig.mqtt_status_enable) {
-      statusTopicStr = (char*)os_zalloc(strlen(flashConfig.mqtt_clientid) + strlen(flashConfig.mqtt_status_topic) + 2);
-      os_strcpy(statusTopicStr, flashConfig.mqtt_clientid);
-      os_strcat(statusTopicStr, "/");
-      os_strcat(statusTopicStr, flashConfig.mqtt_status_topic);
+// removed client_id concat for now until a better solution is devised
+//      statusTopicStr = (char*)os_zalloc(strlen(flashConfig.mqtt_clientid) + strlen(flashConfig.mqtt_status_topic) + 2);
+//      os_strcpy(statusTopicStr, flashConfig.mqtt_clientid);
+//      os_strcat(statusTopicStr, "/");
+
+      statusTopicStr = (char*)os_zalloc(strlen(flashConfig.mqtt_status_topic) + 1);
+      os_strcpy(statusTopicStr, flashConfig.mqtt_status_topic);
     }
 
     char* onlineMsg = " is online";
