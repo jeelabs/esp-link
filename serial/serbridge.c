@@ -17,6 +17,8 @@
 #include "slip.h"
 #include "cmd.h"
 
+#define SKIP_AT_RESET
+
 static struct espconn serbridgeConn1; // plain bridging port
 static struct espconn serbridgeConn2; // programming port
 static esp_tcp serbridgeTcp1, serbridgeTcp2;
@@ -220,6 +222,10 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
     os_delay_us(1000L); // wait a millisecond before writing to the UART below
     conn->conn_mode = cmPGM;
     slip_disabled++; // disable SLIP so it doesn't interfere with flashing
+#ifdef SKIP_AT_RESET
+    serledFlash(50); // short blink on serial LED
+    return;
+#endif
   }
 
 
