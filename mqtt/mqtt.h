@@ -77,6 +77,7 @@ typedef struct {
   uint8_t             keepAliveAckTick;       // seconds 'til keep-alive ack is overdue (0=no k-a)
   uint8_t             timeoutTick;            // seconds 'til other timeout
   uint8_t             sendTimeout;            // value of send timeout setting
+  uint8_t             reconTimeout;           // timeout to reconnect (back-off)
   // callbacks
   MqttCallback        connectedCb;
   MqttCallback        cmdConnectedCb;
@@ -95,6 +96,11 @@ void MQTT_Init(MQTT_Client* mqttClient, char* host, uint32 port,
     uint8_t security, uint8_t sendTimeout,
     char* client_id, char* client_user, char* client_pass,
     uint8_t keepAliveTime);
+
+// Completely free buffers associated with client data structure
+// This does not free the mqttClient struct itself, it just readies the struct so
+// it can be freed or MQTT_Init can be called on it again
+void MQTT_Free(MQTT_Client* mqttClient);
 
 // Set Last Will Topic on client, must be called before MQTT_InitConnection
 void MQTT_InitLWT(MQTT_Client* mqttClient, char* will_topic, char* will_msg,
