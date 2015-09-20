@@ -77,8 +77,9 @@ CMD_AddCb(char* name, uint32_t cb) {
     //os_printf("CMD_AddCb: index %d name=%s cb=%p\n", i, callbacks[i].name,
     //  (void *)callbacks[i].callback);
     // find existing callback or add to the end
-    if (os_strcmp(callbacks[i].name, name) == 0 || callbacks[i].name[0] == '\0') {
+    if (os_strncmp(callbacks[i].name, name, CMD_CBNLEN) == 0 || callbacks[i].name[0] == '\0') {
       os_strncpy(callbacks[i].name, name, sizeof(callbacks[i].name));
+      callbacks[i].name[CMD_CBNLEN-1] = 0; // strncpy doesn't null terminate
       callbacks[i].callback = cb;
 #ifdef CMD_DBG
       os_printf("CMD_AddCb: cb %s added at index %d\n", callbacks[i].name, i);
@@ -91,15 +92,13 @@ CMD_AddCb(char* name, uint32_t cb) {
 
 cmdCallback* ICACHE_FLASH_ATTR
 CMD_GetCbByName(char* name) {
-  char checkname[16];
-  os_strncpy(checkname, name, sizeof(checkname));
   for (uint8_t i = 0; i < MAX_CALLBACKS; i++) {
     //os_printf("CMD_GetCbByName: index %d name=%s cb=%p\n", i, callbacks[i].name,
     //  (void *)callbacks[i].callback);
     // if callback doesn't exist or it's null
-    if (os_strcmp(callbacks[i].name, checkname) == 0) {
+    if (os_strncmp(callbacks[i].name, name, CMD_CBNLEN) == 0) {
 #ifdef CMD_DBG
-      os_printf("CMD_GetCbByName: cb %s found at index %d\n", callbacks[i].name, i);
+      os_printf("CMD_GetCbByName: cb %s found at index %d\n", name, i);
 #endif
       return &callbacks[i];
     }

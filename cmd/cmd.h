@@ -66,8 +66,9 @@ typedef struct {
   cmdfunc_t sc_function;
 } CmdList;
 
+#define CMD_CBNLEN 16
 typedef struct {
-  char name[16];
+  char name[CMD_CBNLEN];
   uint32_t callback;
 } cmdCallback;
 
