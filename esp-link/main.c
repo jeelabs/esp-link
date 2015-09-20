@@ -98,6 +98,8 @@ extern void app_init(void);
 extern void mqtt_client_init(void);
 
 void user_rf_pre_init(void) {
+  //default is enabled
+  system_set_os_print(DEBUG_SDK);
 }
 
 // Main routine to initialize esp-link.
