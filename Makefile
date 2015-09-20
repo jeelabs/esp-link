@@ -33,10 +33,66 @@ ESPBAUD		?= 460800
 # STA_SSID ?= 
 # STA_PASS ?= 
 
+# hostname or IP address for wifi flashing
+ESP_HOSTNAME        ?= esp-link
+
 # --------------- chipset configuration   ---------------
 
 # Pick your flash size: "512KB", "1MB", or "4MB"
 FLASH_SIZE ?= 4MB
+
+# The pin assignments below are used when the settings in flash are invalid, they
+# can be changed via the web interface
+# GPIO pin used to reset attached microcontroller, acative low
+MCU_RESET_PIN       ?= 12
+# GPIO pin used with reset to reprogram MCU (ISP=in-system-programming, unused with AVRs), active low
+MCU_ISP_PIN         ?= 13
+# GPIO pin used for "connectivity" LED, active low
+LED_CONN_PIN        ?= 0
+# GPIO pin used for "serial activity" LED, active low
+LED_SERIAL_PIN      ?= 14
+
+# --------------- esp-link config options ---------------
+
+# If CHANGE_TO_STA is set to "yes" the esp-link module will switch to station mode
+# once successfully connected to an access point. Else it will stay in AP+STA mode.
+
+CHANGE_TO_STA ?= yes
+
+# --------------- esphttpd config options ---------------
+
+# If GZIP_COMPRESSION is set to "yes" then the static css, js, and html files will be compressed
+# with gzip before added to the espfs image and will be served with gzip Content-Encoding header.
+# This could speed up the downloading of these files, but might break compatibility with older
+# web browsers not supporting gzip encoding because Accept-Encoding is simply ignored.
+# Enable this option if you have large static files to serve (for e.g. JQuery, Twitter bootstrap)
+# If you have text based static files with different extensions what you want to serve compressed
+# then you will need to add the extension to the following places:
+# - Add the extension to this Makefile at the webpages.espfs target to the find command
+# - Add the extension to the gzippedFileTypes array in the user/httpd.c file
+#
+# Adding JPG or PNG files (and any other compressed formats) is not recommended, because GZIP
+# compression does not work effectively on compressed files.
+
+#Static gzipping is disabled by default.
+GZIP_COMPRESSION ?= yes
+
+# If COMPRESS_W_HTMLCOMPRESSOR is set to "yes" then the static css and js files will be compressed with
+# htmlcompressor and yui-compressor. This option works only when GZIP_COMPRESSION is set to "yes".
+# https://code.google.com/p/htmlcompressor/#For_Non-Java_Projects
+# http://yui.github.io/yuicompressor/
+# enabled by default.
+COMPRESS_W_HTMLCOMPRESSOR ?= yes
+HTML-COMPRESSOR ?= htmlcompressor-1.5.3.jar
+YUI-COMPRESSOR ?= yuicompressor-2.4.8.jar
+
+# Optional Modules
+MODULES ?= mqtt rest
+
+# -------------- End of config options -------------
+
+HTML_PATH = $(abspath ./html)/
+WIFI_PATH = $(HTML_PATH)wifi/
 
 ifeq ("$(FLASH_SIZE)","512KB")
 # Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
@@ -87,20 +143,6 @@ ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
 endif
 
-# hostname or IP address for wifi flashing
-ESP_HOSTNAME        ?= esp-link
-
-# The pin assignments below are used when the settings in flash are invalid, they
-# can be changed via the web interface
-# GPIO pin used to reset attached microcontroller, acative low
-MCU_RESET_PIN       ?= 12
-# GPIO pin used with reset to reprogram MCU (ISP=in-system-programming, unused with AVRs), active low
-MCU_ISP_PIN         ?= 13
-# GPIO pin used for "connectivity" LED, active low
-LED_CONN_PIN        ?= 0
-# GPIO pin used for "serial activity" LED, active low
-LED_SERIAL_PIN      ?= 14
-
 # --------------- esp-link version        ---------------
 
 # This queries git to produce a version string like "esp-link v0.9.0 2015-06-01 34bc76"
@@ -114,48 +156,6 @@ BRANCH  := $(shell if git diff --quiet HEAD; then git describe --tags; \
 SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | cut -d"/" -f 3; \
                    else echo "development"; fi)
 VERSION ?=esp-link $(BRANCH) - $(DATE) - $(SHA)
-
-# --------------- esp-link config options ---------------
-
-# If CHANGE_TO_STA is set to "yes" the esp-link module will switch to station mode
-# once successfully connected to an access point. Else it will stay in AP+STA mode.
-
-CHANGE_TO_STA ?= yes
-
-# --------------- esphttpd config options ---------------
-
-# If GZIP_COMPRESSION is set to "yes" then the static css, js, and html files will be compressed
-# with gzip before added to the espfs image and will be served with gzip Content-Encoding header.
-# This could speed up the downloading of these files, but might break compatibility with older
-# web browsers not supporting gzip encoding because Accept-Encoding is simply ignored.
-# Enable this option if you have large static files to serve (for e.g. JQuery, Twitter bootstrap)
-# If you have text based static files with different extensions what you want to serve compressed
-# then you will need to add the extension to the following places:
-# - Add the extension to this Makefile at the webpages.espfs target to the find command
-# - Add the extension to the gzippedFileTypes array in the user/httpd.c file
-#
-# Adding JPG or PNG files (and any other compressed formats) is not recommended, because GZIP
-# compression does not work effectively on compressed files.
-
-#Static gzipping is disabled by default.
-GZIP_COMPRESSION ?= yes
-
-# If COMPRESS_W_HTMLCOMPRESSOR is set to "yes" then the static css and js files will be compressed with
-# htmlcompressor and yui-compressor. This option works only when GZIP_COMPRESSION is set to "yes".
-# https://code.google.com/p/htmlcompressor/#For_Non-Java_Projects
-# http://yui.github.io/yuicompressor/
-# enabled by default.
-COMPRESS_W_HTMLCOMPRESSOR ?= yes
-HTML-COMPRESSOR ?= htmlcompressor-1.5.3.jar
-YUI-COMPRESSOR ?= yuicompressor-2.4.8.jar
-
-HTML_PATH = $(abspath ./html)/
-WIFI_PATH = $(HTML_PATH)wifi/
-
-# Optional Modules
-MODULES ?= mqtt rest
-
-# -------------- End of config options -------------
 
 # Output directors to store intermediate compiled files
 # relative to the project directory
@@ -376,6 +376,10 @@ ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 	$(Q) for file in `find html_compressed -type f -name "*.css"`; do \
 			java -jar tools/$(YUI-COMPRESSOR) $$file -o $$file; \
 		done
+endif
+ifeq (,$(findstring mqtt,$(MODULES)))
+	$(Q) rm -rf html_compressed/mqtt.html
+	$(Q) rm -rf html_compressed/mqtt.js
 endif
 	$(Q) for file in `find html_compressed -type f -name "*.htm*"`; do \
 		cat html_compressed/head- $$file >$${file}-; \

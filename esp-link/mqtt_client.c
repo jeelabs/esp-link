@@ -1,3 +1,4 @@
+#ifdef MQTT
 #include <esp8266.h>
 #include "cgiwifi.h"
 #include "config.h"
@@ -140,3 +141,5 @@ void ICACHE_FLASH_ATTR
 mqtt_client_on_data(MqttDataCallback dataCb) {
   data_cb = dataCb;
 }
+
+#endif // MQTT

@@ -5,6 +5,7 @@
 #include <_mingw.h>
 #endif
 
+#undef SHOW_HEAP_USE
 #define DEBUGIP
 
 #define CMD_DBG

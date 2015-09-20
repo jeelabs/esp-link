@@ -1,8 +1,9 @@
+#ifdef MQTT
 #ifndef CGIMQTT_H
 #define CGIMQTT_H
 
 #include "httpd.h"
-
 int cgiMqtt(HttpdConnData *connData);
 
-#endif
+#endif // CGIMQTT_H
+#endif // MQTT

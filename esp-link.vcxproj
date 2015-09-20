@@ -85,10 +85,18 @@
     <None Include="espmake.cmd" />
     <None Include="FLASH.md" />
     <None Include="html\console.html" />
+    <None Include="html\console.js" />
+    <None Include="html\head-" />
     <None Include="html\home.html" />
+    <None Include="html\jl-400x110.png-" />
     <None Include="html\log.html" />
     <None Include="html\mqtt.html" />
+    <None Include="html\mqtt.js" />
+    <None Include="html\pure.css" />
+    <None Include="html\style.css" />
+    <None Include="html\ui.js" />
     <None Include="html\wifi\wifi.html" />
+    <None Include="html\wifi\wifi.js" />
     <None Include="Makefile" />
     <None Include="README.md" />
     <None Include="wiflash" />
@@ -96,6 +104,9 @@
   <ItemGroup>
     <Text Include="esp-link.log" />
     <Text Include="LICENSE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="html\favicon.ico" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A92F0CAA-F89B-4F78-AD2A-A042429BD87F}</ProjectGuid>
