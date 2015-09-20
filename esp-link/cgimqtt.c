@@ -66,7 +66,7 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE;
 
   // handle MQTT server settings
-  int mqtt_server = 0; // accumulator for changes/errors
+  int8_t mqtt_server = 0; // accumulator for changes/errors
   mqtt_server |= getStringArg(connData, "mqtt-host",
       flashConfig.mqtt_host, sizeof(flashConfig.mqtt_host));
   if (mqtt_server < 0) return HTTPD_CGI_DONE;
@@ -85,7 +85,7 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
       &flashConfig.mqtt_clean_session);
 
   if (mqtt_server < 0) return HTTPD_CGI_DONE;
-  mqtt_server |= getBoolArg(connData, "mqtt-enable",
+  int8_t mqtt_en_chg = getBoolArg(connData, "mqtt-enable",
       &flashConfig.mqtt_enable);
 
   char buff[16];
@@ -118,6 +118,19 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
   if (mqtt_server) {
 #ifdef CGIMQTT_DBG
     os_printf("MQTT server settings changed, enable=%d\n", flashConfig.mqtt_enable);
+#endif
+    MQTT_Free(&mqttClient); // safe even if not connected
+    MQTT_Init(&mqttClient, flashConfig.mqtt_host, flashConfig.mqtt_port, 0,
+        flashConfig.mqtt_timeout, flashConfig.mqtt_clientid,
+        flashConfig.mqtt_username, flashConfig.mqtt_password,
+        flashConfig.mqtt_keepalive);
+    if (flashConfig.mqtt_enable && strlen(flashConfig.mqtt_host) > 0)
+      MQTT_Connect(&mqttClient);
+
+  // if just enable changed we just need to bounce the client
+  } else if (mqtt_en_chg > 0) {
+#ifdef CGIMQTT_DBG
+    os_printf("MQTT server enable=%d changed\n", flashConfig.mqtt_enable);
 #endif
     if (flashConfig.mqtt_enable && strlen(flashConfig.mqtt_host) > 0)
       MQTT_Reconnect(&mqttClient);

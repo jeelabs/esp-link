@@ -20,7 +20,7 @@ FlashConfig flashDefault = {
   "\0",                                // api_key
   0, 0, 0,                             // slip_enable, mqtt_enable, mqtt_status_enable
   2, 1,                                // mqtt_timeout, mqtt_clean_session
-  1833, 600,                           // mqtt port, mqtt_keepalive
+  1883, 60,                            // mqtt port, mqtt_keepalive
   "\0", "\0", "\0", "\0", "\0",        // mqtt host, client_id, user, password, status-topic
 };
 
@@ -115,13 +115,14 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
     os_memcpy(&flashConfig, &flashDefault, sizeof(FlashConfig));
     char chipIdStr[6];
     os_sprintf(chipIdStr, "%06x", system_get_chip_id());
-    os_memcpy(&flashConfig.mqtt_clientid, chipIdStr, os_strlen(chipIdStr));
 #ifdef CHIP_IN_HOSTNAME
     char hostname[16];
     os_strcpy(hostname, "esp-link-");
     os_strcat(hostname, chipIdStr);
     os_memcpy(&flashConfig.hostname, hostname, os_strlen(hostname));
 #endif
+    os_memcpy(&flashConfig.mqtt_clientid, &flashConfig.hostname, os_strlen(flashConfig.hostname));
+    os_memcpy(&flashConfig.mqtt_status_topic, &flashConfig.hostname, os_strlen(flashConfig.hostname));
     flash_pri = 0;
     return false;
   }

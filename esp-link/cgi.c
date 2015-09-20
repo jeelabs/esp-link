@@ -43,7 +43,7 @@ errorResponse(HttpdConnData *connData, int code, char *message) {
 
 // look for the HTTP arg 'name' and store it at 'config' with max length 'max_len' (incl
 // terminating zero), returns -1 on error, 0 if not found, 1 if found and OK
-int ICACHE_FLASH_ATTR
+int8_t ICACHE_FLASH_ATTR
 getStringArg(HttpdConnData *connData, char *name, char *config, int max_len) {
   char buff[128];
   int len = httpdFindArg(connData->getArgs, name, buff, sizeof(buff));
@@ -57,7 +57,7 @@ getStringArg(HttpdConnData *connData, char *name, char *config, int max_len) {
   return 1;
 }
 
-int ICACHE_FLASH_ATTR
+int8_t ICACHE_FLASH_ATTR
 getBoolArg(HttpdConnData *connData, char *name, bool*config) {
   char buff[64];
   int len = httpdFindArg(connData->getArgs, name, buff, sizeof(buff));
