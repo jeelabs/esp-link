@@ -1,6 +1,5 @@
 // Copyright 2015 by Thorsten von Eicken, see LICENSE.txt
-// // TCP Client settings
-
+#ifdef MQTT
 #include <esp8266.h>
 #include "cgi.h"
 #include "config.h"
@@ -175,3 +174,4 @@ int ICACHE_FLASH_ATTR cgiMqtt(HttpdConnData *connData) {
     return HTTPD_CGI_DONE;
   }
 }
+#endif // MQTT

@@ -1,12 +1,6 @@
 // Copyright 2015 by Thorsten von Eicken, see LICENSE.txt
 
-#include "espmissingincludes.h"
-#include "c_types.h"
-#include "user_interface.h"
-#include "espconn.h"
-#include "mem.h"
-#include "osapi.h"
-#include "gpio.h"
+#include "esp8266.h"
 
 #include "uart.h"
 #include "crc16.h"

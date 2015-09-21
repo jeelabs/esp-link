@@ -153,7 +153,9 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
       "{\"menu\": [\"Home\", \"/home.html\", "
       "\"Wifi\", \"/wifi/wifi.html\","
       "\"\xC2\xB5" "C Console\", \"/console.html\", "
+#ifdef MQTT
       "\"REST/MQTT\", \"/mqtt.html\","
+#endif
       "\"Debug log\", \"/log.html\" ],\n"
       " \"version\": \"%s\" }", esp_link_version);
   httpdSend(connData, buff, -1);

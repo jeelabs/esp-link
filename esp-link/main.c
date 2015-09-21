@@ -30,8 +30,6 @@
 #include "log.h"
 #include <gpio.h>
 
-//#define SHOW_HEAP_USE
-
 /*
 This is the main url->function dispatching data struct.
 In short, it's a struct with various URLs plus their handlers. The handlers can
@@ -65,7 +63,9 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/wifi/special", cgiWiFiSpecial, NULL },
   { "/pins", cgiPins, NULL },
   { "/tcpclient", cgiTcp, NULL },
+#ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
+#endif
 
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
@@ -79,8 +79,9 @@ static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
 }
 #endif
 
-void user_rf_pre_init(void) {
-}
+# define VERS_STR_STR(V) #V
+# define VERS_STR(V) VERS_STR_STR(V)
+char* esp_link_version = VERS_STR(VERSION);
 
 // address of espfs binary blob
 extern uint32_t _binary_espfs_img_start;
@@ -93,12 +94,13 @@ static char *flash_maps[] = {
   "2MB:1024/1024", "4MB:1024/1024"
 };
 
-# define VERS_STR_STR(V) #V
-# define VERS_STR(V) VERS_STR_STR(V)
-char* esp_link_version = VERS_STR(VERSION);
-
 extern void app_init(void);
 extern void mqtt_client_init(void);
+
+void user_rf_pre_init(void) {
+  //default is enabled
+  system_set_os_print(DEBUG_SDK);
+}
 
 // Main routine to initialize esp-link.
 void user_init(void) {
@@ -115,11 +117,33 @@ void user_init(void) {
   os_delay_us(10000L);
   os_printf("\n\n** %s\n", esp_link_version);
   os_printf("Flash config restore %s\n", restoreOk ? "ok" : "*FAILED*");
+
+#if defined(STA_SSID) && defined(STA_PASS)
+  int x = wifi_get_opmode() & 0x3;
+
+  if (x == 2) {
+    struct station_config stconf;
+    wifi_station_get_config(&stconf);
+
+    if (os_strlen((char*)stconf.ssid) == 0 && os_strlen((char*)stconf.password) == 0) {
+      os_strncpy((char*)stconf.ssid, VERS_STR(STA_SSID), 32);
+      os_strncpy((char*)stconf.password, VERS_STR(STA_PASS), 64);
+#ifdef CGIWIFI_DBG
+      os_printf("Wifi pre-config trying to connect to AP %s pw %s\n", (char*)stconf.ssid, (char*)stconf.password);
+#endif
+      wifi_set_opmode(3);
+      stconf.bssid_set = 0;
+      wifi_station_set_config(&stconf);
+    }
+  }
+#endif
+
   // Status LEDs
   statusInit();
   serledInit();
   // Wifi
   wifiInit();
+
   // init the flash filesystem with the html stuff
   espFsInit(&_binary_espfs_img_start);
   //EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
@@ -145,8 +169,9 @@ void user_init(void) {
       fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
 
   os_printf("** esp-link ready\n");
-
+#ifdef MQTT
   mqtt_client_init();
+#endif
 
   app_init();
 }
