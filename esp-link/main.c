@@ -119,23 +119,18 @@ void user_init(void) {
   os_printf("Flash config restore %s\n", restoreOk ? "ok" : "*FAILED*");
 
 #if defined(STA_SSID) && defined(STA_PASS)
-  int x = wifi_get_opmode() & 0x3;
+  struct station_config stconf;
+  wifi_station_get_config(&stconf);
 
-  if (x == 2) {
-    struct station_config stconf;
-    wifi_station_get_config(&stconf);
-
-    if (os_strlen((char*)stconf.ssid) == 0 && os_strlen((char*)stconf.password) == 0) {
-      os_strncpy((char*)stconf.ssid, VERS_STR(STA_SSID), 32);
-      os_strncpy((char*)stconf.password, VERS_STR(STA_PASS), 64);
+  os_strncpy((char*)stconf.ssid, VERS_STR(STA_SSID), 32);
+  os_strncpy((char*)stconf.password, VERS_STR(STA_PASS), 64);
 #ifdef CGIWIFI_DBG
-      os_printf("Wifi pre-config trying to connect to AP %s pw %s\n", (char*)stconf.ssid, (char*)stconf.password);
+  os_printf("Wifi pre-config trying to connect to AP %s pw %s\n",
+      (char*)stconf.ssid, (char*)stconf.password);
 #endif
-      wifi_set_opmode(3);
-      stconf.bssid_set = 0;
-      wifi_station_set_config(&stconf);
-    }
-  }
+  wifi_set_opmode(3); // sta+ap, will switch to sta-only 15 secs after connecting
+  stconf.bssid_set = 0;
+  wifi_station_set_config(&stconf);
 #endif
 
   // Status LEDs

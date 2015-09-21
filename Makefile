@@ -9,6 +9,7 @@
 # `ESP_HOSTNAME=my.esp.example.com make wiflash` is an easy way to override a variable
 #
 # Makefile heavily adapted to esp-link and wireless flashing by Thorsten von Eicken
+# Lots of work, in particular to support windows, by brunnels
 # Original from esphttpd and others...
 #VERBOSE=1
 
@@ -29,7 +30,9 @@ ESPTOOL		?= $(abspath ../esp-open-sdk/esptool/esptool.py)
 ESPPORT		?= /dev/ttyUSB0
 ESPBAUD		?= 460800
 
-# Build time Wifi Cfg
+# The Wifi station configuration can be hard-coded here, which makes esp-link come up in STA+AP
+# mode trying to connect to the specified AP. It will only switch to STA-only a few seconds after
+# actually connecting the AP.
 # STA_SSID ?= 
 # STA_PASS ?= 
 
@@ -59,6 +62,9 @@ LED_SERIAL_PIN      ?= 14
 
 CHANGE_TO_STA ?= yes
 
+# Optional Modules
+MODULES ?= mqtt rest
+
 # --------------- esphttpd config options ---------------
 
 # If GZIP_COMPRESSION is set to "yes" then the static css, js, and html files will be compressed
@@ -83,11 +89,8 @@ GZIP_COMPRESSION ?= yes
 # http://yui.github.io/yuicompressor/
 # enabled by default.
 COMPRESS_W_HTMLCOMPRESSOR ?= yes
-HTML-COMPRESSOR ?= htmlcompressor-1.5.3.jar
-YUI-COMPRESSOR ?= yuicompressor-2.4.8.jar
-
-# Optional Modules
-MODULES ?= mqtt rest
+HTML_COMPRESSOR ?= htmlcompressor-1.5.3.jar
+YUI_COMPRESSOR ?= yuicompressor-2.4.8.jar
 
 # -------------- End of config options -------------
 
@@ -337,18 +340,18 @@ flash: all
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 	  
-tools/$(HTML-COMPRESSOR):
+tools/$(HTML_COMPRESSOR):
 	$(Q) mkdir -p tools
   ifeq ($(OS),Windows_NT)
-	cd tools; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR) -O $(YUI-COMPRESSOR)
-	cd tools; wget --no-check-certificate https://htmlcompressor.googlecode.com/files/$(HTML-COMPRESSOR) -O $(HTML-COMPRESSOR)
+	cd tools; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR) -O $(YUI_COMPRESSOR)
+	cd tools; wget --no-check-certificate https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR) -O $(HTML_COMPRESSOR)
   else
-	cd tools; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI-COMPRESSOR)
-	cd tools; wget https://htmlcompressor.googlecode.com/files/$(HTML-COMPRESSOR)
+	cd tools; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR)
+	cd tools; wget https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR)
   endif
 
 ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
-$(BUILD_BASE)/espfs_img.o: tools/$(HTML-COMPRESSOR)
+$(BUILD_BASE)/espfs_img.o: tools/$(HTML_COMPRESSOR)
 endif
 
 $(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
@@ -360,21 +363,21 @@ $(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
 	$(Q) cp -r html/wifi/*.js html_compressed/wifi;
 ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 	$(Q) echo "Compression assets with htmlcompressor. This may take a while..."
-		$(Q) java -jar tools/$(HTML-COMPRESSOR) \
+		$(Q) java -jar tools/$(HTML_COMPRESSOR) \
 		-t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
 		-o $(abspath ./html_compressed)/ \
 		$(HTML_PATH)head- \
 		$(HTML_PATH)*.html
-	$(Q) java -jar tools/$(HTML-COMPRESSOR) \
+	$(Q) java -jar tools/$(HTML_COMPRESSOR) \
 		-t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
 		-o $(abspath ./html_compressed)/wifi/ \
 		$(WIFI_PATH)*.html
 	$(Q) echo "Compression assets with yui-compressor. This may take a while..."
 	$(Q) for file in `find html_compressed -type f -name "*.js"`; do \
-			java -jar tools/$(YUI-COMPRESSOR) $$file -o $$file; \
+			java -jar tools/$(YUI_COMPRESSOR) $$file -o $$file; \
 		done
 	$(Q) for file in `find html_compressed -type f -name "*.css"`; do \
-			java -jar tools/$(YUI-COMPRESSOR) $$file -o $$file; \
+			java -jar tools/$(YUI_COMPRESSOR) $$file -o $$file; \
 		done
 endif
 ifeq (,$(findstring mqtt,$(MODULES)))
