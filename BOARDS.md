@@ -115,7 +115,7 @@ straight through).
 Wifi-link-12
 ------------
 
-The wifi-link has an esp-12 modulde and an FTDI connector (with wrong pinout!).
+The wifi-link has an esp-12 modulde, an FTDI connector, and a 2-pin power connector.
 The underside is marked "Wifi-link-12-v2 Jeelabs TvE2015".
 It comes preloaded with the latest version of esp-link V2.
 
