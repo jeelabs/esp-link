@@ -316,43 +316,42 @@ function createInputForPin(pin) {
   input.type = "radio";
   input.name = "pins";
   input.data = pin.name;
-	input.className = "pin-input";
+  input.className = "pin-input";
   input.value= pin.value;
   input.id   = "opt-" + pin.value;
   if (currPin == pin.name) input.checked = "1";
 
-	var descr = m('<label for="opt-'+pin.value+'"><b>'+pin.name+":</b>"+pin.descr+"</label>");
-	var div = document.createElement("div");
-	div.appendChild(input);
-	div.appendChild(descr);
-	return div;
+  var descr = m('<label for="opt-'+pin.value+'"><b>'+pin.name+":</b>"+pin.descr+"</label>");
+  var div = document.createElement("div");
+  div.appendChild(input);
+  div.appendChild(descr);
+  return div;
 }
 
 function displayPins(resp) {
-	var po = $("#pin-mux");
-	po.innerHTML = "";
-	currPin = resp.curr;
-	resp.map.forEach(function(v) {
-		po.appendChild(createInputForPin(v));
-	});
-	var i, inputs = $(".pin-input");
-	for (i=0; i<inputs.length; i++) {
-		inputs[i].onclick = function() { setPins(this.value, this.data) };
-	};
+  var po = $("#pin-mux");
+  po.innerHTML = "";
+  currPin = resp.curr;
+  resp.map.forEach(function(v) {
+    po.appendChild(createInputForPin(v));
+  });
+  var i, inputs = $(".pin-input");
+  for (i=0; i<inputs.length; i++) {
+    inputs[i].onclick = function() { setPins(this.value, this.data) };
+  };
 }
 
 function fetchPins() {
   ajaxJson("GET", "/pins", displayPins, function() {
-		window.setTimeout(fetchPins, 1000);
-	});
+    window.setTimeout(fetchPins, 1000);
+  });
 }
 
 function setPins(v, name) {
   ajaxSpin("POST", "/pins?map="+v, function() {
-		showNotification("Pin assignment changed to " + name);
-	}, function() {
-		showNotification("Pin assignment change failed");
-		window.setTimeout(fetchPins, 100);
-	});
+    showNotification("Pin assignment changed to " + name);
+  }, function() {
+    showNotification("Pin assignment change failed");
+    window.setTimeout(fetchPins, 100);
+  });
 }
-

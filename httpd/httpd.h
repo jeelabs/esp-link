@@ -21,11 +21,10 @@ typedef int (* cgiSendCallback)(HttpdConnData *connData);
 //A struct describing a http connection. This gets passed to cgi functions.
 struct HttpdConnData {
 	struct espconn *conn;
-	int remote_port;
-	uint8 remote_ip[4];
-
+	//int remote_port;
+	//uint8 remote_ip[4];
 	uint32 startTime;
-	char requestType;
+	char requestType;  // HTTP_METHOD_GET | HTTPD_METHOD_POST
 	char *url;
 	char *getArgs;
 	const void *cgiArg;

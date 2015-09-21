@@ -1,0 +1,157 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|ARM">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM">
+      <Configuration>Release</Configuration>
+      <Platform>ARM</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="cmd\cmd.c" />
+    <ClCompile Include="cmd\handlers.c" />
+    <ClCompile Include="esp-link\cgi.c" />
+    <ClCompile Include="esp-link\cgiflash.c" />
+    <ClCompile Include="esp-link\cgimqtt.c" />
+    <ClCompile Include="esp-link\cgipins.c" />
+    <ClCompile Include="esp-link\cgitcp.c" />
+    <ClCompile Include="esp-link\cgiwifi.c" />
+    <ClCompile Include="esp-link\config.c" />
+    <ClCompile Include="esp-link\log.c" />
+    <ClCompile Include="esp-link\main.c" />
+    <ClCompile Include="esp-link\mqtt_client.c" />
+    <ClCompile Include="esp-link\status.c" />
+    <ClCompile Include="espfs\espfs.c" />
+    <ClCompile Include="espfs\mkespfsimage\main.c" />
+    <ClCompile Include="espfs\mkespfsimage\mman-win32\mman.c" />
+    <ClCompile Include="espfs\mkespfsimage\mman-win32\test.c" />
+    <ClCompile Include="httpd\auth.c" />
+    <ClCompile Include="httpd\base64.c" />
+    <ClCompile Include="httpd\httpd.c" />
+    <ClCompile Include="httpd\httpdespfs.c" />
+    <ClCompile Include="mqtt\mqtt.c" />
+    <ClCompile Include="mqtt\mqtt_cmd.c" />
+    <ClCompile Include="mqtt\mqtt_msg.c" />
+    <ClCompile Include="mqtt\pktbuf.c" />
+    <ClCompile Include="rest\rest.c" />
+    <ClCompile Include="serial\console.c" />
+    <ClCompile Include="serial\crc16.c" />
+    <ClCompile Include="serial\serbridge.c" />
+    <ClCompile Include="serial\serled.c" />
+    <ClCompile Include="serial\slip.c" />
+    <ClCompile Include="serial\uart.c" />
+    <ClCompile Include="user\user_main.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="cmd\cmd.h" />
+    <ClInclude Include="esp-link\cgi.h" />
+    <ClInclude Include="esp-link\cgiflash.h" />
+    <ClInclude Include="esp-link\cgimqtt.h" />
+    <ClInclude Include="esp-link\cgipins.h" />
+    <ClInclude Include="esp-link\cgitcp.h" />
+    <ClInclude Include="esp-link\cgiwifi.h" />
+    <ClInclude Include="esp-link\config.h" />
+    <ClInclude Include="esp-link\log.h" />
+    <ClInclude Include="esp-link\mqtt_client.h" />
+    <ClInclude Include="esp-link\status.h" />
+    <ClInclude Include="espfs\espfs.h" />
+    <ClInclude Include="espfs\espfsformat.h" />
+    <ClInclude Include="espfs\mkespfsimage\mman-win32\mman.h" />
+    <ClInclude Include="httpd\auth.h" />
+    <ClInclude Include="httpd\base64.h" />
+    <ClInclude Include="httpd\httpd.h" />
+    <ClInclude Include="httpd\httpdespfs.h" />
+    <ClInclude Include="include\esp8266.h" />
+    <ClInclude Include="include\espmissingincludes.h" />
+    <ClInclude Include="include\uart_hw.h" />
+    <ClInclude Include="include\user_config.h" />
+    <ClInclude Include="mqtt\mqtt.h" />
+    <ClInclude Include="mqtt\mqtt_cmd.h" />
+    <ClInclude Include="mqtt\mqtt_msg.h" />
+    <ClInclude Include="mqtt\pktbuf.h" />
+    <ClInclude Include="rest\rest.h" />
+    <ClInclude Include="serial\console.h" />
+    <ClInclude Include="serial\crc16.h" />
+    <ClInclude Include="serial\serbridge.h" />
+    <ClInclude Include="serial\serled.h" />
+    <ClInclude Include="serial\slip.h" />
+    <ClInclude Include="serial\uart.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="BOARDS.md" />
+    <None Include="espmake.cmd" />
+    <None Include="FLASH.md" />
+    <None Include="html\console.html" />
+    <None Include="html\console.js" />
+    <None Include="html\head-" />
+    <None Include="html\home.html" />
+    <None Include="html\jl-400x110.png-" />
+    <None Include="html\log.html" />
+    <None Include="html\mqtt.html" />
+    <None Include="html\mqtt.js" />
+    <None Include="html\pure.css" />
+    <None Include="html\style.css" />
+    <None Include="html\ui.js" />
+    <None Include="html\wifi\wifi.html" />
+    <None Include="html\wifi\wifi.js" />
+    <None Include="Makefile" />
+    <None Include="README.md" />
+    <None Include="wiflash" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="esp-link.log" />
+    <Text Include="LICENSE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="html\favicon.ico" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A92F0CAA-F89B-4F78-AD2A-A042429BD87F}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup>
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <NMakeOutput />
+    <NMakePreprocessorDefinitions>__ets__;_STDINT_H;ICACHE_FLASH;__MINGW32__;__WIN32__</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>.\rest;.\esp-link;.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.3.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
+    <ExecutablePath />
+    <ReferencePath />
+    <LibraryPath />
+    <LibraryWPath />
+    <ExcludePath />
+    <NMakeOutput />
+    <OutDir>bin</OutDir>
+    <IntDir>build</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
+    <NMakeBuildCommandLine>espmake all wiflash</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>espmake clean all</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>espmake clean</NMakeCleanCommandLine>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
+    <NMakeBuildCommandLine>espmake clean all wiflash</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>espmake clean all</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>espmake clean</NMakeCleanCommandLine>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <BuildLog>
+      <Path />
+    </BuildLog>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

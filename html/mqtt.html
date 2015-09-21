@@ -1,0 +1,101 @@
+  <div id="main">
+    <div class="header">
+      <h1>REST &amp; MQTT</h1>
+    </div>
+
+    <div class="content">
+      <div class="pure-g">
+        <div class="pure-u-1"><div class="card">
+          <p>The REST &amp; MQTT support uses the SLIP protocol over the serial port to enable
+          the attached microcontroller to initiate outbound connections.
+          The REST support lets the uC initiate simple HTTP requests while the MQTT support
+          lets it communicate with an MQTT server bidirectionally at QoS 0 thru 2.</p>
+          <p>The MQTT support is in the form of a built-in client that connects to a server
+          using parameters set below and stored in esp-link's flash settings. This allows 
+          esp-link to take care of connection parameters and disconnect/reconnect operations.</p>
+          <p>The MQTT client also supports sending periodic status messages about esp-link itself,
+          including Wifi RSSI, and free heap memory.</p>
+          <div class="form-horizontal">
+            <input type="checkbox" name="slip-enable"/>
+            <label>Enable SLIP on serial port</label>
+          </div>
+        </div></div>
+      </div>
+      <div class="pure-g">
+        <div class="pure-u-1 pure-u-md-1-2">
+          <div class="card">
+            <h1>MQTT
+              <div id="mqtt-spinner" class="spinner spinner-small"></div>
+            </h1>
+            <form action="#" id="mqtt-form" class="pure-form" hidden>
+              <input type="checkbox" name="mqtt-enable"/>
+              <label>Enable MQTT client</label>
+              <br>
+              <label>MQTT client state: </label>
+              <b id="mqtt-state"></b>
+              <br>
+              <legend>MQTT server settings</legend>
+              <div class="pure-form-stacked">
+                <label>Server hostname or IP</label>
+                <input type="text" name="mqtt-host"/>
+                <label>Server port</label>
+                <input type="text" name="mqtt-port"/>
+                <label>Client ID</label>
+                <input type="text" name="mqtt-client-id"/>
+                <label>Client Timeout (seconds)</label>
+                <input type="text" name="mqtt-timeout" />
+                <label>Keep Alive Interval (seconds)</label>
+                <input type="text" name="mqtt-keepalive" />
+                <label>Username</label>
+                <input type="text" name="mqtt-username"/>
+                <label>Password</label>
+                <input type="password" name="mqtt-password"/>
+              </div>
+              <button id="mqtt-button" type="submit" class="pure-button button-primary">
+                Update server settings!
+              </button>
+            </form>
+          </div>
+        </div>
+        <div class="pure-u-1 pure-u-md-1-2">
+          <div class="card">
+            <h1>Status reporting
+              <div id="mqtt-status-spinner" class="spinner spinner-small"></div>
+            </h1>
+            <form action="#" id="mqtt-status-form" class="pure-form" hidden>
+              <div class="form-horizontal">
+                <input type="checkbox" name="mqtt-status-enable"/>
+                <label>Enable status reporting via MQTT</label>
+              </div>
+              <br>
+              <legend>Status reporting settings</legend>
+              <div class="pure-form-stacked">
+                <label>Topic</label>
+                <input type="text" name="mqtt-status-topic"/>
+                Message: <tt id="mqtt-status-value"></tt>
+              </div>
+              <button id="mqtt-status-button" type="submit" class="pure-button button-primary">
+                Update status settings!
+              </button>
+            </form>
+          </div>
+          <div class="card">
+            <h1>REST</h1>
+            <p>REST requests are enabled as soon as SLIP is enabled.
+            There are no REST-specific settings.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="mqtt.js"></script>
+<script type="text/javascript">
+onLoad(function() {
+  fetchMqtt();
+  bnd($("#mqtt-form"), "submit", changeMqtt);
+  bnd($("#mqtt-status-form"), "submit", changeMqttStatus);
+});
+</script>
+</body></html>

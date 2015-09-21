@@ -1,17 +1,52 @@
 ESP-LINK
 ========
 
-This firmware implements a transparent bridge between Wifi and serial using an ESP8266 module.
-It also provides support for flash-programming Arduino/AVR microcontrollers as well as
-LPC800-series and other ARM microcontrollers via the ESP8266.
+This firmware connects an attached micro-controller to the internet using a ESP8266 Wifi module.
+It implements a number of features:
+- transparent bridge between Wifi and serial, useful for debugging or inputting into a uC
+- flash-programming attached Arduino/AVR microcontrollers as well as LPC800-series and other
+  ARM microcontrollers via Wifi
+- outbound TCP (and thus HTTP) connections from the attached micro-controller to the internet
+- outbound REST HTTP requests from the attached micro-controller to the internet, protocol
+  based on espduino and compatible with [tuanpmt/espduino](https://github.com/tuanpmt/espduino)
 
 The firmware includes a tiny HTTP server based on
 [esphttpd](http://www.esp8266.com/viewforum.php?f=34)
 with a simple web interface, many thanks to Jeroen Domburg for making it available!
+Many thanks to https://github.com/brunnels for contributions around the espduino functionality.
 
+###[Releases](https://github.com/jeelabs/esp-link/releases)
+
+- [V2.0.beta2](https://github.com/jeelabs/esp-link/releases/tag/v2.0.beta2) has REST support but
+  requires a 1MByte or 4MByte ESP8266 flash, e.g. esp-12 or wroom-02
+- [V1.0.1](https://github.com/jeelabs/esp-link/releases/tag/v1.0.1) is _stable_
+  and has the web server, transparent bridge, flash-programming support, but lacks
+  the REST and upcoming MQTT support. V1 works with 512KB flash, e.g. esp-1, esp-3, ...
+
+For quick support and questions:
 [![Chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jeelabs/esp-link?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-###[Latest release](https://github.com/jeelabs/esp-link/releases)
+Esp-link uses
+-------------
+The simplest use of esp-link is as a transparent serial to wifi bridge. You can flash an attached
+uC over wifi and you can watch the uC's serial debug output by connecting to port 23 or looking
+at the uC Console web page.
+
+The next level is to use the outbound connectivity of esp-link in the uC code. For example, the
+uC can use REST requests to services like thingspeak.com to send sensor values that then get
+stored and plotted by the external service.
+The uC can also use REST requests to retrieve simple configuration
+information or push other forms of notifications. (MQTT functionality is forthcoming.)
+
+An additional option is to add code to esp-link to customize it and put all the communication
+code into esp-link and only keep simple sensor/actuator control in the attached uC. In this
+mode the attached uC sends custom commands to esp-link with sensor/acturator info and
+registers a set of callbacks with esp-link that control sensors/actuators. This way, custom
+commands in esp-link can receive MQTT messages, make simple callbacks into the uC to get sensor
+values or change actuators, and then respond back with MQTT. The way this is architected is that
+the attached uC registers callbacks at start-up such that the code in the esp doesn't need to 
+know which exact sensors/actuators the attached uC has, it learns thta through the initial
+callback registration.
 
 Eye Candy
 ---------
@@ -26,7 +61,7 @@ attached microcontroller, and the pin assignments card:
 Hardware info
 -------------
 This firmware is designed for esp8266 modules which have most ESP I/O pins available and
-512KB flash.
+at least 1MB flash. (The V1 firmware supports modules with 512KB flash).
 The default connections are:
 - URXD: connect to TX of microcontroller
 - UTXD: connect to RX of microcontroller
@@ -36,6 +71,9 @@ The default connections are:
 - GPIO2: optionally connect yellow "ser" LED to 3.3V (indicates serial activity)
 
 If you are using an FTDI connector, GPIO12 goes to DTR and GPIO13 goes to CTS.
+
+If you are using an esp-12 module, you can avoid the initial boot message from the esp8266
+bootloader by using the swap-pins option. This swaps the esp8266 TX/RX to gpio15/gpio13 respectively.
 
 The GPIO pin assignments can be changed dynamically in the web UI and are saved in flash.
 
@@ -215,7 +253,28 @@ modes are supported that can be set in the web UI (and the mode is saved in flas
 Note that even if the UART log is always off the bootloader prints to uart0 whenever the
 esp8266 comes out of reset. This cannot be disabled.
 
+Outbound TCP connections
+------------------------
+The attached micro-controller can open outbound TCP connections using a simple
+[serial protocol](https://gist.github.com/tve/a46c44bf1f6b42bc572e).
+More info and sample code forthcoming...
+
+Outbound HTTP REST requests
+---------------------------
+The V2 versions of esp-link support the espduino SLIP protocol that supports simple outbound
+HTTP REST requests. The SLIP protocol consists of commands with binary arguments sent from the
+attached microcontroller to the esp8266, which then performs the command and responds back.
+The responses back use a callback address in the attached microcontroller code, i.e., the
+command sent by the uC contains a callback address and the response from the esp8266 starts
+with that callback address. This enables asynchronous communication where esp-link can notify the
+uC when requests complete or when other actions happen, such as wifi connectivity status changes.
+Support for MQTT is forthcoming.
+
+You can find a demo sketch in a fork of the espduino library at
+https://github.com/tve/espduino in the
+[examples/demo folder](https://github.com/tve/espduino/tree/master/espduino/examples/demo).
+
 Contact
 -------
 If you find problems with esp-link, please create a github issue. If you have a question, please
-use the gitter link at the top of this page.
+use the gitter chat link at the top of this page.

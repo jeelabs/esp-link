@@ -22,38 +22,16 @@ Some flash handling cgi routines. Used for reading the existing flash and updati
 // Check that the header of the firmware blob looks like actual firmware...
 static char* ICACHE_FLASH_ATTR check_header(void *buf) {
 	uint8_t *cd = (uint8_t *)buf;
+#ifdef CGIFLASH_DBG
 	uint32_t *buf32 = buf;
 	os_printf("%p: %08lX %08lX %08lX %08lX\n", buf, buf32[0], buf32[1], buf32[2], buf32[3]);
+#endif
 	if (cd[0] != 0xEA) return "IROM magic missing";
 	if (cd[1] != 4 || cd[2] > 3 || (cd[3]>>4) > 6) return "bad flash header";
 	if (((uint16_t *)buf)[3] != 0x4010) return "Invalid entry addr";
 	if (((uint32_t *)buf)[2] != 0) return "Invalid start offset";
 	return NULL;
 }
-
-#if 0
-//===== Cgi that reads the SPI flash. Assumes 512KByte flash.
-int ICACHE_FLASH_ATTR cgiReadFlash(HttpdConnData *connData) {
-	int *pos=(int *)&connData->cgiData;
-	if (connData->conn==NULL) {
-		//Connection aborted. Clean up.
-		return HTTPD_CGI_DONE;
-	}
-
-	if (*pos==0) {
-		os_printf("Start flash download.\n");
-		httpdStartResponse(connData, 200);
-		httpdHeader(connData, "Content-Type", "application/bin");
-		httpdEndHeaders(connData);
-		*pos=0x40200000;
-		return HTTPD_CGI_MORE;
-	}
-	//Send 1K of flash per call. We will get called again if we haven't sent 512K yet.
-	espconn_sent(connData->conn, (uint8 *)(*pos), 1024);
-	*pos+=1024;
-	if (*pos>=0x40200000+(512*1024)) return HTTPD_CGI_DONE; else return HTTPD_CGI_MORE;
-}
-#endif
 
 //===== Cgi to query which firmware needs to be uploaded next
 int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
@@ -66,7 +44,9 @@ int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
 	httpdEndHeaders(connData);
 	char *next = id == 1 ? "user1.bin" : "user2.bin";
 	httpdSend(connData, next, -1);
+#ifdef CGIFLASH_DBG
 	os_printf("Next firmware: %s (got %d)\n", next, id);
+#endif
 
 	return HTTPD_CGI_DONE;
 }
@@ -104,7 +84,9 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 
 	// return an error if there is one
 	if (err != NULL) {
+#ifdef CGIFLASH_DBG
 		os_printf("Error %d: %s\n", code, err);
+#endif
 		httpdStartResponse(connData, code);
 		httpdHeader(connData, "Content-Type", "text/plain");
 		//httpdHeader(connData, "Content-Length", strlen(err)+2);
@@ -123,7 +105,9 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 
 	// erase next flash block if necessary
 	if (address % SPI_FLASH_SEC_SIZE == 0){
+#ifdef CGIFLASH_DBG
 		os_printf("Flashing 0x%05x (id=%d)\n", address, 2-id);
+#endif
 		spi_flash_erase_sector(address/SPI_FLASH_SEC_SIZE);
 	}
 
@@ -153,10 +137,15 @@ int ICACHE_FLASH_ATTR cgiRebootFirmware(HttpdConnData *connData) {
 	int address = id == 1 ? 4*1024                   // either start after 4KB boot partition
 	    : 4*1024 + FIRMWARE_SIZE + 16*1024 + 4*1024; // 4KB boot, fw1, 16KB user param, 4KB reserved
 	uint32 buf[8];
+#ifdef CGIFLASH_DBG
+	os_printf("Checking %p\n", (void *)address);
+#endif
 	spi_flash_read(address, buf, sizeof(buf));
 	char *err = check_header(buf);
 	if (err != NULL) {
+#ifdef CGIFLASH_DBG
 		os_printf("Error %d: %s\n", 400, err);
+#endif
 		httpdStartResponse(connData, 400);
 		httpdHeader(connData, "Content-Type", "text/plain");
 		//httpdHeader(connData, "Content-Length", strlen(err)+2);

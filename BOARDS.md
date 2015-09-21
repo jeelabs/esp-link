@@ -112,6 +112,66 @@ hook-up a USB-BUB. I recommend jumpering the flash pin (next to GND) to GND and 
 hook the reset pin (6) to the USB-BUB's DTR (should happen automatically). RX&TX also go
 straight through).
 
+Wifi-link-12
+------------
+
+The wifi-link has an esp-12 modulde, an FTDI connector, and a 2-pin power connector.
+The underside is marked "Wifi-link-12-v2 Jeelabs TvE2015".
+It comes preloaded with the latest version of esp-link V2.
+
+The ftdi connector has the following pin-out:
+ - 1: GND (marked top&bottom)
+ - 2: CTS (used as ISP to program ARM processors, also esp's TX when flashing the esp)
+ - 3: 5V (marked on bottom)
+ - 4: TX (from the esp)
+ - 5: RX (to the esp)
+ - 6: DTR (used ass reset to program AVR and ARM processors, also esp's RX when flashing the esp)
+
+Power: the on-board LM3671 switching regulator can provide 600mA while staying cool and is good from about 3.6v to 5.5v!
+Connect power to the marked power connector or to the FTDI connector (GND marked, 5V on 3rd pin). Do not exceed 5.5v!!
+
+It is possible to bypass the on-board regulator and power the wifi-link directly with 3.3v: connect the 3.3v to the FTDI connector ("5v" pin) and switch the jumper on the bottom from 5v to 3v3 (you need to cut the tiny trace on the 5v side and jumper the two pads on the 3v3 side).
+
+On power-up you should see the green LED on for ~1 second (the yellow should go on too, but
+the firmware may not be configured correctly). After that the green should blink according to the
+patterns described in the README's LED indicators section. Follow the Wifi configuration details
+section thereafter.
+
+The bottom also has a "sleep" jumper which connects the esp's reset pin with its gpio16 to enable deep-sleep
+mode. This jumper is open and must be bridged to use the timed-wake-up feature of the esp's deep-sleep mode.
+
+To connect a JeeNode to the esp-bridge to flash the AVR or debug it, plug it into the FTDI
+port straight, i.e. the component side of the JeeNode and of the wifi-link will be on the top.
+
+To connect an arduino, jumper gnd, tx, rx, and dtr for reset. The wifi-link-12-v2 has a 2.2K resistor on rx (serial going from AVR to esp) in order to protect it from 5v signals.
+
+To program the JeeNode or AVR, having set-up the Wifi through the web pages, run avrdude with an
+option like "-Pnet:esp-link:23" (you can use an IP address instead of `esp-link`). My test command
+line is as follows:
+```
+/home/arduino/arduino-1.0.5/hardware/tools/avrdude \
+  -C /home/arduino/arduino-1.0.5/hardware/tools/avrdude.conf -DV -patmega328p \
+  -Pnet:esp-link:23 -carduino -b115200 -U flash:w:greenhouse.hex:i
+```
+If you're using "edam's Arduino makefile" then you can simply set `SERIALDEV=net:esp-link:23` in your
+sketch's Makefile. You can also use port 2323 which forces programming mode (no real benefit with avrdude, but can
+enable programming PICs).
+
+Serially reflashing the wifi-link itself (as opposed to the attached uController):
+_you should not need to do this!_, in general use the over-the-air reflashing by downloading the latest release.
+If you cannot reflash over-the-air and need to reflash serially, follow this process:
+- connect TX of the programmer (such as USB-BUB or a FDTI-friend) to DTR (FTDI pin 6)
+- connect RX of the programmer to CTS (FTDI pin 2)
+- short the flash jumper on the top of the board (push tweezers or a piece of wire into the jumper gap),
+  the green LED will be on solid when you have contact
+- briefly interrupt the power to reset the esp
+- it will now be in flash mode: the green LED should be off (assuming you release the flash jumper),
+  if you see the green LED come on it has rebooted into esp-link and you need to reset it again
+  (the whole proess take some fiddling, you can solder a real jumper or switch to the flash pads and there's a similar
+  reset jumper pad on the bottom of the PCB).
+- use your favorite programming tool to reflash, you have time if the esp really entered programming mode, it often takes me
+  2-3 tries until the programming works
+
 Serial flashing
 ---------------
 

@@ -1,9 +1,8 @@
 #ifndef ESPMISSINGINCLUDES_H
 #define ESPMISSINGINCLUDES_H
 
-#include <stdint.h>
-#include <c_types.h>
-#include <ets_sys.h>
+#include <user_interface.h>
+#include <eagle_soc.h>
 
 //Missing function prototypes in include folders. Gcc will warn on these if we don't define 'em anywhere.
 //MOST OF THESE ARE GUESSED! but they seem to work and shut up the compiler.
@@ -37,19 +36,32 @@ void ets_timer_setfn(ETSTimer *t, ETSTimerFunc *fn, void *parg);
 
 void ets_update_cpu_frequency(int freqmhz);
 
-int os_printf(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
-int os_snprintf(char *str, size_t size, const char *format, ...) __attribute__ ((format (printf, 3, 4)));
-int os_printf_plus(const char *format, ...)  __attribute__ ((format (printf, 1, 2)));
+#ifdef SDK_DBG
+#define DEBUG_SDK true
+#else
+#define DEBUG_SDK false
+#endif
 
-void pvPortFree(void *ptr);
-void *pvPortMalloc(size_t xWantedSize);
-void *pvPortZalloc(size_t);
-void uart_div_modify(int no, unsigned int freq);
-void vPortFree(void *ptr);
+int os_snprintf(char *str, size_t size, const char *format, ...) __attribute__((format(printf, 3, 4)));
+int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
+
+#undef os_printf
+#define os_printf(format, ...) \
+  system_set_os_print(true); \
+  os_printf_plus(format, ## __VA_ARGS__); \
+  system_set_os_print(DEBUG_SDK); // int os_printf(const char *format, ...)
+
+
+// memory allocation functions are "different" due to memory debugging functionality
+// added in SDK 1.4.0
+void vPortFree(void *ptr, char * file, int line);
+void *pvPortMalloc(size_t xWantedSize, char * file, int line);
+void *pvPortZalloc(size_t, char * file, int line);
 void *vPortMalloc(size_t xWantedSize);
+void pvPortFree(void *ptr);
+
+void uart_div_modify(int no, unsigned int freq);
 uint32 system_get_time();
-//uint8 wifi_get_opmode(void); // defined in SDK 1.0.0 onwards
-//int os_random(); // defined in SDK 1.1.0 onwards
 int rand(void);
 void ets_bzero(void *s, size_t n);
 void ets_delay_us(int ms);
@@ -66,5 +78,13 @@ void ets_delay_us(int ms);
         (READ_PERI_REG(PIN_NAME) & ~(PERIPHS_IO_MUX_FUNC<<PERIPHS_IO_MUX_FUNC_S))  \
             |( (((FUNC&BIT2)<<2)|(FUNC&0x3))<<PERIPHS_IO_MUX_FUNC_S) );  \
     } while (0)
+
+
+// Shortcuts for memory functions
+//#define os_malloc   pvPortMalloc // defined in SDK 1.4.0 onwards
+//#define os_free     vPortFree    // defined in SDK 1.4.0 onwards
+//#define os_zalloc   pvPortZalloc // defined in SDK 1.4.0 onwards
+//uint8 wifi_get_opmode(void); // defined in SDK 1.0.0 onwards
+//int os_random();             // defined in SDK 1.1.0 onwards
 
 #endif

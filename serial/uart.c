@@ -17,13 +17,16 @@
  * ----------------------------------------------------------------------------
  * Heavily modified and enhanced by Thorsten von Eicken in 2015
  */
-#include "espmissingincludes.h"
-#include "ets_sys.h"
-#include "osapi.h"
-#include "user_interface.h"
+#include "esp8266.h"
 #include "uart.h"
 
-#define recvTaskPrio        0
+#ifdef UART_DBG
+#define DBG_UART(format, ...) os_printf(format, ## __VA_ARGS__)
+#else
+#define DBG_UART(format, ...) do { } while(0)
+#endif
+
+#define recvTaskPrio        1
 #define recvTaskQueueLen    64
 
 // UartDev is defined and initialized in rom code.
@@ -206,7 +209,7 @@ uart0_rx_intr_handler(void *para)
   if (UART_RXFIFO_FULL_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_RXFIFO_FULL_INT_ST)
   ||  UART_RXFIFO_TOUT_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_RXFIFO_TOUT_INT_ST))
   {
-    //os_printf("stat:%02X",*(uint8 *)UART_INT_ENA(uart_no));
+    //DBG_UART("stat:%02X",*(uint8 *)UART_INT_ENA(uart_no));
     ETS_UART_INTR_DISABLE();
     system_os_post(recvTaskPrio, 0, 0);
   }
@@ -229,7 +232,7 @@ uart_recvTask(os_event_t *events)
            (length < 128)) {
       buf[length++] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
     }
-    //os_printf("%d ix %d\n", system_get_time(), length);
+    //DBG_UART("%d ix %d\n", system_get_time(), length);
 
     for (int i=0; i<MAX_CB; i++) {
       if (uart_recv_cb[i] != NULL) (uart_recv_cb[i])(buf, length);
