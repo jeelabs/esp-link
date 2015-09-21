@@ -31,8 +31,8 @@ ESPPORT		?= /dev/ttyUSB0
 ESPBAUD		?= 460800
 
 # The Wifi station configuration can be hard-coded here, which makes esp-link come up in STA+AP
-# mode trying to connect to the specified AP. It will only switch to STA-only a few seconds after
-# actually connecting the AP.
+# mode trying to connect to the specified AP *only* if the flash wireless settings are empty!
+# This happens on a full serial flash and avoids having to hunt for the AP...
 # STA_SSID ?= 
 # STA_PASS ?= 
 

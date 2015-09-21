@@ -119,12 +119,7 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
     os_printf("MQTT server settings changed, enable=%d\n", flashConfig.mqtt_enable);
 #endif
     MQTT_Free(&mqttClient); // safe even if not connected
-    MQTT_Init(&mqttClient, flashConfig.mqtt_host, flashConfig.mqtt_port, 0,
-        flashConfig.mqtt_timeout, flashConfig.mqtt_clientid,
-        flashConfig.mqtt_username, flashConfig.mqtt_password,
-        flashConfig.mqtt_keepalive);
-    if (flashConfig.mqtt_enable && strlen(flashConfig.mqtt_host) > 0)
-      MQTT_Connect(&mqttClient);
+    mqtt_client_init();
 
   // if just enable changed we just need to bounce the client
   } else if (mqtt_en_chg > 0) {

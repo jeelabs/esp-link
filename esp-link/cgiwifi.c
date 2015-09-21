@@ -110,6 +110,7 @@ static void ICACHE_FLASH_ATTR wifiHandleEventCb(System_Event_t *evt) {
 void ICACHE_FLASH_ATTR
 wifiAddStateChangeCb(WifiStateChangeCb cb) {
   for (int i = 0; i < 4; i++) {
+    if (wifi_state_change_cb[i] == cb) return;
     if (wifi_state_change_cb[i] == NULL) {
       wifi_state_change_cb[i] = cb;
       return;
@@ -599,7 +600,7 @@ int ICACHE_FLASH_ATTR cgiWiFiConnStatus(HttpdConnData *connData) {
 
   len += os_sprintf(buff+len, "\"x\":0}\n");
 #ifdef CGIWIFI_DBG
-  os_printf("  -> %s\n", buff);
+  //os_printf("  -> %s\n", buff);
 #endif
   httpdSend(connData, buff, len);
   return HTTPD_CGI_DONE;
