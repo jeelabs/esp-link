@@ -253,26 +253,22 @@ modes are supported that can be set in the web UI (and the mode is saved in flas
 Note that even if the UART log is always off the bootloader prints to uart0 whenever the
 esp8266 comes out of reset. This cannot be disabled.
 
-Outbound TCP connections
-------------------------
-The attached micro-controller can open outbound TCP connections using a simple
-[serial protocol](https://gist.github.com/tve/a46c44bf1f6b42bc572e).
-More info and sample code forthcoming...
-
-Outbound HTTP REST requests
----------------------------
+Outbound HTTP REST requests and MQTT client
+-------------------------------------------
 The V2 versions of esp-link support the espduino SLIP protocol that supports simple outbound
-HTTP REST requests. The SLIP protocol consists of commands with binary arguments sent from the
+HTTP REST requests as well as an MQTT client. The SLIP protocol consists of commands with
+binary arguments sent from the
 attached microcontroller to the esp8266, which then performs the command and responds back.
 The responses back use a callback address in the attached microcontroller code, i.e., the
 command sent by the uC contains a callback address and the response from the esp8266 starts
 with that callback address. This enables asynchronous communication where esp-link can notify the
 uC when requests complete or when other actions happen, such as wifi connectivity status changes.
-Support for MQTT is forthcoming.
 
 You can find a demo sketch in a fork of the espduino library at
 https://github.com/tve/espduino in the
 [examples/demo folder](https://github.com/tve/espduino/tree/master/espduino/examples/demo).
+
+More docs forthcoming...
 
 Contact
 -------
