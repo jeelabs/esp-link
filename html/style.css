@@ -206,6 +206,16 @@ pre.console a {
 	color: #fff;
 }
 
+#menu .hostname {
+	width: 100%;
+	font-size: 12px;
+	height: 20px;
+	padding-left: 10px;
+	text-align: center;
+	color: #fff;
+	background: #9d1414;
+}
+
 #menu .pure-menu-heading {
 	font-size: 110%;
 	color: #fff;

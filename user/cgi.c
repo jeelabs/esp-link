@@ -66,7 +66,7 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
 	os_sprintf(buff,
 			"{\"menu\": [\"Home\", \"/home.html\", \"Wifi\", \"/wifi/wifi.html\","
 			"\"\xC2\xB5" "C Console\", \"/console.html\", \"Debug log\", \"/log.html\" ],\n"
-			" \"version\": \"%s\" }", esp_link_version);
+			" \"version\": \"%s\", \"hostname\": \"%s\"}", esp_link_version, wifi_station_get_hostname());
 	httpdSend(connData, buff, -1);
 	return HTTPD_CGI_DONE;
 }
