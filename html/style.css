@@ -207,8 +207,8 @@ pre.console a {
 }
 
 #menu .hostname {
-	width: 100%;
-	font-size: 12px;
+	width: 140px;
+	border-top: 1px solid #333;
 	height: 20px;
 	padding-left: 10px;
 	text-align: left;
