@@ -226,6 +226,7 @@ onLoad(function() {
       <div class="pure-menu">\
         <a class="pure-menu-heading" href="https://github.com/jeelabs/esp-link">\
         <img src="/favicon.ico" height="32">&nbsp;esp-link</a>\
+        <div id="hostname" class="hostname"></div>\
         <ul id="menu-list" class="pure-menu-list"></ul>\
       </div>\
     </div>\
@@ -258,6 +259,9 @@ onLoad(function() {
 
       v = $("#version");
       if (v != null) { v.innerHTML = data.version; }
+      
+    $("#hostname").innerHTML = data.hostname;
+
     }, function() { setTimeout(getMenu, 1000); });
   };
   getMenu();
