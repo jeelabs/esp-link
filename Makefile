@@ -27,6 +27,10 @@ ESPTOOL		?= $(abspath ../esp-open-sdk/esptool/esptool.py)
 ESPPORT		?= /dev/ttyUSB0
 ESPBAUD		?= 460800
 
+# Build time Wifi Cfg
+# STA_SSID ?= 
+# STA_PASS ?= 
+
 # --------------- chipset configuration   ---------------
 
 # Pick your flash size: "512KB", "1MB", or "4MB"
@@ -210,6 +214,14 @@ vecho := @true
 else
 Q := @
 vecho := @echo
+endif
+
+ifneq ($(strip $(STA_SSID)),)
+CFLAGS+= -DSTA_SSID="$(STA_SSID)"
+endif
+
+ifneq ($(strip $(STA_PASS)),)
+CFLAGS+= -DSTA_PASS="$(STA_PASS)"
 endif
 
 ifeq ("$(GZIP_COMPRESSION)","yes")

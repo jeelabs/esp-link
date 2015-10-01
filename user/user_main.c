@@ -105,6 +105,14 @@ static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
 #endif
 
 void user_rf_pre_init(void) {
+  system_set_os_print(DEBUG_SDK);
+#if defined(STA_SSID) && defined(STA_PASS)
+  struct station_config stconf;
+  os_strncpy((char*)stconf.ssid, VERS_STR(STA_SSID), 32);
+  os_strncpy((char*)stconf.password, VERS_STR(STA_PASS), 64);
+  stconf.bssid_set = 0;
+  wifi_station_set_config_current(&stconf);
+#endif
 }
 
 // address of espfs binary blob
