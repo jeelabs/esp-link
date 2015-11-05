@@ -45,7 +45,7 @@ registers a set of callbacks with esp-link that control sensors/actuators. This 
 commands in esp-link can receive MQTT messages, make simple callbacks into the uC to get sensor
 values or change actuators, and then respond back with MQTT. The way this is architected is that
 the attached uC registers callbacks at start-up such that the code in the esp doesn't need to 
-know which exact sensors/actuators the attached uC has, it learns thta through the initial
+know which exact sensors/actuators the attached uC has, it learns that through the initial
 callback registration.
 
 Eye Candy
