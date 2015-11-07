@@ -16,6 +16,7 @@ Some flash handling cgi routines. Used for reading the existing flash and updati
 
 #include <esp8266.h>
 #include <osapi.h>
+#include "cgi.h"
 #include "cgiflash.h"
 #include "espfs.h"
 
@@ -33,9 +34,22 @@ static char* ICACHE_FLASH_ATTR check_header(void *buf) {
 	return NULL;
 }
 
+// check whether the flash map/size we have allows for OTA upgrade
+static bool canOTA(void) {
+        enum flash_size_map map = system_get_flash_size_map();
+        return map >= FLASH_SIZE_8M_MAP_512_512;
+}
+
+static char *flash_too_small = "Flash too small for OTA update";
+
 //===== Cgi to query which firmware needs to be uploaded next
 int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
 	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+
+        if (!canOTA()) {
+          errorResponse(connData, 400, flash_too_small);
+          return HTTPD_CGI_DONE;
+        }
 
 	uint8 id = system_upgrade_userbin_check();
 	httpdStartResponse(connData, 200);
@@ -54,6 +68,11 @@ int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
 //===== Cgi that allows the firmware to be replaced via http POST
 int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+
+        if (!canOTA()) {
+          errorResponse(connData, 400, flash_too_small);
+          return HTTPD_CGI_DONE;
+        }
 
 	int offset = connData->post->received - connData->post->buffLen;
 	if (offset == 0) {
@@ -130,6 +149,11 @@ static ETSTimer flash_reboot_timer;
 // Handle request to reboot into the new firmware
 int ICACHE_FLASH_ATTR cgiRebootFirmware(HttpdConnData *connData) {
 	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+
+        if (!canOTA()) {
+          errorResponse(connData, 400, flash_too_small);
+          return HTTPD_CGI_DONE;
+        }
 
 	// sanity-check that the 'next' partition actually contains something that looks like
 	// valid firmware

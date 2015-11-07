@@ -35,9 +35,15 @@ typedef union {
 // size of the setting sector
 #define FLASH_SECT   (4096)
 
-// address where to flash the settings: there are 16KB of reserved space at the end of the first
-// flash partition, we use the upper 8KB (2 sectors)
-#define FLASH_ADDR   (FLASH_SECT + FIRMWARE_SIZE + 2*FLASH_SECT)
+// address where to flash the settings: if we have >512KB flash then there are 16KB of reserved
+// space at the end of the first flash partition, we use the upper 8KB (2 sectors). If we only
+// have 512KB then that space is used by the SDK and we use the 8KB just before that.
+static uint32_t ICACHE_FLASH_ATTR flashAddr(void) {
+  enum flash_size_map map = system_get_flash_size_map();
+  return map >= FLASH_SIZE_8M_MAP_512_512
+    ? FLASH_SECT + FIRMWARE_SIZE + 2*FLASH_SECT // bootloader + firmware + 8KB free
+    : FLASH_SECT + FIRMWARE_SIZE - 2*FLASH_SECT;// bootloader + firmware - 8KB (risky...)
+}
 
 static int flash_pri; // primary flash sector (0 or 1, or -1 for error)
 
@@ -56,7 +62,7 @@ bool ICACHE_FLASH_ATTR configSave(void) {
   os_memcpy(&ff, &flashConfig, sizeof(FlashConfig));
   uint32_t seq = ff.fc.seq+1;
   // erase secondary
-  uint32_t addr = FLASH_ADDR + (1-flash_pri)*FLASH_SECT;
+  uint32_t addr = flashAddr() + (1-flash_pri)*FLASH_SECT;
   if (spi_flash_erase_sector(addr>>12) != SPI_FLASH_RESULT_OK)
     goto fail; // no harm done, give up
   // calculate CRC
@@ -76,7 +82,7 @@ bool ICACHE_FLASH_ATTR configSave(void) {
   if (spi_flash_write(addr, (void *)&ff, sizeof(uint32_t)) != SPI_FLASH_RESULT_OK)
     goto fail; // most likely failed, but no harm if successful
   // now that we have safely written the new version, erase old primary
-  addr = FLASH_ADDR + flash_pri*FLASH_SECT;
+  addr = flashAddr() + flash_pri*FLASH_SECT;
   flash_pri = 1-flash_pri;
   if (spi_flash_erase_sector(addr>>12) != SPI_FLASH_RESULT_OK)
     return true; // no back-up but we're OK
@@ -95,8 +101,8 @@ fail:
 }
 
 void ICACHE_FLASH_ATTR configWipe(void) {
-  spi_flash_erase_sector(FLASH_ADDR>>12);
-  spi_flash_erase_sector((FLASH_ADDR+FLASH_SECT)>>12);
+  spi_flash_erase_sector(flashAddr()>>12);
+  spi_flash_erase_sector((flashAddr()+FLASH_SECT)>>12);
 }
 
 static int ICACHE_FLASH_ATTR selectPrimary(FlashFull *fc0, FlashFull *fc1);
@@ -104,9 +110,9 @@ static int ICACHE_FLASH_ATTR selectPrimary(FlashFull *fc0, FlashFull *fc1);
 bool ICACHE_FLASH_ATTR configRestore(void) {
   FlashFull ff0, ff1;
   // read both flash sectors
-  if (spi_flash_read(FLASH_ADDR, (void *)&ff0, sizeof(ff0)) != SPI_FLASH_RESULT_OK)
+  if (spi_flash_read(flashAddr(), (void *)&ff0, sizeof(ff0)) != SPI_FLASH_RESULT_OK)
     os_memset(&ff0, 0, sizeof(ff0)); // clear in case of error
-  if (spi_flash_read(FLASH_ADDR+FLASH_SECT, (void *)&ff1, sizeof(ff1)) != SPI_FLASH_RESULT_OK)
+  if (spi_flash_read(flashAddr()+FLASH_SECT, (void *)&ff1, sizeof(ff1)) != SPI_FLASH_RESULT_OK)
     os_memset(&ff1, 0, sizeof(ff1)); // clear in case of error
   // figure out which one is good
   flash_pri = selectPrimary(&ff0, &ff1);

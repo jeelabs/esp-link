@@ -97,12 +97,13 @@ YUI_COMPRESSOR ?= yuicompressor-2.4.8.jar
 HTML_PATH = $(abspath ./html)/
 WIFI_PATH = $(HTML_PATH)wifi/
 
+ESP_FLASH_MAX       ?= 503808  # max bin file
+
 ifeq ("$(FLASH_SIZE)","512KB")
 # Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
 ESP_SPI_SIZE        ?= 0       # 0->512KB (256KB+256KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
-ESP_FLASH_MAX       ?= 241664  # max bin file for 512KB flash: 236KB
 ET_FS               ?= 4m      # 4Mbit flash size in esptool flash command
 ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
@@ -112,7 +113,6 @@ else ifeq ("$(FLASH_SIZE)","1MB")
 ESP_SPI_SIZE        ?= 2       # 2->1MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80MHz
-ESP_FLASH_MAX       ?= 503808  # max bin file for 1MB flash: 492KB
 ET_FS               ?= 8m      # 8Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0xFE000 # where to flash blank.bin to erase wireless settings
@@ -125,8 +125,6 @@ else ifeq ("$(FLASH_SIZE)","2MB")
 ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
-ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
-#ESP_FLASH_MAX       ?= 1028096 # max bin file for 1MB flash partition: 1004KB
 ET_FS               ?= 16m     # 16Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x1FE000 # where to flash blank.bin to erase wireless settings
@@ -139,8 +137,6 @@ else
 ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
-ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
-#ESP_FLASH_MAX       ?= 1028096 # max bin file for 1MB flash partition: 1004KB
 ET_FS               ?= 32m     # 32Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
@@ -396,18 +392,6 @@ endif
 
 # edit the loader script to add the espfs section to the end of irom with a 4 byte alignment.
 # we also adjust the sizes of the segments 'cause we need more irom0
-# in the end the only thing that matters wrt size is that the whole shebang fits into the
-# 236KB available (in a 512KB flash)
-ifeq ("$(FLASH_SIZE)","512KB")
-build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld
-	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
-			-e '/^  irom0_0_seg/ s/2B000/38000/' \
-			$(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld >$@
-build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld
-	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
-			-e '/^  irom0_0_seg/ s/2B000/38000/' \
-			$(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
-else
 build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/6B000/7C000/' \
@@ -416,7 +400,6 @@ build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/6B000/7C000/' \
 			$(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld >$@
-endif
 
 espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 	$(Q) $(MAKE) -C espfs/mkespfsimage GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
