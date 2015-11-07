@@ -398,7 +398,7 @@ serbridgeConnectCb(void *arg)
   int i;
   for (i=0; i<MAX_CONN; i++) if (connData[i].conn==NULL) break;
 #ifdef SERBR_DBG
-  os_printf("Accept port 23, conn=%p, pool slot %d\n", conn, i);
+  os_printf("Accept port %d, conn=%p, pool slot %d\n", conn->tcp.local_port ,conn, i);
 #endif
 
   if (i==MAX_CONN) {
