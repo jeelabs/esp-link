@@ -223,8 +223,30 @@ static int ICACHE_FLASH_ATTR cgiWiFiStartScan(HttpdConnData *connData) {
 
 static int ICACHE_FLASH_ATTR cgiWiFiGetScan(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
-  char buff[2048];
-  int len;
+  char buff[1460];
+  const int chunk = 1460/64; // ssid is up to 32 chars
+  int len = 0;
+
+  // handle continuation call, connData->cgiData-1 is the position in the scan results where we
+  // we need to continue sending from (using -1 'cause 0 means it's the first call)
+  if (connData->cgiData) {
+    int next = (int)connData->cgiData-1;
+    int pos = next;
+    while (pos < cgiWifiAps.noAps && pos < next+chunk) {
+      len += os_sprintf(buff+len, "{\"essid\": \"%s\", \"rssi\": %d, \"enc\": \"%d\"},\n",
+        cgiWifiAps.apData[pos]->ssid, cgiWifiAps.apData[pos]->rssi, cgiWifiAps.apData[pos]->enc);
+    }
+    // done or more?
+    if (pos == cgiWifiAps.noAps) {
+      len += os_sprintf(buff+len-1, "]}}\n");
+      httpdSend(connData, buff, len);
+      return HTTPD_CGI_DONE;
+    } else {
+      connData->cgiData = (void*)(pos+1);
+      httpdSend(connData, buff, len);
+      return HTTPD_CGI_MORE;
+    }
+  }
 
   jsonHeader(connData, 200);
 
@@ -236,15 +258,9 @@ static int ICACHE_FLASH_ATTR cgiWiFiGetScan(HttpdConnData *connData) {
   }
 
   len = os_sprintf(buff, "{\"result\": {\"inProgress\": \"0\", \"APs\": [\n");
-  for (int pos=0; pos<cgiWifiAps.noAps; pos++) {
-    len += os_sprintf(buff+len, "{\"essid\": \"%s\", \"rssi\": %d, \"enc\": \"%d\"}%s\n",
-        cgiWifiAps.apData[pos]->ssid, cgiWifiAps.apData[pos]->rssi,
-        cgiWifiAps.apData[pos]->enc, (pos==cgiWifiAps.noAps-1)?"":",");
-  }
-  len += os_sprintf(buff+len, "]}}\n");
-  //os_printf("Sending %d bytes: %s\n", len, buff);
+  connData->cgiData = (void *)1; // start with first result next time we're called
   httpdSend(connData, buff, len);
-  return HTTPD_CGI_DONE;
+  return HTTPD_CGI_MORE;
 }
 
 int ICACHE_FLASH_ATTR cgiWiFiScan(HttpdConnData *connData) {
