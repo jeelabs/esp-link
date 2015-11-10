@@ -295,6 +295,21 @@ or it craps out in the middle too often then try the built-in programmer with th
 If your AVR doesn't use optiboot then use port 2323 since esp-link may not recognize the programming
 sequence and not issue a reset if you use port 23.
 
+If you are having trouble with the built-in programmer and see something like this:
+```
+# ./avrflash 192.168.3.104 blink.hex
+Error checking sync: FAILED to SYNC: abandoned after timeout, got:
+:\xF/\x00\xCj\xCz\xCJ\xCZ\xC\xAÜ\xC\xAä\xC\xAÜ\xC\xAä\xC\xBì\xC\xBô\xC\xBì\xC\xBô\xC\xAÜ\xC\xAä\xC\x00\xC\x00\x00\x00
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
+\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xF6\xF6\xF6\xF6\xC
+```
+the most likely cause is a baud rate mismatch and/or a bad connection from the esp8266 to the AVRs reset line.
+The baud rate used by esp-link is set on the uC Console web page.
+The above garbage characters are most likely due to optiboot timing out and starting the sketch and then the sketch
+sending data at a different baud rate than configured into esp-link.
+Note that sketches don't necessarily use the same baud rate as optiboot, so you may have the correct baud rate configured
+but reset isn't functioning, or reset may be functioning but the baud rate may be incorrect.
+
 ### Flashing an attached ARM processor
 
 You can reprogram NXP's LPC800-series and many other ARM processors as well by pointing your
