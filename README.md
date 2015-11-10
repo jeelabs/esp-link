@@ -286,6 +286,14 @@ synchronization with optiboot has been achieved by issuing a GET to the same URL
 issue a POST request to `http://esp-link/pgm/upload` with your hex file as POST data (raw,
 not url-encoded or multipart-mime. Please look into the avrflash script for the curl command-line
 details or use that script directly (`./avrflash esp-link.local my_sketch.hex`).
+_Important_: after the initial sync request that resets the AVR you have 10 seconds to get to the
+upload post or esp-link will time-out. So if you're manually entering curl commands have them
+prepared so you can copy&paste!
+
+When to use which method? If port 23 works then go with that. If you have trouble getting sync
+or it craps out in the middle too often then try the built-in programmer with the HTTP POST.
+If your AVR doesn't use optiboot then use port 2323 since esp-link may not recognize the programming
+sequence and not issue a reset if you use port 23.
 
 ### Flashing an attached ARM processor
 
