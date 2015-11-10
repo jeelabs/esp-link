@@ -310,6 +310,17 @@ sending data at a different baud rate than configured into esp-link.
 Note that sketches don't necessarily use the same baud rate as optiboot, so you may have the correct baud rate configured
 but reset isn't functioning, or reset may be functioning but the baud rate may be incorrect.
 
+The output of a successful flash using the built-in programmer looks like this:
+```
+Success. 3098 bytes in 0.8s, 3674B/s 63% efficient
+```
+This says that the sketch comprises 3098 bytes of flash, sas written in 0.8 seconds (excludes the initial sync time),
+and the 3098 bytes were flashed at a rate of 3674 bytes per second.
+The efficiency measure is the ratio of the actual rate to the serial baud rate, in this case 57600 baud,
+thus 3674/5760 = 0.63 (there are 10 baud per character).
+The efficiency is not 100% because there is protocol overhead (such as sync, record type, and length characaters)
+and there is dead time waiting for an ack or preparing the next record to be sent.
+
 ### Flashing an attached ARM processor
 
 You can reprogram NXP's LPC800-series and many other ARM processors as well by pointing your
