@@ -18,6 +18,8 @@ static int log_pos;
 static bool log_no_uart; // start out printing to uart
 static bool log_newline; // at start of a new line
 
+#define uart0_write_char uart1_write_char
+
 // called from wifi reset timer to turn UART on when we loose wifi and back off
 // when we connect to wifi AP. Here this is gated by the flash setting
 void ICACHE_FLASH_ATTR
@@ -64,20 +66,21 @@ log_read(void) {
 
 static void ICACHE_FLASH_ATTR
 log_write_char(char c) {
+  // log timestamp
+  if (log_newline) {
+    char buff[16];
+    int l = os_sprintf(buff, "%6d> ", (system_get_time()/1000)%1000000);
+    if (!log_no_uart)
+      for (int i=0; i<l; i++) uart0_write_char(buff[i]);
+    if (1)
+      for (int i=0; i<l; i++) log_write(buff[i]);
+    log_newline = false;
+  }
+  if (c == '\n') log_newline = true;
   // Uart output unless disabled
   if (!log_no_uart) {
-    if (log_newline) {
-      char buff[16];
-      int l = os_sprintf(buff, "%6d> ", (system_get_time()/1000)%1000000);
-      for (int i=0; i<l; i++)
-        uart0_write_char(buff[i]);
-      log_newline = false;
-    }
+    if (c == '\n') uart0_write_char('\r');
     uart0_write_char(c);
-    if (c == '\n') {
-      log_newline = true;
-      uart0_write_char('\r');
-    }
   }
   // Store in log buffer
   if (c == '\n') log_write('\r');

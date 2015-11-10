@@ -17,7 +17,8 @@ Some random cgi routines.
 #include <esp8266.h>
 #include "cgi.h"
 
-void noCacheHeaders(HttpdConnData *connData, int code) {
+void ICACHE_FLASH_ATTR
+noCacheHeaders(HttpdConnData *connData, int code) {
   httpdStartResponse(connData, code);
   httpdHeader(connData, "Cache-Control", "no-cache, no-store, must-revalidate");
   httpdHeader(connData, "Pragma", "no-cache");

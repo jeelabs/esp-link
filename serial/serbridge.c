@@ -20,6 +20,8 @@ static int8_t mcu_reset_pin, mcu_isp_pin;
 
 extern uint8_t slip_disabled;   // disable slip to allow flashing of attached MCU
 
+void (*programmingCB)(char *buffer, short length) = NULL;
+
 // Connection pool
 serbridgeConnData connData[MAX_CONN];
 
@@ -97,7 +99,7 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
           os_delay_us(100L);
         }
 #ifdef SERBR_DBG
-        else os_printf("MCU reset: no pin\n");
+        else { os_printf("MCU reset: no pin\n"); }
 #endif
         break;
       case DTR_OFF:
@@ -115,7 +117,7 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
           os_delay_us(100L);
         }
 #ifdef SERBR_DBG
-        else os_printf("MCU isp: no pin\n");
+        else { os_printf("MCU isp: no pin\n"); }
 #endif
         slip_disabled++;
         break;
@@ -147,7 +149,7 @@ serbridgeReset()
     GPIO_OUTPUT_SET(mcu_reset_pin, 1);
   }
 #ifdef SERBR_DBG
-  else os_printf("MCU reset: no pin\n");
+  else { os_printf("MCU reset: no pin\n"); }
 #endif
 }
 
@@ -346,7 +348,9 @@ console_process(char *buf, short len)
 void ICACHE_FLASH_ATTR
 serbridgeUartCb(char *buf, short length)
 {
-  if (!flashConfig.slip_enable || slip_disabled > 0) {
+  if (programmingCB) {
+    programmingCB(buf, length);
+  } else if (!flashConfig.slip_enable || slip_disabled > 0) {
     //os_printf("SLIP: disabled got %d\n", length);
     console_process(buf, length);
   } else {

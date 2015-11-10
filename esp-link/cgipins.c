@@ -17,7 +17,7 @@ static int8_t map_asn[][5] = {
   {  0, -1,  2, -1, 0 },  // esp-01(AVR)
   {  0,  2, -1, -1, 0 },  // esp-01(ARM)
   { 13, 12, 14,  0, 0 },  // esp-br-rev -- for test purposes
-  {  3,  1,  0,  2, 1 },  // esp-link-12
+  {  1,  3,  0,  2, 1 },  // esp-link-12
 };
 static const int num_map_names = sizeof(map_names)/sizeof(char*);
 static const int num_map_func = sizeof(map_func)/sizeof(char*);

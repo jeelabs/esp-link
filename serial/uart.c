@@ -242,6 +242,23 @@ uart_recvTask(os_event_t *events)
   ETS_UART_INTR_ENABLE();
 }
 
+// Turn UART interrupts off and poll for nchars or until timeout hits
+uint16_t ICACHE_FLASH_ATTR
+uart0_rx_poll(char *buff, uint16_t nchars, uint32_t timeout_us) {
+  ETS_UART_INTR_DISABLE();
+  uint16_t got = 0;
+  uint32_t start = system_get_time(); // time in us
+  while (system_get_time()-start < timeout_us) {
+    while (READ_PERI_REG(UART_STATUS(UART0)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S)) {
+      buff[got++] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
+      if (got == nchars) goto done;
+    }
+  }
+done:
+  ETS_UART_INTR_ENABLE();
+  return got;
+}
+
 void ICACHE_FLASH_ATTR
 uart0_baud(int rate) {
   os_printf("UART %d baud\n", rate);

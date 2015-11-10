@@ -19,6 +19,7 @@
 #include "cgitcp.h"
 #include "cgimqtt.h"
 #include "cgiflash.h"
+#include "cgioptiboot.h"
 #include "auth.h"
 #include "espfs.h"
 #include "uart.h"
@@ -46,6 +47,8 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/flash/next", cgiGetFirmwareNext, NULL },
   { "/flash/upload", cgiUploadFirmware, NULL },
   { "/flash/reboot", cgiRebootFirmware, NULL },
+  { "/pgm/sync", cgiOptibootSync, NULL },
+  { "/pgm/upload", cgiOptibootData, NULL },
   { "/log/text", ajaxLog, NULL },
   { "/log/dbg", ajaxLogDbg, NULL },
   { "/console/reset", ajaxConsoleReset, NULL },

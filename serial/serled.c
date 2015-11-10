@@ -29,6 +29,7 @@ void ICACHE_FLASH_ATTR serledFlash(int duration) {
 }
 
 void ICACHE_FLASH_ATTR serledInit(void) {
+  return;
   int8_t pin = flashConfig.ser_led_pin;
   if (pin >= 0) {
     makeGpio(pin);
