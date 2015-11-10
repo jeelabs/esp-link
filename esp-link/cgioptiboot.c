@@ -84,6 +84,29 @@ static void ICACHE_FLASH_ATTR optibootInit() {
   DBG("OB init\n");
 }
 
+void ICACHE_FLASH_ATTR appendPretty(char *buf, char *raw, int max) {
+  int off = strlen(buf);
+  int i = 0;
+  while (off < max-5) {
+    unsigned char c = raw[i++];
+    if (c >= ' ' && c <= '~') {
+      buf[off++] = c;
+    } else if (c == '\n') {
+      buf[off++] = '\\';
+      buf[off++] = 'n';
+    } else if (c == '\r') {
+      buf[off++] = '\\';
+      buf[off++] = 'r';
+    } else {
+      buf[off++] = '\\';
+      buf[off++] = 'x';
+      buf[off++] = '0'+(c>>4)+((c>>4)>9?7:0);
+      buf[off++] = '0'+(c&0xff)+((c&0xff)>9?7:0);
+    }
+  }
+  buf[off] = 0;
+}
+
 //===== Cgi to reset AVR and get Optiboot into sync
 int ICACHE_FLASH_ATTR cgiOptibootSync(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
@@ -113,14 +136,15 @@ int ICACHE_FLASH_ATTR cgiOptibootSync(HttpdConnData *connData) {
     noCacheHeaders(connData, 200);
     httpdEndHeaders(connData);
     if (!errMessage[0] && progState >= stateProg) {
+      char buf[64];
       DBG("OB got sync\n");
-      char buf[32];
       os_sprintf(buf, "SYNC : Optiboot %d.%d", optibootVers>>8, optibootVers&0xff);
       httpdSend(connData, buf, -1);
     } else if (errMessage[0] && progState == stateSync) {
-      DBG("OB lost sync\n");
-      char buf[RESP_SZ+64];
-      os_sprintf(buf, "FAILED to SYNC: %s, got <%s>", errMessage, responseBuf);
+      DBG("OB cannot sync\n");
+      char buf[512];
+      os_sprintf(buf, "FAILED to SYNC: %s, got:\r\n", errMessage);
+      appendPretty(buf, responseBuf, 512);
       httpdSend(connData, buf, -1);
     } else {
       httpdSend(connData, errMessage[0] ? errMessage : "NOT READY", -1);
@@ -164,7 +188,7 @@ int ICACHE_FLASH_ATTR cgiOptibootData(HttpdConnData *connData) {
 
   // check that we have sync
   if (errMessage[0] || progState < stateProg) {
-    DBG("OB not in sync\n");
+    DBG("OB not in sync, state=%d, err=%s\n", progState, errMessage);
     errorResponse(connData, 400, errMessage[0] ? errMessage : "Optiboot not in sync");
     return HTTPD_CGI_DONE;
   }
@@ -452,6 +476,7 @@ static void ICACHE_FLASH_ATTR optibootTimerCB(void *arg) {
   syncCnt++;
   if ((progState == stateSync && syncCnt > SYNC_TIMEOUT/50) ||
       syncCnt > PGM_TIMEOUT/50) {
+    DBG("OB abandoned after timeout, state=%d syncCnt=%d\n", progState, syncCnt);
     optibootInit();
     strcpy(errMessage, "abandoned after timeout");
     return;
@@ -470,6 +495,7 @@ static void ICACHE_FLASH_ATTR optibootTimerCB(void *arg) {
     default: // we're trying to get some info from optiboot and it should have responded!
       optibootInit(); // abort
       os_sprintf(errMessage, "No response in state %d\n", progState);
+      DBG("OB %s\n", errMessage);
       return; // do not re-arm timer
   }
 
