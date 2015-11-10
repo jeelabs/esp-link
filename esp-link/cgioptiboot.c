@@ -468,7 +468,8 @@ static bool ICACHE_FLASH_ATTR programPage(void) {
 
 static void ICACHE_FLASH_ATTR armTimer() {
   os_timer_disarm(&optibootTimer);
-  os_timer_arm(&optibootTimer, 100, 0); // 100ms
+  // time-out every 50ms, except when programming to allow for 9600baud (133ms for 128 bytes)
+  os_timer_arm(&optibootTimer, progState==stateProg ? 200 : 50, 0);
 }
 
 static void ICACHE_FLASH_ATTR optibootTimerCB(void *arg) {
