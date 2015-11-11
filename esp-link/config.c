@@ -22,6 +22,7 @@ FlashConfig flashDefault = {
   2, 1,                                // mqtt_timeout, mqtt_clean_session
   1883, 60,                            // mqtt port, mqtt_keepalive
   "\0", "\0", "\0", "\0", "\0",        // mqtt host, client_id, user, password, status-topic
+  "\0", "\0",                          // sys name, sys description
 };
 
 typedef union {

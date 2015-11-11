@@ -16,6 +16,7 @@ Some random cgi routines.
 
 #include <esp8266.h>
 #include "cgi.h"
+#include "config.h"
 
 void ICACHE_FLASH_ATTR
 noCacheHeaders(HttpdConnData *connData, int code) {
@@ -158,7 +159,8 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
       "\"REST/MQTT\", \"/mqtt.html\","
 #endif
       "\"Debug log\", \"/log.html\" ],\n"
-      " \"version\": \"%s\" }", esp_link_version);
+      " \"version\": \"%s\","
+      "\"name\":\"%s\"}", esp_link_version, flashConfig.sys_name);
   httpdSend(connData, buff, -1);
   return HTTPD_CGI_DONE;
 }

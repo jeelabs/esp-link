@@ -11,6 +11,10 @@ static char *mqtt_states[] = {
   "disconnected", "reconnecting", "connecting", "connected",
 };
 
+char *mqttState(void) {
+  return mqtt_states[mqttClient.connState];
+}
+
 // Cgi to return MQTT settings
 int ICACHE_FLASH_ATTR cgiMqttGet(HttpdConnData *connData) {
   char buff[1024];

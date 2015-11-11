@@ -8,21 +8,20 @@
     <div class="content">
       <div class="pure-g">
         <div class="pure-u-1"><div class="card">
-          <p>The JeeLabs esp-link firmware bridges the ESP8266 serial port to Wifi and can
+          <p style="margin-bottom:0;">The JeeLabs esp-link firmware bridges the ESP8266
+          serial port to Wifi and can
           program microcontrollers over the serial port, in particular Arduinos, AVRs, and
-          NXP's LPC800 and other ARM processors.</p>
-          <p style="margin-bottom:0;">Program an Arduino/AVR using avrdude using a command
-          line similar to:</p>
-          <div class="tt">/home/arduino-1.0.5/hardware/tools/avrdude \<br>
+          NXP's LPC800 and other ARM processors. Typical avrdude command line to
+          program an Arduino:</p>
+          <div class="tt">/home/arduino/hardware/tools/avrdude \<br>
           &nbsp;&nbsp;-DV -patmega328p -Pnet:esp-link.local:23 -carduino -b115200 -U \<br>
-          &nbsp;&nbsp;-C /home/arduino-1.0.5/hardware/tools/avrdude.conf flash:w:my_sketch.hex:i
+          &nbsp;&nbsp;-C /home/arduino/hardware/tools/avrdude.conf flash:w:my_sketch.hex:i
           </div>
           <p>where <tt>-Pnet:esp-link.local:23</tt> tells avrdude to connect to port 23 of esp-link.
-          You can substitute the IP address of your esp-link for esp-link.local if necessary.</p>
-          <p>Please refer to
+          You can substitute the IP address of your esp-link for esp-link.local if necessary.
+          Please refer to
           <a href="https://github.com/jeelabs/esp-link/blob/master/README.md">the online README</a>
-          for up-to-date help and to the forthcoming
-          <a href="http://jeelabs.org">JeeLabs blog</a> for an intro to the codebase.</p>
+          for up-to-date help.</p>
         </div></div>
       </div>
       <div class="pure-g">
@@ -37,7 +36,22 @@
             <tr><td>Wifi status</td><td id="wifi-status"></td></tr>
             <tr><td>Wifi address</td><td id="wifi-ip"></td></tr>
             <tr><td>Configured hostname</td><td id="wifi-hostname"></td></tr>
-            </tbody> </table>
+            </tbody></table>
+          </div>
+          <div class="card">
+            <h1>Esp-link summary</h1>
+            <div id="system-spinner" class="spinner spinner-small"></div>
+            <table id="system-table" class="pure-table pure-table-horizontal" hidden><tbody>
+            <tr><td>Name</td><td><input type=text maxlength=12 disabled id="system-name"></td></tr>
+            <tr><td>Flash chip ID</td><td id="system-id"></td></tr>
+            <tr><td>Flash size</td><td id="system-size"></td></tr>
+            <tr><td>Current partition</td><td id="system-partition"></td></tr>
+            <tr><td>SLIP status</td><td id="system-slip"></td></tr>
+            <tr><td>MQTT status</td><td id="system-mqtt"></td></tr>
+            <tr><td>Serial baud</td><td id="system-baud"></td></tr>
+            <tr><td colspan=2 >Description:<br>
+                <textarea rows=3 maxlength=127 disabled id="system-description"></textarea></td></tr>
+            </tbody></table>
           </div>
         </div>
         <div class="pure-u-1 pure-u-md-1-2"><div class="card">
@@ -56,8 +70,11 @@
 
 <script type="text/javascript">
 onLoad(function() {
+  makeAjaxInput("system", "name");
+  makeAjaxInput("system", "description");
   fetchPins();
   getWifiInfo();
+  getSystemInfo();
 });
 </script>
 </body></html>

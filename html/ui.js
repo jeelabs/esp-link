@@ -226,6 +226,7 @@ onLoad(function() {
       <div class="pure-menu">\
         <a class="pure-menu-heading" href="https://github.com/jeelabs/esp-link">\
         <img src="/favicon.ico" height="32">&nbsp;esp-link</a>\
+        <div class="pure-menu-heading" id="sysname" style="padding: 0px 0.6em"></div>\
         <ul id="menu-list" class="pure-menu-list"></ul>\
       </div>\
     </div>\
@@ -258,6 +259,9 @@ onLoad(function() {
 
       v = $("#version");
       if (v != null) { v.innerHTML = data.version; }
+
+      n = $("#sysname");
+      if (n != null) { n.innerHTML = data.name; }
     }, function() { setTimeout(getMenu, 1000); });
   };
   getMenu();
@@ -284,6 +288,51 @@ function getWifiInfo() {
   ajaxJson('GET', "/wifi/info", showWifiInfo,
       function(s, st) { window.setTimeout(getWifiInfo, 1000); });
 }
+
+//===== System info
+
+function showSystemInfo(data) {
+  Object.keys(data).forEach(function(v) {
+    el = $("#system-" + v);
+    if (el != null) {
+      if (el.nodeName === "INPUT") el.value = data[v];
+      else el.innerHTML = data[v];
+    }
+  });
+  $("#system-spinner").setAttribute("hidden", "");
+  $("#system-table").removeAttribute("hidden");
+  currAp = data.ssid;
+}
+
+function getSystemInfo() {
+  ajaxJson('GET', "/system/info", showSystemInfo,
+      function(s, st) { window.setTimeout(getSystemInfo, 1000); });
+}
+
+function enableInput(el) {
+  el.disabled = false;
+  el.select();
+  return false;
+}
+function submitInput(klass, id, v) {
+  console.log("Submit POST /"+klass+"/update?"+id+"="+v);
+  $("#"+klass+"-"+id).disabled = true;
+  ajaxSpin("POST", "/"+klass+"/update?"+id+"="+v, function() {
+    showNotification(id + " changed to " + v);
+  }, function() {
+    showWarning(id + " change failed");
+  });
+  return false;
+}
+function makeAjaxInput(klass, field) {
+  var el = $("#"+klass+"-"+field);
+  bnd(el.parentElement, "click", function(){return enableInput(el);});
+  bnd(el, "blur", function(){return submitInput(klass,field,el.value);});
+  bnd(el, "keyup", function(ev){
+    if ((ev||window.event).keyCode==13) return submitInput(klass,field,el.value);
+  });
+}
+
 
 //===== Notifications
 

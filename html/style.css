@@ -3,8 +3,12 @@ html, button, input, select, textarea, .pure-g [class *= "pure-u"] {
 	font-family: sans-serif;
 }
 
-input[type="text"], input[type="password"] {
+input[type="text"], input[type="password"], textarea {
 	width: 100%;
+}
+
+input[type="text"]:disabled, textarea:disabled {
+	cursor: pointer;
 }
 
 input[type=checkbox] {

@@ -17,6 +17,8 @@ Esp8266 http server - core routines
 #include <esp8266.h>
 #include "httpd.h"
 
+#define HTTPD_DBG
+
 
 //Max length of request head
 #define MAX_HEAD_LEN 1024
@@ -394,9 +396,13 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
       if (conn->post) conn->post->len = 0; // skip any remaining receives
       return;
     }
-    else if (r == HTTPD_CGI_NOTFOUND || r == HTTPD_CGI_AUTHENTICATED) {
+    else {
+      if (!(r == HTTPD_CGI_NOTFOUND || r == HTTPD_CGI_AUTHENTICATED)) {
+        os_printf("%shandler for %s returned invalid result %d\n", connStr, conn->url, r);
+      }
       //URL doesn't want to handle the request: either the data isn't found or there's no
       //need to generate a login screen.
+      conn->cgi = NULL; // force lookup again
       i++; //look at next url the next iteration of the loop.
     }
   }
