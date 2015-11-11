@@ -17,7 +17,7 @@ Esp8266 http server - core routines
 #include <esp8266.h>
 #include "httpd.h"
 
-#define HTTPD_DBG
+//#define HTTPD_DBG
 
 
 //Max length of request head
