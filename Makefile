@@ -370,7 +370,7 @@ ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 		$(WIFI_PATH)*.html
 	$(Q) echo "Compression assets with yui-compressor. This may take a while..."
 	$(Q) for file in `find html_compressed -type f -name "*.js"`; do \
-			java -jar tools/$(YUI_COMPRESSOR) $$file -o $$file; \
+			java -jar tools/$(YUI_COMPRESSOR) $$file --line-break 0 -o $$file; \
 		done
 	$(Q) for file in `find html_compressed -type f -name "*.css"`; do \
 			java -jar tools/$(YUI_COMPRESSOR) $$file -o $$file; \

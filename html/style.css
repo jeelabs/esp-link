@@ -7,10 +7,6 @@ input[type="text"], input[type="password"], textarea {
 	width: 100%;
 }
 
-input[type="text"]:disabled, textarea:disabled {
-	cursor: pointer;
-}
-
 input[type=checkbox] {
   float: left;
   margin: .35em 0.4em;
@@ -34,6 +30,30 @@ a:hover {
 	-webkit-border-radius: 0.5em;
 	border-radius: 0.5em;
 	border: 0px solid #000000;
+}
+
+/* click-to-edit fields */
+.click-to-edit {
+	position: relative;
+}
+.edit-off {
+	cursor: pointer;
+}
+.click-to-edit input, .click-to-edit textarea {
+	color: black;
+	background-color: #eee;
+	width: 100%;
+}
+div.edit-on.popup {
+	position: absolute;
+	top: 100%;
+	left: 20px;
+	background-color: cornsilk;
+	color: #333;
+	font-size: 80%;
+	line-height: 110%;
+	z-index: 100;
+	padding: 3px;
 }
 
 /* wifi AP selection form */
@@ -188,7 +208,7 @@ pre.console a {
 	bottom: 0;
 	z-index: 1000;
 	background: #191818;
-	overflow-y: auto;
+	overflow: visible;
 	-webkit-overflow-scrolling: touch;
 }
 

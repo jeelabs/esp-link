@@ -84,6 +84,8 @@ static void ICACHE_FLASH_ATTR optibootInit() {
   DBG("OB init\n");
 }
 
+// append one string to another but visually escape non-printing characters in the second
+// string using \x00 hex notation, max is the max chars in the concatenated string.
 void ICACHE_FLASH_ATTR appendPretty(char *buf, char *raw, int max) {
   int off = strlen(buf);
   int i = 0;
@@ -100,8 +102,8 @@ void ICACHE_FLASH_ATTR appendPretty(char *buf, char *raw, int max) {
     } else {
       buf[off++] = '\\';
       buf[off++] = 'x';
-      buf[off++] = '0'+(c>>4)+((c>>4)>9?7:0);
-      buf[off++] = '0'+(c&0xff)+((c&0xff)>9?7:0);
+      buf[off++] = '0'+(unsigned char)((c>>4)+((c>>4)>9?7:0));
+      buf[off++] = '0'+(unsigned char)((c&0xff)+((c&0xff)>9?7:0));
     }
   }
   buf[off] = 0;

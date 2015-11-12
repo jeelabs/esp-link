@@ -110,6 +110,9 @@ var j = function(
   catch(e){}               // ignore when it fails.
 }
 
+// dom element iterator: domForEach($(".some-class"), function(el) { ... });
+function domForEach(els, fun) { return Array.prototype.forEach.call(els, fun); }
+
 // createElement short-hand
 
 e = function(a) { return document.createElement(a); }
@@ -226,7 +229,11 @@ onLoad(function() {
       <div class="pure-menu">\
         <a class="pure-menu-heading" href="https://github.com/jeelabs/esp-link">\
         <img src="/favicon.ico" height="32">&nbsp;esp-link</a>\
-        <div class="pure-menu-heading" id="sysname" style="padding: 0px 0.6em"></div>\
+        <div class="pure-menu-heading click-to-edit system-name" style="padding: 0px 0.6em">\
+          <span class="edit-off"></span>\
+          <input class="edit-on" maxlength=12 hidden>\
+          <div class="edit-on popup" hidden>Short name for this esp-link, 12 chars max</div>\
+        </div>\
         <ul id="menu-list" class="pure-menu-list"></ul>\
       </div>\
     </div>\
@@ -257,11 +264,11 @@ onLoad(function() {
       }
       $("#menu-list").innerHTML = html;
 
-      v = $("#version");
+      var v = $("#version");
       if (v != null) { v.innerHTML = data.version; }
 
-      n = $("#sysname");
-      if (n != null) { n.innerHTML = data.name; }
+      setEditToClick("system-name", data.name);
+      makeAjaxInput("system", "name");
     }, function() { setTimeout(getMenu, 1000); });
   };
   getMenu();
@@ -291,13 +298,22 @@ function getWifiInfo() {
 
 //===== System info
 
+function setEditToClick(klass, value) {
+  domForEach($("."+klass), function(div) {
+    if (div.children.length > 0) {
+      domForEach(div.children, function(el) {
+        if (el.nodeName === "INPUT") el.value = value;
+        else if (el.nodeName !== "DIV") el.innerHTML = value;
+      });
+    } else {
+      div.innerHTML = value;
+    }
+  });
+}
+
 function showSystemInfo(data) {
   Object.keys(data).forEach(function(v) {
-    el = $("#system-" + v);
-    if (el != null) {
-      if (el.nodeName === "INPUT") el.value = data[v];
-      else el.innerHTML = data[v];
-    }
+    setEditToClick("system-" + v, data[v]);
   });
   $("#system-spinner").setAttribute("hidden", "");
   $("#system-table").removeAttribute("hidden");
@@ -309,27 +325,37 @@ function getSystemInfo() {
       function(s, st) { window.setTimeout(getSystemInfo, 1000); });
 }
 
-function enableInput(el) {
-  el.disabled = false;
-  el.select();
-  return false;
-}
-function submitInput(klass, id, v) {
-  console.log("Submit POST /"+klass+"/update?"+id+"="+v);
-  $("#"+klass+"-"+id).disabled = true;
-  ajaxSpin("POST", "/"+klass+"/update?"+id+"="+v, function() {
-    showNotification(id + " changed to " + v);
-  }, function() {
-    showWarning(id + " change failed");
-  });
-  return false;
-}
 function makeAjaxInput(klass, field) {
-  var el = $("#"+klass+"-"+field);
-  bnd(el.parentElement, "click", function(){return enableInput(el);});
-  bnd(el, "blur", function(){return submitInput(klass,field,el.value);});
-  bnd(el, "keyup", function(ev){
-    if ((ev||window.event).keyCode==13) return submitInput(klass,field,el.value);
+  domForEach($("."+klass+"-"+field), function(div) {
+    var eon = $(".edit-on", div);
+    var eoff = $(".edit-off", div)[0];
+    var url = "/"+klass+"/update?"+field;
+
+    var enableEditToClick = function() {
+      eoff.setAttribute('hidden','');
+      domForEach(eon, function(el){ el.removeAttribute('hidden'); });
+      eon[0].select();
+      return false;
+    }
+
+    var submitEditToClick = function(v) {
+      console.log("Submit POST "+url+"="+v);
+      ajaxSpin("POST", url+"="+v, function() {
+        domForEach(eon, function(el){ el.setAttribute('hidden',''); });
+        eoff.removeAttribute('hidden');
+        setEditToClick(klass+"-"+field, v)
+        showNotification(field + " changed to " + v);
+      }, function() {
+        showWarning(field + " change failed");
+      });
+      return false;
+    }
+
+    bnd(eoff, "click", function(){return enableEditToClick();});
+    bnd(eon[0], "blur", function(){return submitEditToClick(eon[0].value);});
+    bnd(eon[0], "keyup", function(ev){
+      if ((ev||window.event).keyCode==13) return submitEditToClick(eon[0].value);
+    });
   });
 }
 

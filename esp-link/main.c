@@ -171,7 +171,7 @@ void user_init(void) {
   os_delay_us(10000L);
   os_printf("\n\n** %s\n", esp_link_version);
   os_printf("Flash config restore %s\n", restoreOk ? "ok" : "*FAILED*");
-  if (flashConfig.sys_name[0] == 0) os_strcpy(flashConfig.sys_name, "nameme");
+  if (flashConfig.sys_name[0] == 0) os_strcpy(flashConfig.sys_name, "name-me");
 
 #if defined(STA_SSID) && defined(STA_PASS)
   int x = wifi_get_opmode() & 0x3;

@@ -42,15 +42,20 @@
             <h1>Esp-link summary</h1>
             <div id="system-spinner" class="spinner spinner-small"></div>
             <table id="system-table" class="pure-table pure-table-horizontal" hidden><tbody>
-            <tr><td>Name</td><td><input type=text maxlength=12 disabled id="system-name"></td></tr>
-            <tr><td>Flash chip ID</td><td id="system-id"></td></tr>
-            <tr><td>Flash size</td><td id="system-size"></td></tr>
-            <tr><td>Current partition</td><td id="system-partition"></td></tr>
-            <tr><td>SLIP status</td><td id="system-slip"></td></tr>
-            <tr><td>MQTT status</td><td id="system-mqtt"></td></tr>
-            <tr><td>Serial baud</td><td id="system-baud"></td></tr>
+            <tr><td>Flash chip ID</td><td class="system-id"></td></tr>
+            <tr><td>Flash size</td><td class="system-size"></td></tr>
+            <tr><td>Current partition</td><td class="system-partition"></td></tr>
+            <tr><td>SLIP status</td><td class="system-slip"></td></tr>
+            <tr><td>MQTT status</td><td class="system-mqtt"></td></tr>
+            <tr><td>Serial baud</td><td class="system-baud"></td></tr>
             <tr><td colspan=2 >Description:<br>
-                <textarea rows=3 maxlength=127 disabled id="system-description"></textarea></td></tr>
+                <div class="click-to-edit system-description">
+                  <span class="edit-off"></span>
+                  <textarea class="edit-on" rows=3 maxlength=127 hidden></textarea>
+                  <div class="edit-on popup" hidden>A short description or memo for this esp-link
+                    module, 128 chars max</div>
+                </div>
+            </td></tr>
             </tbody></table>
           </div>
         </div>
@@ -70,7 +75,6 @@
 
 <script type="text/javascript">
 onLoad(function() {
-  makeAjaxInput("system", "name");
   makeAjaxInput("system", "description");
   fetchPins();
   getWifiInfo();

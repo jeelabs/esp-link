@@ -23,7 +23,7 @@ typedef struct {
   uint16_t mqtt_port, mqtt_keepalive;  // MQTT Host port, MQTT Keepalive timer
   char     mqtt_host[32], mqtt_clientid[48], mqtt_username[32], mqtt_password[32];
   char     mqtt_status_topic[32];
-  char     sys_name[12], sys_descr[128]; // informal system name and description
+  char     sys_name[13], sys_descr[129]; // informal system name and description
 } FlashConfig;
 extern FlashConfig flashConfig;
 
