@@ -56,7 +56,7 @@ function scanResult() {
   scanReqCnt += 1;
   ajaxJson('GET', "scan", function(data) {
       currAp = getSelectedEssid();
-      if (data.result.inProgress == "0" && data.result.APs.length > 1) {
+      if (data.result.inProgress == "0" && data.result.APs.length > 0) {
         $("#aps").innerHTML = "";
         var n = 0;
         for (var i=0; i<data.result.APs.length; i++) {
