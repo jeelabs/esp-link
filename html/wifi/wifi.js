@@ -41,7 +41,11 @@ function createInputForAp(ap) {
 function getSelectedEssid() {
   var e = document.forms.wifiform.elements;
   for (var i=0; i<e.length; i++) {
-    if (e[i].type == "radio" && e[i].checked) return e[i].value;
+    if (e[i].type == "radio" && e[i].checked) {
+      var v = e[i].value;
+      if (v == "_hidden_ssid_") v = $("#hidden-ssid").value;
+      return v;
+    }
   }
   return currAp;
 }
@@ -78,7 +82,7 @@ function scanResult() {
 }
 
 function scanAPs() {
-	console.log("scanning now");
+  console.log("scanning now");
   if (blockScan) {
     scanTimeout = window.setTimeout(scanAPs, 1000);
     return;
@@ -106,10 +110,10 @@ function getStatus() {
         showWifiInfo(data);
         blockScan = 0;
 
-	if (data.modechange == "yes") {
-		var txt2 = "esp-link will switch to STA-only mode in a few seconds";
-		window.setTimeout(function() { showNotification(txt2); }, 4000);
-	}
+  if (data.modechange == "yes") {
+    var txt2 = "esp-link will switch to STA-only mode in a few seconds";
+    window.setTimeout(function() { showNotification(txt2); }, 4000);
+  }
 
         $("#reconnect").removeAttribute("hidden");
         $("#reconnect").innerHTML =
@@ -190,11 +194,11 @@ function changeSpecial(e) {
 }
 
 function doDhcp() {
-	$('#dhcp-on').removeAttribute('hidden');
-	$('#dhcp-off').setAttribute('hidden', '');
+  $('#dhcp-on').removeAttribute('hidden');
+  $('#dhcp-off').setAttribute('hidden', '');
 }
 
 function doStatic() {
-	$('#dhcp-off').removeAttribute('hidden');
-	$('#dhcp-on').setAttribute('hidden', '');
+  $('#dhcp-off').removeAttribute('hidden');
+  $('#dhcp-on').setAttribute('hidden', '');
 }
