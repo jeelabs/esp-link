@@ -27,6 +27,8 @@ Cgi/template routines for the /wifi url.
 #define DBG(format, ...) do { } while(0)
 #endif
 
+static void wifiStartMDNS(struct ip_addr);
+
 // ===== wifi status change callbacks
 static WifiStateChangeCb wifi_state_change_cb[4];
 
@@ -80,6 +82,7 @@ static void ICACHE_FLASH_ATTR wifiHandleEventCb(System_Event_t *evt) {
         IP2STR(&evt->event_info.got_ip.ip), IP2STR(&evt->event_info.got_ip.mask),
         IP2STR(&evt->event_info.got_ip.gw));
     statusWifiUpdate(wifiState);
+    wifiStartMDNS(evt->event_info.got_ip.ip);
     break;
   case EVENT_SOFTAPMODE_STACONNECTED:
     DBG("Wifi AP: station " MACSTR " joined, AID = %d\n",
@@ -108,6 +111,24 @@ wifiAddStateChangeCb(WifiStateChangeCb cb) {
     }
   }
   DBG("WIFI: max state change cb count exceeded\n");
+}
+
+static bool mdns_started = false;
+static struct mdns_info mdns_info;
+
+// cannot allocate the info struct on the stack, it crashes!
+static ICACHE_FLASH_ATTR
+void wifiStartMDNS(struct ip_addr ip) {
+  if (!mdns_started) {
+    os_memset(&mdns_info, 0, sizeof(struct mdns_info));
+    mdns_info.host_name = flashConfig.hostname;
+    mdns_info.server_name = "http", // service name
+    mdns_info.server_port = 80,     // service port
+    mdns_info.ipAddr = ip.addr,
+    espconn_mdns_init(&mdns_info);
+    espconn_mdns_enable();
+    mdns_started = true;
+  }
 }
 
 // ===== wifi scanning
