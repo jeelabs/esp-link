@@ -13,6 +13,23 @@
         <span id="baud-btns"></span>
       </p>
       <pre class="console" id="console"></pre>
+      <legend>Console entry</legend>
+      <input type="text" id="input-text" value="">
+      <label>History buffer</label>
+      <select id="send-history" size="5" style="width:100%"></select>
+      <p>Type the command and press <b>ENTER</b>.
+         Press <b>ESC</b> to clear the entry.
+         The <b>UP</b>/<b>DOWN</b> arrow keys can be used to get previously sent commands from history.
+      <div class="pure-g">
+        <div class="form-horizontal pure-u-1-2">
+          <input type="checkbox" id="input-add-cr" checked>
+          <label>Append CR (\r)</label>
+        </div>
+        <div class="form-horizontal pure-u-1-2">
+          <input type="checkbox" id="input-add-lf" checked>
+          <label>Append LF (\n)</label>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -41,6 +58,8 @@
       function(data) { showRate(data.rate); },
       function(s, st) { showNotification(st); }
     );
+  
+    consoleSendInit();
   });
 </script>
 </body></html>
