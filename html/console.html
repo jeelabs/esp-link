@@ -1,33 +1,67 @@
-  <div id="main">
+  <div id="main" class="flex-fill flex-vbox">
     <div class="header">
       <h1>Microcontroller Console</h1>
     </div>
 
-    <div class="content">
-      <p>The Microcontroller console shows the last 1024 characters
-         received from UART0, to which a microcontroller is typically attached.
-         The UART is configured for 8 bits, no parity, 1 stop bit (8N1).</p>
+    <div class="content flex-fill flex-vbox">
       <p>
         <a id="reset-button" class="pure-button button-primary" href="#">Reset µC</a>
-        &nbsp;Baud:
-        <span id="baud-btns"></span>
+        &nbsp;&nbsp;Baud:
+        <select id="baud-sel" class="pure-button" href="#">
+          <option value="460800">460800</option>
+          <option value="250000">250000</option>
+          <option value="230400">230400</option>
+          <option value="115200">115200</option>
+          <option value="57600">57600</option>
+          <option value="38400">38400</option>
+          <option value="19200">19200</option>
+          <option value="9600">9600</option>
+        </select>
+        &nbsp;&nbsp;Pgm baud:
+        <select id="baud-pgm" class="pure-button">
+          <option value="same">same</option>
+          <option value="460800">460800</option>
+          <option value="250000">250000</option>
+          <option value="230400">230400</option>
+          <option value="115200">115200</option>
+          <option value="57600">57600</option>
+          <option value="38400">38400</option>
+          <option value="19200">19200</option>
+          <option value="9600">9600</option>
+        </select>
+        &nbsp;&nbsp;Fmt: 8N1
       </p>
-      <pre class="console" id="console"></pre>
-      <legend>Console entry</legend>
-      <input type="text" id="input-text" value="">
-      <label>History buffer</label>
-      <select id="send-history" size="5" style="width:100%"></select>
-      <p>Type the command and press <b>ENTER</b>.
-         Press <b>ESC</b> to clear the entry.
-         The <b>UP</b>/<b>DOWN</b> arrow keys can be used to get previously sent commands from history.
       <div class="pure-g">
-        <div class="form-horizontal pure-u-1-2">
-          <input type="checkbox" id="input-add-cr" checked>
-          <label>Append CR (\r)</label>
+        <div class="pure-u-1-4"><legend><b>Console</b></legend></div>
+        <div class="pure-u-3-4"></div>
+      </div>
+      <pre class="console flex-fill" id="console">--- No Content ---</pre>
+      <div>
+        <div class="pure-g">
+          <div class="pure-u-1-4"><legend><b>Console entry</b></legend></div>
+          <div class="pure-u-2-4">
+            <legend>(ENTER to submit, ESC to clear)</legend>
+          </div>
+          <div class="pure-u-1-4">
+            <legend>Add:
+              <input type="checkbox" id="input-add-cr" checked class="inline"><label>CR(\r)</label>
+              <input type="checkbox" id="input-add-lf" checked class="inline"><label>LF(\n)</label>
+            </legend>
+          </div>
         </div>
-        <div class="form-horizontal pure-u-1-2">
-          <input type="checkbox" id="input-add-lf" checked>
-          <label>Append LF (\n)</label>
+        <div class="pure-g">
+          <div class="pure-u-1-1">
+            <span style="float:right; width:10px;"></span>
+            <input type="text" class="console-in" id="input-text" value="">
+          </div>
+        </div>
+        <div class="pure-g">
+          <div class="pure-u-1-4"><legend><b>History buffer</b></legend></div>
+          <div class="pure-u-2-4"><legend>(UP/DOWN arrows to select)</legend></div>
+          <div class="pure-u-1-4"></div>
+        </div>
+        <div class="pure-g">
+          <div class="pure-u-1-1"><select class="console-in" id="send-history" size="5"></select></div>
         </div>
       </div>
     </div>
@@ -37,14 +71,12 @@
 <script type="text/javascript">console_url = "/console/text"</script>
 <script src="console.js"></script>
 <script type="text/javascript">
-  var rates = [9600, 57600, 115200, 250000];
-
   onLoad(function() {
     fetchText(100, true);
 
     $("#reset-button").addEventListener("click", function(e) {
       e.preventDefault();
-			var co = $("#console");
+      var co = $("#console");
       co.innerHTML = "";
       ajaxSpin('POST', "/console/reset",
         function(resp) { showNotification("uC reset"); co.textEnd = 0; },
@@ -52,14 +84,26 @@
       );
     });
 
-    rates.forEach(function(r) { baudButton(r); });
-
     ajaxJson('GET', "/console/baud",
-      function(data) { showRate(data.rate); },
+      function(data) { $("#baud-sel").value = data.rate; },
       function(s, st) { showNotification(st); }
     );
-  
+
+    bnd($("#baud-sel"), "change", function(ev) {
+      ev.preventDefault();
+      var baud = $("#baud-sel").value;
+      ajaxSpin('POST', "/console/baud?rate="+baud,
+        function(resp) { showNotification("" + baud + " baud set"); },
+        function(s, st) { showWarning("Error setting baud rate: " + st); }
+      );
+    });
+
     consoleSendInit();
+
+    addClass($('html')[0], "height100");
+    addClass($('body')[0], "height100");
+    addClass($('#layout'), "height100");
+    addClass($('#layout'), "flex-vbox");
   });
 </script>
 </body></html>

@@ -1,3 +1,5 @@
+//===== Fetching console text
+
 function fetchText(delay, repeat) {
   var el = $("#console");
   if (el.textEnd == undefined) {
@@ -34,37 +36,14 @@ function retryLoad(repeat) {
   fetchText(1000, repeat);
 }
 
-//===== Console page
-
-function showRate(rate) {
-  rates.forEach(function(r) {
-    var el = $("#"+r+"-button");
-    el.className = el.className.replace(" button-selected", "");
-  });
-
-  var el = $("#"+rate+"-button");
-  if (el != null) el.className += " button-selected";
-}
-
-function baudButton(baud) {
-  $("#baud-btns").appendChild(m(
-    ' <a id="'+baud+'-button" href="#" class="pure-button">'+baud+'</a>'));
-
-  $("#"+baud+"-button").addEventListener("click", function(e) {
-    e.preventDefault();
-    ajaxSpin('POST', "/console/baud?rate="+baud,
-      function(resp) { showNotification("" + baud + " baud set"); showRate(baud); },
-      function(s, st) { showWarning("Error setting baud rate: " + st); }
-    );
-  });
-}
+//===== Text entry
 
 function consoleSendInit() {
   var sendHistory = $("#send-history");
   var inputText = $("#input-text");
   var inputAddCr = $("#input-add-cr");
   var inputAddLf = $("#input-add-lf");
-  
+
   function findHistory(text) {
     for (var i = 0; i < sendHistory.children.length; i++) {
       if (text == sendHistory.children[i].value) {
@@ -119,28 +98,30 @@ function consoleSendInit() {
   inputText.addEventListener("keydown", function(e) {
     switch (e.keyCode) {
       case 38: /* the up arrow key pressed */
-      e.preventDefault();
-      navHistory(-1);
-      break;
+        e.preventDefault();
+        navHistory(-1);
+        break;
       case 40: /* the down arrow key pressed */
-      e.preventDefault();
-      navHistory(+1);
-      break;
+        e.preventDefault();
+        navHistory(+1);
+        break;
       case 27: /* the escape key pressed */
-      e.preventDefault();
-      inputText.value = "";
-      sendHistory.value = "";
-      break;
+        e.preventDefault();
+        inputText.value = "";
+        sendHistory.value = "";
+        break;
       case 13: /* the enter key pressed */
-      e.preventDefault();
-      var text = inputText.value;
-      if (inputAddCr.checked) text += '\r';
-      if (inputAddLf.checked) text += '\n';
-      ajaxSpin('POST', "/console/send?text=" + encodeURIComponent(text),
-        function(resp) { showNotification("uC sent"); pushHistory(inputText.value); },
-        function(s, st) { showWarning("Error sending text to uC"); }
-      );
-      break;
+        e.preventDefault();
+        var text = inputText.value;
+        if (inputAddCr.checked) text += '\r';
+        if (inputAddLf.checked) text += '\n';
+        pushHistory(inputText.value);
+        inputText.value = "";
+        ajaxSpin('POST', "/console/send?text=" + encodeURIComponent(text),
+          function(resp) { showNotification("Text sent"); },
+          function(s, st) { showWarning("Error sending text"); }
+        );
+        break;
     }
   });
 }
