@@ -26,8 +26,6 @@ a:hover {
   background-color: #eee;
   padding: 1em;
   margin: 0.5em;
-  -moz-border-radius: 0.5em;
-  -webkit-border-radius: 0.5em;
   border-radius: 0.5em;
   border: 0px solid #000000;
 }
@@ -92,9 +90,6 @@ fieldset fields {
 /* Add transition to containers so they can push in and out  */
 #layout, #menu, .menu-link {
   -webkit-transition: all 0.2s ease-out;
-  -moz-transition: all 0.2s ease-out;
-  -ms-transition: all 0.2s ease-out;
-  -o-transition: all 0.2s ease-out;
   transition: all 0.2s ease-out;
 }
 
@@ -187,8 +182,6 @@ input.inline {
 /* Text console */
 pre.console {
   background-color: #663300;
-  -moz-border-radius: 5px;
-  -webkit-border-radius: 5px;
   border-radius: 5px;
   border: 0px solid #000000;
   color: #66ff66;
@@ -203,8 +196,6 @@ pre.console a {
 
 .console-in {
   background-color: #fff0b3;
-  -moz-border-radius: 5px;
-  -webkit-border-radius: 5px;
   border-radius: 5px;
   border: 0px solid #630;
   color: #0c0;
@@ -214,39 +205,46 @@ pre.console a {
   box-sizing: border-box;
 }
 .console-in option:checked {
+  background-image: -webkit-linear-gradient(#fc0, #fc0);
   background-image: linear-gradient(#fc0, #fc0);
 }
 
 /* console flex */
 
-/*
-.hbox,.vbox {
-  box-sizing: border-box;
-  moz-box-sizing: border-box;
-  webkit-box-sizing: border-box;
-}
-*/
 .flex-hbox, .flex-vbox {
+  display: -webkit-box;
   display: flex;
   display: -ms-flexbox;
   display: -webkit-flex;
 }
 .flex-hbox {
-  flex-direction: row;
+  -webkit-box-orient: horizontal;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: row;
+      -ms-flex-direction: row;
+          flex-direction: row;
   ms-flex-direction: row;
   webkit-flex-direction: row;
 }
 .flex-vbox {
-  flex-direction: column;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: column;
+      -ms-flex-direction: column;
+          flex-direction: column;
   ms-flex-direction: column;
   webkit-flex-direction: column;
   /*width: 100%; */
 }
 .flex-fill {
-  flex: 1 1 auto;
+  -webkit-box-flex: 1;
+  -webkit-flex: 1 1 auto;
+      -ms-flex: 1 1 auto;
+          flex: 1 1 auto;
   ms-flex: 1 1 auto;
   webkit-flex: 1 1 auto;
 }
+
 .height100 {
   height: 100%;
 }
@@ -428,8 +426,6 @@ pre.console a {
   height: 50px;
   width: 50px;
   -webkit-animation: rotation 1s infinite linear;
-  -moz-animation: rotation 1s infinite linear;
-  -o-animation: rotation 1s infinite linear;
   animation: rotation 1s infinite linear;
   border-left: 10px solid rgba(204, 51, 0, 0.15);
   border-right: 10px solid rgba(204, 51, 0, 0.15);
@@ -452,27 +448,14 @@ pre.console a {
     -webkit-transform: rotate(359deg);
   }
 }
-@-moz-keyframes rotation {
-  from {
-    -moz-transform: rotate(0deg);
-  }
-  to {
-    -moz-transform: rotate(359deg);
-  }
-}
-@-o-keyframes rotation {
-  from {
-    -o-transform: rotate(0deg);
-  }
-  to {
-    -o-transform: rotate(359deg);
-  }
-}
+
 @keyframes rotation {
   from {
+    -webkit-transform: rotate(0deg);
     transform: rotate(0deg);
   }
   to {
+    -webkit-transform: rotate(359deg);
     transform: rotate(359deg);
   }
 }
