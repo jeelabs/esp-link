@@ -14,7 +14,8 @@
           UART debug log:
           <a id="dbg-auto" class="dbg-btn pure-button" href="#">auto</a>
           <a id="dbg-off" class="dbg-btn pure-button" href="#">off</a>
-          <a id="dbg-on" class="dbg-btn pure-button" href="#">on</a>
+          <a id="dbg-on0" class="dbg-btn pure-button" href="#">on uart0</a>
+          <a id="dbg-on1" class="dbg-btn pure-button" href="#">on uart1</a>
         </p>
       </div>
       <pre id="console" class="console" style="margin-top: 0px;"></pre>
@@ -33,7 +34,7 @@
       fetchText(100, false);
     });
 
-    ["auto", "off", "on"].forEach(function(mode) {
+    ["auto", "off", "on0", "on1"].forEach(function(mode) {
       bnd($('#dbg-'+mode), "click", function(el) {
         ajaxJsonSpin('POST', "/log/dbg?mode="+mode,
           function(data) { showNotification("UART mode " + data.mode); showDbgMode(data.mode); },

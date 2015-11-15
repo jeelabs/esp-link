@@ -164,7 +164,7 @@ void user_init(void) {
   bool restoreOk = configRestore();
   // init gpio pin registers
   gpio_init();
-  gpio_output_set(0, 0, 0, (1<<15)); // some people tie it GND, gotta ensure it's disabled
+  gpio_output_set(0, 0, 0, (1<<15)); // some people tie it to GND, gotta ensure it's disabled
   // init UART
   uart_init(flashConfig.baud_rate, 115200);
   logInit(); // must come after init of uart
