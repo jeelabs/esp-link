@@ -30,7 +30,8 @@
             <div id="aps">Scanning... <div class="spinner spinner-small"></div></div>
             <label for="opt-hiddenssid">
               <input type="radio" name="essid" value="_hidden_ssid_" id="opt-hiddenssid">
-              <input type="text" id="hidden-ssid" value="" style="width:auto; display:inline-block;">
+              <input type="text" id="hidden-ssid" value=""
+                style="width:auto; display:inline-block; margin-left: 0.7em">
             </label>
             <label>WiFi password, if applicable:</label>
             <input id="wifi-passwd" type="password" name="passwd" placeholder="password">
@@ -51,10 +52,7 @@
                 <input type="radio" name="dhcp" value="off" id="dhcp-roff"/>
                 Static IP</label>
             </div>
-            <div id="dhcp-on" class="pure-form-stacked">
-              <label>Hostname when requesting DHCP lease</label>
-              <input id="wifi-hostname" type="text" name="hostname"/>
-            </div>
+            <div id="dhcp-on" class="pure-form-stacked"></div>
             <div id="dhcp-off" class="pure-form-stacked">
               <label>Static IP address</label>
               <input id="wifi-staticip" type="text" name="staticip"/>

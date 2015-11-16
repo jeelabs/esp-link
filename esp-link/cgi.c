@@ -59,6 +59,23 @@ getStringArg(HttpdConnData *connData, char *name, char *config, int max_len) {
   return 1;
 }
 
+// look for the HTTP arg 'name' and store it at 'config' as an 8-bit integer
+// returns -1 on error, 0 if not found, 1 if found and OK
+int8_t ICACHE_FLASH_ATTR
+getInt8Arg(HttpdConnData *connData, char *name, int8_t *config) {
+  char buff[16];
+  int len = httpdFindArg(connData->getArgs, name, buff, sizeof(buff));
+  if (len < 0) return 0; // not found, skip
+  int m = atoi(buff);
+  if (len >= 6 || m < -128 || m > 255) {
+    os_sprintf(buff, "Value for %s out of range", name);
+    errorResponse(connData, 400, buff);
+    return -1;
+  }
+  *config = m;
+  return 1;
+}
+
 int8_t ICACHE_FLASH_ATTR
 getBoolArg(HttpdConnData *connData, char *name, bool*config) {
   char buff[64];
@@ -150,6 +167,10 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
   httpdHeader(connData, "Cache-Control", "max-age=3600, must-revalidate");
   httpdHeader(connData, "Content-Type", "application/json");
   httpdEndHeaders(connData);
+  // limit hostname to 12 chars
+  char name[13];
+  os_strncpy(name, flashConfig.hostname, 12);
+  name[12] = 0;
   // construct json response
   os_sprintf(buff,
       "{\"menu\": [\"Home\", \"/home.html\", "
@@ -160,7 +181,7 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
 #endif
       "\"Debug log\", \"/log.html\" ],\n"
       " \"version\": \"%s\","
-      "\"name\":\"%s\"}", esp_link_version, flashConfig.sys_name);
+      "\"name\":\"%s\"}", esp_link_version, name);
   httpdSend(connData, buff, -1);
   return HTTPD_CGI_DONE;
 }

@@ -7,6 +7,7 @@
 #include "status.h"
 #include "serbridge.h"
 
+#if 0
 static char *map_names[] = {
   "esp-bridge", "jn-esp-v2", "esp-01(AVR)", "esp-01(ARM)", "esp-br-rev", "wifi-link-12",
 };
@@ -21,46 +22,19 @@ static int8_t map_asn[][5] = {
 };
 static const int num_map_names = sizeof(map_names)/sizeof(char*);
 static const int num_map_func = sizeof(map_func)/sizeof(char*);
+#endif
 
 // Cgi to return choice of pin assignments
 int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted
 
-  char buff[2048];
+  char buff[1024];
   int len;
 
-  // figure out current mapping
-  int curr = 0;
-  for (int i=0; i<num_map_names; i++) {
-    int8_t *map = map_asn[i];
-    if (map[0] == flashConfig.reset_pin && map[1] == flashConfig.isp_pin &&
-        map[2] == flashConfig.conn_led_pin && map[3] == flashConfig.ser_led_pin &&
-        map[4] == flashConfig.swap_uart) {
-      curr = i;
-    }
-  }
-
-  // print mapping
-  len = os_sprintf(buff, "{ \"curr\":\"%s\", \"map\": [ ", map_names[curr]);
-  for (int i=0; i<num_map_names; i++) {
-    if (i != 0) buff[len++] = ',';
-    len += os_sprintf(buff+len, "\n{ \"value\":%d, \"name\":\"%s\"", i, map_names[i]);
-    for (int f=0; f<num_map_func; f++) {
-      len += os_sprintf(buff+len, ", \"%s\":%d", map_func[f], map_asn[i][f]);
-    }
-    len += os_sprintf(buff+len, ", \"descr\":\"");
-    for (int f=0; f<num_map_func; f++) {
-      int8_t p = map_asn[i][f];
-      if (f == 4)
-        len += os_sprintf(buff+len, " %s:%s", map_func[f], p?"yes":"no");
-      else if (p >= 0)
-        len += os_sprintf(buff+len, " %s:gpio%d", map_func[f], p);
-      else
-        len += os_sprintf(buff+len, " %s:n/a", map_func[f]);
-    }
-    len += os_sprintf(buff+len, "\" }");
-  }
-  len += os_sprintf(buff+len, "\n] }");
+  len = os_sprintf(buff,
+      "{ \"reset\":%d, \"isp\":%d, \"conn\":%d, \"ser\":%d, \"swap\":%d, \"rxpup\":%d }",
+      flashConfig.reset_pin, flashConfig.isp_pin, flashConfig.conn_led_pin,
+      flashConfig.ser_led_pin, !!flashConfig.swap_uart, 1);
 
   jsonHeader(connData, 200);
   httpdSend(connData, buff, len);
@@ -73,41 +47,73 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
     return HTTPD_CGI_DONE; // Connection aborted
   }
 
-  char buff[128];
-  int len = httpdFindArg(connData->getArgs, "map", buff, sizeof(buff));
-  if (len <= 0) {
-    jsonHeader(connData, 400);
-    return HTTPD_CGI_DONE;
-  }
+  int8_t ok = 0;
+  int8_t reset, isp, conn, ser;
+  bool swap, rxpup;
+  ok |= getInt8Arg(connData, "reset", &reset);
+  ok |= getInt8Arg(connData, "isp", &isp);
+  ok |= getInt8Arg(connData, "conn", &conn);
+  ok |= getInt8Arg(connData, "ser", &ser);
+  ok |= getBoolArg(connData, "swap", &swap);
+  ok |= getBoolArg(connData, "rxpup", &rxpup);
+  if (ok < 0) return HTTPD_CGI_DONE;
 
-  int m = atoi(buff);
-  if (m < 0 || m >= num_map_names) {
-    jsonHeader(connData, 400);
-    return HTTPD_CGI_DONE;
-  }
-#ifdef CGIPINS_DBG
-  os_printf("Switching pin map to %s (%d)\n", map_names[m], m);
-#endif
-  int8_t *map = map_asn[m];
-  flashConfig.reset_pin    = map[0];
-  flashConfig.isp_pin      = map[1];
-  flashConfig.conn_led_pin = map[2];
-  flashConfig.ser_led_pin  = map[3];
-  flashConfig.swap_uart    = map[4];
+  char *coll;
+  if (ok > 0) {
+    // check whether two pins collide
+    uint16_t pins = 0;
+    if (reset >= 0) pins = 1 << reset;
+    if (isp >= 0) {
+      if (pins & (1<<isp)) { coll = "ISP/Flash"; goto collision; }
+      pins |= 1 << isp;
+    }
+    if (conn >= 0) {
+      if (pins & (1<<conn)) { coll = "Conn LED"; goto collision; }
+      pins |= 1 << conn;
+    }
+    if (ser >= 0) {
+      if (pins & (1<<ser)) { coll = "Serial LED"; goto collision; }
+      pins |= 1 << ser;
+    }
+    if (swap) {
+      if (pins & (1<<1)) { coll = "Uart TX"; goto collision; }
+      if (pins & (1<<3)) { coll = "Uart RX"; goto collision; }
+    } else {
+      if (pins & (1<<15)) { coll = "Uart TX"; goto collision; }
+      if (pins & (1<<13)) { coll = "Uart RX"; goto collision; }
+    }
 
-  serbridgeInitPins();
-  serledInit();
-  statusInit();
+    // we're good, set flashconfig
+    flashConfig.reset_pin = reset;
+    flashConfig.isp_pin = isp;
+    flashConfig.conn_led_pin = conn;
+    flashConfig.ser_led_pin = ser;
+    flashConfig.swap_uart = swap;
+    flashConfig.rx_pullup = rxpup;
 
-  if (configSave()) {
-    httpdStartResponse(connData, 200);
-    httpdEndHeaders(connData);
-  } else {
-    httpdStartResponse(connData, 500);
-    httpdEndHeaders(connData);
-    httpdSend(connData, "Failed to save config", -1);
+    // apply the changes
+    serbridgeInitPins();
+    serledInit();
+    statusInit();
+
+    // save to flash
+    if (configSave()) {
+      httpdStartResponse(connData, 204);
+      httpdEndHeaders(connData);
+    } else {
+      httpdStartResponse(connData, 500);
+      httpdEndHeaders(connData);
+      httpdSend(connData, "Failed to save config", -1);
+    }
   }
   return HTTPD_CGI_DONE;
+
+collision: {
+    char buff[128];
+    os_sprintf(buff, "Pin assignment for %s collides with another assignment", coll);
+    errorResponse(connData, 400, buff);
+    return HTTPD_CGI_DONE;
+  }
 }
 
 int ICACHE_FLASH_ATTR cgiPins(HttpdConnData *connData) {

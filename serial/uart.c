@@ -56,10 +56,10 @@ uart_config(uint8 uart_no)
   } else {
     /* rcv_buff size is 0x100 */
     ETS_UART_INTR_ATTACH(uart0_rx_intr_handler,  &(UartDev.rcv_buff));
-    PIN_PULLUP_DIS (PERIPHS_IO_MUX_U0TXD_U);
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_U0TXD);
-    PIN_PULLUP_DIS (PERIPHS_IO_MUX_U0RXD_U);
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0RXD_U, 0); // FUNC_U0RXD==0
+    //PIN_PULLUP_DIS (PERIPHS_IO_MUX_U0TXD_U); now done in serbridgeInitPins
+    //PIN_PULLUP_DIS (PERIPHS_IO_MUX_U0RXD_U);
   }
 
   uart_div_modify(uart_no, UART_CLK_FREQ / UartDev.baut_rate);

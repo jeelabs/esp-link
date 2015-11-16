@@ -116,7 +116,7 @@ static int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
       "\"size\": \"%s\"," "\"id\": \"0x%02lX 0x%04lX\"," "\"partition\": \"%s\","
       "\"slip\": \"%s\"," "\"mqtt\": \"%s/%s\"," "\"baud\": \"%ld\","
       "\"description\": \"%s\"" "}",
-      flashConfig.sys_name, rst_info->reason, rst_codes[rst_info->reason],
+      flashConfig.hostname, rst_info->reason, rst_codes[rst_info->reason],
       flash_maps[system_get_flash_size_map()], fid & 0xff, (fid&0xff00)|((fid>>16)&0xff),
       part_id ? "user2.bin" : "user1.bin",
       flashConfig.slip_enable ? "enabled" : "disabled",
@@ -134,7 +134,7 @@ static int ICACHE_FLASH_ATTR cgiSystemSet(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
   int8_t status = 0;
-  status |= getStringArg(connData, "name", flashConfig.sys_name, sizeof(flashConfig.sys_name));
+  status |= getStringArg(connData, "name", flashConfig.hostname, sizeof(flashConfig.hostname));
   status |= getStringArg(connData, "description", flashConfig.sys_descr, sizeof(flashConfig.sys_descr));
   if (status < 0) return HTTPD_CGI_DONE; // getStringArg has produced an error response
 
@@ -172,7 +172,6 @@ void user_init(void) {
   os_delay_us(10000L);
   os_printf("\n\n** %s\n", esp_link_version);
   os_printf("Flash config restore %s\n", restoreOk ? "ok" : "*FAILED*");
-  if (flashConfig.sys_name[0] == 0) os_strcpy(flashConfig.sys_name, "name-me");
 
 #if defined(STA_SSID) && defined(STA_PASS)
   int x = wifi_get_opmode() & 0x3;

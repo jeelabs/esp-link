@@ -446,11 +446,15 @@ serbridgeInitPins()
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 4);
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, 4);
     PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTCK_U);
-    PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTDO_U);
+    if (flashConfig.rx_pullup) PIN_PULLUP_EN(PERIPHS_IO_MUX_MTDO_U);
+    else                       PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTDO_U);
     system_uart_swap();
   } else {
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, 0);
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0RXD_U, 0);
+    PIN_PULLUP_DIS(PERIPHS_IO_MUX_U0TXD_U);
+    if (flashConfig.rx_pullup) PIN_PULLUP_EN(PERIPHS_IO_MUX_U0RXD_U);
+    else                       PIN_PULLUP_DIS(PERIPHS_IO_MUX_U0RXD_U);
     system_uart_de_swap();
   }
 
