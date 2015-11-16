@@ -18,7 +18,7 @@ Many thanks to https://github.com/brunnels for contributions around the espduino
 
 ###[Releases](https://github.com/jeelabs/esp-link/releases)
 
-- [V2.1.beta2](https://github.com/jeelabs/esp-link/releases/tag/v2.1.beta2) has the new built-in
+- [V2.1.beta5](https://github.com/jeelabs/esp-link/releases/tag/v2.1.beta5) has the new built-in
   stk500v1 programmer and works on all modules (esp-01 through esp-12). This is still beta-ware!
 - [V2.0.rc1](https://github.com/jeelabs/esp-link/releases/tag/v2.0.rc1) has REST support but
   requires a 1MByte or 4MByte ESP8266 flash, e.g. esp-12 or wroom-02. Despite being labeled
