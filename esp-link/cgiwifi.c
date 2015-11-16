@@ -403,7 +403,7 @@ static void ICACHE_FLASH_ATTR debugIP() {
 #endif
 
 // configure Wifi, specifically DHCP vs static IP address based on flash config
-static void ICACHE_FLASH_ATTR configWifiIP() {
+void ICACHE_FLASH_ATTR configWifiIP() {
   if (flashConfig.staticip == 0) {
     // let's DHCP!
     wifi_station_set_hostname(flashConfig.hostname);

@@ -128,7 +128,7 @@ ajaxLog(HttpdConnData *connData) {
   return HTTPD_CGI_DONE;
 }
 
-static char *dbg_mode[] = { "auto", "off", "on u0", "on u1" };
+static char *dbg_mode[] = { "auto", "off", "on0", "on1" };
 
 int ICACHE_FLASH_ATTR
 ajaxLogDbg(HttpdConnData *connData) {

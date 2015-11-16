@@ -129,14 +129,22 @@ static int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
   return HTTPD_CGI_DONE;
 }
 
+static ETSTimer reassTimer;
+
 // Cgi to update system info (name/description)
 static int ICACHE_FLASH_ATTR cgiSystemSet(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
-  int8_t status = 0;
-  status |= getStringArg(connData, "name", flashConfig.hostname, sizeof(flashConfig.hostname));
-  status |= getStringArg(connData, "description", flashConfig.sys_descr, sizeof(flashConfig.sys_descr));
-  if (status < 0) return HTTPD_CGI_DONE; // getStringArg has produced an error response
+  int8_t n = getStringArg(connData, "name", flashConfig.hostname, sizeof(flashConfig.hostname));
+  int8_t d = getStringArg(connData, "description", flashConfig.sys_descr, sizeof(flashConfig.sys_descr));
+  if (n < 0 || d < 0) return HTTPD_CGI_DONE; // getStringArg has produced an error response
+
+  if (n > 0) {
+    // schedule hostname change-over
+    os_timer_disarm(&reassTimer);
+    os_timer_setfn(&reassTimer, configWifiIP, NULL);
+    os_timer_arm(&reassTimer, 1000, 0); // 1 second for the response of this request to make it
+  }
 
   if (configSave()) {
     httpdStartResponse(connData, 204);

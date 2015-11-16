@@ -418,10 +418,10 @@ function createPresets(sel) {
     setPP("ser",   pp[3]);
     setPP("swap",  pp[4]);
     $("#pin-rxpup").checked = !!pp[5];
+    sel.value = 0;
   };
 
   bnd(sel, "change", function(ev) {
-    console.log("preset change:", sel.value);
     ev.preventDefault();
     applyPreset(sel.value);
   });
@@ -431,6 +431,7 @@ function displayPins(resp) {
   function createSelectForPin(name, v) {
     var sel = $("#pin-"+name);
     addClass(sel, "pure-button");
+    sel.innerHTML = "";
     [-1,0,1,2,3,4,5,12,13,14,15].forEach(function(i) {
       var opt = document.createElement("option");
       opt.value = i;
@@ -464,7 +465,8 @@ function fetchPins() {
   });
 }
 
-function setPins(v, name) {
+function setPins(ev) {
+  ev.preventDefault();
   var url = "/pins";
   var sep = "?";
   ["reset", "isp", "conn", "ser", "swap"].forEach(function(p) {
@@ -472,6 +474,7 @@ function setPins(v, name) {
     sep = "&";
   });
   url += "&rxpup=" + ($("#pin-rxpup").selected ? "1" : "0");
+  console.log("set pins: " + url);
   ajaxSpin("POST", url, function() {
     showNotification("Pin assignment changed");
   }, function(status, errMsg) {

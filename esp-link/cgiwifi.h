@@ -13,6 +13,7 @@ int cgiWiFiConnect(HttpdConnData *connData);
 int cgiWiFiSetMode(HttpdConnData *connData);
 int cgiWiFiConnStatus(HttpdConnData *connData);
 int cgiWiFiSpecial(HttpdConnData *connData);
+void configWifiIP();
 void wifiInit(void);
 void wifiAddStateChangeCb(WifiStateChangeCb cb);
 
