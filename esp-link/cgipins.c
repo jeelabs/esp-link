@@ -76,11 +76,11 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
       pins |= 1 << ser;
     }
     if (swap) {
-      if (pins & (1<<1)) { coll = "Uart TX"; goto collision; }
-      if (pins & (1<<3)) { coll = "Uart RX"; goto collision; }
-    } else {
       if (pins & (1<<15)) { coll = "Uart TX"; goto collision; }
       if (pins & (1<<13)) { coll = "Uart RX"; goto collision; }
+    } else {
+      if (pins & (1<<1)) { coll = "Uart TX"; goto collision; }
+      if (pins & (1<<3)) { coll = "Uart RX"; goto collision; }
     }
 
     // we're good, set flashconfig
@@ -90,6 +90,8 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
     flashConfig.ser_led_pin = ser;
     flashConfig.swap_uart = swap;
     flashConfig.rx_pullup = rxpup;
+    os_printf("Pins changed: reset=%d isp=%d conn=%d ser=%d swap=%d rx-pup=%d\n",
+	reset, isp, conn, ser, swap, rxpup);
 
     // apply the changes
     serbridgeInitPins();
