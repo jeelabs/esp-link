@@ -17,7 +17,7 @@
                 <div class="click-to-edit system-name">
                   <span class="edit-off"></span>
                   <input class="edit-on" maxlength=31 hidden></input>
-                  <div class="popup">Hostname displayed in menu bar
+                  <div class="popup">Click to edit!<br>Hostname displayed in menu bar
                     and used by DHCP and mDNS</div>
                 </div>
               </td></tr>
@@ -36,11 +36,12 @@
             program microcontrollers over the serial port, in particular Arduinos, AVRs, and
             NXP's LPC800 and other ARM processors. Typical avrdude command line to
             program an Arduino:</p>
-            <div class="tt">/home/arduino/hardware/tools/avrdude&nbsp;\<br>
+            <div class="tt" style="font-size:100%;">
+              /home/arduino/hardware/tools/avrdude&nbsp;\<br>
               &nbsp;&nbsp;-DV -patmega328p \<br>
               &nbsp;&nbsp;-Pnet:esp-link.local:23 \<br>
-              &nbsp;&nbsp;-carduino -b115200 -U \<br>
-              &nbsp;&nbsp;-C /home/arduino/hardware/tools/avrdude.conf&nbsp;\<br>
+              &nbsp;&nbsp;-carduino -b115200 -U -C \<br>
+              &nbsp;&nbsp;/home/arduino/hardware/tools/avrdude.conf&nbsp;\<br>
               &nbsp;&nbsp;flash:w:my_sketch.hex:i
             </div>
             <p>where <tt>-Pnet:esp-link.local:23</tt> tells avrdude to connect to port 23 of esp-link.
@@ -125,8 +126,8 @@
             <tr><td colspan=2 class="popup-target">Description:<br>
                 <div class="click-to-edit system-description">
                   <div class="edit-off"></div>
-                  <textarea class="edit-on" rows=3 maxlength=127 hidden></textarea>
-                  <div class="popup">A short description or memo for this esp-link
+                  <textarea class="edit-on" rows=3 maxlength=127 hidden> </textarea>
+                  <div class="popup">Click to edit!<br>A short description or memo for this esp-link
                     module, 128 chars max</div>
                 </div>
             </td></tr>

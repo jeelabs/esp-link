@@ -22,12 +22,21 @@ function updateText(resp) {
   var delay = 3000;
   if (resp != null && resp.len > 0) {
     console.log("updateText got", resp.len, "chars at", resp.start);
+    var isScrolledToBottom = el.scrollHeight - el.clientHeight <= el.scrollTop + 1;
+    //console.log("isScrolledToBottom="+isScrolledToBottom, "scrollHeight="+el.scrollHeight,
+    //            "clientHeight="+el.clientHeight, "scrollTop="+el.scrollTop,
+    //            "" + (el.scrollHeight - el.clientHeight) + "<=" + (el.scrollTop + 1));
+
+    // append the text
     if (resp.start > el.textEnd) {
       el.innerHTML = el.innerHTML.concat("\r\n<missing lines\r\n");
     }
     el.innerHTML = el.innerHTML.concat(resp.text);
     el.textEnd = resp.start + resp.len;
     delay = 500;
+
+    // scroll to bottom
+    if(isScrolledToBottom) el.scrollTop = el.scrollHeight - el.clientHeight;
   }
   return delay;
 }
