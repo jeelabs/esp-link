@@ -21,6 +21,8 @@
 #define DBG(format, ...) do { } while(0)
 #endif
 
+#define DBG_GPIO5 0 // define to 1 to use GPIO5 to trigger scope
+
 //===== global state
 
 static ETSTimer optibootTimer;
@@ -71,7 +73,7 @@ static void ICACHE_FLASH_ATTR optibootInit() {
   ackWait = 0;
   errMessage[0] = 0;
   responseLen = 0;
-  programmingCB = optibootUartRecv;
+  programmingCB = NULL;
   if (optibootData != NULL) {
     if (optibootData->conn != NULL)
       optibootData->conn->cgiPrivData = (void *)-1; // signal that request has been aborted
@@ -91,7 +93,9 @@ void ICACHE_FLASH_ATTR appendPretty(char *buf, char *raw, int max) {
   int i = 0;
   while (off < max-5) {
     unsigned char c = raw[i++];
-    if (c >= ' ' && c <= '~') {
+    if (c == 0) {
+      break;
+    } else if (c >= ' ' && c <= '~') {
       buf[off++] = c;
     } else if (c == '\n') {
       buf[off++] = '\\';
@@ -103,7 +107,7 @@ void ICACHE_FLASH_ATTR appendPretty(char *buf, char *raw, int max) {
       buf[off++] = '\\';
       buf[off++] = 'x';
       buf[off++] = '0'+(unsigned char)((c>>4)+((c>>4)>9?7:0));
-      buf[off++] = '0'+(unsigned char)((c&0xff)+((c&0xff)>9?7:0));
+      buf[off++] = '0'+(unsigned char)((c&0xf)+((c&0xf)>9?7:0));
     }
   }
   buf[off] = 0;
@@ -120,9 +124,12 @@ int ICACHE_FLASH_ATTR cgiOptibootSync(HttpdConnData *connData) {
   } else if (connData->requestType == HTTPD_METHOD_POST) {
     // issue reset
     optibootInit();
+    programmingCB = optibootUartRecv;
     serbridgeReset();
+#if DBG_GPIO5
     makeGpio(5);
     gpio_output_set(0, (1<<5), (1<<5), 0); // output 0
+#endif
 
     // start sync timer
     os_timer_disarm(&optibootTimer);
@@ -394,7 +401,9 @@ static bool pollAck() {
   char recv[16];
   uint16_t need = ackWait*2;
   uint16_t got = uart0_rx_poll(recv, need, 50000);
+#ifdef DBG_GPIO5
   gpio_output_set(0, (1<<5), (1<<5), 0); // output 0
+#endif
   if (got < need) {
     os_strcpy(errMessage, "Timeout waiting for flash page to be programmed");
     return false;
@@ -421,7 +430,9 @@ static bool ICACHE_FLASH_ATTR programPage(void) {
   DBG("OB pgm %d@0x%lx ackWait=%d\n", pgmLen, optibootData->address, ackWait);
 
   // send address to optiboot (little endian format)
+#ifdef DBG_GPIO5
   gpio_output_set((1<<5), 0, (1<<5), 0); // output 1
+#endif
   ackWait++;
   uart0_write_char(STK_LOAD_ADDRESS);
   uint16_t addr = optibootData->address >> 1; // word address
@@ -436,7 +447,9 @@ static bool ICACHE_FLASH_ATTR programPage(void) {
   armTimer();
 
   // send page length (big-endian format, go figure...)
+#ifdef DBG_GPIO5
   gpio_output_set((1<<5), 0, (1<<5), 0); // output 1
+#endif
   ackWait++;
   uart0_write_char(STK_PROG_PAGE);
   uart0_write_char(pgmLen>>8);
@@ -520,10 +533,10 @@ static short ICACHE_FLASH_ATTR skipInSync(char *buf, short length) {
 static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
   // append what we got to what we have accumulated
   if (responseLen < RESP_SZ-1) {
-    short cpy = RESP_SZ-1-responseLen;
-    if (cpy > length) cpy = length;
-    os_memcpy(responseBuf+responseLen, buf, cpy);
-    responseLen += cpy;
+    char *rb = responseBuf+responseLen;
+    for (short i=0; i<length && (rb-responseBuf)<(RESP_SZ-1); i++)
+      if (buf[i] != 0) *rb++ = buf[i]; // don't copy NULL characters, TODO: fix it
+    responseLen = rb-responseBuf;
     responseBuf[responseLen] = 0; // string terminator
   }
 
