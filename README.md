@@ -176,6 +176,25 @@ used to configure the ssid/password info. The problem is that the initial STA+AP
 channel 1 and you configure it to connect to an AP on channel 6. This requires the ESP8266's AP
 to also switch to channel 6 disconnecting you in the meantime. 
 
+Hostname, description, DHCP, mDNS
+---------------------------------
+You can set a hostname on the "home" page, this should be just the hostname and not a domain
+name, i.e., something like "test-module-1" and not "test-module-1.mydomain.com".
+This has a number of effects:
+- you will see the first 12 chars of the hostname in the menu bar (top left of the page) so
+  if you have multiple modules you can distinguish them visually
+- esp-link will use the hostname in its DHCP request, which allows you to identify the module's
+  MAC and IP addresses in your DHCP server (typ. your wifi router). In addition, some DHCP
+  servers will inject these names into the local DNS cache so you can use URLs like
+  `hostname.local`.
+- someday, esp-link will inject the hostname into mDNS (multicast DNS, bonjour, etc...) so 
+  URLs of the form `hostname.local` work for everyone (as of v2.1.beta5 mDNS is disabled due
+  to reliability issues with it)
+
+You can also enter a description of up to 128 characters on the home page (bottom right). This
+allows you to leave a memo for yourself, such as "installed in basement to control the heating
+system". This descritpion is not used anywhere else.
+
 Troubleshooting
 ---------------
 - verify that you have sufficient power, borderline power can cause the esp module to seemingly
