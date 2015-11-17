@@ -120,8 +120,9 @@ to join its network to configure it. The short version is:
     use a different SSID form, such as `ai-thinker-012ABC`)
  2. you join your laptop or phone to esp-link's network as a station and you configure
     esp-link wifi with your network info by pointing your browser at http://192.168.4.1/
- 3. esp-link starts to connect to your network while continuing to also be an access point
-    ("AP+STA"), the esp-link may show up with a `esp-link.local` hostname
+ 3. you set a hostname for esp-link on the "home" page, or leave the default ("esp-link")
+ 4. esp-link starts to connect to your network while continuing to also be an access point
+    ("AP+STA"), the esp-link may show up with a `${hostname}.local` hostname
     (depends on your DHCP/DNS config)
  4. esp-link succeeds in connecting and shuts down its own access point after 15 seconds,
     you reconnect your laptop/phone to your normal network and access esp-link via its hostname
@@ -136,7 +137,7 @@ status as follows:
 - Very short flash once every two seconds: not connected to a network and running as AP-only
 - Even on/off at 1HZ: connected to the configured network but no IP address (waiting on DHCP)
 - Steady on with very short off every 3 seconds: connected to the configured network with an
-  IP address (esp-link shuts down its AP after 15 seconds)
+  IP address (esp-link shuts down its AP after 60 seconds)
 
 The yellow "ser" LED will blink briefly every time serial data is sent or received by the esp-link.
 
@@ -290,6 +291,12 @@ _Important_: after the initial sync request that resets the AVR you have 10 seco
 upload post or esp-link will time-out. So if you're manually entering curl commands have them
 prepared so you can copy&paste!
 
+Beware of the baud rate, which you can set on the uC Console page. Sometimes you may be using
+115200 baud in sketches but the bootloader may use 57600 baud. When you use port 23 or 2323 you
+need to set the baud rate correctly. If you use the built-in programmer (HTTP POST method) then
+esp-link will try the configured baud rate and also 9600, 57600, and 115200 baud, so it should
+work even if you have the wrong baud rate configured...
+
 When to use which method? If port 23 works then go with that. If you have trouble getting sync
 or it craps out in the middle too often then try the built-in programmer with the HTTP POST.
 If your AVR doesn't use optiboot then use port 2323 since esp-link may not recognize the programming
@@ -299,26 +306,29 @@ If you are having trouble with the built-in programmer and see something like th
 ```
 # ./avrflash 192.168.3.104 blink.hex
 Error checking sync: FAILED to SYNC: abandoned after timeout, got:
-:\xF/\x00\xCj\xCz\xCJ\xCZ\xC\xAÜ\xC\xAä\xC\xAÜ\xC\xAä\xC\xBì\xC\xBô\xC\xBì\xC\xBô\xC\xAÜ\xC\xAä\xC\x00\xC\x00\x00\x00
-\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
-\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xF6\xF6\xF6\xF6\xC
+:\xF/\x00\xCj\xCz\xCJ\xCZ\xC\xAÜ\xC\xAä\xC\xAÜ\xC\xAä\xC\xBì\xC\xBô\xC\xBì\xC\xBô\xC\xAÜ\xC\xAä\xC
 ```
-the most likely cause is a baud rate mismatch and/or a bad connection from the esp8266 to the AVRs reset line.
-The baud rate used by esp-link is set on the uC Console web page.
-The above garbage characters are most likely due to optiboot timing out and starting the sketch and then the sketch
-sending data at a different baud rate than configured into esp-link.
-Note that sketches don't necessarily use the same baud rate as optiboot, so you may have the correct baud rate configured
-but reset isn't functioning, or reset may be functioning but the baud rate may be incorrect.
+the most likely cause is a baud rate mismatch and/or a bad connection from the esp8266 to the
+AVRs reset line.
+The baud rate used by esp-link is set on the uC Console web page and, as mentioned above, it will
+automatically try 9600, 57600, and 115200 as well.
+The above garbage characters are most likely due to optiboot timing out and starting the sketch
+and then the sketch sending data at a different baud rate than configured into esp-link.
+Note that sketches don't necessarily use the same baud rate as optiboot, so you may have the
+correct baud rate configured but reset isn't functioning, or reset may be functioning but the
+baud rate may be incorrect.
 
 The output of a successful flash using the built-in programmer looks like this:
 ```
-Success. 3098 bytes in 0.8s, 3674B/s 63% efficient
+Success. 3098 bytes at 57600 baud in 0.8s, 3674B/s 63% efficient
 ```
-This says that the sketch comprises 3098 bytes of flash, sas written in 0.8 seconds (excludes the initial sync time),
+This says that the sketch comprises 3098 bytes of flash, was written in 0.8 seconds
+(excludes the initial sync time) at 57600 baud,
 and the 3098 bytes were flashed at a rate of 3674 bytes per second.
-The efficiency measure is the ratio of the actual rate to the serial baud rate, in this case 57600 baud,
+The efficiency measure is the ratio of the actual rate to the serial baud rate,
 thus 3674/5760 = 0.63 (there are 10 baud per character).
-The efficiency is not 100% because there is protocol overhead (such as sync, record type, and length characaters)
+The efficiency is not 100% because there is protocol overhead (such as sync, record type, and
+length characters)
 and there is dead time waiting for an ack or preparing the next record to be sent.
 
 ### Flashing an attached ARM processor
@@ -345,12 +355,13 @@ The esp-link web UI can display the esp-link debug log (os_printf statements in 
 is handy but sometimes not sufficient. Esp-link also prints the debug info to the UART where
 it is sometimes more convenient and sometimes less... For this reason three UART debug log
 modes are supported that can be set in the web UI (and the mode is saved in flash):
-- auto: the UART log starts enabled at boot and disables itself when esp-link associates with
-  an AP. It re-enables itself if the association is lost.
+- auto: the UART log starts enabled at boot using uart0 and disables itself when esp-link
+  associates with an AP. It re-enables itself if the association is lost.
 - off: the UART log is always off
-- on: the UART log is always on
+- on0: the UART log is always on using uart0
+- on1: the UART log is always on using uart1 (gpio2 pin)
 
-Note that even if the UART log is always off the bootloader prints to uart0 whenever the
+Note that even if the UART log is always off the ROM prints to uart0 whenever the
 esp8266 comes out of reset. This cannot be disabled.
 
 Outbound HTTP REST requests and MQTT client
