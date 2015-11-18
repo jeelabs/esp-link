@@ -365,8 +365,21 @@ it starts the connection with the `?\r\n` synchronization sequence.
 
 (This is not well tested, more details forthcoming...)
 Yes, you can use esp-link running on one esp8266 module to flash another esp8266 module!
-For this to work you need a special version of esptool.py that has support for serial over
-telnet.
+The basic idea is to use some method to direct the esp8266 flash program to port 2323 of
+esp-link. Using port 2323 with the appropriate wiring will cause the esp8266's reset and 
+gpio0 pins to be toggled such that the chip enters the flash programming mode.
+
+One option for connecting the programmer with esp-link is to use my version of esptool.py
+at http://github.com/tve/esptool, which supports specifying a URL instead of a port. Thus
+instead of specifying something like `--port /dev/ttyUSB0` or `--port COM1` you specify
+`--port socket://esp-link.local:2323`. Important: the baud rate specified on the esptool.py
+command-line is irrelevant as the baud rate used by esp-link will be the one set in the
+uC console page. Fortunately the esp8266 bootloader does auto-baud detection. (Setting the
+baud rate to 115200 is recommended.)
+
+Another option is to use a serial-to-tcp port forwarding driver and point that to port 2323
+of esp-link. On windows users have reported success with
+[HW Virtual Serial Port](http://www.hw-group.com/products/hw_vsp/hw_vsp2_en.html)
 
 Debug log
 ---------

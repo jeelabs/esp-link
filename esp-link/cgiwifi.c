@@ -113,7 +113,7 @@ wifiAddStateChangeCb(WifiStateChangeCb cb) {
   DBG("WIFI: max state change cb count exceeded\n");
 }
 
-static bool mdns_started = true;
+static bool mdns_started = false;
 static struct mdns_info mdns_info;
 
 // cannot allocate the info struct on the stack, it crashes!
@@ -126,7 +126,6 @@ void wifiStartMDNS(struct ip_addr ip) {
     mdns_info.server_port = 80,     // service port
     mdns_info.ipAddr = ip.addr,
     espconn_mdns_init(&mdns_info);
-    espconn_mdns_enable();
     mdns_started = true;
   }
 }
@@ -237,7 +236,7 @@ static int ICACHE_FLASH_ATTR cgiWiFiGetScan(HttpdConnData *connData) {
     while (pos < cgiWifiAps.noAps && pos < next+chunk) {
       len += os_sprintf(buff+len, "{\"essid\": \"%s\", \"rssi\": %d, \"enc\": \"%d\"}%c\n",
         cgiWifiAps.apData[pos]->ssid, cgiWifiAps.apData[pos]->rssi, cgiWifiAps.apData[pos]->enc,
-	(pos+1 == cgiWifiAps.noAps) ? ' ' : ',');
+        (pos+1 == cgiWifiAps.noAps) ? ' ' : ',');
       pos++;
     }
     // done or more?

@@ -211,7 +211,7 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
     if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 0);
     os_delay_us(100L);
     if (mcu_isp_pin >= 0) GPIO_OUTPUT_SET(mcu_isp_pin, 0);
-    os_delay_us(100L);
+    os_delay_us(2000L);
     if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 1);
     //os_delay_us(100L);
     //if (mcu_isp_pin >= 0) GPIO_OUTPUT_SET(mcu_isp_pin, 1);
