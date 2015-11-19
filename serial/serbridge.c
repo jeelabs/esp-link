@@ -145,7 +145,7 @@ serbridgeReset()
     os_printf("MCU reset gpio%d\n", mcu_reset_pin);
 #endif
     GPIO_OUTPUT_SET(mcu_reset_pin, 0);
-    os_delay_us(100L);
+    os_delay_us(2000L); // esp8266 needs at least 1ms reset pulse, it seems...
     GPIO_OUTPUT_SET(mcu_reset_pin, 1);
   }
 #ifdef SERBR_DBG
@@ -320,7 +320,7 @@ static void ICACHE_FLASH_ATTR
 serbridgeSentCb(void *arg)
 {
   serbridgeConnData *conn = ((struct espconn*)arg)->reverse;
-  os_printf("Sent CB %p\n", conn);
+  //os_printf("Sent CB %p\n", conn);
   if (conn == NULL) return;
   //os_printf("%d ST\n", system_get_time());
   if (conn->sentbuffer != NULL) os_free(conn->sentbuffer);
