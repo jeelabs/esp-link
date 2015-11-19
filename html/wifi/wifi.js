@@ -175,7 +175,6 @@ function changeSpecial(e) {
   e.preventDefault();
   var url = "special";
   url += "?dhcp=" + document.querySelector('input[name="dhcp"]:checked').value;
-  url += "&hostname=" + encodeURIComponent($("#wifi-hostname").value);
   url += "&staticip=" + encodeURIComponent($("#wifi-staticip").value);
   url += "&netmask=" + encodeURIComponent($("#wifi-netmask").value);
   url += "&gateway=" + encodeURIComponent($("#wifi-gateway").value);

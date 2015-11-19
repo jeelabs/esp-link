@@ -428,7 +428,6 @@ void ICACHE_FLASH_ATTR configWifiIP() {
 // Change special settings
 int ICACHE_FLASH_ATTR cgiWiFiSpecial(HttpdConnData *connData) {
   char dhcp[8];
-  char hostname[32];
   char staticip[20];
   char netmask[20];
   char gateway[20];
@@ -437,12 +436,11 @@ int ICACHE_FLASH_ATTR cgiWiFiSpecial(HttpdConnData *connData) {
 
   // get args and their string lengths
   int dl = httpdFindArg(connData->getArgs, "dhcp", dhcp, sizeof(dhcp));
-  int hl = httpdFindArg(connData->getArgs, "hostname", hostname, sizeof(hostname));
   int sl = httpdFindArg(connData->getArgs, "staticip", staticip, sizeof(staticip));
   int nl = httpdFindArg(connData->getArgs, "netmask", netmask, sizeof(netmask));
   int gl = httpdFindArg(connData->getArgs, "gateway", gateway, sizeof(gateway));
 
-  if (!(dl > 0 && hl >= 0 && sl >= 0 && nl >= 0 && gl >= 0)) {
+  if (!(dl > 0 && sl >= 0 && nl >= 0 && gl >= 0)) {
     jsonHeader(connData, 400);
     httpdSend(connData, "Request is missing fields", -1);
     return HTTPD_CGI_DONE;
@@ -470,11 +468,9 @@ int ICACHE_FLASH_ATTR cgiWiFiSpecial(HttpdConnData *connData) {
     os_sprintf(url, "{\"url\": \"http://%d.%d.%d.%d\"}", IP2STR(&ipi.ip));
 
   } else {
-    // no static IP, set hostname
-    if (hl == 0) os_strcpy(hostname, "esp-link");
+    // dynamic IP
     flashConfig.staticip = 0;
-    os_strcpy(flashConfig.hostname, hostname);
-    os_sprintf(url, "{\"url\": \"http://%s\"}", hostname);
+    os_sprintf(url, "{\"url\": \"http://%s\"}", flashConfig.hostname);
   }
 
   configSave(); // ignore error...
