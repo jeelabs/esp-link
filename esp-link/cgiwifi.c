@@ -121,10 +121,11 @@ static ICACHE_FLASH_ATTR
 void wifiStartMDNS(struct ip_addr ip) {
   if (!mdns_started) {
     os_memset(&mdns_info, 0, sizeof(struct mdns_info));
-    mdns_info.host_name = flashConfig.hostname;
+    mdns_info.host_name = flashConfig.hostname,
     mdns_info.server_name = "http", // service name
     mdns_info.server_port = 80,     // service port
-    mdns_info.ipAddr = ip.addr,
+    mdns_info.ipAddr = ip.addr,  
+    mdns_info.txt_data[0] = (char *) "version = now",
     espconn_mdns_init(&mdns_info);
     mdns_started = true;
   }

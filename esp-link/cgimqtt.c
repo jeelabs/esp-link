@@ -1,15 +1,20 @@
 // Copyright 2015 by Thorsten von Eicken, see LICENSE.txt
-#ifdef MQTT
+
+static char *mqtt_states[] = {
+  "disconnected", "reconnecting", "connecting", "connected", "disabled"
+};
+
+#if !defined(MQTT)
+char *mqttState(void) {
+  return mqtt_states[4];
+}
+#else
 #include <esp8266.h>
 #include "cgi.h"
 #include "config.h"
 #include "status.h"
 #include "mqtt_client.h"
 #include "cgimqtt.h"
-
-static char *mqtt_states[] = {
-  "disconnected", "reconnecting", "connecting", "connected",
-};
 
 char *mqttState(void) {
   return mqtt_states[mqttClient.connState];

@@ -17,7 +17,11 @@ Esp8266 http server - core routines
 #include <esp8266.h>
 #include "httpd.h"
 
-//#define HTTPD_DBG
+#ifdef HTTPD_DBG
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+#else
+#define DBG(format, ...) do { } while(0)
+#endif
 
 
 //Max length of request head
@@ -97,7 +101,7 @@ static void debugConn(void *arg, char *what) {
   os_sprintf(connStr, "%d.%d.%d.%d:%d ",
     tcp->remote_ip[0], tcp->remote_ip[1], tcp->remote_ip[2], tcp->remote_ip[3],
     tcp->remote_port);
-  os_printf("%s %s\n", connStr, what);
+  DBG("%s %s\n", connStr, what);
 #else
   connStr[0] = 0;
 #endif
@@ -108,20 +112,18 @@ static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
   if (conn->conn && conn->conn->reverse == conn)
     conn->conn->reverse = NULL; // break reverse link
 
-#ifdef HTTPD_DBG
   // log information about the request we handled
   uint32 dt = conn->startTime;
   if (dt > 0) dt = (system_get_time() - dt) / 1000;
   if (conn->conn && conn->url)
 #if 0
-    os_printf("HTTP %s %s from %s -> %d in %ums, heap=%ld\n",
+    DBG("HTTP %s %s from %s -> %d in %ums, heap=%ld\n",
       conn->requestType == HTTPD_METHOD_GET ? "GET" : "POST", conn->url, conn->priv->from,
       conn->priv->code, dt, (unsigned long)system_get_free_heap_size());
 #else
-    os_printf("HTTP %s %s: %d, %ums, h=%ld\n",
+    DBG("HTTP %s %s: %d, %ums, h=%ld\n",
       conn->requestType == HTTPD_METHOD_GET ? "GET" : "POST", conn->url,
       conn->priv->code, dt, (unsigned long)system_get_free_heap_size());
-#endif
 #endif
 
   conn->conn = NULL; // don't try to send anything, the SDK crashes...
@@ -276,10 +278,8 @@ int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData) {
 int ICACHE_FLASH_ATTR httpdSend(HttpdConnData *conn, const char *data, int len) {
   if (len<0) len = strlen(data);
   if (conn->priv->sendBuffLen + len>MAX_SENDBUFF_LEN) {
-#ifdef HTTPD_DBG
-    os_printf("%sERROR! httpdSend full (%d of %d)\n",
+    DBG("%sERROR! httpdSend full (%d of %d)\n",
       connStr, conn->priv->sendBuffLen, MAX_SENDBUFF_LEN);
-#endif
     return 0;
   }
   os_memcpy(conn->priv->sendBuff + conn->priv->sendBuffLen, data, len);
@@ -292,10 +292,8 @@ static void ICACHE_FLASH_ATTR xmitSendBuff(HttpdConnData *conn) {
   if (conn->priv->sendBuffLen != 0) {
     sint8 status = espconn_sent(conn->conn, (uint8_t*)conn->priv->sendBuff, conn->priv->sendBuffLen);
     if (status != 0) {
-#ifdef HTTPD_DBG
-      os_printf("%sERROR! espconn_sent returned %d, trying to send %d to %s\n",
+      DBG("%sERROR! espconn_sent returned %d, trying to send %d to %s\n",
           connStr, status, conn->priv->sendBuffLen, conn->url);
-#endif
     }
     conn->priv->sendBuffLen = 0;
   }
@@ -323,9 +321,7 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
     conn->cgi = NULL; //mark for destruction.
   }
   if (r == HTTPD_CGI_NOTFOUND || r == HTTPD_CGI_AUTHENTICATED) {
-#ifdef HTTPD_DBG
-    os_printf("%sERROR! Bad CGI code %d\n", connStr, r);
-#endif
+    DBG("%sERROR! Bad CGI code %d\n", connStr, r);
     conn->cgi = NULL; //mark for destruction.
   }
   xmitSendBuff(conn);
@@ -342,9 +338,7 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
   int r;
   int i = 0;
   if (conn->url == NULL) {
-#ifdef HTTPD_DBG
-    os_printf("%sWtF? url = NULL\n", connStr);
-#endif
+    DBG("%sWtF? url = NULL\n", connStr);
     return; //Shouldn't happen
   }
   //See if we can find a CGI that's happy to handle the request.
@@ -370,9 +364,7 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
       if (builtInUrls[i].url == NULL) {
         //Drat, we're at the end of the URL table. This usually shouldn't happen. Well, just
         //generate a built-in 404 to handle this.
-#ifdef HTTPD_DBG
-        os_printf("%s%s not found. 404!\n", connStr, conn->url);
-#endif
+        DBG("%s%s not found. 404!\n", connStr, conn->url);
         httpdSend(conn, httpNotFoundHeader, -1);
         xmitSendBuff(conn);
         conn->cgi = NULL; //mark for destruction.
@@ -436,19 +428,15 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
     *e = 0; //terminate url part
 
     // Count number of open connections
-#ifdef HTTPD_DBG
     //esp_tcp *tcp = conn->conn->proto.tcp;
-    //os_printf("%sHTTP %s %s from %s\n", connStr,
+    //DBG("%sHTTP %s %s from %s\n", connStr,
     //  conn->requestType == HTTPD_METHOD_GET ? "GET" : "POST", conn->url, conn->priv->from);
-#endif
     //Parse out the URL part before the GET parameters.
     conn->getArgs = (char*)os_strstr(conn->url, "?");
     if (conn->getArgs != 0) {
       *conn->getArgs = 0;
       conn->getArgs++;
-#ifdef HTTPD_DBG
-      //os_printf("%sargs = %s\n", connStr, conn->getArgs);
-#endif
+      //DBG("%sargs = %s\n", connStr, conn->getArgs);
     }
     else {
       conn->getArgs = NULL;
@@ -470,7 +458,7 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
     else {
       conn->post->buffSize = conn->post->len;
     }
-    //os_printf("Mallocced buffer for %d + 1 bytes of post data.\n", conn->post->buffSize);
+    //DBG("Mallocced buffer for %d + 1 bytes of post data.\n", conn->post->buffSize);
     conn->post->buff = (char*)os_malloc(conn->post->buffSize + 1);
     conn->post->buffLen = 0;
   }
@@ -482,7 +470,7 @@ static void ICACHE_FLASH_ATTR httpdParseHeader(char *h, HttpdConnData *conn) {
         conn->post->multipartBoundary = b + 7; // move the pointer 2 chars before boundary then fill them with dashes
         conn->post->multipartBoundary[0] = '-';
         conn->post->multipartBoundary[1] = '-';
-        //os_printf("boundary = %s\n", conn->post->multipartBoundary);
+        //DBG("boundary = %s\n", conn->post->multipartBoundary);
       }
     }
   }
@@ -562,10 +550,7 @@ static void ICACHE_FLASH_ATTR httpdReconCb(void *arg, sint8 err) {
   struct espconn* pCon = (struct espconn *)arg;
   HttpdConnData *conn = (HttpdConnData *)pCon->reverse;
   if (conn == NULL) return; // aborted connection
-
-#ifdef HTTPD_DBG
-  os_printf("%s***** reset, err=%d\n", connStr, err);
-#endif
+  DBG("%s***** reset, err=%d\n", connStr, err);
   httpdRetireConn(conn);
 }
 
@@ -577,7 +562,7 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
   // Find empty conndata in pool
   int i;
   for (i = 0; i<MAX_CONN; i++) if (connData[i].conn == NULL) break;
-  //os_printf("Con req, conn=%p, pool slot %d\n", conn, i);
+  //DBG("Con req, conn=%p, pool slot %d\n", conn, i);
   if (i == MAX_CONN) {
     os_printf("%sHTTP: conn pool overflow!\n", connStr);
     espconn_disconnect(conn);
@@ -587,9 +572,7 @@ static void ICACHE_FLASH_ATTR httpdConnectCb(void *arg) {
 #if 0
   int num = 0;
   for (int j = 0; j<MAX_CONN; j++) if (connData[j].conn != NULL) num++;
-#ifdef HTTPD_DBG
-  os_printf("%sConnect (%d open)\n", connStr, num + 1);
-#endif
+  DBG("%sConnect (%d open)\n", connStr, num + 1);
 #endif
 
   connData[i].priv = &connPrivData[i];
@@ -627,9 +610,7 @@ void ICACHE_FLASH_ATTR httpdInit(HttpdBuiltInUrl *fixedUrls, int port) {
   httpdTcp.local_port = port;
   httpdConn.proto.tcp = &httpdTcp;
   builtInUrls = fixedUrls;
-#ifdef HTTPD_DBG
-  os_printf("Httpd init, conn=%p\n", &httpdConn);
-#endif
+  DBG("Httpd init, conn=%p\n", &httpdConn);
   espconn_regist_connectcb(&httpdConn, httpdConnectCb);
   espconn_accept(&httpdConn);
   espconn_tcp_set_max_con_allow(&httpdConn, MAX_CONN);
