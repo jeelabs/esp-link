@@ -18,6 +18,7 @@
  * Heavily modified and enhanced by Thorsten von Eicken in 2015
  */
 #include "esp8266.h"
+#include "task.h"
 #include "uart.h"
 
 #ifdef UART_DBG
@@ -26,14 +27,10 @@
 #define DBG_UART(format, ...) do { } while(0)
 #endif
 
-#define recvTaskPrio        1
-#define recvTaskQueueLen    64
+LOCAL uint8_t uart_recvTaskNum;
 
 // UartDev is defined and initialized in rom code.
 extern UartDevice    UartDev;
-
-os_event_t    recvTaskQueue[recvTaskQueueLen];
-
 #define MAX_CB 4
 static UartRecv_cb uart_recv_cb[4];
 
@@ -208,7 +205,7 @@ uart0_rx_intr_handler(void *para)
   {
     //DBG_UART("stat:%02X",*(uint8 *)UART_INT_ENA(uart_no));
     ETS_UART_INTR_DISABLE();
-    system_os_post(recvTaskPrio, 0, 0);
+    post_usr_task(uart_recvTaskNum, 0);
   }
 }
 
@@ -284,7 +281,7 @@ uart_init(UartBautRate uart0_br, UartBautRate uart1_br)
   // install uart1 putc callback
   os_install_putc1((void *)uart0_write_char);
 
-  system_os_task(uart_recvTask, recvTaskPrio, recvTaskQueue, recvTaskQueueLen);
+  uart_recvTaskNum = register_usr_task(uart_recvTask);
 }
 
 void ICACHE_FLASH_ATTR
