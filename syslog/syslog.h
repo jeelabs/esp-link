@@ -86,6 +86,22 @@ syslog_host_t syslogserver;
 void ICACHE_FLASH_ATTR syslog_init(char *syslog_server);
 void ICACHE_FLASH_ATTR syslog(uint8_t facility, uint8_t severity, const char tag[], const char message[], ...);
 
+// some convenience macros
+#ifdef SYSLOG
+// extern char *esp_link_version; // in user_main.c
+#define LOG_DEBUG(format, ...) syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_DEBUG, "esp_link", format, ## __VA_ARGS__ )
+#define LOG_NOTICE(format, ...) syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "esp_link", format, ## __VA_ARGS__ )
+#define LOG_INFO(format, ...) syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_INFO, "esp_link", format, ## __VA_ARGS__ )
+#define LOG_WARN(format, ...) syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_WARNING, "esp_link", format, ## __VA_ARGS__ )
+#define LOG_ERR(format, ...) syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_ERR, "esp_link", format, ## __VA_ARGS__ )
+#else
+#define LOG_DEBUG(format, ...) do { } while(0)
+#define LOG_NOTICE(format, ...) do { } while(0)
+#define LOG_WARN(format, ...) do { } while(0)
+#define LOG_INFO(format, ...) do { } while(0)
+#define LOG_ERR(format, ...) do { } while(0)
+#endif
+
 #ifdef __cplusplus
 }
 #endif

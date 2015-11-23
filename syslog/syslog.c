@@ -226,9 +226,15 @@ syslog_init(char *syslog_server)
 		espconn_gethostbyname(&espconn_ghbn, host, &syslogHost.addr, syslog_gethostbyname_cb);
 		// syslog_send_udp is called by syslog_gethostbyname_cb()
 	}
+#ifdef SYSLOG_UDP_RECV
 	DBG_SYSLOG("syslog_init: host: %s, port: %d, lport: %d, recvcb: %p, sentcb: %p, state: %d\n",
 			host, syslogHost.port, syslog_espconn.proto.udp->local_port,
 			syslog_udp_recv_cb, syslog_udp_sent_cb, syslogState	);
+#else
+	DBG_SYSLOG("syslog_init: host: %s, port: %d, lport: %d, rsentcb: %p, state: %d\n",
+			host, syslogHost.port, syslog_espconn.proto.udp->local_port,
+			syslog_udp_sent_cb, syslogState	);
+#endif
 }
 
  /******************************************************************************
