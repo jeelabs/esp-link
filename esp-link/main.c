@@ -30,9 +30,17 @@
 #include "config.h"
 #include "log.h"
 #include <gpio.h>
+#include "syslog.h"
+#include "sntp.h"
 
 static int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData);
 static int ICACHE_FLASH_ATTR cgiSystemSet(HttpdConnData *connData);
+
+#define NOTICE(format, ...) do {	                                             \
+	LOG_NOTICE(format, ## __VA_ARGS__ );                                      \
+	os_printf(format "\n", ## __VA_ARGS__);                                   \
+} while ( 0 )
+
 
 /*
 This is the main url->function dispatching data struct.
@@ -102,6 +110,17 @@ static char *flash_maps[] = {
   "2MB:1024/1024", "4MB:1024/1024"
 };
 
+// enable SNTP client...
+static void ICACHE_FLASH_ATTR enableSNTP() {
+  if (flashConfig.sntp_server[0]) {
+	NOTICE("SNTP timesource set to %s", flashConfig.sntp_server);
+	sntp_stop();
+	sntp_setservername(0, flashConfig.sntp_server);
+	// sntp_set_timezone(flashConfig.timezone);	/* stay with GMT... */
+	sntp_init();
+  }
+}
+
 // Cgi to return various System information
 static int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
   char buff[1024];
@@ -115,13 +134,18 @@ static int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
   os_sprintf(buff, "{\"name\": \"%s\", \"reset cause\": \"%d=%s\", "
       "\"size\": \"%s\"," "\"id\": \"0x%02lX 0x%04lX\"," "\"partition\": \"%s\","
       "\"slip\": \"%s\"," "\"mqtt\": \"%s/%s\"," "\"baud\": \"%ld\","
-      "\"description\": \"%s\"" "}",
+      "\"description\": \"%s\","
+      "\"syslog\": \"%s\","
+      "\"sntp\": \"%s\" "
+       "}",
       flashConfig.hostname, rst_info->reason, rst_codes[rst_info->reason],
       flash_maps[system_get_flash_size_map()], fid & 0xff, (fid&0xff00)|((fid>>16)&0xff),
       part_id ? "user2.bin" : "user1.bin",
       flashConfig.slip_enable ? "enabled" : "disabled",
       flashConfig.mqtt_enable ? "enabled" : "disabled",
-      mqttState(), flashConfig.baud_rate, flashConfig.sys_descr
+      mqttState(), flashConfig.baud_rate, flashConfig.sys_descr,
+      flashConfig.syslog_host,
+      flashConfig.sntp_server
       );
 
   jsonHeader(connData, 200);
@@ -137,7 +161,27 @@ static int ICACHE_FLASH_ATTR cgiSystemSet(HttpdConnData *connData) {
 
   int8_t n = getStringArg(connData, "name", flashConfig.hostname, sizeof(flashConfig.hostname));
   int8_t d = getStringArg(connData, "description", flashConfig.sys_descr, sizeof(flashConfig.sys_descr));
-  if (n < 0 || d < 0) return HTTPD_CGI_DONE; // getStringArg has produced an error response
+  int8_t t = getStringArg(connData, "sntp", flashConfig.sntp_server, sizeof(flashConfig.sntp_server));
+  int8_t l = getStringArg(connData, "syslog", flashConfig.syslog_host, sizeof(flashConfig.syslog_host));
+  if (n < 0 || d < 0 || t < 0 || l < 0) return HTTPD_CGI_DONE; // getStringArg has produced an error response
+
+  // set defaults for syslog server
+  // we also should add a config or services web page...
+  if (l > 0) {
+	// set defaults for syslog server
+	syslog_init(flashConfig.syslog_host);
+	flashConfig.syslog_minheap= 8192;
+	flashConfig.syslog_filter = SYSLOG_PRIO_DEBUG;
+	flashConfig.syslog_showtick= 1;		// show ESP µs Ticker in log message
+	flashConfig.syslog_showdate= 0;		// Synology does a log rotate if timestamp is in the past, so we simply don't send it
+	os_printf("flashConfig: syslog: %s, minheap: %d, filter: %d, showtick: %d, showdate: %d\n",
+		flashConfig.syslog_host, flashConfig.syslog_minheap, flashConfig.syslog_filter, flashConfig.syslog_showtick, flashConfig.syslog_showdate);
+  }
+
+  // (re)start SNTP client if server setting is changed
+  if (t > 0) {
+	enableSNTP();
+  }
 
   if (n > 0) {
     // schedule hostname change-over
@@ -225,18 +269,24 @@ void user_init(void) {
 #endif
 
   struct rst_info *rst_info = system_get_rst_info();
-  os_printf("Reset cause: %d=%s\n", rst_info->reason, rst_codes[rst_info->reason]);
-  os_printf("exccause=%d epc1=0x%x epc2=0x%x epc3=0x%x excvaddr=0x%x depc=0x%x\n",
+  NOTICE("Reset cause: %d=%s", rst_info->reason, rst_codes[rst_info->reason]);
+  NOTICE("exccause=%d epc1=0x%x epc2=0x%x epc3=0x%x excvaddr=0x%x depc=0x%x",
     rst_info->exccause, rst_info->epc1, rst_info->epc2, rst_info->epc3,
     rst_info->excvaddr, rst_info->depc);
   uint32_t fid = spi_flash_get_id();
-  os_printf("Flash map %s, manuf 0x%02lX chip 0x%04lX\n", flash_maps[system_get_flash_size_map()],
+  NOTICE("Flash map %s, manuf 0x%02lX chip 0x%04lX", flash_maps[system_get_flash_size_map()],
       fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
+  NOTICE("** esp-link ready");
 
-  os_printf("** esp-link ready\n");
+  enableSNTP();
+
 #ifdef MQTT
+  NOTICE("initializing MQTT");
   mqtt_client_init();
 #endif
 
+  NOTICE("initializing user application");
   app_init();
+
+  NOTICE("waiting for work to do...");
 }

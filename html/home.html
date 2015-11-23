@@ -27,6 +27,20 @@
               <tr><td>SLIP status</td><td class="system-slip"></td></tr>
               <tr><td>MQTT status</td><td class="system-mqtt"></td></tr>
               <tr><td>Serial baud</td><td class="system-baud"></td></tr>
+              <tr><td class="popup-target">Syslog Server</td><td>
+				<div class="click-to-edit system-syslog">
+                  <span class="edit-off"></span>
+                  <input class="edit-on" maxlength=31 hidden></input>
+                  <div class="popup">Click to edit!<br>Use server [hostname:port] as UDP Syslog server</div>
+                </div>
+              </td></tr>
+              <tr><td class="popup-target">SNTP Server</td><td>
+				<div class="click-to-edit system-sntp">
+                  <span class="edit-off"></span>
+                  <input class="edit-on" maxlength=31 hidden></input>
+                  <div class="popup">Click to edit!<br>Use server (f.e. 0.europe.pool.ntp.org) as NTP timesource</div>
+                </div>
+              </td></tr>
             </tbody></table>
           </div>
           <div class="card">
@@ -145,6 +159,8 @@
 onLoad(function() {
   makeAjaxInput("system", "description");
   makeAjaxInput("system", "name");
+  makeAjaxInput("system", "sntp");
+  makeAjaxInput("system", "syslog");
   fetchPins();
   getWifiInfo();
   getSystemInfo();

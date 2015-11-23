@@ -13,7 +13,7 @@
 # Makefile heavily adapted to esp-link and wireless flashing by Thorsten von Eicken
 # Lots of work, in particular to support windows, by brunnels
 # Original from esphttpd and others...
-#VERBOSE=1
+# VERBOSE=1
 
 # --------------- toolchain configuration ---------------
 
@@ -23,7 +23,7 @@ XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 
 # Base directory of the ESP8266 SDK package, absolute
 # Typically you'll download from Espressif's BBS, http://bbs.espressif.com/viewforum.php?f=5
-SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.4.0)
+SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.4.1_pre7)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
@@ -83,7 +83,7 @@ LED_SERIAL_PIN      ?= 14
 CHANGE_TO_STA ?= yes
 
 # Optional Modules
-MODULES ?= mqtt rest
+MODULES ?= mqtt rest syslog
 
 # --------------- esphttpd config options ---------------
 
@@ -198,6 +198,10 @@ ifneq (,$(findstring rest,$(MODULES)))
 	CFLAGS		+= -DREST
 endif
 
+ifneq (,$(findstring syslog,$(MODULES)))
+	CFLAGS		+= -DSYSLOG
+endif
+
 # which modules (subdirectories) of the project to include in compiling
 LIBRARIES_DIR 	= libraries
 MODULES		  	+= espfs httpd user serial cmd esp-link
@@ -205,7 +209,7 @@ MODULES			+= $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
 EXTRA_INCDIR 	= include .
 
 # libraries used in this project, mainly provided by the SDK
-LIBS = c gcc hal phy pp net80211 wpa main lwip 
+LIBS = c gcc hal phy pp net80211 wpa main lwip
 
 # compiler flags using during compilation of source files
 CFLAGS	+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
@@ -355,7 +359,7 @@ flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
-	  
+
 tools/$(HTML_COMPRESSOR):
 	$(Q) mkdir -p tools
   ifeq ($(OS),Windows_NT)
