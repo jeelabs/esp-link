@@ -52,17 +52,14 @@ uart_config(uint8 uart_no)
 {
   if (uart_no == UART1) {
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_U1TXD_BK);
-    //PIN_PULLDWN_DIS(PERIPHS_IO_MUX_GPIO2_U);
     PIN_PULLUP_DIS(PERIPHS_IO_MUX_GPIO2_U);
   } else {
     /* rcv_buff size is 0x100 */
     ETS_UART_INTR_ATTACH(uart0_rx_intr_handler,  &(UartDev.rcv_buff));
-    PIN_PULLUP_DIS (PERIPHS_IO_MUX_U0TXD_U);
-    //PIN_PULLDWN_DIS(PERIPHS_IO_MUX_U0TXD_U);
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_U0TXD);
-    PIN_PULLUP_DIS (PERIPHS_IO_MUX_U0RXD_U);
-    //PIN_PULLDWN_DIS(PERIPHS_IO_MUX_U0RXD_U);
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0RXD_U, 0); // FUNC_U0RXD==0
+    //PIN_PULLUP_DIS (PERIPHS_IO_MUX_U0TXD_U); now done in serbridgeInitPins
+    //PIN_PULLUP_DIS (PERIPHS_IO_MUX_U0RXD_U);
   }
 
   uart_div_modify(uart_no, UART_CLK_FREQ / UartDev.baut_rate);
@@ -240,6 +237,23 @@ uart_recvTask(os_event_t *events)
   }
   WRITE_PERI_REG(UART_INT_CLR(UART0), UART_RXFIFO_FULL_INT_CLR|UART_RXFIFO_TOUT_INT_CLR);
   ETS_UART_INTR_ENABLE();
+}
+
+// Turn UART interrupts off and poll for nchars or until timeout hits
+uint16_t ICACHE_FLASH_ATTR
+uart0_rx_poll(char *buff, uint16_t nchars, uint32_t timeout_us) {
+  ETS_UART_INTR_DISABLE();
+  uint16_t got = 0;
+  uint32_t start = system_get_time(); // time in us
+  while (system_get_time()-start < timeout_us) {
+    while (READ_PERI_REG(UART_STATUS(UART0)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S)) {
+      buff[got++] = READ_PERI_REG(UART_FIFO(UART0)) & 0xFF;
+      if (got == nchars) goto done;
+    }
+  }
+done:
+  ETS_UART_INTR_ENABLE();
+  return got;
 }
 
 void ICACHE_FLASH_ATTR

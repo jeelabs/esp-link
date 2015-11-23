@@ -17,6 +17,8 @@ Esp8266 http server - core routines
 #include <esp8266.h>
 #include "httpd.h"
 
+//#define HTTPD_DBG
+
 
 //Max length of request head
 #define MAX_HEAD_LEN 1024
@@ -111,9 +113,15 @@ static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
   uint32 dt = conn->startTime;
   if (dt > 0) dt = (system_get_time() - dt) / 1000;
   if (conn->conn && conn->url)
+#if 0
     os_printf("HTTP %s %s from %s -> %d in %ums, heap=%ld\n",
       conn->requestType == HTTPD_METHOD_GET ? "GET" : "POST", conn->url, conn->priv->from,
       conn->priv->code, dt, (unsigned long)system_get_free_heap_size());
+#else
+    os_printf("HTTP %s %s: %d, %ums, h=%ld\n",
+      conn->requestType == HTTPD_METHOD_GET ? "GET" : "POST", conn->url,
+      conn->priv->code, dt, (unsigned long)system_get_free_heap_size());
+#endif
 #endif
 
   conn->conn = NULL; // don't try to send anything, the SDK crashes...
@@ -285,7 +293,8 @@ static void ICACHE_FLASH_ATTR xmitSendBuff(HttpdConnData *conn) {
     sint8 status = espconn_sent(conn->conn, (uint8_t*)conn->priv->sendBuff, conn->priv->sendBuffLen);
     if (status != 0) {
 #ifdef HTTPD_DBG
-      os_printf("%sERROR! espconn_sent returned %d\n", connStr, status);
+      os_printf("%sERROR! espconn_sent returned %d, trying to send %d to %s\n",
+          connStr, status, conn->priv->sendBuffLen, conn->url);
 #endif
     }
     conn->priv->sendBuffLen = 0;
@@ -341,32 +350,35 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
   //See if we can find a CGI that's happy to handle the request.
   while (1) {
     //Look up URL in the built-in URL table.
-    while (builtInUrls[i].url != NULL) {
-      int match = 0;
-      //See if there's a literal match
-      if (os_strcmp(builtInUrls[i].url, conn->url) == 0) match = 1;
-      //See if there's a wildcard match
-      if (builtInUrls[i].url[os_strlen(builtInUrls[i].url) - 1] == '*' &&
-        os_strncmp(builtInUrls[i].url, conn->url, os_strlen(builtInUrls[i].url) - 1) == 0) match = 1;
-      if (match) {
-        //os_printf("Is url index %d\n", i);
-        conn->cgiData = NULL;
-        conn->cgi = builtInUrls[i].cgiCb;
-        conn->cgiArg = builtInUrls[i].cgiArg;
-        break;
+    if (conn->cgi == NULL) {
+      while (builtInUrls[i].url != NULL) {
+        int match = 0;
+        //See if there's a literal match
+        if (os_strcmp(builtInUrls[i].url, conn->url) == 0) match = 1;
+        //See if there's a wildcard match
+        if (builtInUrls[i].url[os_strlen(builtInUrls[i].url) - 1] == '*' &&
+          os_strncmp(builtInUrls[i].url, conn->url, os_strlen(builtInUrls[i].url) - 1) == 0) match = 1;
+        if (match) {
+          //os_printf("Is url index %d\n", i);
+          conn->cgiData = NULL;
+          conn->cgi = builtInUrls[i].cgiCb;
+          conn->cgiArg = builtInUrls[i].cgiArg;
+          break;
+        }
+        i++;
       }
-      i++;
-    }
-    if (builtInUrls[i].url == NULL) {
-      //Drat, we're at the end of the URL table. This usually shouldn't happen. Well, just
-      //generate a built-in 404 to handle this.
+      if (builtInUrls[i].url == NULL) {
+        //Drat, we're at the end of the URL table. This usually shouldn't happen. Well, just
+        //generate a built-in 404 to handle this.
 #ifdef HTTPD_DBG
-      os_printf("%s%s not found. 404!\n", connStr, conn->url);
+        os_printf("%s%s not found. 404!\n", connStr, conn->url);
 #endif
-      httpdSend(conn, httpNotFoundHeader, -1);
-      xmitSendBuff(conn);
-      conn->cgi = NULL; //mark for destruction
-      return;
+        httpdSend(conn, httpNotFoundHeader, -1);
+        xmitSendBuff(conn);
+        conn->cgi = NULL; //mark for destruction.
+        if (conn->post) conn->post->len = 0; // skip any remaining receives
+        return;
+      }
     }
 
     //Okay, we have a CGI function that matches the URL. See if it wants to handle the
@@ -380,12 +392,17 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
     else if (r == HTTPD_CGI_DONE) {
       //Yep, it's happy to do so and already is done sending data.
       xmitSendBuff(conn);
-      conn->cgi = NULL; //mark conn for destruction
+      conn->cgi = NULL; //mark for destruction.
+      if (conn->post) conn->post->len = 0; // skip any remaining receives
       return;
     }
-    else if (r == HTTPD_CGI_NOTFOUND || r == HTTPD_CGI_AUTHENTICATED) {
+    else {
+      if (!(r == HTTPD_CGI_NOTFOUND || r == HTTPD_CGI_AUTHENTICATED)) {
+        os_printf("%shandler for %s returned invalid result %d\n", connStr, conn->url, r);
+      }
       //URL doesn't want to handle the request: either the data isn't found or there's no
       //need to generate a login screen.
+      conn->cgi = NULL; // force lookup again
       i++; //look at next url the next iteration of the loop.
     }
   }

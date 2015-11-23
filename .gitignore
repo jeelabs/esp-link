@@ -17,3 +17,4 @@ espfs/mkespfsimage/mman-win32/libmman.a
 .localhistory/
 tools/
 local.conf
+*.tgz

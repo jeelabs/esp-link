@@ -20,6 +20,8 @@ static int8_t mcu_reset_pin, mcu_isp_pin;
 
 extern uint8_t slip_disabled;   // disable slip to allow flashing of attached MCU
 
+void (*programmingCB)(char *buffer, short length) = NULL;
+
 // Connection pool
 serbridgeConnData connData[MAX_CONN];
 
@@ -97,7 +99,7 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
           os_delay_us(100L);
         }
 #ifdef SERBR_DBG
-        else os_printf("MCU reset: no pin\n");
+        else { os_printf("MCU reset: no pin\n"); }
 #endif
         break;
       case DTR_OFF:
@@ -115,7 +117,7 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
           os_delay_us(100L);
         }
 #ifdef SERBR_DBG
-        else os_printf("MCU isp: no pin\n");
+        else { os_printf("MCU isp: no pin\n"); }
 #endif
         slip_disabled++;
         break;
@@ -143,11 +145,11 @@ serbridgeReset()
     os_printf("MCU reset gpio%d\n", mcu_reset_pin);
 #endif
     GPIO_OUTPUT_SET(mcu_reset_pin, 0);
-    os_delay_us(100L);
+    os_delay_us(2000L); // esp8266 needs at least 1ms reset pulse, it seems...
     GPIO_OUTPUT_SET(mcu_reset_pin, 1);
   }
 #ifdef SERBR_DBG
-  else os_printf("MCU reset: no pin\n");
+  else { os_printf("MCU reset: no pin\n"); }
 #endif
 }
 
@@ -209,7 +211,7 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
     if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 0);
     os_delay_us(100L);
     if (mcu_isp_pin >= 0) GPIO_OUTPUT_SET(mcu_isp_pin, 0);
-    os_delay_us(100L);
+    os_delay_us(2000L);
     if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 1);
     //os_delay_us(100L);
     //if (mcu_isp_pin >= 0) GPIO_OUTPUT_SET(mcu_isp_pin, 1);
@@ -318,7 +320,7 @@ static void ICACHE_FLASH_ATTR
 serbridgeSentCb(void *arg)
 {
   serbridgeConnData *conn = ((struct espconn*)arg)->reverse;
-  os_printf("Sent CB %p\n", conn);
+  //os_printf("Sent CB %p\n", conn);
   if (conn == NULL) return;
   //os_printf("%d ST\n", system_get_time());
   if (conn->sentbuffer != NULL) os_free(conn->sentbuffer);
@@ -346,7 +348,9 @@ console_process(char *buf, short len)
 void ICACHE_FLASH_ATTR
 serbridgeUartCb(char *buf, short length)
 {
-  if (!flashConfig.slip_enable || slip_disabled > 0) {
+  if (programmingCB) {
+    programmingCB(buf, length);
+  } else if (!flashConfig.slip_enable || slip_disabled > 0) {
     //os_printf("SLIP: disabled got %d\n", length);
     console_process(buf, length);
   } else {
@@ -398,7 +402,7 @@ serbridgeConnectCb(void *arg)
   int i;
   for (i=0; i<MAX_CONN; i++) if (connData[i].conn==NULL) break;
 #ifdef SERBR_DBG
-  os_printf("Accept port 23, conn=%p, pool slot %d\n", conn, i);
+  os_printf("Accept port %d, conn=%p, pool slot %d\n", conn->proto.tcp->local_port, conn, i);
 #endif
 
   if (i==MAX_CONN) {
@@ -442,11 +446,15 @@ serbridgeInitPins()
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTCK_U, 4);
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, 4);
     PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTCK_U);
-    PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTDO_U);
+    if (flashConfig.rx_pullup) PIN_PULLUP_EN(PERIPHS_IO_MUX_MTDO_U);
+    else                       PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTDO_U);
     system_uart_swap();
   } else {
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, 0);
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0RXD_U, 0);
+    PIN_PULLUP_DIS(PERIPHS_IO_MUX_U0TXD_U);
+    if (flashConfig.rx_pullup) PIN_PULLUP_EN(PERIPHS_IO_MUX_U0RXD_U);
+    else                       PIN_PULLUP_DIS(PERIPHS_IO_MUX_U0RXD_U);
     system_uart_de_swap();
   }
 

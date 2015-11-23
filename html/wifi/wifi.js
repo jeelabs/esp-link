@@ -41,7 +41,11 @@ function createInputForAp(ap) {
 function getSelectedEssid() {
   var e = document.forms.wifiform.elements;
   for (var i=0; i<e.length; i++) {
-    if (e[i].type == "radio" && e[i].checked) return e[i].value;
+    if (e[i].type == "radio" && e[i].checked) {
+      var v = e[i].value;
+      if (v == "_hidden_ssid_") v = $("#hidden-ssid").value;
+      return v;
+    }
   }
   return currAp;
 }
@@ -56,7 +60,7 @@ function scanResult() {
   scanReqCnt += 1;
   ajaxJson('GET', "scan", function(data) {
       currAp = getSelectedEssid();
-      if (data.result.inProgress == "0" && data.result.APs.length > 1) {
+      if (data.result.inProgress == "0" && data.result.APs.length > 0) {
         $("#aps").innerHTML = "";
         var n = 0;
         for (var i=0; i<data.result.APs.length; i++) {
@@ -78,7 +82,7 @@ function scanResult() {
 }
 
 function scanAPs() {
-	console.log("scanning now");
+  console.log("scanning now");
   if (blockScan) {
     scanTimeout = window.setTimeout(scanAPs, 1000);
     return;
@@ -106,10 +110,10 @@ function getStatus() {
         showWifiInfo(data);
         blockScan = 0;
 
-	if (data.modechange == "yes") {
-		var txt2 = "esp-link will switch to STA-only mode in a few seconds";
-		window.setTimeout(function() { showNotification(txt2); }, 4000);
-	}
+  if (data.modechange == "yes") {
+    var txt2 = "esp-link will switch to STA-only mode in a few seconds";
+    window.setTimeout(function() { showNotification(txt2); }, 4000);
+  }
 
         $("#reconnect").removeAttribute("hidden");
         $("#reconnect").innerHTML =
@@ -171,7 +175,6 @@ function changeSpecial(e) {
   e.preventDefault();
   var url = "special";
   url += "?dhcp=" + document.querySelector('input[name="dhcp"]:checked').value;
-  url += "&hostname=" + encodeURIComponent($("#wifi-hostname").value);
   url += "&staticip=" + encodeURIComponent($("#wifi-staticip").value);
   url += "&netmask=" + encodeURIComponent($("#wifi-netmask").value);
   url += "&gateway=" + encodeURIComponent($("#wifi-gateway").value);
@@ -190,11 +193,11 @@ function changeSpecial(e) {
 }
 
 function doDhcp() {
-	$('#dhcp-on').removeAttribute('hidden');
-	$('#dhcp-off').setAttribute('hidden', '');
+  $('#dhcp-on').removeAttribute('hidden');
+  $('#dhcp-off').setAttribute('hidden', '');
 }
 
 function doStatic() {
-	$('#dhcp-off').removeAttribute('hidden');
-	$('#dhcp-on').setAttribute('hidden', '');
+  $('#dhcp-off').removeAttribute('hidden');
+  $('#dhcp-on').setAttribute('hidden', '');
 }

@@ -6,6 +6,12 @@
 #include "config.h"
 #include "log.h"
 
+#ifdef LOG_DBG
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+#else
+#define DBG(format, ...) do { } while(0)
+#endif
+
 // Web log for the esp8266 to replace outputting to uart1.
 // The web log has a 1KB circular in-memory buffer which os_printf prints into and
 // the HTTP handler simply displays the buffer content on a web page.
@@ -18,28 +24,31 @@ static int log_pos;
 static bool log_no_uart; // start out printing to uart
 static bool log_newline; // at start of a new line
 
+// write to the uart designated for logging
+static void uart_write_char(char c) {
+  if (flashConfig.log_mode == LOG_MODE_ON1)
+    uart1_write_char(c);
+  else
+    uart0_write_char(c);
+}
+
 // called from wifi reset timer to turn UART on when we loose wifi and back off
 // when we connect to wifi AP. Here this is gated by the flash setting
 void ICACHE_FLASH_ATTR
 log_uart(bool enable) {
-  if (!enable && !log_no_uart && flashConfig.log_mode != LOG_MODE_ON) {
+  if (!enable && !log_no_uart && flashConfig.log_mode < LOG_MODE_ON0) {
     // we're asked to turn uart off, and uart is on, and the flash setting isn't always-on
-#if 1
-#ifdef LOG_DBG
-    os_printf("Turning OFF uart log\n");
-#endif
+    DBG("Turning OFF uart log\n");
     os_delay_us(4*1000L); // time for uart to flush
     log_no_uart = !enable;
-#endif
   } else if (enable && log_no_uart && flashConfig.log_mode != LOG_MODE_OFF) {
     // we're asked to turn uart on, and uart is off, and the flash setting isn't always-off
     log_no_uart = !enable;
-#ifdef LOG_DBG
-    os_printf("Turning ON uart log\n");
-#endif
+    DBG("Turning ON uart log\n");
   }
 }
 
+// write a character into the log buffer
 static void ICACHE_FLASH_ATTR
 log_write(char c) {
   log_buf[log_wr] = c;
@@ -50,34 +59,24 @@ log_write(char c) {
   }
 }
 
-#if 0
-static char ICACHE_FLASH_ATTR
-log_read(void) {
-  char c = 0;
-  if (log_rd != log_wr) {
-    c = log_buf[log_rd];
-    log_rd = (log_rd+1) % BUF_MAX;
-  }
-  return c;
-}
-#endif
-
+// write a character to the log buffer and the uart, and handle newlines specially
 static void ICACHE_FLASH_ATTR
 log_write_char(char c) {
+  // log timestamp
+  if (log_newline) {
+    char buff[16];
+    int l = os_sprintf(buff, "%6d> ", (system_get_time()/1000)%1000000);
+    if (!log_no_uart)
+      for (int i=0; i<l; i++) uart_write_char(buff[i]);
+    if (1) // set to 0 to remove timestamps from log buffer to save some space
+      for (int i=0; i<l; i++) log_write(buff[i]);
+    log_newline = false;
+  }
+  if (c == '\n') log_newline = true;
   // Uart output unless disabled
   if (!log_no_uart) {
-    if (log_newline) {
-      char buff[16];
-      int l = os_sprintf(buff, "%6d> ", (system_get_time()/1000)%1000000);
-      for (int i=0; i<l; i++)
-        uart0_write_char(buff[i]);
-      log_newline = false;
-    }
-    uart0_write_char(c);
-    if (c == '\n') {
-      log_newline = true;
-      uart0_write_char('\r');
-    }
+    if (c == '\n') uart_write_char('\r');
+    uart_write_char(c);
   }
   // Store in log buffer
   if (c == '\n') log_write('\r');
@@ -129,7 +128,7 @@ ajaxLog(HttpdConnData *connData) {
   return HTTPD_CGI_DONE;
 }
 
-static char *dbg_mode[] = { "auto", "off", "on" };
+static char *dbg_mode[] = { "auto", "off", "on0", "on1" };
 
 int ICACHE_FLASH_ATTR
 ajaxLogDbg(HttpdConnData *connData) {
@@ -139,12 +138,13 @@ ajaxLogDbg(HttpdConnData *connData) {
   len = httpdFindArg(connData->getArgs, "mode", buff, sizeof(buff));
   if (len > 0) {
     int8_t mode = -1;
-    if (os_strcmp(buff, "auto") == 0) mode = LOG_MODE_AUTO;
-    if (os_strcmp(buff, "off") == 0)  mode = LOG_MODE_OFF;
-    if (os_strcmp(buff, "on") == 0)   mode = LOG_MODE_ON;
+    if (os_strcmp(buff, "auto") == 0)  mode = LOG_MODE_AUTO;
+    if (os_strcmp(buff, "off") == 0)   mode = LOG_MODE_OFF;
+    if (os_strcmp(buff, "on0") == 0) mode = LOG_MODE_ON0;
+    if (os_strcmp(buff, "on1") == 0) mode = LOG_MODE_ON1;
     if (mode >= 0) {
       flashConfig.log_mode = mode;
-      if (mode != LOG_MODE_AUTO) log_uart(mode == LOG_MODE_ON);
+      if (mode != LOG_MODE_AUTO) log_uart(mode >= LOG_MODE_ON0);
       status = configSave() ? 200 : 400;
     }
   } else if (connData->requestType == HTTPD_METHOD_GET) {

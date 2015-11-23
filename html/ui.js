@@ -110,6 +110,9 @@ var j = function(
   catch(e){}               // ignore when it fails.
 }
 
+// dom element iterator: domForEach($(".some-class"), function(el) { ... });
+function domForEach(els, fun) { return Array.prototype.forEach.call(els, fun); }
+
 // createElement short-hand
 
 e = function(a) { return document.createElement(a); }
@@ -210,6 +213,11 @@ function ajaxJsonSpin(method, url, ok_cb, err_cb) {
 
 //===== main menu, header spinner and notification boxes
 
+function hidePopup(el) {
+    addClass(el, "popup-hidden");
+    addClass(el.parentNode, "popup-target");
+}
+
 onLoad(function() {
   var l = $("#layout");
   var o = l.childNodes[0];
@@ -226,6 +234,7 @@ onLoad(function() {
       <div class="pure-menu">\
         <a class="pure-menu-heading" href="https://github.com/jeelabs/esp-link">\
         <img src="/favicon.ico" height="32">&nbsp;esp-link</a>\
+        <div class="pure-menu-heading system-name" style="padding: 0px 0.6em"></div>\
         <ul id="menu-list" class="pure-menu-list"></ul>\
       </div>\
     </div>\
@@ -243,6 +252,11 @@ onLoad(function() {
       toggleClass(ml, active);
   });
 
+  // hide pop-ups
+  domForEach($(".popup"), function(el) {
+    hidePopup(el);
+  });
+
   // populate menu via ajax call
   var getMenu = function() {
     ajaxJson("GET", "/menu", function(data) {
@@ -256,8 +270,10 @@ onLoad(function() {
       }
       $("#menu-list").innerHTML = html;
 
-      v = $("#version");
+      var v = $("#version");
       if (v != null) { v.innerHTML = data.version; }
+
+      setEditToClick("system-name", data["name"]);
     }, function() { setTimeout(getMenu, 1000); });
   };
   getMenu();
@@ -285,12 +301,79 @@ function getWifiInfo() {
       function(s, st) { window.setTimeout(getWifiInfo, 1000); });
 }
 
+//===== System info
+
+function setEditToClick(klass, value) {
+  domForEach($("."+klass), function(div) {
+    if (div.children.length > 0) {
+      domForEach(div.children, function(el) {
+        if (el.nodeName === "INPUT") el.value = value;
+        else if (el.nodeName !== "DIV") el.innerHTML = value;
+      });
+    } else {
+      div.innerHTML = value;
+    }
+  });
+}
+
+function showSystemInfo(data) {
+  Object.keys(data).forEach(function(v) {
+    setEditToClick("system-"+v, data[v]);
+  });
+  $("#system-spinner").setAttribute("hidden", "");
+  $("#system-table").removeAttribute("hidden");
+  currAp = data.ssid;
+}
+
+function getSystemInfo() {
+  ajaxJson('GET', "/system/info", showSystemInfo,
+      function(s, st) { window.setTimeout(getSystemInfo, 1000); });
+}
+
+function makeAjaxInput(klass, field) {
+  domForEach($("."+klass+"-"+field), function(div) {
+    var eon = $(".edit-on", div);
+    var eoff = $(".edit-off", div)[0];
+    var url = "/"+klass+"/update?"+field;
+
+    if (eoff === undefined || eon == undefined) return;
+
+    var enableEditToClick = function() {
+      eoff.setAttribute('hidden','');
+      domForEach(eon, function(el){ el.removeAttribute('hidden'); });
+      eon[0].select();
+      return false;
+    }
+
+    var submitEditToClick = function(v) {
+      console.log("Submit POST "+url+"="+v);
+      ajaxSpin("POST", url+"="+v, function() {
+        domForEach(eon, function(el){ el.setAttribute('hidden',''); });
+        eoff.removeAttribute('hidden');
+        setEditToClick(klass+"-"+field, v)
+        showNotification(field + " changed to " + v);
+      }, function() {
+        showWarning(field + " change failed");
+      });
+      return false;
+    }
+
+    bnd(eoff, "click", function(){return enableEditToClick();});
+    bnd(eon[0], "blur", function(){return submitEditToClick(eon[0].value);});
+    bnd(eon[0], "keyup", function(ev){
+      if ((ev||window.event).keyCode==13) return submitEditToClick(eon[0].value);
+    });
+  });
+}
+
+
 //===== Notifications
 
 function showWarning(text) {
   var el = $("#warning");
   el.innerHTML = text;
   el.removeAttribute('hidden');
+  window.scrollTo(0, 0);
 }
 function hideWarning() {
   el = $("#warning").setAttribute('hidden', '');
@@ -309,36 +392,71 @@ function showNotification(text) {
 
 //===== GPIO Pin mux card
 
-var currPin;
-// pin={reset:12, isp:13, LED_conn:0, LED_ser:2}
-function createInputForPin(pin) {
-  var input = document.createElement("input");
-  input.type = "radio";
-  input.name = "pins";
-  input.data = pin.name;
-  input.className = "pin-input";
-  input.value= pin.value;
-  input.id   = "opt-" + pin.value;
-  if (currPin == pin.name) input.checked = "1";
+var pinPresets = {
+  // array: reset, isp, conn, ser, swap, rxpup
+  "esp-01":       [  0, -1, 2, -1, 0, 1 ],
+  "esp-12":       [ 12, 14, 0,  2, 0, 1 ],
+  "esp-12 swap":  [  1,  3, 0,  2, 1, 1 ],
+  "esp-bridge":   [ 12, 13, 0, 14, 0, 0 ],
+  "wifi-link-12": [  1,  3, 0,  2, 1, 0 ],
+};
 
-  var descr = m('<label for="opt-'+pin.value+'"><b>'+pin.name+":</b>"+pin.descr+"</label>");
-  var div = document.createElement("div");
-  div.appendChild(input);
-  div.appendChild(descr);
-  return div;
+function createPresets(sel) {
+  for (var p in pinPresets) {
+    var opt = m('<option value="' + p + '">' + p + '</option>');
+    sel.appendChild(opt);
+  }
+
+  function applyPreset(v) {
+    var pp = pinPresets[v];
+    if (pp === undefined) return pp;
+    console.log("apply preset:", v, pp);
+    function setPP(k, v) { $("#pin-"+k).value = v; };
+    setPP("reset", pp[0]);
+    setPP("isp",   pp[1]);
+    setPP("conn",  pp[2]);
+    setPP("ser",   pp[3]);
+    setPP("swap",  pp[4]);
+    $("#pin-rxpup").checked = !!pp[5];
+    sel.value = 0;
+  };
+
+  bnd(sel, "change", function(ev) {
+    ev.preventDefault();
+    applyPreset(sel.value);
+  });
 }
 
 function displayPins(resp) {
-  var po = $("#pin-mux");
-  po.innerHTML = "";
-  currPin = resp.curr;
-  resp.map.forEach(function(v) {
-    po.appendChild(createInputForPin(v));
-  });
-  var i, inputs = $(".pin-input");
-  for (i=0; i<inputs.length; i++) {
-    inputs[i].onclick = function() { setPins(this.value, this.data) };
+  function createSelectForPin(name, v) {
+    var sel = $("#pin-"+name);
+    addClass(sel, "pure-button");
+    sel.innerHTML = "";
+    [-1,0,1,2,3,4,5,12,13,14,15].forEach(function(i) {
+      var opt = document.createElement("option");
+      opt.value = i;
+      if (i >= 0) opt.innerHTML = "gpio"+i;
+      else opt.innerHTML = "disabled";
+      if (i===1) opt.innerHTML += "/TX0";
+      if (i===2) opt.innerHTML += "/TX1";
+      if (i===3) opt.innerHTML += "/RX0";
+      if (i==v) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    var pup = $(".popup", sel.parentNode);
+    if (pup !== undefined) hidePopup(pup[0]);
   };
+
+  createSelectForPin("reset", resp["reset"]);
+  createSelectForPin("isp", resp["isp"]);
+  createSelectForPin("conn", resp["conn"]);
+  createSelectForPin("ser", resp["ser"]);
+  $("#pin-swap").value = resp["swap"];
+  $("#pin-rxpup").checked = !!resp["rxpup"];
+  createPresets($("#pin-preset"));
+
+  $("#pin-spinner").setAttribute("hidden", "");
+  $("#pin-table").removeAttribute("hidden");
 }
 
 function fetchPins() {
@@ -347,11 +465,20 @@ function fetchPins() {
   });
 }
 
-function setPins(v, name) {
-  ajaxSpin("POST", "/pins?map="+v, function() {
-    showNotification("Pin assignment changed to " + name);
-  }, function() {
-    showNotification("Pin assignment change failed");
+function setPins(ev) {
+  ev.preventDefault();
+  var url = "/pins";
+  var sep = "?";
+  ["reset", "isp", "conn", "ser", "swap"].forEach(function(p) {
+    url += sep + p + "=" + $("#pin-"+p).value;
+    sep = "&";
+  });
+  url += "&rxpup=" + ($("#pin-rxpup").selected ? "1" : "0");
+  console.log("set pins: " + url);
+  ajaxSpin("POST", url, function() {
+    showNotification("Pin assignment changed");
+  }, function(status, errMsg) {
+    showWarning(errMsg);
     window.setTimeout(fetchPins, 100);
   });
 }

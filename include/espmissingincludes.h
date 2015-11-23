@@ -20,6 +20,7 @@ void ets_isr_unmask(unsigned intr);
 
 int ets_memcmp(const void *s1, const void *s2, size_t n);
 void *ets_memcpy(void *dest, const void *src, size_t n);
+void *ets_memmove(void *dest, const void *src, size_t n);
 void *ets_memset(void *s, int c, size_t n);
 int ets_sprintf(char *str, const char *format, ...)  __attribute__ ((format (printf, 2, 3)));
 int ets_str2macaddr(void *, void *);

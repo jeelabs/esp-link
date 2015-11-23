@@ -19,6 +19,7 @@
 #include "cgitcp.h"
 #include "cgimqtt.h"
 #include "cgiflash.h"
+#include "cgioptiboot.h"
 #include "auth.h"
 #include "espfs.h"
 #include "uart.h"
@@ -29,6 +30,9 @@
 #include "config.h"
 #include "log.h"
 #include <gpio.h>
+
+static int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData);
+static int ICACHE_FLASH_ATTR cgiSystemSet(HttpdConnData *connData);
 
 /*
 This is the main url->function dispatching data struct.
@@ -46,11 +50,14 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/flash/next", cgiGetFirmwareNext, NULL },
   { "/flash/upload", cgiUploadFirmware, NULL },
   { "/flash/reboot", cgiRebootFirmware, NULL },
+  { "/pgm/sync", cgiOptibootSync, NULL },
+  { "/pgm/upload", cgiOptibootData, NULL },
   { "/log/text", ajaxLog, NULL },
   { "/log/dbg", ajaxLogDbg, NULL },
   { "/console/reset", ajaxConsoleReset, NULL },
   { "/console/baud", ajaxConsoleBaud, NULL },
   { "/console/text", ajaxConsole, NULL },
+  { "/console/send", ajaxConsoleSend, NULL },
   //Enable the line below to protect the WiFi configuration with an username/password combo.
   //    {"/wifi/*", authBasic, myPassFn},
   { "/wifi", cgiRedirect, "/wifi/wifi.html" },
@@ -61,8 +68,9 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/wifi/connstatus", cgiWiFiConnStatus, NULL },
   { "/wifi/setmode", cgiWiFiSetMode, NULL },
   { "/wifi/special", cgiWiFiSpecial, NULL },
+  { "/system/info", cgiSystemInfo, NULL },
+  { "/system/update", cgiSystemSet, NULL },
   { "/pins", cgiPins, NULL },
-  { "/tcpclient", cgiTcp, NULL },
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
 #endif
@@ -94,6 +102,61 @@ static char *flash_maps[] = {
   "2MB:1024/1024", "4MB:1024/1024"
 };
 
+// Cgi to return various System information
+static int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
+  char buff[1024];
+
+  if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+
+  uint8 part_id = system_upgrade_userbin_check();
+  uint32_t fid = spi_flash_get_id();
+  struct rst_info *rst_info = system_get_rst_info();
+
+  os_sprintf(buff, "{\"name\": \"%s\", \"reset cause\": \"%d=%s\", "
+      "\"size\": \"%s\"," "\"id\": \"0x%02lX 0x%04lX\"," "\"partition\": \"%s\","
+      "\"slip\": \"%s\"," "\"mqtt\": \"%s/%s\"," "\"baud\": \"%ld\","
+      "\"description\": \"%s\"" "}",
+      flashConfig.hostname, rst_info->reason, rst_codes[rst_info->reason],
+      flash_maps[system_get_flash_size_map()], fid & 0xff, (fid&0xff00)|((fid>>16)&0xff),
+      part_id ? "user2.bin" : "user1.bin",
+      flashConfig.slip_enable ? "enabled" : "disabled",
+      flashConfig.mqtt_enable ? "enabled" : "disabled",
+      mqttState(), flashConfig.baud_rate, flashConfig.sys_descr
+      );
+
+  jsonHeader(connData, 200);
+  httpdSend(connData, buff, -1);
+  return HTTPD_CGI_DONE;
+}
+
+static ETSTimer reassTimer;
+
+// Cgi to update system info (name/description)
+static int ICACHE_FLASH_ATTR cgiSystemSet(HttpdConnData *connData) {
+  if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+
+  int8_t n = getStringArg(connData, "name", flashConfig.hostname, sizeof(flashConfig.hostname));
+  int8_t d = getStringArg(connData, "description", flashConfig.sys_descr, sizeof(flashConfig.sys_descr));
+  if (n < 0 || d < 0) return HTTPD_CGI_DONE; // getStringArg has produced an error response
+
+  if (n > 0) {
+    // schedule hostname change-over
+    os_timer_disarm(&reassTimer);
+    os_timer_setfn(&reassTimer, configWifiIP, NULL);
+    os_timer_arm(&reassTimer, 1000, 0); // 1 second for the response of this request to make it
+  }
+
+  if (configSave()) {
+    httpdStartResponse(connData, 204);
+    httpdEndHeaders(connData);
+  } else {
+    httpdStartResponse(connData, 500);
+    httpdEndHeaders(connData);
+    httpdSend(connData, "Failed to save config", -1);
+  }
+  return HTTPD_CGI_DONE;
+}
+
 extern void app_init(void);
 extern void mqtt_client_init(void);
 
@@ -109,7 +172,7 @@ void user_init(void) {
   bool restoreOk = configRestore();
   // init gpio pin registers
   gpio_init();
-  gpio_output_set(0, 0, 0, (1<<15)); // some people tie it GND, gotta ensure it's disabled
+  gpio_output_set(0, 0, 0, (1<<15)); // some people tie it to GND, gotta ensure it's disabled
   // init UART
   uart_init(flashConfig.baud_rate, 115200);
   logInit(); // must come after init of uart
