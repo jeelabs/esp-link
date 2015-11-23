@@ -7,6 +7,12 @@
 #include "console.h"
 #include "cmd.h"
 
+#ifdef SLIP_DBG
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+#else
+#define DBG(format, ...) do { } while(0)
+#endif
+
 uint8_t slip_disabled;   // temporarily disable slip to allow flashing of attached MCU
 
 extern void ICACHE_FLASH_ATTR console_process(char *buf, short len);
@@ -48,15 +54,15 @@ slip_process() {
       } else {
         os_printf("SLIP: bad CRC, crc=%x rcv=%x\n", crc, rcv);
 
-#ifdef SLIP_DBG
         for (short i=0; i<slip_len; i++) {
-          if (slip_buf[i] >= ' ' && slip_buf[i] <= '~')
-            os_printf("%c", slip_buf[i]);
-          else
-            os_printf("\\%02X", slip_buf[i]);
+          if (slip_buf[i] >= ' ' && slip_buf[i] <= '~') {
+            DBG("%c", slip_buf[i]);
+          }
+          else {
+            DBG("\\%02X", slip_buf[i]);
+          }
         }
-        os_printf("\n");
-#endif
+        DBG("\n");
       }
     }
   }
@@ -86,9 +92,7 @@ slip_parse_char(char c) {
       if (slip_len > 0) console_process(slip_buf, slip_len);
       slip_reset();
       slip_inpkt = true;
-#ifdef SLIP_DBG
-      os_printf("SLIP: start\n");
-#endif
+      DBG("SLIP: start\n");
       return;
     }
   } else if (slip_escaped) {
