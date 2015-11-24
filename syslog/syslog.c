@@ -14,6 +14,8 @@
 #include <time.h>
 #include "task.h"
 
+extern void * mem_trim(void *m, size_t s);	// not well documented...
+
 #define SYSLOG_DBG
 #ifdef SYSLOG_DBG
 #define DBG_SYSLOG(format, ...) os_printf(format, ## __VA_ARGS__)
@@ -21,9 +23,11 @@
 #define DBG_SYSLOG(format, ...) do { } while(0)
 #endif
 
-LOCAL os_timer_t check_udp_timer;
+#define WIFI_CHK_INTERVAL 1000	// ms to check Wifi statis
+LOCAL os_timer_t wifi_chk_timer;
+
 LOCAL struct espconn syslog_espconn;
-LOCAL int syslog_msgid = 1;
+LOCAL uint32_t syslog_msgid = 1;
 LOCAL uint8_t syslog_task = 0;
 
 LOCAL syslog_host_t	syslogHost;
@@ -31,8 +35,8 @@ LOCAL syslog_entry_t *syslogQueue = NULL;
 
 static enum syslog_state syslogState = SYSLOG_NONE;
 
-LOCAL void ICACHE_FLASH_ATTR syslog_add_entry(char *msg);
-LOCAL void ICACHE_FLASH_ATTR syslog_check_udp(void);
+LOCAL void ICACHE_FLASH_ATTR syslog_add_entry(syslog_entry_t *entry);
+LOCAL void ICACHE_FLASH_ATTR syslog_chk_wifi_stat(void);
 LOCAL void ICACHE_FLASH_ATTR syslog_udp_sent_cb(void *arg);
 #ifdef SYSLOG_UDP_RECV
 LOCAL void ICACHE_FLASH_ATTR syslog_udp_recv_cb(void *arg, char *pusrdata, unsigned short length);
@@ -41,102 +45,159 @@ LOCAL void ICACHE_FLASH_ATTR syslog_udp_recv_cb(void *arg, char *pusrdata, unsig
 #define syslog_send_udp() post_usr_task(syslog_task,0)
 
 /******************************************************************************
- * FunctionName : syslog_check_udp
+ * FunctionName : syslog_chk_wifi_stat
  * Description  : check whether get ip addr or not
  * Parameters   : none
  * Returns      : none
 *******************************************************************************/
 LOCAL void ICACHE_FLASH_ATTR
-syslog_check_udp(void)
+syslog_chk_wifi_stat(void)
 {
-    struct ip_info ipconfig;
-    DBG_SYSLOG("syslog_check_udp: state: %d ", syslogState);
+  struct ip_info ipconfig;
+  DBG_SYSLOG("syslog_chk_wifi_stat: state: %d ", syslogState);
 
-   //disarm timer first
-    os_timer_disarm(&check_udp_timer);
+  //disarm timer first
+  os_timer_disarm(&wifi_chk_timer);
 
-   //get ip info of ESP8266 station
-    wifi_get_ip_info(STATION_IF, &ipconfig);
-    if (wifi_station_get_connect_status() == STATION_GOT_IP && ipconfig.ip.addr != 0)
-    {
+  //try to get ip info of ESP8266 station
+  wifi_get_ip_info(STATION_IF, &ipconfig);
+  int wifi_status = wifi_station_get_connect_status();
+  if (wifi_status == STATION_GOT_IP && ipconfig.ip.addr != 0)
+  {
     if (syslogState == SYSLOG_WAIT) {			// waiting for initialization
-    DBG_SYSLOG("connected, initializing UDP socket\n");
-    syslog_init(flashConfig.syslog_host);
+      DBG_SYSLOG("connected, initializing UDP socket\n");
+      syslog_init(flashConfig.syslog_host);
     }
+  } else {
+    if ((wifi_status == STATION_WRONG_PASSWORD ||
+	 wifi_status == STATION_NO_AP_FOUND ||
+	 wifi_status == STATION_CONNECT_FAIL)) {
+      syslogState = SYSLOG_ERROR;
+      os_printf("*** connect failure!!!\n");
     } else {
-    DBG_SYSLOG("waiting 100ms\n");
-    if ((wifi_station_get_connect_status() == STATION_WRONG_PASSWORD ||
-    wifi_station_get_connect_status() == STATION_NO_AP_FOUND ||
-    wifi_station_get_connect_status() == STATION_CONNECT_FAIL)) {
-    os_printf("*** connect failure!!! \r\n");
-    } else {
-    //re-arm timer to check ip
-    os_timer_setfn(&check_udp_timer, (os_timer_func_t *)syslog_check_udp, NULL);
-    os_timer_arm(&check_udp_timer, 100, 0);
+      DBG_SYSLOG("re-arming timer...\n");
+      os_timer_setfn(&wifi_chk_timer, (os_timer_func_t *)syslog_chk_wifi_stat, NULL);
+      os_timer_arm(&wifi_chk_timer, WIFI_CHK_INTERVAL, 0);
     }
-    }
-    }
+  }
+}
 
 LOCAL void ICACHE_FLASH_ATTR
 syslog_udp_send_event(os_event_t *events) {
   if (syslogQueue == NULL)
     syslogState = SYSLOG_READY;
   else {
-    int res, len = os_strlen(syslogQueue->msg);
-    DBG_SYSLOG("syslog_udp_send: %s\n", syslogQueue->msg);
+    int res = 0;
     syslog_espconn.proto.udp->remote_port = syslogHost.port;			// ESP8266 udp remote port
     os_memcpy(&syslog_espconn.proto.udp->remote_ip, &syslogHost.addr.addr, 4);	// ESP8266 udp remote IP
-    res = espconn_send(&syslog_espconn, (uint8_t *)syslogQueue->msg, len);
-    if (res != 0)
+    res = espconn_send(&syslog_espconn, (uint8_t *)syslogQueue->datagram, syslogQueue->datagram_len);
+    if (res != 0) {
       os_printf("syslog_udp_send: error %d\n", res);
+    }
   }
 }
 
-LOCAL void ICACHE_FLASH_ATTR
-syslog_add_entry(char *msg)
+/******************************************************************************
+ * FunctionName : syslog_compose
+ * Description  : compose a syslog_entry_t from va_args
+ * Parameters   : va_args
+ * Returns      : the malloced syslog_entry_t
+ ******************************************************************************/
+LOCAL syslog_entry_t ICACHE_FLASH_ATTR *
+syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *fmt, ...)
 {
-	syslog_entry_t *se = NULL,
-			*q = syslogQueue;
+  syslog_entry_t *se = os_zalloc(sizeof (syslog_entry_t) + 1024);	// allow up to 1k datagram
+  char *p = se->datagram;
+  uint32_t tick = WDEV_NOW();			// 0 ... 4294.967295s
 
-	// ensure we have sufficient heap for the rest of the system
-	if (system_get_free_heap_size() > syslogHost.min_heap_size) {
-	  se = os_zalloc(sizeof (syslog_entry_t) + os_strlen(msg) + 1);
-	  os_strcpy(se->msg, msg);
-	  se->next = NULL;
+  // The Priority value is calculated by first multiplying the Facility
+  // number by 8 and then adding the numerical value of the Severity.
+  p += os_sprintf(p, "<%d> ", facility * 8 + severity);
 
-	  if (q == NULL)
-	    syslogQueue = se;
-	  else {
-	    while (q->next != NULL)
-	      q = q->next;
-	    q->next = se;	// append msg to syslog queue
-	  }
-	} else {
-	  if (syslogState != SYSLOG_HALTED) {
-	    syslogState = SYSLOG_HALTED;
-	    os_printf("syslog_add_entry: Warning: queue filled up, halted\n");
-	    // add obit syslog message
-	  }
-	}
+  // strftime doesn't work as expected - or adds 8k overhead.
+  // so let's do poor man conversion - format is fixed anyway
+  if (flashConfig.syslog_showdate == 0)
+    p += os_sprintf(p, "- ");
+  else {
+    time_t now = NULL;
+    struct tm *tp = NULL;
+
+    // create timestamp: FULL-DATE "T" PARTIAL-TIME "Z": 'YYYY-mm-ddTHH:MM:SSZ '
+    // as long as realtime_stamp is 0 we use tick div 10⁶ as date
+    now = (realtime_stamp == 0) ? (tick / 1000000) : realtime_stamp;
+    tp = gmtime(&now);
+
+    p += os_sprintf(p, "%4d-%02d-%02dT%02d:%02d:%02dZ ",
+		    tp->tm_year + 1900, tp->tm_mon + 1, tp->tm_mday,
+		    tp->tm_hour, tp->tm_min, tp->tm_sec);
+  }
+
+  // add HOSTNAME APP-NAME PROCID MSGID
+  if (flashConfig.syslog_showtick)
+    p += os_sprintf(p, "%s %s %lu.%06lu %lu ", flashConfig.hostname, tag, tick / 1000000, tick % 1000000, syslog_msgid++);
+  else
+    p += os_sprintf(p, "%s %s - %lu ", flashConfig.hostname, tag, syslog_msgid++);
+
+  // append syslog message
+  va_list arglist;
+  va_start(arglist, fmt);
+  p += ets_vsprintf(p, fmt, arglist );
+  va_end(arglist);
+
+  se->datagram_len = p - se->datagram;
+  se = mem_trim(se, sizeof(syslog_entry_t) + se->datagram_len + 1);
+  return se;
 }
 
 /******************************************************************************
-      * FunctionName : syslog_sent_cb
-      * Description  : udp sent successfully
-      * 	       fetch next syslog package, free old message
-      * Parameters  :  arg -- Additional argument to pass to the callback function
-      * Returns      : none
- *******************************************************************************/
+ * FunctionName : syslog_add_entry
+ * Description  : add a syslog_entry_t to the syslogQueue
+ * Parameters   : entry: the syslog_entry_t
+ * Returns      : none
+ ******************************************************************************/
+LOCAL void ICACHE_FLASH_ATTR
+syslog_add_entry(syslog_entry_t *entry)
+{
+  syslog_entry_t *pse = syslogQueue;
+
+  // append msg to syslog_queue
+  if (pse == NULL)
+    syslogQueue = entry;
+  else {
+    while (pse->next != NULL)
+      pse = pse->next;
+    pse->next = entry;	// append msg to syslog queue
+  }
+
+  // ensure we have sufficient heap for the rest of the system
+  if (system_get_free_heap_size() < syslogHost.min_heap_size) {
+    if (syslogState != SYSLOG_HALTED) {
+      os_printf("syslog_add_entry: Warning: queue filled up, halted\n");
+      entry->next = syslog_compose(SYSLOG_FAC_SYSLOG, SYSLOG_PRIO_CRIT, "-", "queue filled up, halted");
+      if (syslogState == SYSLOG_READY)
+	syslog_send_udp();
+      syslogState = SYSLOG_HALTED;
+    }
+  }
+}
+
+/******************************************************************************
+ * FunctionName : syslog_sent_cb
+ * Description  : udp sent successfully
+ * 	       fetch next syslog package, free old message
+ * Parameters   :  arg -- Additional argument to pass to the callback function
+ * Returns      : none
+ ******************************************************************************/
 LOCAL void ICACHE_FLASH_ATTR
 syslog_udp_sent_cb(void *arg)
 {
   struct espconn *pespconn = arg;
-  DBG_SYSLOG("syslog_udp_sent_cb: %p\n", pespconn);
+  (void) pespconn;
 
   // datagram is delivered - free and advance queue
-  syslog_entry_t *p = syslogQueue;
+  syslog_entry_t *pse = syslogQueue;
   syslogQueue = syslogQueue -> next;
-  os_free(p);
+  os_free(pse);
 
   if (syslogQueue != NULL)
     syslog_send_udp();
@@ -144,14 +205,14 @@ syslog_udp_sent_cb(void *arg)
     syslogState = SYSLOG_READY;
 }
 
- /******************************************************************************
+ /*****************************************************************************
   * FunctionName : syslog_recv_cb
   * Description  : Processing the received udp packet
   * Parameters   : arg -- Additional argument to pass to the callback function
   *                pusrdata -- The received data (or NULL when the connection has been closed!)
   *                length -- The length of received data
   * Returns      : none
- *******************************************************************************/
+ ******************************************************************************/
 #ifdef SYSLOG_UDP_RECV
 LOCAL void ICACHE_FLASH_ATTR
 syslog_udp_recv_cb(void *arg, char *pusrdata, unsigned short length)
@@ -160,13 +221,9 @@ syslog_udp_recv_cb(void *arg, char *pusrdata, unsigned short length)
 }
 #endif
 
- /******************************************************************************
-  *
- *******************************************************************************/
-
- /******************************************************************************
-  *
- *******************************************************************************/
+/******************************************************************************
+ *
+ ******************************************************************************/
 LOCAL void ICACHE_FLASH_ATTR
 syslog_gethostbyname_cb(const char *name, ip_addr_t *ipaddr, void *arg)
 {
@@ -192,48 +249,47 @@ syslog_gethostbyname_cb(const char *name, ip_addr_t *ipaddr, void *arg)
 void ICACHE_FLASH_ATTR
 syslog_init(char *syslog_server)
 {
-	char host[32], *port = &host[0];
+  char host[32], *port = &host[0];
 
-	syslog_task = register_usr_task(syslog_udp_send_event);
+  syslog_task = register_usr_task(syslog_udp_send_event);
+  syslogHost.min_heap_size = flashConfig.syslog_minheap;
+  syslogHost.port = 514;
+  syslogState = SYSLOG_WAIT;
 
-	syslogState = SYSLOG_WAIT;
-	syslogHost.min_heap_size = MINIMUM_HEAP_SIZE;
-	syslogHost.port = 514;
+  os_strncpy(host, syslog_server, 32);
+  while (*port && *port != ':')			// find port delimiter
+    port++;
+  if (*port) {
+    *port++ = '\0';
+    syslogHost.port = atoi(port);
+  }
 
-	os_strncpy(host, syslog_server, 32);
-	while (*port && *port != ':')			// find port delimiter
-		port++;
-	if (*port) {
-		*port++ = '\0';
-		syslogHost.port = atoi(port);
-	}
-
-	wifi_set_broadcast_if(STATIONAP_MODE); // send UDP broadcast from both station and soft-AP interface
-	syslog_espconn.type = ESPCONN_UDP;
-	syslog_espconn.proto.udp = (esp_udp *)os_zalloc(sizeof(esp_udp));
-	syslog_espconn.proto.udp->local_port = espconn_port();				// set a available  port
+  wifi_set_broadcast_if(STATIONAP_MODE); // send UDP broadcast from both station and soft-AP interface
+  syslog_espconn.type = ESPCONN_UDP;
+  syslog_espconn.proto.udp = (esp_udp *)os_zalloc(sizeof(esp_udp));
+  syslog_espconn.proto.udp->local_port = espconn_port();			// set a available  port
 #ifdef SYSLOG_UDP_RECV
-	espconn_regist_recvcb(&syslog_espconn, syslog_udp_recv_cb);			// register a udp packet receiving callback
+  espconn_regist_recvcb(&syslog_espconn, syslog_udp_recv_cb);			// register a udp packet receiving callback
 #endif
-	espconn_regist_sentcb(&syslog_espconn, syslog_udp_sent_cb);			// register a udp packet sent callback
-	espconn_create(&syslog_espconn);   						// create udp
+  espconn_regist_sentcb(&syslog_espconn, syslog_udp_sent_cb);			// register a udp packet sent callback
+  espconn_create(&syslog_espconn);   						// create udp
 
-	if (UTILS_StrToIP((const char *)host, (void*)&syslogHost.addr)) {
-		syslogState = SYSLOG_SENDING;
-		syslog_send_udp();
-	} else {
-		static struct espconn espconn_ghbn;
-		espconn_gethostbyname(&espconn_ghbn, host, &syslogHost.addr, syslog_gethostbyname_cb);
-		// syslog_send_udp is called by syslog_gethostbyname_cb()
-	}
+  if (UTILS_StrToIP((const char *)host, (void*)&syslogHost.addr)) {
+    syslogState = SYSLOG_SENDING;
+    syslog_send_udp();
+  } else {
+    static struct espconn espconn_ghbn;
+    espconn_gethostbyname(&espconn_ghbn, host, &syslogHost.addr, syslog_gethostbyname_cb);
+    // syslog_send_udp is called by syslog_gethostbyname_cb()
+  }
 #ifdef SYSLOG_UDP_RECV
-	DBG_SYSLOG("syslog_init: host: %s, port: %d, lport: %d, recvcb: %p, sentcb: %p, state: %d\n",
-			host, syslogHost.port, syslog_espconn.proto.udp->local_port,
-			syslog_udp_recv_cb, syslog_udp_sent_cb, syslogState	);
+  DBG_SYSLOG("syslog_init: host: %s, port: %d, lport: %d, recvcb: %p, sentcb: %p, state: %d\n",
+		  host, syslogHost.port, syslog_espconn.proto.udp->local_port,
+		  syslog_udp_recv_cb, syslog_udp_sent_cb, syslogState	);
 #else
-	DBG_SYSLOG("syslog_init: host: %s, port: %d, lport: %d, rsentcb: %p, state: %d\n",
-			host, syslogHost.port, syslog_espconn.proto.udp->local_port,
-			syslog_udp_sent_cb, syslogState	);
+  DBG_SYSLOG("syslog_init: host: %s, port: %d, lport: %d, rsentcb: %p, state: %d\n",
+		  host, syslogHost.port, syslog_espconn.proto.udp->local_port,
+		  syslog_udp_sent_cb, syslogState	);
 #endif
 }
 
@@ -311,65 +367,26 @@ syslog_init(char *syslog_server)
 void ICACHE_FLASH_ATTR
 syslog(uint8_t facility, uint8_t severity, const char *tag, const char *fmt, ...)
 {
-	char udp_payload[1024],
-			*p = udp_payload;
-	uint32_t tick = WDEV_NOW();							// 0 ... 4294.967295s
+  DBG_SYSLOG("syslog: state=%d ", syslogState);
+  if (syslogState == SYSLOG_ERROR ||
+    syslogState == SYSLOG_HALTED)
+    return;
 
-	DBG_SYSLOG("syslog: state=%d ", syslogState);
-	if (syslogState == SYSLOG_ERROR ||
-		syslogState == SYSLOG_HALTED)
-		return;
+  // compose the syslog message
+  void *arg = __builtin_apply_args();
+  void *res = __builtin_apply((void*)syslog_compose, arg, 128);
+  syslog_entry_t *se  = *(syslog_entry_t **)res;
 
-	// The Priority value is calculated by first multiplying the Facility
-	// number by 8 and then adding the numerical value of the Severity.
-	int sl = os_sprintf(p, "<%d> ", facility * 8 + severity);
-	p += sl;
+  // and append it to the message queue
+  syslog_add_entry(se);
 
-	// strftime doesn't work as expected - or adds 8k overhead.
-	// so let's do poor man conversion - format is fixed anyway
-	if (flashConfig.syslog_showdate == 0)
-		sl = os_sprintf(p, "- ");
-	else {
-		time_t now = NULL;
-		struct tm *tp = NULL;
+  if (syslogState == SYSLOG_READY) {
+    syslogState = SYSLOG_SENDING;
+    syslog_send_udp();
+  }
 
-		// create timestamp: FULL-DATE "T" PARTIAL-TIME "Z": 'YYYY-mm-ddTHH:MM:SSZ '
-		// as long as realtime_stamp is 0 we use tick div 10⁶ as date
-		now = (realtime_stamp == 0) ? (tick / 1000000) : realtime_stamp;
-		tp = gmtime(&now);
-
-		sl = os_sprintf(p, "%4d-%02d-%02dT%02d:%02d:%02dZ ",
-			tp->tm_year + 1900, tp->tm_mon + 1, tp->tm_mday,
-			tp->tm_hour, tp->tm_min, tp->tm_sec);
-		}
-	p += sl;
-
-	// add HOSTNAME APP-NAME PROCID MSGID
-	if (flashConfig.syslog_showtick)
-		sl = os_sprintf(p, "%s %s %lu.%06lu %d ", flashConfig.hostname, tag, tick / 1000000, tick % 1000000, syslog_msgid++);
-	else
-		sl = os_sprintf(p, "%s %s - %d ", flashConfig.hostname, tag, syslog_msgid++);
-	p += sl;
-
-	// append syslog message
-	va_list arglist;
-	va_start(arglist, fmt);
-	sl = ets_vsprintf(p, fmt, arglist );
-	va_end(arglist);
-
-	DBG_SYSLOG("msg: %s\n", udp_payload);
-	syslog_add_entry(udp_payload);	// add to message queue
-
-	if (syslogState == SYSLOG_READY) {
-	  syslogState = SYSLOG_SENDING;
-	  syslog_send_udp();
-	}
-
-	if (syslogState == SYSLOG_NONE) {
-	  //set a timer to check whether we got ip from router succeed or not.
-	  os_timer_disarm(&check_udp_timer);
-	  os_timer_setfn(&check_udp_timer, (os_timer_func_t *)syslog_check_udp, NULL);
-	  os_timer_arm(&check_udp_timer, 100, 0);
-	  syslogState = SYSLOG_WAIT;
-	}
+  if (syslogState == SYSLOG_NONE) {
+    syslogState = SYSLOG_WAIT;
+    syslog_chk_wifi_stat();	// fire the timer to check the Wifi connection status
+  }
 }

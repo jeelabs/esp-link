@@ -78,7 +78,8 @@ struct syslog_host_t {
 typedef struct syslog_entry_t syslog_entry_t;
 struct syslog_entry_t {
     syslog_entry_t *next;
-    char         msg[];
+    uint16_t	datagram_len;
+    char	datagram[];
 };
 
 syslog_host_t syslogserver;
