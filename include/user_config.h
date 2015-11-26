@@ -29,6 +29,7 @@
 #define SERLED_DBG
 #undef SLIP_DBG
 #define UART_DBG
+#define MDNS_DBG
 
 // If defined, the default hostname for DHCP will include the chip ID to make it unique
 #undef CHIP_IN_HOSTNAME

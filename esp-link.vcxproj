@@ -23,6 +23,7 @@
     <ClCompile Include="esp-link\config.c" />
     <ClCompile Include="esp-link\log.c" />
     <ClCompile Include="esp-link\main.c" />
+    <ClCompile Include="esp-link\mdns.c" />
     <ClCompile Include="esp-link\mqtt_client.c" />
     <ClCompile Include="esp-link\status.c" />
     <ClCompile Include="espfs\espfs.c" />
@@ -57,6 +58,7 @@
     <ClInclude Include="esp-link\cgiwifi.h" />
     <ClInclude Include="esp-link\config.h" />
     <ClInclude Include="esp-link\log.h" />
+    <ClInclude Include="esp-link\mdns.h" />
     <ClInclude Include="esp-link\mqtt_client.h" />
     <ClInclude Include="esp-link\status.h" />
     <ClInclude Include="esp-link\stk500.h" />

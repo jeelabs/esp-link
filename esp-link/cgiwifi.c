@@ -20,6 +20,7 @@ Cgi/template routines for the /wifi url.
 #include "status.h"
 #include "config.h"
 #include "log.h"
+#include "mdns.h"
 
 #ifdef CGIWIFI_DBG
 #define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
@@ -114,19 +115,24 @@ wifiAddStateChangeCb(WifiStateChangeCb cb) {
 }
 
 static bool mdns_started = false;
-static struct mdns_info mdns_info;
+//static struct mdns_info mdns_info;
 
 // cannot allocate the info struct on the stack, it crashes!
 static ICACHE_FLASH_ATTR
 void wifiStartMDNS(struct ip_addr ip) {
   if (!mdns_started) {
-    os_memset(&mdns_info, 0, sizeof(struct mdns_info));
-    mdns_info.host_name = flashConfig.hostname,
-    mdns_info.server_name = "http", // service name
-    mdns_info.server_port = 80,     // service port
-    mdns_info.ipAddr = ip.addr,  
-    mdns_info.txt_data[0] = (char *) "version = now",
-    espconn_mdns_init(&mdns_info);
+//    struct mdns_info *ard_mdns_info = (struct mdns_info *)os_zalloc(sizeof(struct mdns_info));
+//    ard_mdns_info->host_name = flashConfig.hostname;
+//    ard_mdns_info->server_name = "arduino"; // service name
+//    ard_mdns_info->server_port = 2323;     // service port
+//    ard_mdns_info->ipAddr = ip.addr;
+//    ard_mdns_info->txt_data[0] = (char *) "version = now";
+//    espconn_mdns_init(ard_mdns_info);
+//    espconn_mdns_server_register();
+
+    mdns_init(60, 3600);
+    mdns_addhost(flashConfig.hostname, &ip);
+    //mdns_addhost("arduino", &ip);
     mdns_started = true;
   }
 }
