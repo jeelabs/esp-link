@@ -12,6 +12,12 @@
 #include <rest.h>
 #endif
 
+#ifdef CMD_DBG
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+#else
+#define DBG(format, ...) do { } while(0)
+#endif
+
 static uint32_t CMD_Null(CmdPacket *cmd);
 static uint32_t CMD_IsReady(CmdPacket *cmd);
 static uint32_t CMD_Reset(CmdPacket *cmd);
@@ -81,9 +87,7 @@ CMD_AddCb(char* name, uint32_t cb) {
       os_strncpy(callbacks[i].name, name, sizeof(callbacks[i].name));
       callbacks[i].name[CMD_CBNLEN-1] = 0; // strncpy doesn't null terminate
       callbacks[i].callback = cb;
-#ifdef CMD_DBG
-      os_printf("CMD_AddCb: cb %s added at index %d\n", callbacks[i].name, i);
-#endif
+      DBG("CMD_AddCb: cb %s added at index %d\n", callbacks[i].name, i);
       return 1;
     }
   }
@@ -97,9 +101,7 @@ CMD_GetCbByName(char* name) {
     //  (void *)callbacks[i].callback);
     // if callback doesn't exist or it's null
     if (os_strncmp(callbacks[i].name, name, CMD_CBNLEN) == 0) {
-#ifdef CMD_DBG
-      os_printf("CMD_GetCbByName: cb %s found at index %d\n", name, i);
-#endif
+      DBG("CMD_GetCbByName: cb %s found at index %d\n", name, i);
       return &callbacks[i];
     }
   }
@@ -111,9 +113,7 @@ CMD_GetCbByName(char* name) {
 static void ICACHE_FLASH_ATTR
 CMD_WifiCb(uint8_t wifiStatus) {
   if (wifiStatus != lastWifiStatus){
-#ifdef CMD_DBG
-    os_printf("CMD_WifiCb: wifiStatus=%d\n", wifiStatus);
-#endif
+    DBG("CMD_WifiCb: wifiStatus=%d\n", wifiStatus);
     lastWifiStatus = wifiStatus;
     cmdCallback *wifiCb = CMD_GetCbByName("wifiCb");
     if ((uint32_t)wifiCb->callback != -1) {
@@ -160,9 +160,7 @@ CMD_AddCallback(CmdPacket *cmd) {
   if (len > 15) return 0; // max size of name is 15 characters
   if (CMD_PopArg(&req, (uint8_t *)name, len)) return 0;
   name[len] = 0;
-#ifdef CMD_DBG
-  os_printf("CMD_AddCallback: name=%s\n", name);
-#endif
+  DBG("CMD_AddCallback: name=%s\n", name);
 
   return CMD_AddCb(name, (uint32_t)cmd->callback); // save the sensor callback
 }

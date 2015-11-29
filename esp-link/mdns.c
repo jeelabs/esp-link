@@ -38,6 +38,7 @@ struct ip_addr mdns_multicast;
 struct ip_addr ipaddr_any;
 
 #ifdef MDNS_DBG
+
 void ICACHE_FLASH_ATTR hexdump(char *desc, void *addr, int len) {
   int i;
   unsigned char buff[17];
@@ -118,8 +119,7 @@ unsigned ICACHE_FLASH_ATTR char * encodeResp(struct ip_addr * addr, char *name, 
 
   *p++ = 0; *p++ = 4; // length (of ip)
 
-  memcpy(p, addr, 4);
-
+  memcpy(p, addr, 4); 
   return data;
 }
 
@@ -156,7 +156,7 @@ void ICACHE_FLASH_ATTR sendOne(struct _host *h)
   mdns_conn.proto.udp->remote_port = 5353;
   mdns_conn.proto.udp->local_port = 5353;
 #ifdef MDNS_DBG
-  hexdump("sending", h->mdns, h->len);
+//  hexdump("sending", h->mdns, h->len);
 #endif
   espconn_sent(&mdns_conn, h->mdns, h->len);
 
@@ -184,7 +184,7 @@ void ICACHE_FLASH_ATTR decodeQuery(unsigned char *data)
     int qtype = p[0] * 256 + p[1];
     int qclass = p[2] * 256 + p[3];
     p += 4;
-    DBG("decoded name  %s qtype=%d qclass=%d\n", name, qtype, qclass);
+//    DBG("decoded name  %s qtype=%d qclass=%d\n", name, qtype, qclass);
 
     if (qtype == 1 && (qclass & 0x7fff) == 1)
     {
@@ -194,7 +194,7 @@ void ICACHE_FLASH_ATTR decodeQuery(unsigned char *data)
       {
         if (h->hostname && strcmp(name, h->hostname) == 0)
         {
-          DBG("its %s!\n", h->hostname);
+//          DBG("its %s!\n", h->hostname);
           sendOne(h);
         }
       }
@@ -211,7 +211,7 @@ static void ICACHE_FLASH_ATTR broadcast(void *arg)
   int i;
   for (h = hosts, i = 0; i < nhosts; i++, h++)
   {
-    DBG("broadcast for %s\n", h->hostname);
+//    DBG("broadcast for %s\n", h->hostname);
     sendOne(h);
   }
 }
@@ -220,12 +220,12 @@ static void ICACHE_FLASH_ATTR mdns_udp_recv(void *arg, char *pusrdata, unsigned 
   unsigned char *data = (unsigned char *)pusrdata;
 
 
-  DBG("remote port=%d remoteip=%d.%d.%d.%d\n", mdns_conn.proto.udp->remote_port,
-    mdns_conn.proto.udp->remote_ip[0],
-    mdns_conn.proto.udp->remote_ip[1],
-    mdns_conn.proto.udp->remote_ip[2],
-    mdns_conn.proto.udp->remote_ip[3]
-    );
+//  DBG("remote port=%d remoteip=%d.%d.%d.%d\n", mdns_conn.proto.udp->remote_port,
+//    mdns_conn.proto.udp->remote_ip[0],
+//    mdns_conn.proto.udp->remote_ip[1],
+//    mdns_conn.proto.udp->remote_ip[2],
+//    mdns_conn.proto.udp->remote_ip[3]
+//    );
 #ifdef MDNS_DBG
 //  hexdump("rec mNDS:", data, length);
 #endif
@@ -252,6 +252,7 @@ int ICACHE_FLASH_ATTR mdns_addhost(char *hn, struct ip_addr* ip)
   os_strcpy(h->hostname, hn);
   h->ip.addr = ip->addr;
   h->mdns = encodeResp(ip, hn, &(h->len));
+//  DBG("resp len: %d\n", ets_strlen(h->mdns));
 #ifdef MDNS_DBG
   hexdump("addhost", hosts, sizeof(hosts));
 #endif
@@ -270,8 +271,6 @@ int ICACHE_FLASH_ATTR mdns_delhost(char *hn, struct ip_addr* ip)
     {
       if (h->hostname) os_free(h->hostname);
       if (h->mdns) os_free(h->mdns);
-      h->hostname = NULL;
-      h->mdns = NULL;
       h->ip.addr = 0;
     }
   }
@@ -326,8 +325,6 @@ int ICACHE_FLASH_ATTR mdns_stop()
   {
     if (h->hostname) os_free(h->hostname);
     if (h->mdns) os_free(h->mdns);
-    h->hostname = NULL;
-    h->mdns = NULL;
     h->ip.addr = 0;
   }
   nhosts = 0;
