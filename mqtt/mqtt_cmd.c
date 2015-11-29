@@ -314,6 +314,14 @@ MQTTCMD_Connect(CmdPacket *cmd) {
   CMD_Request(&req, cmd);
 
 #ifdef MQTT_1_CLIENT
+
+  if (mqttClient.connState == MQTT_CONNECTED && mqttClient.cmdConnectedCb) {
+    mqttClient.cmdConnectedCb((uint32_t*)&mqttClient);
+  }
+  else if (mqttClient.connState == MQTT_DISCONNECTED && mqttClient.cmdDisconnectedCb) {
+    mqttClient.cmdDisconnectedCb((uint32_t*)&mqttClient);
+  }
+
   return 1;
 
 #else
