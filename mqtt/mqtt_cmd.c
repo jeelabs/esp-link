@@ -8,9 +8,9 @@
 #include "mqtt_cmd.h"
 
 #ifdef MQTTCMD_DBG
-#define DBG_MQTTCMD(format, ...) os_printf(format, ## __VA_ARGS__)
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
 #else
-#define DBG_MQTTCMD(format, ...) do { } while(0)
+#define DBG(format, ...) do { } while(0)
 #endif
 
 // if MQTT_1_CLIENT is defined we only support the one client that is built into esp-link.
@@ -25,7 +25,7 @@ void ICACHE_FLASH_ATTR
 cmdMqttConnectedCb(uint32_t* args) {
   MQTT_Client* client = (MQTT_Client*)args;
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
-  DBG_MQTTCMD("MQTT: Connected  connectedCb=%p, disconnectedCb=%p, publishedCb=%p, dataCb=%p\n",
+  DBG("MQTT: Connected  connectedCb=%p, disconnectedCb=%p, publishedCb=%p, dataCb=%p\n",
        (void*)cb->connectedCb,
        (void*)cb->disconnectedCb,
        (void*)cb->publishedCb,
@@ -38,7 +38,7 @@ void ICACHE_FLASH_ATTR
 cmdMqttDisconnectedCb(uint32_t* args) {
   MQTT_Client* client = (MQTT_Client*)args;
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
-  DBG_MQTTCMD("MQTT: Disconnected\n");
+  DBG("MQTT: Disconnected\n");
   uint16_t crc = CMD_ResponseStart(CMD_MQTT_EVENTS, cb->disconnectedCb, 0, 0);
   CMD_ResponseEnd(crc);
 }
@@ -47,7 +47,7 @@ void ICACHE_FLASH_ATTR
 cmdMqttPublishedCb(uint32_t* args) {
   MQTT_Client* client = (MQTT_Client*)args;
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
-  DBG_MQTTCMD("MQTT: Published\n");
+  DBG("MQTT: Published\n");
   uint16_t crc = CMD_ResponseStart(CMD_MQTT_EVENTS, cb->publishedCb, 0, 0);
   CMD_ResponseEnd(crc);
 }
@@ -79,7 +79,7 @@ MQTTCMD_Lwt(CmdPacket *cmd) {
   MQTT_Client* client = &mqttClient;
 #else
   MQTT_Client* client = (MQTT_Client*)client_ptr;
-  DBG_MQTTCMD("MQTT: MQTTCMD_Lwt client ptr=%p\n", (void*)client_ptr);
+  DBG("MQTT: MQTTCMD_Lwt client ptr=%p\n", (void*)client_ptr);
 #endif
 
   // free old topic & message
@@ -110,7 +110,7 @@ MQTTCMD_Lwt(CmdPacket *cmd) {
   // get retain
   CMD_PopArg(&req, (uint8_t*)&client->connect_info.will_retain, 4);
 
-  DBG_MQTTCMD("MQTT: MQTTCMD_Lwt topic=%s, message=%s, qos=%d, retain=%d\n",
+  DBG("MQTT: MQTTCMD_Lwt topic=%s, message=%s, qos=%d, retain=%d\n",
        client->connect_info.will_topic,
        client->connect_info.will_message,
        client->connect_info.will_qos,
@@ -136,7 +136,7 @@ MQTTCMD_Publish(CmdPacket *cmd) {
   MQTT_Client* client = &mqttClient;
 #else
   MQTT_Client* client = (MQTT_Client*)client_ptr;
-  DBG_MQTTCMD("MQTT: MQTTCMD_Publish client ptr=%p\n", (void*)client_ptr);
+  DBG("MQTT: MQTTCMD_Publish client ptr=%p\n", (void*)client_ptr);
 #endif
 
   uint16_t len;
@@ -170,7 +170,7 @@ MQTTCMD_Publish(CmdPacket *cmd) {
   // get retain
   CMD_PopArg(&req, (uint8_t*)&retain, 4);
 
-  DBG_MQTTCMD("MQTT: MQTTCMD_Publish topic=%s, data_len=%d, qos=%ld, retain=%ld\n",
+  DBG("MQTT: MQTTCMD_Publish topic=%s, data_len=%d, qos=%ld, retain=%ld\n",
     topic,
     os_strlen((char*)data),
     qos,
@@ -197,7 +197,7 @@ MQTTCMD_Subscribe(CmdPacket *cmd) {
   MQTT_Client* client = &mqttClient;
 #else
   MQTT_Client* client = (MQTT_Client*)client_ptr;
-  DBG_MQTTCMD("MQTT: MQTTCMD_Subscribe client ptr=%p\n", (void*)client_ptr);
+  DBG("MQTT: MQTTCMD_Subscribe client ptr=%p\n", (void*)client_ptr);
 #endif
 
   uint16_t len;
@@ -213,7 +213,7 @@ MQTTCMD_Subscribe(CmdPacket *cmd) {
   uint32_t qos = 0;
   CMD_PopArg(&req, (uint8_t*)&qos, 4);
 
-  DBG_MQTTCMD("MQTT: MQTTCMD_Subscribe topic=%s, qos=%ld\n", topic, qos);
+  DBG("MQTT: MQTTCMD_Subscribe topic=%s, qos=%ld\n", topic, qos);
 
   MQTT_Subscribe(client, (char*)topic, (uint8_t)qos);
   os_free(topic);
@@ -273,7 +273,7 @@ MQTTCMD_Setup(CmdPacket *cmd) {
   // get clean session
   CMD_PopArg(&req, (uint8_t*)&clean_session, 4);
 #ifdef MQTTCMD_DBG
-  DBG_MQTTCMD("MQTT: MQTTCMD_Setup clientid=%s, user=%s, pw=%s, keepalive=%ld, clean_session=%ld\n", client_id, user_data, pass_data, keepalive, clean_session);
+  DBG("MQTT: MQTTCMD_Setup clientid=%s, user=%s, pw=%s, keepalive=%ld, clean_session=%ld\n", client_id, user_data, pass_data, keepalive, clean_session);
 #endif
 
   // init client
@@ -324,7 +324,7 @@ MQTTCMD_Connect(CmdPacket *cmd) {
   uint32_t client_ptr;
   CMD_PopArg(&req, (uint8_t*)&client_ptr, 4);
   MQTT_Client* client = (MQTT_Client*)client_ptr;
-  DBG_MQTTCMD("MQTT: MQTTCMD_Connect client ptr=%p\n", (void*)client_ptr);
+  DBG("MQTT: MQTTCMD_Connect client ptr=%p\n", (void*)client_ptr);
 
   uint16_t len;
 
@@ -342,7 +342,7 @@ MQTTCMD_Connect(CmdPacket *cmd) {
 
   // get security
   CMD_PopArg(&req, (uint8_t*)&client->security, 4);
-  DBG_MQTTCMD("MQTT: MQTTCMD_Connect host=%s, port=%d, security=%d\n",
+  DBG("MQTT: MQTTCMD_Connect host=%s, port=%d, security=%d\n",
     client->host,
     client->port,
     client->security);
@@ -368,7 +368,7 @@ MQTTCMD_Disconnect(CmdPacket *cmd) {
   uint32_t client_ptr;
   CMD_PopArg(&req, (uint8_t*)&client_ptr, 4);
   MQTT_Client* client = (MQTT_Client*)client_ptr;
-  DBG_MQTTCMD("MQTT: MQTTCMD_Disconnect client ptr=%p\n", (void*)client_ptr);
+  DBG("MQTT: MQTTCMD_Disconnect client ptr=%p\n", (void*)client_ptr);
 
   // disconnect
   MQTT_Disconnect(client);
