@@ -5,9 +5,9 @@
 #include "mqtt.h"
 
 #ifdef MQTTCLIENT_DBG
-#define DBG_MQTTCLIENT(format, ...) os_printf(format, ## __VA_ARGS__)
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__) } while(0)
 #else
-#define DBG_MQTTCLIENT(format, ...) do { } while(0)
+#define DBG(format, ...) do { } while(0)
 #endif
 
 MQTT_Client mqttClient; // main mqtt client used by esp-link
@@ -19,7 +19,7 @@ static MqttDataCallback data_cb;
 
 void ICACHE_FLASH_ATTR
 mqttConnectedCb(uint32_t *args) {
-  DBG_MQTTCLIENT("MQTT Client: Connected\n");
+  DBG("MQTT Client: Connected\n");
   //MQTT_Client* client = (MQTT_Client*)args;
   //MQTT_Subscribe(client, "system/time", 0); // handy for testing
   if (connected_cb)
@@ -29,7 +29,7 @@ mqttConnectedCb(uint32_t *args) {
 void ICACHE_FLASH_ATTR
 mqttDisconnectedCb(uint32_t *args) {
 //  MQTT_Client* client = (MQTT_Client*)args;
-  DBG_MQTTCLIENT("MQTT Client: Disconnected\n");
+  DBG("MQTT Client: Disconnected\n");
   if (disconnected_cb)
     disconnected_cb(args);
 }
@@ -37,7 +37,7 @@ mqttDisconnectedCb(uint32_t *args) {
 void ICACHE_FLASH_ATTR
 mqttPublishedCb(uint32_t *args) {
 //  MQTT_Client* client = (MQTT_Client*)args;
-  DBG_MQTTCLIENT("MQTT Client: Published\n");
+  DBG("MQTT Client: Published\n");
   if (published_cb)
     published_cb(args);
 }

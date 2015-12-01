@@ -8,7 +8,7 @@
 #include "uart.h"
 
 #ifdef CMD_DBG
-#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__) } while(0)
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif
