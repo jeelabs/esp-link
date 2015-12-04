@@ -113,7 +113,7 @@ wifiAddStateChangeCb(WifiStateChangeCb cb) {
   DBG("WIFI: max state change cb count exceeded\n");
 }
 
-static bool mdns_started = false;
+static bool mdns_started = true;
 static struct mdns_info mdns_info;
 
 // cannot allocate the info struct on the stack, it crashes!
