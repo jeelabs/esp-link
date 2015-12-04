@@ -8,10 +8,12 @@
 # `VERBOSE=1 make ...` will print debug info
 # `ESP_HOSTNAME=my.esp.example.com make wiflash` is an easy way to override a variable
 #
+# optional local configuration file
+-include local.conf
 # Makefile heavily adapted to esp-link and wireless flashing by Thorsten von Eicken
 # Lots of work, in particular to support windows, by brunnels
 # Original from esphttpd and others...
-#VERBOSE=1
+# VERBOSE=1
 
 # --------------- toolchain configuration ---------------
 
@@ -21,7 +23,7 @@ XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 
 # Base directory of the ESP8266 SDK package, absolute
 # Typically you'll download from Espressif's BBS, http://bbs.espressif.com/viewforum.php?f=5
-SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.4.0)
+SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.4.1_pre7)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
@@ -30,11 +32,29 @@ ESPTOOL		?= $(abspath ../esp-open-sdk/esptool/esptool.py)
 ESPPORT		?= /dev/ttyUSB0
 ESPBAUD		?= 460800
 
-# The Wifi station configuration can be hard-coded here, which makes esp-link come up in STA+AP
-# mode trying to connect to the specified AP *only* if the flash wireless settings are empty!
-# This happens on a full serial flash and avoids having to hunt for the AP...
-# STA_SSID ?= 
-# STA_PASS ?= 
+# --------------- chipset configuration   ---------------
+
+# Pick your flash size: "512KB" or "4MB"
+FLASH_SIZE ?= 4MB
+
+ifeq ("$(FLASH_SIZE)","512KB")
+# Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
+ESP_SPI_SIZE        ?= 0      # 0->512KB
+ESP_FLASH_MODE      ?= 0      # 0->QIO
+ESP_FLASH_FREQ_DIV  ?= 0      # 0->40Mhz
+ESP_FLASH_MAX       ?= 241664 # max bin file for 512KB flash: 236KB
+
+else
+# Winbond 25Q32 4MB flash, typ for esp-12
+# Here we're using two partitions of approx 0.5MB because that's what's easily available in terms
+# of linker scripts in the SDK. Ideally we'd use two partitions of approx 1MB, the remaining 2MB
+# cannot be used for code.
+ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
+#ESP_FLASH_MAX       ?= 1028096 # max bin file for 1MB flash partition: 1004KB
+endif
 
 # hostname or IP address for wifi flashing
 ESP_HOSTNAME        ?= esp-link
@@ -63,7 +83,7 @@ LED_SERIAL_PIN      ?= 14
 CHANGE_TO_STA ?= yes
 
 # Optional Modules
-MODULES ?= mqtt rest
+MODULES ?= mqtt rest syslog
 
 # --------------- esphttpd config options ---------------
 
@@ -178,6 +198,10 @@ ifneq (,$(findstring rest,$(MODULES)))
 	CFLAGS		+= -DREST
 endif
 
+ifneq (,$(findstring syslog,$(MODULES)))
+	CFLAGS		+= -DSYSLOG
+endif
+
 # which modules (subdirectories) of the project to include in compiling
 LIBRARIES_DIR 	= libraries
 MODULES		  	+= espfs httpd user serial cmd esp-link
@@ -185,7 +209,7 @@ MODULES			+= $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
 EXTRA_INCDIR 	= include .
 
 # libraries used in this project, mainly provided by the SDK
-LIBS = c gcc hal phy pp net80211 wpa main lwip 
+LIBS = c gcc hal phy pp net80211 wpa main lwip
 
 # compiler flags using during compilation of source files
 CFLAGS	+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
@@ -335,7 +359,7 @@ flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
-	  
+
 tools/$(HTML_COMPRESSOR):
 	$(Q) mkdir -p tools
   ifeq ($(OS),Windows_NT)
