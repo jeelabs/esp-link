@@ -9,12 +9,6 @@
 
 #ifdef CMD_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
-#else
-#define DBG(format, ...) do { } while(0)
-#endif
-
-extern const CmdList commands[];
-
 static const char *cmd_names[] = {
   "NULL", "RESET", "IS_READY", "WIFI_CONNECT",
   "MQTT_SETUP", "MQTT_CONNECT", "MQTT_DISCONNECT",
@@ -22,6 +16,11 @@ static const char *cmd_names[] = {
   "REST_SETUP", "REST_REQUEST", "REST_SETHEADER", "REST_EVENTS",
   "CB_ADD", "CB_EVENTS",
 };
+#else
+#define DBG(format, ...) do { } while(0)
+#endif
+
+extern const CmdList commands[];
 
 //===== ESP -> Serial responses
 
@@ -125,7 +124,7 @@ CMD_parse_packet(uint8_t *buf, short len) {
   CmdPacket *packet = (CmdPacket*)buf;
   uint8_t *data_ptr = (uint8_t*)&packet->args;
   uint8_t *data_limit = data_ptr+len;
-  uint16_t argn = 0;
+  
   DBG("CMD_parse_packet: cmd=%d(%s) argc=%d cb=%p ret=%lu\n",
       packet->cmd, 
       cmd_names[packet->cmd], 
@@ -136,6 +135,7 @@ CMD_parse_packet(uint8_t *buf, short len) {
 
 #if 0
   // print out arguments  
+  uint16_t argn = 0;
   uint16_t argc = packet->argc;
   while (data_ptr+2 < data_limit && argc--) {
     short l = *(uint16_t*)data_ptr;
@@ -151,7 +151,7 @@ CMD_parse_packet(uint8_t *buf, short len) {
   if (data_ptr <= data_limit) {
     CMD_Exec(commands, packet);
   } else {
-    DBG("CMD_parse_packet: packet length overrun, parsing arg %d\n", argn - 1);
+    DBG("CMD_parse_packet: packet length overrun, parsing arg %d\n", packet->argc);
   }
 }
 

@@ -29,7 +29,7 @@
 #include "console.h"
 #include "config.h"
 #include "log.h"
-#include <gpio.h>
+#include "gpio.h"
 
 static int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData);
 static int ICACHE_FLASH_ATTR cgiSystemSet(HttpdConnData *connData);

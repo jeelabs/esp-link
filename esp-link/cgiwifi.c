@@ -20,7 +20,7 @@ Cgi/template routines for the /wifi url.
 #include "status.h"
 #include "config.h"
 #include "log.h"
-#include "mdns.h"
+#include "sntp.h"
 
 #ifdef CGIWIFI_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
@@ -29,6 +29,7 @@ Cgi/template routines for the /wifi url.
 #endif
 
 static void wifiStartMDNS(struct ip_addr);
+static void wifiStartSNTP();
 
 // ===== wifi status change callbacks
 static WifiStateChangeCb wifi_state_change_cb[4];
@@ -84,6 +85,7 @@ static void ICACHE_FLASH_ATTR wifiHandleEventCb(System_Event_t *evt) {
         IP2STR(&evt->event_info.got_ip.gw));
     statusWifiUpdate(wifiState);
     wifiStartMDNS(evt->event_info.got_ip.ip);
+    wifiStartSNTP();
     break;
   case EVENT_SOFTAPMODE_STACONNECTED:
     DBG("Wifi AP: station " MACSTR " joined, AID = %d\n",
@@ -116,7 +118,6 @@ wifiAddStateChangeCb(WifiStateChangeCb cb) {
 
 static bool mdns_started = false;
 
-//
 static ICACHE_FLASH_ATTR
 void wifiStartMDNS(struct ip_addr ip) {
   if (!mdns_started) {
@@ -127,6 +128,41 @@ void wifiStartMDNS(struct ip_addr ip) {
     mdns_info->ipAddr = ip.addr;
     espconn_mdns_init(mdns_info);
     mdns_started = true;    
+  }
+}
+
+static bool sntp_started = false;
+
+static ETSTimer sntp_timer;
+
+void ICACHE_FLASH_ATTR 
+user_check_sntp_stamp(void *arg){
+  uint32 current_stamp;
+  current_stamp = sntp_get_current_timestamp();
+  if (current_stamp == 0){
+    os_timer_arm(&sntp_timer, 100, 0);
+  }
+  else{
+    os_timer_disarm(&sntp_timer);
+    os_printf("sntp: %d, %s \n", current_stamp, sntp_get_real_time(current_stamp));
+  }
+}
+
+static ICACHE_FLASH_ATTR
+void wifiStartSNTP() {
+  if (!sntp_started) {
+    ip_addr_t *addr = (ip_addr_t *)os_zalloc(sizeof(ip_addr_t));
+    sntp_setservername(0, "us.pool.ntp.org"); // set server 0 by domain name
+    sntp_setservername(1, "ntp.sjtu.edu.cn"); // set server 1 by domain name
+    IP4_ADDR(addr, 210, 72, 145, 44);
+    sntp_setserver(2, addr); // set server 2 by IP address
+    sntp_init();
+    os_free(addr);
+    
+    os_timer_disarm(&sntp_timer);
+    os_timer_setfn(&sntp_timer, (os_timer_func_t *)user_check_sntp_stamp, NULL);
+    os_timer_arm(&sntp_timer, 100, 0);
+    sntp_started = true;
   }
 }
 
