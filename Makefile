@@ -15,6 +15,12 @@
 # Original from esphttpd and others...
 # VERBOSE=1
 
+# The Wifi station configuration can be hard-coded here, which makes esp-link come up in STA+AP
+# mode trying to connect to the specified AP *only* if the flash wireless settings are empty!
+# This happens on a full serial flash and avoids having to hunt for the AP...
+# STA_SSID ?= 
+# STA_PASS ?= 
+
 # --------------- toolchain configuration ---------------
 
 # Base directory for the compiler. Needs a / at the end.
