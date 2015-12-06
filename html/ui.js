@@ -164,14 +164,14 @@ function ajaxReq(method, url, ok_cb, err_cb) {
     if (xhr.readyState != 4) { return; }
     clearTimeout(timeout);
     if (xhr.status >= 200 && xhr.status < 300) {
-      console.log("XHR done:", method, url, "->", xhr.status);
+//      console.log("XHR done:", method, url, "->", xhr.status);
       ok_cb(xhr.responseText);
     } else {
       console.log("XHR ERR :", method, url, "->", xhr.status, xhr.responseText, xhr);
       err_cb(xhr.status, xhr.responseText);
     }
   }
-  console.log("XHR send:", method, url);
+//  console.log("XHR send:", method, url);
   try {
     xhr.send();
   } catch(err) {
@@ -244,7 +244,7 @@ onLoad(function() {
   // make hamburger button pull out menu
   var ml = $('#menuLink'), mm = $('#menu');
   bnd(ml, 'click', function (e) {
-    console.log("hamburger time");
+//    console.log("hamburger time");
       var active = 'active';
       e.preventDefault();
       toggleClass(l, active);
@@ -346,7 +346,7 @@ function makeAjaxInput(klass, field) {
     }
 
     var submitEditToClick = function(v) {
-      console.log("Submit POST "+url+"="+v);
+//      console.log("Submit POST "+url+"="+v);
       ajaxSpin("POST", url+"="+v, function() {
         domForEach(eon, function(el){ el.setAttribute('hidden',''); });
         eoff.removeAttribute('hidden');
@@ -410,7 +410,7 @@ function createPresets(sel) {
   function applyPreset(v) {
     var pp = pinPresets[v];
     if (pp === undefined) return pp;
-    console.log("apply preset:", v, pp);
+//    console.log("apply preset:", v, pp);
     function setPP(k, v) { $("#pin-"+k).value = v; };
     setPP("reset", pp[0]);
     setPP("isp",   pp[1]);
@@ -474,7 +474,7 @@ function setPins(ev) {
     sep = "&";
   });
   url += "&rxpup=" + ($("#pin-rxpup").selected ? "1" : "0");
-  console.log("set pins: " + url);
+//  console.log("set pins: " + url);
   ajaxSpin("POST", url, function() {
     showNotification("Pin assignment changed");
   }, function(status, errMsg) {

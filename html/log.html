@@ -9,6 +9,8 @@
       <div class="pure-g">
         <p class="pure-u-1-4">
           <a id="refresh-button" class="pure-button button-primary" href="#">Refresh</a>
+          <a id="reboot-button" class="pure-button button-primary" href="#">Reboot esp-link</a>
+          <a id="clear-button" class="pure-button button-primary" href="#">Clear Log</a>
         </p>
         <p class="pure-u-3-4" style="vertical-align: baseline">
           UART debug log:
@@ -32,6 +34,22 @@
     $("#refresh-button").addEventListener("click", function(e) {
       e.preventDefault();
       fetchText(100, false);
+    });
+
+    $("#reboot-button").addEventListener("click", function (e) {
+        e.preventDefault();
+        var co = $("#console");
+        co.innerHTML = "";
+        ajaxSpin('POST', "/log/reboot",
+          function (resp) { showNotification("esp-link reset"); co.textEnd = 0; },
+          function (s, st) { showWarning("Error resetting esp-link"); }
+        );
+    });
+
+    $("#clear-button").addEventListener("click", function (e) {
+        e.preventDefault();
+        var co = $("#console");
+        co.innerHTML = "";
     });
 
     ["auto", "off", "on0", "on1"].forEach(function(mode) {

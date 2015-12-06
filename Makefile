@@ -8,10 +8,12 @@
 # `VERBOSE=1 make ...` will print debug info
 # `ESP_HOSTNAME=my.esp.example.com make wiflash` is an easy way to override a variable
 #
+# optional local configuration file
+-include local.conf
 # Makefile heavily adapted to esp-link and wireless flashing by Thorsten von Eicken
 # Lots of work, in particular to support windows, by brunnels
 # Original from esphttpd and others...
-#VERBOSE=1
+# VERBOSE=1
 
 # --------------- toolchain configuration ---------------
 
@@ -63,7 +65,7 @@ LED_SERIAL_PIN      ?= 14
 CHANGE_TO_STA ?= yes
 
 # Optional Modules
-MODULES ?= mqtt rest
+MODULES ?= mqtt rest syslog
 
 # --------------- esphttpd config options ---------------
 
@@ -93,6 +95,25 @@ HTML_COMPRESSOR ?= htmlcompressor-1.5.3.jar
 YUI_COMPRESSOR ?= yuicompressor-2.4.8.jar
 
 # -------------- End of config options -------------
+
+ifeq ("$(FLASH_SIZE)","512KB")
+# Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
+ESP_SPI_SIZE        ?= 0      # 0->512KB
+ESP_FLASH_MODE      ?= 0      # 0->QIO
+ESP_FLASH_FREQ_DIV  ?= 0      # 0->40Mhz
+ESP_FLASH_MAX       ?= 241664 # max bin file for 512KB flash: 236KB
+
+else
+# Winbond 25Q32 4MB flash, typ for esp-12
+# Here we're using two partitions of approx 0.5MB because that's what's easily available in terms
+# of linker scripts in the SDK. Ideally we'd use two partitions of approx 1MB, the remaining 2MB
+# cannot be used for code.
+ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
+#ESP_FLASH_MAX       ?= 1028096 # max bin file for 1MB flash partition: 1004KB
+endif
 
 HTML_PATH = $(abspath ./html)/
 WIFI_PATH = $(HTML_PATH)wifi/
@@ -176,6 +197,10 @@ endif
 
 ifneq (,$(findstring rest,$(MODULES)))
 	CFLAGS		+= -DREST
+endif
+
+ifneq (,$(findstring syslog,$(MODULES)))
+	CFLAGS		+= -DSYSLOG
 endif
 
 # which modules (subdirectories) of the project to include in compiling
@@ -335,7 +360,7 @@ flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
-	  
+
 tools/$(HTML_COMPRESSOR):
 	$(Q) mkdir -p tools
   ifeq ($(OS),Windows_NT)

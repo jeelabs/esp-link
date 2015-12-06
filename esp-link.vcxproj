@@ -18,6 +18,7 @@
     <ClCompile Include="esp-link\cgimqtt.c" />
     <ClCompile Include="esp-link\cgioptiboot.c" />
     <ClCompile Include="esp-link\cgipins.c" />
+    <ClCompile Include="esp-link\cgiservices.c" />
     <ClCompile Include="esp-link\cgitcp.c" />
     <ClCompile Include="esp-link\cgiwifi.c" />
     <ClCompile Include="esp-link\config.c" />
@@ -26,6 +27,7 @@
     <ClCompile Include="esp-link\mdns.c" />
     <ClCompile Include="esp-link\mqtt_client.c" />
     <ClCompile Include="esp-link\status.c" />
+    <ClCompile Include="esp-link\task.c" />
     <ClCompile Include="espfs\espfs.c" />
     <ClCompile Include="espfs\mkespfsimage\main.c" />
     <ClCompile Include="espfs\mkespfsimage\mman-win32\mman.c" />
@@ -45,6 +47,7 @@
     <ClCompile Include="serial\serled.c" />
     <ClCompile Include="serial\slip.c" />
     <ClCompile Include="serial\uart.c" />
+    <ClCompile Include="syslog\syslog.c" />
     <ClCompile Include="user\user_main.c" />
   </ItemGroup>
   <ItemGroup>
@@ -54,6 +57,7 @@
     <ClInclude Include="esp-link\cgimqtt.h" />
     <ClInclude Include="esp-link\cgioptiboot.h" />
     <ClInclude Include="esp-link\cgipins.h" />
+    <ClInclude Include="esp-link\cgiservices.h" />
     <ClInclude Include="esp-link\cgitcp.h" />
     <ClInclude Include="esp-link\cgiwifi.h" />
     <ClInclude Include="esp-link\config.h" />
@@ -62,6 +66,7 @@
     <ClInclude Include="esp-link\mqtt_client.h" />
     <ClInclude Include="esp-link\status.h" />
     <ClInclude Include="esp-link\stk500.h" />
+    <ClInclude Include="esp-link\task.h" />
     <ClInclude Include="espfs\espfs.h" />
     <ClInclude Include="espfs\espfsformat.h" />
     <ClInclude Include="espfs\mkespfsimage\mman-win32\mman.h" />
@@ -84,8 +89,10 @@
     <ClInclude Include="serial\serled.h" />
     <ClInclude Include="serial\slip.h" />
     <ClInclude Include="serial\uart.h" />
+    <ClInclude Include="syslog\syslog.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".gitignore" />
     <None Include="avrflash" />
     <None Include="BOARDS.md" />
     <None Include="espmake.cmd" />
@@ -99,6 +106,8 @@
     <None Include="html\mqtt.html" />
     <None Include="html\mqtt.js" />
     <None Include="html\pure.css" />
+    <None Include="html\services.html" />
+    <None Include="html\services.js" />
     <None Include="html\style.css" />
     <None Include="html\ui.js" />
     <None Include="html\wifi\wifi.html" />
@@ -106,6 +115,7 @@
     <None Include="Makefile" />
     <None Include="README.md" />
     <None Include="wiflash" />
+    <None Include="WINDOWS.md" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="esp-link.log" />
@@ -131,8 +141,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <NMakeOutput />
-    <NMakePreprocessorDefinitions>__ets__;_STDINT_H;ICACHE_FLASH;__MINGW32__;__WIN32__;MQTT;REST</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>.\rest;.\esp-link;.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.5.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
+    <NMakePreprocessorDefinitions>__ets__;_STDINT_H;ICACHE_FLASH;__MINGW32__;__WIN32__;MQTT;REST;SYSLOG;FIRMWARE_SIZE</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>.\syslog;.\rest;.\esp-link;.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.5.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
     <ExecutablePath />
     <ReferencePath />
     <LibraryPath />

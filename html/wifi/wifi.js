@@ -82,7 +82,7 @@ function scanResult() {
 }
 
 function scanAPs() {
-  console.log("scanning now");
+//  console.log("scanning now");
   if (blockScan) {
     scanTimeout = window.setTimeout(scanAPs, 1000);
     return;
@@ -184,7 +184,7 @@ function changeSpecial(e) {
   addClass(cb, 'pure-button-disabled');
   ajaxSpin("POST", url, function(resp) {
       removeClass(cb, 'pure-button-disabled');
-      getWifiInfo();
+      //getWifiInfo(); // it takes 1 second for new settings to be applied
     }, function(s, st) {
       showWarning("Error: "+st);
       removeClass(cb, 'pure-button-disabled');

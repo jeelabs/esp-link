@@ -16,7 +16,9 @@ int cgiWiFiSpecial(HttpdConnData *connData);
 void configWifiIP();
 void wifiInit(void);
 void wifiAddStateChangeCb(WifiStateChangeCb cb);
+void wifiStartMDNS(struct ip_addr);
 
 extern uint8_t wifiState;
+extern bool mdns_started;
 
 #endif

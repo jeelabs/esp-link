@@ -21,10 +21,23 @@ typedef struct {
            mqtt_timeout,               // MQTT send timeout
            mqtt_clean_session;         // MQTT clean session
   uint16_t mqtt_port, mqtt_keepalive;  // MQTT Host port, MQTT Keepalive timer
-  char     mqtt_host[32], mqtt_clientid[48], mqtt_username[32], mqtt_password[32];
-  char     mqtt_status_topic[32];
+  char     mqtt_host[32], 
+           mqtt_clientid[48], 
+           mqtt_username[32], 
+           mqtt_password[32],
+           mqtt_status_topic[32];
   char     sys_descr[129];             // system description
   int8_t   rx_pullup;                  // internal pull-up on RX pin
+  uint8_t  mdns_enable;
+  char     mdns_servername[32],
+           sntp_server[32];
+  int8_t   timezone_offset;
+  uint8_t  syslog_enable;
+  char     syslog_host[32];
+  uint16_t syslog_minheap;               // min. heap to allow queuing
+  uint8_t  syslog_filter,                // min. severity
+           syslog_showtick,              // show system tick (µs)
+           syslog_showdate;              // populate SYSLOG date field
 } FlashConfig;
 extern FlashConfig flashConfig;
 

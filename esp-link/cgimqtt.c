@@ -16,6 +16,12 @@ char *mqttState(void) {
 #include "mqtt_client.h"
 #include "cgimqtt.h"
 
+#ifdef CGIMQTT_DBG
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
+#else
+#define DBG(format, ...) do { } while(0)
+#endif
+
 char *mqttState(void) {
   return mqtt_states[mqttClient.connState];
 }
@@ -69,7 +75,6 @@ int ICACHE_FLASH_ATTR cgiMqttGet(HttpdConnData *connData) {
   return HTTPD_CGI_DONE;
 }
 
-// Cgi to change choice of pin assignments
 int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE;
 
@@ -124,17 +129,14 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
 
   // if server setting changed, we need to "make it so"
   if (mqtt_server) {
-#ifdef CGIMQTT_DBG
-    os_printf("MQTT server settings changed, enable=%d\n", flashConfig.mqtt_enable);
-#endif
+    DBG("MQTT server settings changed, enable=%d\n", flashConfig.mqtt_enable);
     MQTT_Free(&mqttClient); // safe even if not connected
     mqtt_client_init();
 
   // if just enable changed we just need to bounce the client
-  } else if (mqtt_en_chg > 0) {
-#ifdef CGIMQTT_DBG
-    os_printf("MQTT server enable=%d changed\n", flashConfig.mqtt_enable);
-#endif
+  } 
+  else if (mqtt_en_chg > 0) {
+    DBG("MQTT server enable=%d changed\n", flashConfig.mqtt_enable);
     if (flashConfig.mqtt_enable && strlen(flashConfig.mqtt_host) > 0)
       MQTT_Reconnect(&mqttClient);
     else
@@ -152,11 +154,11 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
   // if SLIP-enable is toggled it gets picked-up immediately by the parser
   int slip_update = getBoolArg(connData, "slip-enable", &flashConfig.slip_enable);
   if (slip_update < 0) return HTTPD_CGI_DONE;
-#ifdef CGIMQTT_DBG
-  if (slip_update > 0) os_printf("SLIP-enable changed: %d\n", flashConfig.slip_enable);
+  if (slip_update > 0) 
+    DBG("SLIP-enable changed: %d\n", flashConfig.slip_enable);
 
-  os_printf("Saving config\n");
-#endif
+  DBG("Saving config\n");
+
   if (configSave()) {
     httpdStartResponse(connData, 200);
     httpdEndHeaders(connData);
@@ -178,4 +180,4 @@ int ICACHE_FLASH_ATTR cgiMqtt(HttpdConnData *connData) {
     return HTTPD_CGI_DONE;
   }
 }
-#endif // MQTT
+#endif

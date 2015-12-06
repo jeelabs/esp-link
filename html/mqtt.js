@@ -44,7 +44,7 @@ function displayMqtt(data) {
   var i, inputs = $("input");
   for (i = 0; i < inputs.length; i++) {
     if (inputs[i].type == "checkbox")
-      inputs[i].onclick = function () { console.log(this); setMqtt(this.name, this.checked) };
+      inputs[i].onclick = function () { setMqtt(this.name, this.checked) };
   }
 }
 

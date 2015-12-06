@@ -18,7 +18,12 @@ Some flash handling cgi routines. Used for reading the existing flash and updati
 #include <osapi.h>
 #include "cgi.h"
 #include "cgiflash.h"
-#include "espfs.h"
+
+#ifdef CGIFLASH_DBG
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
+#else
+#define DBG(format, ...) do { } while(0)
+#endif
 
 // Check that the header of the firmware blob looks like actual firmware...
 static char* ICACHE_FLASH_ATTR check_header(void *buf) {
@@ -58,10 +63,7 @@ int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
 	httpdEndHeaders(connData);
 	char *next = id == 1 ? "user1.bin" : "user2.bin";
 	httpdSend(connData, next, -1);
-#ifdef CGIFLASH_DBG
-	os_printf("Next firmware: %s (got %d)\n", next, id);
-#endif
-
+  DBG("Next firmware: %s (got %d)\n", next, id);
 	return HTTPD_CGI_DONE;
 }
 
@@ -103,9 +105,7 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 
 	// return an error if there is one
 	if (err != NULL) {
-#ifdef CGIFLASH_DBG
-		os_printf("Error %d: %s\n", code, err);
-#endif
+    DBG("Error %d: %s\n", code, err);
 		httpdStartResponse(connData, code);
 		httpdHeader(connData, "Content-Type", "text/plain");
 		//httpdHeader(connData, "Content-Length", strlen(err)+2);
@@ -124,14 +124,12 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 
 	// erase next flash block if necessary
 	if (address % SPI_FLASH_SEC_SIZE == 0){
-#ifdef CGIFLASH_DBG
-		os_printf("Flashing 0x%05x (id=%d)\n", address, 2-id);
-#endif
+    DBG("Flashing 0x%05x (id=%d)\n", address, 2 - id);
 		spi_flash_erase_sector(address/SPI_FLASH_SEC_SIZE);
 	}
 
 	// Write the data
-	//os_printf("Writing %d bytes at 0x%05x (%d of %d)\n", connData->post->buffSize, address,
+	//DBG("Writing %d bytes at 0x%05x (%d of %d)\n", connData->post->buffSize, address,
 	//		connData->post->received, connData->post->len);
 	spi_flash_write(address, (uint32 *)connData->post->buff, connData->post->buffLen);
 
@@ -150,10 +148,10 @@ static ETSTimer flash_reboot_timer;
 int ICACHE_FLASH_ATTR cgiRebootFirmware(HttpdConnData *connData) {
 	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
-        if (!canOTA()) {
-          errorResponse(connData, 400, flash_too_small);
-          return HTTPD_CGI_DONE;
-        }
+  if (!canOTA()) {
+    errorResponse(connData, 400, flash_too_small);
+    return HTTPD_CGI_DONE;
+  }
 
 	// sanity-check that the 'next' partition actually contains something that looks like
 	// valid firmware
@@ -161,15 +159,11 @@ int ICACHE_FLASH_ATTR cgiRebootFirmware(HttpdConnData *connData) {
 	int address = id == 1 ? 4*1024                   // either start after 4KB boot partition
 	    : 4*1024 + FIRMWARE_SIZE + 16*1024 + 4*1024; // 4KB boot, fw1, 16KB user param, 4KB reserved
 	uint32 buf[8];
-#ifdef CGIFLASH_DBG
-	os_printf("Checking %p\n", (void *)address);
-#endif
+  DBG("Checking %p\n", (void *)address);
 	spi_flash_read(address, buf, sizeof(buf));
 	char *err = check_header(buf);
 	if (err != NULL) {
-#ifdef CGIFLASH_DBG
-		os_printf("Error %d: %s\n", 400, err);
-#endif
+    DBG("Error %d: %s\n", 400, err);
 		httpdStartResponse(connData, 400);
 		httpdHeader(connData, "Content-Type", "text/plain");
 		//httpdHeader(connData, "Content-Length", strlen(err)+2);
@@ -189,4 +183,19 @@ int ICACHE_FLASH_ATTR cgiRebootFirmware(HttpdConnData *connData) {
 	os_timer_setfn(&flash_reboot_timer, (os_timer_func_t *)system_upgrade_reboot, NULL);
 	os_timer_arm(&flash_reboot_timer, 2000, 1);
 	return HTTPD_CGI_DONE;
+}
+
+int ICACHE_FLASH_ATTR cgiReboot(HttpdConnData *connData) {
+  if (connData->conn == NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+
+  httpdStartResponse(connData, 200);
+  httpdHeader(connData, "Content-Length", "0");
+  httpdEndHeaders(connData);
+
+  // Schedule a reboot
+  system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
+  os_timer_disarm(&flash_reboot_timer);
+  os_timer_setfn(&flash_reboot_timer, (os_timer_func_t *)system_upgrade_reboot, NULL);
+  os_timer_arm(&flash_reboot_timer, 2000, 1);
+  return HTTPD_CGI_DONE;
 }
