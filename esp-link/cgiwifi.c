@@ -60,28 +60,29 @@ static void ICACHE_FLASH_ATTR wifiHandleEventCb(System_Event_t *evt) {
     wifiState = wifiIsConnected;
     wifiReason = 0;
     DBG("Wifi connected to ssid %s, ch %d\n", evt->event_info.connected.ssid,
-        evt->event_info.connected.channel);
+      evt->event_info.connected.channel);
     statusWifiUpdate(wifiState);
     break;
   case EVENT_STAMODE_DISCONNECTED:
     wifiState = wifiIsDisconnected;
     wifiReason = evt->event_info.disconnected.reason;
     DBG("Wifi disconnected from ssid %s, reason %s (%d)\n",
-        evt->event_info.disconnected.ssid, wifiGetReason(), evt->event_info.disconnected.reason);
+      evt->event_info.disconnected.ssid, wifiGetReason(), evt->event_info.disconnected.reason);
     statusWifiUpdate(wifiState);
     break;
   case EVENT_STAMODE_AUTHMODE_CHANGE:
     DBG("Wifi auth mode: %d -> %d\n",
-        evt->event_info.auth_change.old_mode, evt->event_info.auth_change.new_mode);
+      evt->event_info.auth_change.old_mode, evt->event_info.auth_change.new_mode);
     break;
   case EVENT_STAMODE_GOT_IP:
     wifiState = wifiGotIP;
     wifiReason = 0;
     DBG("Wifi got ip:" IPSTR ",mask:" IPSTR ",gw:" IPSTR "\n",
-        IP2STR(&evt->event_info.got_ip.ip), IP2STR(&evt->event_info.got_ip.mask),
-        IP2STR(&evt->event_info.got_ip.gw));
+      IP2STR(&evt->event_info.got_ip.ip), IP2STR(&evt->event_info.got_ip.mask),
+      IP2STR(&evt->event_info.got_ip.gw));
     statusWifiUpdate(wifiState);
-    wifiStartMDNS(evt->event_info.got_ip.ip);
+    if (!mdns_started)
+      wifiStartMDNS(evt->event_info.got_ip.ip);
     break;
   case EVENT_SOFTAPMODE_STACONNECTED:
     DBG("Wifi AP: station " MACSTR " joined, AID = %d\n",
@@ -112,15 +113,19 @@ void ICACHE_FLASH_ATTR wifiAddStateChangeCb(WifiStateChangeCb cb) {
 }
 
 void ICACHE_FLASH_ATTR wifiStartMDNS(struct ip_addr ip) {
-  if (!mdns_started) {
+  if (flashConfig.mdns_enable) {
     struct mdns_info *mdns_info = (struct mdns_info *)os_zalloc(sizeof(struct mdns_info));
     mdns_info->host_name = flashConfig.hostname;
-    mdns_info->server_name = flashConfig.mdns_servername; // service name
-    mdns_info->server_port = 80;     // service port
+    mdns_info->server_name = flashConfig.mdns_servername;
+    mdns_info->server_port = 80;
     mdns_info->ipAddr = ip.addr;
     espconn_mdns_init(mdns_info);    
-    mdns_started = true;    
   }
+  else {    
+    espconn_mdns_server_unregister();
+    espconn_mdns_close();
+  }
+  mdns_started = true;
 }
 
 // ===== wifi scanning

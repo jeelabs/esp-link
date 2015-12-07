@@ -91,13 +91,14 @@ int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
   return HTTPD_CGI_DONE;
 }
 
-static void ICACHE_FLASH_ATTR cgiServicesSNTPInit() {
-  if (flashConfig.sntp_server[0]) {
-    DBG("SNTP timesource set to %s with offset %d\n", flashConfig.sntp_server, flashConfig.timezone_offset);
+void ICACHE_FLASH_ATTR cgiServicesSNTPInit() {
+  if (flashConfig.sntp_server[0] != '\0') {    
     sntp_stop();
-    sntp_setservername(0, flashConfig.sntp_server);
-    sntp_set_timezone(flashConfig.timezone_offset);
-    sntp_init();
+    if (true == sntp_set_timezone(flashConfig.timezone_offset)) {
+      sntp_setservername(0, flashConfig.sntp_server);  
+      sntp_init();
+    }
+    DBG("SNTP timesource set to %s with offset %d\n", flashConfig.sntp_server, flashConfig.timezone_offset);
   }
 }
 
@@ -162,34 +163,38 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
 
   int8_t mdns = 0;
   mdns |= getBoolArg(connData, "mdns_enable", &flashConfig.mdns_enable);
-  if (mdns < 0) return HTTPD_CGI_DONE;
-  mdns |= getStringArg(connData, "mdns_servername", flashConfig.mdns_servername, sizeof(flashConfig.mdns_servername));
-  if (mdns < 0) return HTTPD_CGI_DONE;
-  
-  if (syslog > 0) {
-    if (!flashConfig.syslog_enable) {
-      flashConfig.syslog_host[0] = '\0';
+  if (mdns < 0) 
+    return HTTPD_CGI_DONE;
+  else if (flashConfig.mdns_enable){
+    struct ip_info ipconfig;
+    wifi_get_ip_info(STATION_IF, &ipconfig);
+
+    if (wifiState == wifiGotIP && ipconfig.ip.addr != 0) {
+      wifiStartMDNS(ipconfig.ip);
     }
+  }
+  else {
+    espconn_mdns_server_unregister();
+    espconn_mdns_close();
+    mdns_started = true;
+  }
+
+  mdns |= getStringArg(connData, "mdns_servername", flashConfig.mdns_servername, sizeof(flashConfig.mdns_servername));
+  if (mdns < 0) 
+    return HTTPD_CGI_DONE;
+  else if(mdns_started) {
+    espconn_mdns_server_unregister();
+    espconn_mdns_close();
+    espconn_mdns_set_servername(flashConfig.mdns_servername);
+    espconn_mdns_server_register();
+  } 
+
+  if (syslog > 0) {    
     syslog_init(flashConfig.syslog_host);
   }
 
   if (sntp > 0) {
     cgiServicesSNTPInit();
-  }
-
-  if (mdns > 0) {
-    espconn_mdns_disable();
-    if (flashConfig.mdns_enable) {
-      struct ip_info ipconfig;
-      wifi_get_ip_info(STATION_IF, &ipconfig);
-      mdns_started = false;
-      if (wifiState == wifiGotIP && ipconfig.ip.addr != 0) {
-        wifiStartMDNS(ipconfig.ip);
-      }
-    }
-    else {
-      mdns_started = true;
-    }       
   }
 
   if (configSave()) {

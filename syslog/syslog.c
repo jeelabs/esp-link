@@ -234,12 +234,15 @@ static void ICACHE_FLASH_ATTR syslog_gethostbyname_cb(const char *name, ip_addr_
  /******************************************************************************
   * FunctionName : initSyslog
   * Description  : Initialize the syslog library
-  * Parameters   : hostname -- the syslog server (host:port)
+  * Parameters   : syslog_host -- the syslog host (host:port)
   * 			   host:  IP-Addr | hostname
   * Returns      : none
  *******************************************************************************/
-void ICACHE_FLASH_ATTR syslog_init(char *syslog_server)
+void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
 {
+  if (!flashConfig.syslog_enable) {
+    syslog_host[0] = '\0';
+  }
   char host[32], *port = &host[0];
 
   syslog_task = register_usr_task(syslog_udp_send_event);
@@ -247,7 +250,7 @@ void ICACHE_FLASH_ATTR syslog_init(char *syslog_server)
   syslogHost.port = 514;
   syslogState = SYSLOG_WAIT;
 
-  os_strncpy(host, syslog_server, 32);
+  os_strncpy(host, syslog_host, 32);
   while (*port && *port != ':')			// find port delimiter
     port++;
   if (*port) {

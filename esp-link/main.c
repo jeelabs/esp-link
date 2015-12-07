@@ -176,7 +176,7 @@ void user_init(void) {
       fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
   NOTICE("** esp-link ready");
 
-  //enableSNTP();
+  cgiServicesSNTPInit();
 
 #ifdef MQTT
   NOTICE("initializing MQTT");

@@ -6,6 +6,7 @@
 int cgiSystemSet(HttpdConnData *connData);
 int cgiSystemInfo(HttpdConnData *connData);
 
+void cgiServicesSNTPInit();
 int cgiServicesInfo(HttpdConnData *connData);
 int cgiServicesSet(HttpdConnData *connData);
 

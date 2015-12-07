@@ -1,9 +1,11 @@
 function changeServices(e) {
   e.preventDefault();
   var url = "services/update?1=1";
-  var i, inputs = document.querySelectorAll('#' + e.srcElement.id + ' input');
+  var i, inputs = document.querySelectorAll("#" + e.srcElement.id + " input");
   for (i = 0; i < inputs.length; i++) {
     if (inputs[i].type == "checkbox") {
+      if (inputs[i].name.slice(-6) == "enable")
+        continue;
       var val = (inputs[i].checked) ? 1 : 0;
       url += "&" + inputs[i].name + "=" + val;
     }
@@ -14,13 +16,13 @@ function changeServices(e) {
   hideWarning();
   var n = e.srcElement.id.replace("-form", "");
   var cb = $("#" + n + "-button");
-  addClass(cb, 'pure-button-disabled');
+  addClass(cb, "pure-button-disabled");
   ajaxSpin("POST", url, function (resp) {
     showNotification(n + " updated");
-    removeClass(cb, 'pure-button-disabled');
+    removeClass(cb, "pure-button-disabled");
   }, function (s, st) {
     showWarning("Error: " + st);
-    removeClass(cb, 'pure-button-disabled');
+    removeClass(cb, "pure-button-disabled");
     window.setTimeout(fetchServices, 100);
   });
 }
