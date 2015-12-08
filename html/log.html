@@ -7,12 +7,11 @@
       <p>The debug log shows the most recent characters printed by the esp-link software itself to
       its own debug log.</p>
       <div class="pure-g">
-        <p class="pure-u-1-4">
+        <p class="pure-u-1-4" style="vertical-align: baseline;width:40%">
           <a id="refresh-button" class="pure-button button-primary" href="#">Refresh</a>
-          <a id="reboot-button" class="pure-button button-primary" href="#">Reboot esp-link</a>
-          <a id="clear-button" class="pure-button button-primary" href="#">Clear Log</a>
+          &nbsp;<a id="reset-button" class="dbg-btn pure-button button-primary" href="#">Reset esp-link</a>
         </p>
-        <p class="pure-u-3-4" style="vertical-align: baseline">
+        <p class="pure-u-3-4" style="vertical-align: baseline;width:60%">
           UART debug log:
           <a id="dbg-auto" class="dbg-btn pure-button" href="#">auto</a>
           <a id="dbg-off" class="dbg-btn pure-button" href="#">off</a>
@@ -36,20 +35,14 @@
       fetchText(100, false);
     });
 
-    $("#reboot-button").addEventListener("click", function (e) {
+    $("#reset-button").addEventListener("click", function (e) {
         e.preventDefault();
         var co = $("#console");
         co.innerHTML = "";
-        ajaxSpin('POST', "/log/reboot",
-          function (resp) { showNotification("esp-link reset"); co.textEnd = 0; },
+        ajaxSpin('POST', "/log/reset",
+          function (resp) { showNotification("Resetting esp-link"); co.textEnd = 0; fetchText(2000, false); },
           function (s, st) { showWarning("Error resetting esp-link"); }
         );
-    });
-
-    $("#clear-button").addEventListener("click", function (e) {
-        e.preventDefault();
-        var co = $("#console");
-        co.innerHTML = "";
     });
 
     ["auto", "off", "on0", "on1"].forEach(function(mode) {

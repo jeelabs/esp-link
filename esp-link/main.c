@@ -57,7 +57,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/pgm/upload", cgiOptibootData, NULL },
   { "/log/text", ajaxLog, NULL },
   { "/log/dbg", ajaxLogDbg, NULL },
-  { "/log/reboot", cgiReboot, NULL },
+  { "/log/reset", cgiReset, NULL },
   { "/console/reset", ajaxConsoleReset, NULL },
   { "/console/baud", ajaxConsoleBaud, NULL },
   { "/console/text", ajaxConsole, NULL },
