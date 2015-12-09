@@ -240,8 +240,9 @@ static void ICACHE_FLASH_ATTR syslog_gethostbyname_cb(const char *name, ip_addr_
  *******************************************************************************/
 void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
 {
-  if (!flashConfig.syslog_enable) {
-    syslog_host[0] = '\0';
+  if (!*syslog_host) {
+    syslogState = SYSLOG_HALTED;
+    return;
   }
   char host[32], *port = &host[0];
 

@@ -53,16 +53,13 @@ function displayServices(data) {
 
   var i, inputs = $("input");
   for (i = 0; i < inputs.length; i++) {
-    if (inputs[i].type == "checkbox" && (inputs[i].name == "syslog_enable" || inputs[i].name == "mdns_enable"))
-      inputs[i].onclick = function () { setService(this.name, this.checked) };
+    if (inputs[i].name == "mdns_enable") inputs[i].onclick = function () { setMDNS(this.checked) };
   }
 }
 
-function setService(name, v) {
-  ajaxSpin("POST", "/services/update?" + name + "=" + (v ? 1 : 0), function () {
-    var n = name.replace("_enable", "");
-    n = (n == "syslog") ? "Syslog" : "mDNS";
-    showNotification(n + " is now " + (v ? "enabled" : "disabled"));
+function setMDNS(v) {
+  ajaxSpin("POST", "/services/update?mdns_enable=" + (v ? 1 : 0), function () {
+    showNotification("mDNS is now " + (v ? "enabled" : "disabled"));
   }, function () {
     showWarning("Enable/disable failed");
     window.setTimeout(fetchServices, 100);

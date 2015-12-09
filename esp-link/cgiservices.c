@@ -108,8 +108,7 @@ int ICACHE_FLASH_ATTR cgiServicesInfo(HttpdConnData *connData) {
   if (connData->conn == NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
   os_sprintf(buff, 
-    "{ "    
-      "\"syslog_enable\": \"%s\", "
+    "{ "
       "\"syslog_host\": \"%s\", "
       "\"syslog_minheap\": %d, "
       "\"syslog_filter\": %d, "
@@ -120,7 +119,6 @@ int ICACHE_FLASH_ATTR cgiServicesInfo(HttpdConnData *connData) {
       "\"mdns_enable\": \"%s\", "
       "\"mdns_servername\": \"%s\""
     " }",    
-    flashConfig.syslog_enable ? "enabled" : "disabled",
     flashConfig.syslog_host,
     flashConfig.syslog_minheap,
     flashConfig.syslog_filter,
@@ -142,8 +140,6 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
 
   int8_t syslog = 0;
 
-  syslog |= getBoolArg(connData, "syslog_enable", &flashConfig.syslog_enable);
-  if (syslog < 0) return HTTPD_CGI_DONE;
   syslog |= getStringArg(connData, "syslog_host", flashConfig.syslog_host, sizeof(flashConfig.syslog_host));
   if (syslog < 0) return HTTPD_CGI_DONE;
   syslog |= getUInt16Arg(connData, "syslog_minheap", &flashConfig.syslog_minheap);
