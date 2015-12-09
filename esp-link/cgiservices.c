@@ -98,7 +98,7 @@ void ICACHE_FLASH_ATTR cgiServicesSNTPInit() {
       sntp_setservername(0, flashConfig.sntp_server);  
       sntp_init();
     }
-    DBG("SNTP timesource set to %s with offset %d\n", flashConfig.sntp_server, flashConfig.timezone_offset);
+    DBG("SNTP timesource set to %s with offset %d", flashConfig.sntp_server, flashConfig.timezone_offset);
   }
 }
 
@@ -151,46 +151,56 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   syslog |= getBoolArg(connData, "syslog_showdate", &flashConfig.syslog_showdate);
   if (syslog < 0) return HTTPD_CGI_DONE;
 
+  if (syslog > 0) {
+    syslog_init(flashConfig.syslog_host);
+  }
+
   int8_t sntp = 0;
   sntp |= getInt8Arg(connData, "timezone_offset", &flashConfig.timezone_offset);
   if (sntp < 0) return HTTPD_CGI_DONE;
   sntp |= getStringArg(connData, "sntp_server", flashConfig.sntp_server, sizeof(flashConfig.sntp_server));
   if (sntp < 0) return HTTPD_CGI_DONE;
 
+  if (sntp > 0) {
+    cgiServicesSNTPInit();
+  }
+
   int8_t mdns = 0;
   mdns |= getBoolArg(connData, "mdns_enable", &flashConfig.mdns_enable);
-  if (mdns < 0) 
-    return HTTPD_CGI_DONE;
-  else if (flashConfig.mdns_enable){
-    struct ip_info ipconfig;
-    wifi_get_ip_info(STATION_IF, &ipconfig);
+  if (mdns < 0) return HTTPD_CGI_DONE;
+    
+  if (mdns > 0) {
+    if (flashConfig.mdns_enable){
+      DBG("Services: MDNS Enabled\n");
+      struct ip_info ipconfig;
+      wifi_get_ip_info(STATION_IF, &ipconfig);
 
-    if (wifiState == wifiGotIP && ipconfig.ip.addr != 0) {
-      wifiStartMDNS(ipconfig.ip);
+      if (wifiState == wifiGotIP && ipconfig.ip.addr != 0) {
+        wifiStartMDNS(ipconfig.ip);
+      }
+    }
+    else {
+      DBG("Services: MDNS Disabled\n");
+      espconn_mdns_server_unregister();
+      espconn_mdns_close();
+      mdns_started = true;
     }
   }
   else {
-    espconn_mdns_server_unregister();
-    espconn_mdns_close();
-    mdns_started = true;
-  }
+    mdns |= getStringArg(connData, "mdns_servername", flashConfig.mdns_servername, sizeof(flashConfig.mdns_servername));
+    if (mdns < 0) return HTTPD_CGI_DONE;
 
-  mdns |= getStringArg(connData, "mdns_servername", flashConfig.mdns_servername, sizeof(flashConfig.mdns_servername));
-  if (mdns < 0) 
-    return HTTPD_CGI_DONE;
-  else if(mdns_started) {
-    espconn_mdns_server_unregister();
-    espconn_mdns_close();
-    espconn_mdns_set_servername(flashConfig.mdns_servername);
-    espconn_mdns_server_register();
-  } 
+    if (mdns > 0 && mdns_started) {
+      DBG("Services: MDNS Servername Updated\n");
+      espconn_mdns_server_unregister();
+      espconn_mdns_close();
+      struct ip_info ipconfig;
+      wifi_get_ip_info(STATION_IF, &ipconfig);
 
-  if (syslog > 0) {    
-    syslog_init(flashConfig.syslog_host);
-  }
-
-  if (sntp > 0) {
-    cgiServicesSNTPInit();
+      if (wifiState == wifiGotIP && ipconfig.ip.addr != 0) {
+        wifiStartMDNS(ipconfig.ip);
+      }
+    }
   }
 
   if (configSave()) {
