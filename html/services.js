@@ -53,7 +53,7 @@ function displayServices(data) {
 
   var i, inputs = $("input");
   for (i = 0; i < inputs.length; i++) {
-    if (inputs[i].type == "checkbox" && (inputs[i].name == "syslog_enable" || inputs[i].name == "mdns_enable")) { }
+    if (inputs[i].type == "checkbox" && (inputs[i].name == "syslog_enable" || inputs[i].name == "mdns_enable"))
       inputs[i].onclick = function () { setService(this.name, this.checked) };
   }
 }

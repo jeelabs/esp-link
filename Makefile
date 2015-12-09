@@ -400,6 +400,10 @@ ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 	$(Q) for file in `find html_compressed -type f -name "*.css"`; do \
 			java -jar tools/$(YUI_COMPRESSOR) $$file -o $$file; \
 		done
+else
+	$(Q) cp -r html/head- html_compressed;
+	$(Q) cp -r html/*.html html_compressed;
+	$(Q) cp -r html/wifi/*.html html_compressed/wifi;	
 endif
 ifeq (,$(findstring mqtt,$(MODULES)))
 	$(Q) rm -rf html_compressed/mqtt.html
