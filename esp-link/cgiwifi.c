@@ -619,6 +619,7 @@ int ICACHE_FLASH_ATTR cgiWifiInfo(HttpdConnData *connData) {
 void ICACHE_FLASH_ATTR wifiInit() {
   // wifi_set_phy_mode(2); // limit to 802.11b/g 'cause n is flaky
   int x = wifi_get_opmode() & 0x3;
+  x = x;
   DBG("Wifi init, mode=%s\n", wifiMode[x]);
   configWifiIP();
 

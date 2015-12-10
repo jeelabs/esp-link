@@ -98,7 +98,7 @@ void ICACHE_FLASH_ATTR cgiServicesSNTPInit() {
       sntp_setservername(0, flashConfig.sntp_server);  
       sntp_init();
     }
-    DBG("SNTP timesource set to %s with offset %d", flashConfig.sntp_server, flashConfig.timezone_offset);
+    DBG("SNTP timesource set to %s with offset %d\n", flashConfig.sntp_server, flashConfig.timezone_offset);
   }
 }
 

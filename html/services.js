@@ -1,7 +1,7 @@
 function changeServices(e) {
   e.preventDefault();
   var url = "services/update?1=1";
-  var i, inputs = document.querySelectorAll("#" + e.srcElement.id + " input");
+  var i, inputs = document.querySelectorAll("#" + e.srcElement.id + " input,select");
   for (i = 0; i < inputs.length; i++) {
     if (inputs[i].type == "checkbox") {
       if (inputs[i].name.slice(-6) == "enable")
@@ -35,7 +35,11 @@ function displayServices(data) {
       else el.innerHTML = data[v];
       return;
     }
+
     el = document.querySelector('input[name="' + v + '"]');
+    if (el == null)
+      el = document.querySelector('select[name="' + v + '"]');
+
     if (el != null) {
       if (el.type == "checkbox") {
         el.checked = data[v] == "enabled";
