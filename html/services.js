@@ -14,7 +14,7 @@ function changeServices(e) {
   };
 
   hideWarning();
-  var n = e.srcElement.id.replace("-form", "");
+  var n = e.target.id.replace("-form", "");
   var cb = $("#" + n + "-button");
   addClass(cb, "pure-button-disabled");
   ajaxSpin("POST", url, function (resp) {
