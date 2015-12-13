@@ -7,6 +7,19 @@
 #include "crc16.h"
 #include "uart.h"
 
+#ifdef CMD_DBG
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
+static const char *cmd_names[] = {
+  "NULL", "RESET", "IS_READY", "WIFI_CONNECT",
+  "MQTT_SETUP", "MQTT_CONNECT", "MQTT_DISCONNECT",
+  "MQTT_PUBLISH", "MQTT_SUBSCRIBE", "MQTT_LWT", "MQTT_EVENTS",
+  "REST_SETUP", "REST_REQUEST", "REST_SETHEADER", "REST_EVENTS",
+  "CB_ADD", "CB_EVENTS",
+};
+#else
+#define DBG(format, ...) do { } while(0)
+#endif
+
 extern const CmdList commands[];
 
 //===== ESP -> Serial responses
@@ -82,38 +95,24 @@ CMD_Exec(const CmdList *scp, CmdPacket *packet) {
   // Iterate through the command table and call the appropriate function
   while (scp->sc_function != NULL) {
     if(scp->sc_name == packet->cmd) {
-      //os_printf("CMD: Dispatching cmd=%d\n", packet->cmd);
+      DBG("CMD_Exec: Dispatching cmd=%s\n", cmd_names[packet->cmd]);
       // call command function
       uint32_t ret = scp->sc_function(packet);
       // if requestor asked for a response, send it
       if (packet->_return){
-#ifdef CMD_DBG
-        os_printf("CMD: Response: 0x%lx, cmd: %d\r\n", ret, packet->cmd);
-#endif
+        DBG("CMD_Exec: Response: 0x%lx, cmd: %d\r\n", ret, packet->cmd);
         crc = CMD_ResponseStart(packet->cmd, 0, ret, 0);
         CMD_ResponseEnd(crc);
       } else {
-#ifdef CMD_DBG
-        os_printf("CMD: no response (%lu)\n", packet->_return);
-#endif
+        DBG("CMD_Exec: no response (%lu)\n", packet->_return);
       }
       return ret;
     }
     scp++;
   }
-#ifdef CMD_DBG
-  os_printf("CMD: cmd=%d not found\n", packet->cmd);
-#endif
+  DBG("CMD_Exec: cmd=%d not found\n", packet->cmd);
   return 0;
 }
-
-char *cmd_names[] = {
-  "NULL", "RESET", "IS_READY", "WIFI_CONNECT",
-  "MQTT_SETUP", "MQTT_CONNECT", "MQTT_DISCONNECT",
-  "MQTT_PUBLISH", "MQTT_SUBSCRIBE", "MQTT_LWT", "MQTT_EVENTS",
-  "REST_SETUP", "REST_REQUEST", "REST_SETHEADER", "REST_EVENTS",
-  "CB_ADD", "CB_EVENTS",
-};
 
 // Parse a packet and print info about it
 void ICACHE_FLASH_ATTR
@@ -125,18 +124,22 @@ CMD_parse_packet(uint8_t *buf, short len) {
   CmdPacket *packet = (CmdPacket*)buf;
   uint8_t *data_ptr = (uint8_t*)&packet->args;
   uint8_t *data_limit = data_ptr+len;
-#ifdef CMD_DBG
-  uint16_t argn = 0;
-  os_printf("CMD: cmd=%d(%s) argc=%d cb=%p ret=%lu\n",
-      packet->cmd, cmd_names[packet->cmd], packet->argc, (void *)packet->callback, packet->_return);
-#endif
+  
+  DBG("CMD_parse_packet: cmd=%d(%s) argc=%d cb=%p ret=%lu\n",
+      packet->cmd, 
+      cmd_names[packet->cmd], 
+      packet->argc, 
+      (void *)packet->callback, 
+      packet->_return
+  );
 
 #if 0
-  // print out arguments
+  // print out arguments  
+  uint16_t argn = 0;
   uint16_t argc = packet->argc;
   while (data_ptr+2 < data_limit && argc--) {
     short l = *(uint16_t*)data_ptr;
-    os_printf("CMD: arg[%d] len=%d:", argn++, l);
+    os_printf("CMD_parse_packet: arg[%d] len=%d:", argn++, l);
     data_ptr += 2;
     while (data_ptr < data_limit && l--) {
       os_printf(" %02X", *data_ptr++);
@@ -148,9 +151,7 @@ CMD_parse_packet(uint8_t *buf, short len) {
   if (data_ptr <= data_limit) {
     CMD_Exec(commands, packet);
   } else {
-#ifdef CMD_DBG
-    os_printf("CMD: packet length overrun, parsing arg %d\n", argn-1);
-#endif
+    DBG("CMD_parse_packet: packet length overrun, parsing arg %d\n", packet->argc);
   }
 }
 

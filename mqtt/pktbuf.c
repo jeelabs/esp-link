@@ -4,18 +4,18 @@
 #include "pktbuf.h"
 
 #ifdef PKTBUF_DBG
-static void ICACHE_FLASH_ATTR
-PktBuf_Print(PktBuf *buf) {
-  os_printf("PktBuf:");
-  for (int i=-16; i<0; i++)
-    os_printf(" %02X", ((uint8_t*)buf)[i]);
-  os_printf(" %p", buf);
-  for (int i=0; i<16; i++)
-    os_printf(" %02X", ((uint8_t*)buf)[i]);
-  os_printf("\n");
-  os_printf("PktBuf: next=%p len=0x%04x\n",
-      ((void**)buf)[-4], ((uint16_t*)buf)[-6]);
-}
+//static void ICACHE_FLASH_ATTR
+//PktBuf_Print(PktBuf *buf) {
+//  os_printf("PktBuf:");
+//  for (int i=-16; i<0; i++)
+//    os_printf(" %02X", ((uint8_t*)buf)[i]);
+//  os_printf(" %p", buf);
+//  for (int i=0; i<16; i++)
+//    os_printf(" %02X", ((uint8_t*)buf)[i]);
+//  os_printf("\n");
+//  os_printf("PktBuf: next=%p len=0x%04x\n",
+//      ((void**)buf)[-4], ((uint16_t*)buf)[-6]);
+//}
 #endif
 
 

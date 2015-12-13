@@ -29,7 +29,7 @@ XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 
 # Base directory of the ESP8266 SDK package, absolute
 # Typically you'll download from Espressif's BBS, http://bbs.espressif.com/viewforum.php?f=5
-SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.4.1_pre7)
+SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.5.0)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
@@ -38,29 +38,11 @@ ESPTOOL		?= $(abspath ../esp-open-sdk/esptool/esptool.py)
 ESPPORT		?= /dev/ttyUSB0
 ESPBAUD		?= 460800
 
-# --------------- chipset configuration   ---------------
-
-# Pick your flash size: "512KB" or "4MB"
-FLASH_SIZE ?= 4MB
-
-ifeq ("$(FLASH_SIZE)","512KB")
-# Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
-ESP_SPI_SIZE        ?= 0      # 0->512KB
-ESP_FLASH_MODE      ?= 0      # 0->QIO
-ESP_FLASH_FREQ_DIV  ?= 0      # 0->40Mhz
-ESP_FLASH_MAX       ?= 241664 # max bin file for 512KB flash: 236KB
-
-else
-# Winbond 25Q32 4MB flash, typ for esp-12
-# Here we're using two partitions of approx 0.5MB because that's what's easily available in terms
-# of linker scripts in the SDK. Ideally we'd use two partitions of approx 1MB, the remaining 2MB
-# cannot be used for code.
-ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
-ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
-ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
-ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
-#ESP_FLASH_MAX       ?= 1028096 # max bin file for 1MB flash partition: 1004KB
-endif
+# The Wifi station configuration can be hard-coded here, which makes esp-link come up in STA+AP
+# mode trying to connect to the specified AP *only* if the flash wireless settings are empty!
+# This happens on a full serial flash and avoids having to hunt for the AP...
+# STA_SSID ?= 
+# STA_PASS ?= 
 
 # hostname or IP address for wifi flashing
 ESP_HOSTNAME        ?= esp-link
@@ -119,6 +101,25 @@ HTML_COMPRESSOR ?= htmlcompressor-1.5.3.jar
 YUI_COMPRESSOR ?= yuicompressor-2.4.8.jar
 
 # -------------- End of config options -------------
+
+ifeq ("$(FLASH_SIZE)","512KB")
+# Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
+ESP_SPI_SIZE        ?= 0      # 0->512KB
+ESP_FLASH_MODE      ?= 0      # 0->QIO
+ESP_FLASH_FREQ_DIV  ?= 0      # 0->40Mhz
+ESP_FLASH_MAX       ?= 241664 # max bin file for 512KB flash: 236KB
+
+else
+# Winbond 25Q32 4MB flash, typ for esp-12
+# Here we're using two partitions of approx 0.5MB because that's what's easily available in terms
+# of linker scripts in the SDK. Ideally we'd use two partitions of approx 1MB, the remaining 2MB
+# cannot be used for code.
+ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
+#ESP_FLASH_MAX       ?= 1028096 # max bin file for 1MB flash partition: 1004KB
+endif
 
 HTML_PATH = $(abspath ./html)/
 WIFI_PATH = $(HTML_PATH)wifi/
@@ -215,7 +216,7 @@ MODULES			+= $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
 EXTRA_INCDIR 	= include .
 
 # libraries used in this project, mainly provided by the SDK
-LIBS = c gcc hal phy pp net80211 wpa main lwip
+LIBS = c gcc hal phy pp net80211 wpa main lwip crypto
 
 # compiler flags using during compilation of source files
 CFLAGS	+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
@@ -330,7 +331,7 @@ $(FW_BASE)/user1.bin: $(USER1_OUT) $(FW_BASE)
 	$(Q) $(OBJCP) --only-section .rodata -O binary $(USER1_OUT) eagle.app.v6.rodata.bin
 	$(Q) $(OBJCP) --only-section .irom0.text -O binary $(USER1_OUT) eagle.app.v6.irom0text.bin
 	ls -ls eagle*bin
-	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER1_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE)
+	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER1_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE) 0
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
@@ -341,7 +342,7 @@ $(FW_BASE)/user2.bin: $(USER2_OUT) $(FW_BASE)
 	$(Q) $(OBJCP) --only-section .data -O binary $(USER2_OUT) eagle.app.v6.data.bin
 	$(Q) $(OBJCP) --only-section .rodata -O binary $(USER2_OUT) eagle.app.v6.rodata.bin
 	$(Q) $(OBJCP) --only-section .irom0.text -O binary $(USER2_OUT) eagle.app.v6.irom0text.bin
-	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER2_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE)
+	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER2_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE) 0
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
@@ -405,6 +406,10 @@ ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 	$(Q) for file in `find html_compressed -type f -name "*.css"`; do \
 			java -jar tools/$(YUI_COMPRESSOR) $$file -o $$file; \
 		done
+else
+	$(Q) cp -r html/head- html_compressed;
+	$(Q) cp -r html/*.html html_compressed;
+	$(Q) cp -r html/wifi/*.html html_compressed/wifi;	
 endif
 ifeq (,$(findstring mqtt,$(MODULES)))
 	$(Q) rm -rf html_compressed/mqtt.html

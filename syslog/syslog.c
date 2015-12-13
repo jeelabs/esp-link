@@ -10,36 +10,35 @@
 
 #include <esp8266.h>
 #include "config.h"
-#include <syslog.h>
-#include <time.h>
+#include "syslog.h"
+#include "time.h"
 #include "task.h"
 
 extern void * mem_trim(void *m, size_t s);	// not well documented...
 
-#define SYSLOG_DBG
 #ifdef SYSLOG_DBG
-#define DBG_SYSLOG(format, ...) os_printf(format, ## __VA_ARGS__)
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
-#define DBG_SYSLOG(format, ...) do { } while(0)
+#define DBG(format, ...) do { } while(0)
 #endif
 
 #define WIFI_CHK_INTERVAL 1000	// ms to check Wifi statis
-LOCAL os_timer_t wifi_chk_timer;
+static os_timer_t wifi_chk_timer;
 
-LOCAL struct espconn syslog_espconn;
-LOCAL uint32_t syslog_msgid = 1;
-LOCAL uint8_t syslog_task = 0;
+static struct espconn syslog_espconn;
+static uint32_t syslog_msgid = 1;
+static uint8_t syslog_task = 0;
 
-LOCAL syslog_host_t	syslogHost;
-LOCAL syslog_entry_t *syslogQueue = NULL;
+static syslog_host_t	syslogHost;
+static syslog_entry_t *syslogQueue = NULL;
 
 static enum syslog_state syslogState = SYSLOG_NONE;
 
-LOCAL void ICACHE_FLASH_ATTR syslog_add_entry(syslog_entry_t *entry);
-LOCAL void ICACHE_FLASH_ATTR syslog_chk_wifi_stat(void);
-LOCAL void ICACHE_FLASH_ATTR syslog_udp_sent_cb(void *arg);
+static void ICACHE_FLASH_ATTR syslog_add_entry(syslog_entry_t *entry);
+static void ICACHE_FLASH_ATTR syslog_chk_wifi_stat(void);
+static void ICACHE_FLASH_ATTR syslog_udp_sent_cb(void *arg);
 #ifdef SYSLOG_UDP_RECV
-LOCAL void ICACHE_FLASH_ATTR syslog_udp_recv_cb(void *arg, char *pusrdata, unsigned short length);
+static void ICACHE_FLASH_ATTR syslog_udp_recv_cb(void *arg, char *pusrdata, unsigned short length);
 #endif
 
 #define syslog_send_udp() post_usr_task(syslog_task,0)
@@ -50,11 +49,10 @@ LOCAL void ICACHE_FLASH_ATTR syslog_udp_recv_cb(void *arg, char *pusrdata, unsig
  * Parameters   : none
  * Returns      : none
 *******************************************************************************/
-LOCAL void ICACHE_FLASH_ATTR
-syslog_chk_wifi_stat(void)
+static void ICACHE_FLASH_ATTR syslog_chk_wifi_stat(void)
 {
   struct ip_info ipconfig;
-  DBG_SYSLOG("syslog_chk_wifi_stat: state: %d ", syslogState);
+  DBG("syslog_chk_wifi_stat: state: %d ", syslogState);
 
   //disarm timer first
   os_timer_disarm(&wifi_chk_timer);
@@ -65,7 +63,7 @@ syslog_chk_wifi_stat(void)
   if (wifi_status == STATION_GOT_IP && ipconfig.ip.addr != 0)
   {
     if (syslogState == SYSLOG_WAIT) {			// waiting for initialization
-      DBG_SYSLOG("connected, initializing UDP socket\n");
+      DBG("connected, initializing UDP socket\n");
       syslog_init(flashConfig.syslog_host);
     }
   } else {
@@ -75,15 +73,14 @@ syslog_chk_wifi_stat(void)
       syslogState = SYSLOG_ERROR;
       os_printf("*** connect failure!!!\n");
     } else {
-      DBG_SYSLOG("re-arming timer...\n");
+      DBG("re-arming timer...\n");
       os_timer_setfn(&wifi_chk_timer, (os_timer_func_t *)syslog_chk_wifi_stat, NULL);
       os_timer_arm(&wifi_chk_timer, WIFI_CHK_INTERVAL, 0);
     }
   }
 }
 
-LOCAL void ICACHE_FLASH_ATTR
-syslog_udp_send_event(os_event_t *events) {
+static void ICACHE_FLASH_ATTR syslog_udp_send_event(os_event_t *events) {
   if (syslogQueue == NULL)
     syslogState = SYSLOG_READY;
   else {
@@ -103,8 +100,7 @@ syslog_udp_send_event(os_event_t *events) {
  * Parameters   : va_args
  * Returns      : the malloced syslog_entry_t
  ******************************************************************************/
-LOCAL syslog_entry_t ICACHE_FLASH_ATTR *
-syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *fmt, ...)
+static syslog_entry_t* ICACHE_FLASH_ATTR syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *fmt, ...)
 {
   syslog_entry_t *se = os_zalloc(sizeof (syslog_entry_t) + 1024);	// allow up to 1k datagram
   char *p = se->datagram;
@@ -155,8 +151,7 @@ syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *
  * Parameters   : entry: the syslog_entry_t
  * Returns      : none
  ******************************************************************************/
-LOCAL void ICACHE_FLASH_ATTR
-syslog_add_entry(syslog_entry_t *entry)
+static void ICACHE_FLASH_ATTR syslog_add_entry(syslog_entry_t *entry)
 {
   syslog_entry_t *pse = syslogQueue;
 
@@ -188,8 +183,7 @@ syslog_add_entry(syslog_entry_t *entry)
  * Parameters   :  arg -- Additional argument to pass to the callback function
  * Returns      : none
  ******************************************************************************/
-LOCAL void ICACHE_FLASH_ATTR
-syslog_udp_sent_cb(void *arg)
+static void ICACHE_FLASH_ATTR syslog_udp_sent_cb(void *arg)
 {
   struct espconn *pespconn = arg;
   (void) pespconn;
@@ -214,18 +208,16 @@ syslog_udp_sent_cb(void *arg)
   * Returns      : none
  ******************************************************************************/
 #ifdef SYSLOG_UDP_RECV
-LOCAL void ICACHE_FLASH_ATTR
-syslog_udp_recv_cb(void *arg, char *pusrdata, unsigned short length)
+static void ICACHE_FLASH_ATTR syslog_udp_recv_cb(void *arg, char *pusrdata, unsigned short length)
 {
-  DBG_SYSLOG("syslog_udp_recv_cb: %p, %p, %d\n", arg, pusrdata, length);
+  DBG("syslog_udp_recv_cb: %p, %p, %d\n", arg, pusrdata, length);
 }
 #endif
 
 /******************************************************************************
  *
  ******************************************************************************/
-LOCAL void ICACHE_FLASH_ATTR
-syslog_gethostbyname_cb(const char *name, ip_addr_t *ipaddr, void *arg)
+static void ICACHE_FLASH_ATTR syslog_gethostbyname_cb(const char *name, ip_addr_t *ipaddr, void *arg)
 {
   struct espconn *pespconn = (struct espconn *)arg;
   (void) pespconn;
@@ -235,20 +227,23 @@ syslog_gethostbyname_cb(const char *name, ip_addr_t *ipaddr, void *arg)
     syslog_send_udp();
   } else {
     syslogState = SYSLOG_ERROR;
-    DBG_SYSLOG("syslog_gethostbyname_cb: state=SYSLOG_ERROR\n");
+    DBG("syslog_gethostbyname_cb: state=SYSLOG_ERROR\n");
   }
 }
 
  /******************************************************************************
   * FunctionName : initSyslog
   * Description  : Initialize the syslog library
-  * Parameters   : hostname -- the syslog server (host:port)
+  * Parameters   : syslog_host -- the syslog host (host:port)
   * 			   host:  IP-Addr | hostname
   * Returns      : none
  *******************************************************************************/
-void ICACHE_FLASH_ATTR
-syslog_init(char *syslog_server)
+void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
 {
+  if (!*syslog_host) {
+    syslogState = SYSLOG_HALTED;
+    return;
+  }
   char host[32], *port = &host[0];
 
   syslog_task = register_usr_task(syslog_udp_send_event);
@@ -256,7 +251,7 @@ syslog_init(char *syslog_server)
   syslogHost.port = 514;
   syslogState = SYSLOG_WAIT;
 
-  os_strncpy(host, syslog_server, 32);
+  os_strncpy(host, syslog_host, 32);
   while (*port && *port != ':')			// find port delimiter
     port++;
   if (*port) {
@@ -283,11 +278,11 @@ syslog_init(char *syslog_server)
     // syslog_send_udp is called by syslog_gethostbyname_cb()
   }
 #ifdef SYSLOG_UDP_RECV
-  DBG_SYSLOG("syslog_init: host: %s, port: %d, lport: %d, recvcb: %p, sentcb: %p, state: %d\n",
+  DBG("syslog_init: host: %s, port: %d, lport: %d, recvcb: %p, sentcb: %p, state: %d\n",
 		  host, syslogHost.port, syslog_espconn.proto.udp->local_port,
 		  syslog_udp_recv_cb, syslog_udp_sent_cb, syslogState	);
 #else
-  DBG_SYSLOG("syslog_init: host: %s, port: %d, lport: %d, rsentcb: %p, state: %d\n",
+  DBG("syslog_init: host: %s, port: %d, lport: %d, rsentcb: %p, state: %d\n",
 		  host, syslogHost.port, syslog_espconn.proto.udp->local_port,
 		  syslog_udp_sent_cb, syslogState	);
 #endif
@@ -364,10 +359,9 @@ syslog_init(char *syslog_server)
   *
   * Returns      : none
  *******************************************************************************/
-void ICACHE_FLASH_ATTR
-syslog(uint8_t facility, uint8_t severity, const char *tag, const char *fmt, ...)
+void ICACHE_FLASH_ATTR syslog(uint8_t facility, uint8_t severity, const char *tag, const char *fmt, ...)
 {
-  DBG_SYSLOG("syslog: state=%d ", syslogState);
+  DBG("syslog: state=%d ", syslogState);
   if (syslogState == SYSLOG_ERROR ||
     syslogState == SYSLOG_HALTED)
     return;

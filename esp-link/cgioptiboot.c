@@ -16,10 +16,8 @@
 #define PGM_TIMEOUT  20000   // timeout when sync is achieved, in milliseconds
 #define PGM_INTERVAL   200   // send sync at this interval in ms when in programming mode
 
-#define OPTIBOOT_DBG
-#undef DBG
 #ifdef OPTIBOOT_DBG
-#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif

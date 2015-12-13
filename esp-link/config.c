@@ -9,9 +9,9 @@
 
 FlashConfig flashConfig;
 FlashConfig flashDefault = {
-  .seq=33, .magic=0, .crc=0,
-  .reset_pin    = MCU_RESET_PIN, .isp_pin      = MCU_ISP_PIN,
-  .conn_led_pin = LED_CONN_PIN,  .ser_led_pin  = LED_SERIAL_PIN,
+  .seq = 33, .magic = 0, .crc = 0,
+  .reset_pin    = MCU_RESET_PIN, .isp_pin = MCU_ISP_PIN,
+  .conn_led_pin = LED_CONN_PIN, .ser_led_pin = LED_SERIAL_PIN,
   .baud_rate    = 115200,
   .hostname     = "esp-link\0",
   .staticip     = 0,
@@ -20,20 +20,17 @@ FlashConfig flashDefault = {
   .log_mode     = 0,
   .swap_uart    = 0,
   .tcp_enable   = 1, .rssi_enable = 0,
-  .api_key      = "\0",
+  .api_key      = "",
   .slip_enable  = 0, .mqtt_enable = 0, .mqtt_status_enable = 0,
   .mqtt_timeout = 2, .mqtt_clean_session = 1,
   .mqtt_port    = 1883, .mqtt_keepalive = 60,
-  .mqtt_host    = "\0", .mqtt_clientid  = "\0",
+  .mqtt_host    = "\0", .mqtt_clientid = "\0",
   .mqtt_username= "\0", .mqtt_password = "\0", .mqtt_status_topic = "\0",
-  .sys_descr 	= "\0",
-  .rx_pullup	= 1,
-  .sntp_server  = "\0",
-  .syslog_host  = "\0",
-  .syslog_minheap= 8192,
-  .syslog_filter = 7,
-  .syslog_showtick= 1,
-  .syslog_showdate= 0,
+  .sys_descr 	  = "\0",
+  .rx_pullup	  = 1,  
+  .sntp_server  = "us.pool.ntp.org\0",
+  .syslog_host = "\0", .syslog_minheap = 8192, .syslog_filter = 7, .syslog_showtick = 1, .syslog_showdate = 0,
+  .mdns_enable = 1, .mdns_servername = "http\0", .timezone_offset = 0
 };
 
 typedef union {

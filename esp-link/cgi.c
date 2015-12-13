@@ -13,40 +13,39 @@ Some random cgi routines.
  * ----------------------------------------------------------------------------
  */
 
-
 #include <esp8266.h>
 #include "cgi.h"
 #include "config.h"
 
-void ICACHE_FLASH_ATTR
-noCacheHeaders(HttpdConnData *connData, int code) {
+#ifdef CGI_DBG
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
+#else
+#define DBG(format, ...) do { } while(0)
+#endif
+
+void ICACHE_FLASH_ATTR noCacheHeaders(HttpdConnData *connData, int code) {
   httpdStartResponse(connData, code);
   httpdHeader(connData, "Cache-Control", "no-cache, no-store, must-revalidate");
   httpdHeader(connData, "Pragma", "no-cache");
   httpdHeader(connData, "Expires", "0");
 }
 
-void ICACHE_FLASH_ATTR
-jsonHeader(HttpdConnData *connData, int code) {
+void ICACHE_FLASH_ATTR jsonHeader(HttpdConnData *connData, int code) {
   noCacheHeaders(connData, code);
   httpdHeader(connData, "Content-Type", "application/json");
   httpdEndHeaders(connData);
 }
 
-void ICACHE_FLASH_ATTR
-errorResponse(HttpdConnData *connData, int code, char *message) {
+void ICACHE_FLASH_ATTR errorResponse(HttpdConnData *connData, int code, char *message) {
   noCacheHeaders(connData, code);
   httpdEndHeaders(connData);
   httpdSend(connData, message, -1);
-#ifdef CGI_DBG
-  os_printf("HTTP %d error response: \"%s\"\n", code, message);
-#endif
+  DBG("HTTP %d error response: \"%s\"\n", code, message);
 }
 
 // look for the HTTP arg 'name' and store it at 'config' with max length 'max_len' (incl
 // terminating zero), returns -1 on error, 0 if not found, 1 if found and OK
-int8_t ICACHE_FLASH_ATTR
-getStringArg(HttpdConnData *connData, char *name, char *config, int max_len) {
+int8_t ICACHE_FLASH_ATTR getStringArg(HttpdConnData *connData, char *name, char *config, int max_len) {
   char buff[128];
   int len = httpdFindArg(connData->getArgs, name, buff, sizeof(buff));
   if (len < 0) return 0; // not found, skip
@@ -55,19 +54,18 @@ getStringArg(HttpdConnData *connData, char *name, char *config, int max_len) {
     errorResponse(connData, 400, buff);
     return -1;
   }
-  strcpy(config, buff);
+  os_strcpy(config, buff);
   return 1;
 }
 
 // look for the HTTP arg 'name' and store it at 'config' as an 8-bit integer
 // returns -1 on error, 0 if not found, 1 if found and OK
-int8_t ICACHE_FLASH_ATTR
-getInt8Arg(HttpdConnData *connData, char *name, int8_t *config) {
+int8_t ICACHE_FLASH_ATTR getInt8Arg(HttpdConnData *connData, char *name, int8_t *config) {
   char buff[16];
   int len = httpdFindArg(connData->getArgs, name, buff, sizeof(buff));
   if (len < 0) return 0; // not found, skip
   int m = atoi(buff);
-  if (len >= 6 || m < -128 || m > 255) {
+  if (len > 5 || m < -127 || m > 127) {
     os_sprintf(buff, "Value for %s out of range", name);
     errorResponse(connData, 400, buff);
     return -1;
@@ -76,27 +74,59 @@ getInt8Arg(HttpdConnData *connData, char *name, int8_t *config) {
   return 1;
 }
 
-int8_t ICACHE_FLASH_ATTR
-getBoolArg(HttpdConnData *connData, char *name, bool*config) {
-  char buff[64];
+// look for the HTTP arg 'name' and store it at 'config' as an unsigned 8-bit integer
+// returns -1 on error, 0 if not found, 1 if found and OK
+int8_t ICACHE_FLASH_ATTR getUInt8Arg(HttpdConnData *connData, char *name, uint8_t *config) {
+  char buff[16];
+  int len = httpdFindArg(connData->getArgs, name, buff, sizeof(buff));
+  if (len < 0) return 0; // not found, skip
+  int m = atoi(buff);
+  if (len > 4 || m < 0 || m > 255) {
+    os_sprintf(buff, "Value for %s out of range", name);
+    errorResponse(connData, 400, buff);
+    return -1;
+  }
+  *config = m;
+  return 1;
+}
+
+// look for the HTTP arg 'name' and store it at 'config' as an unsigned 16-bit integer
+// returns -1 on error, 0 if not found, 1 if found and OK
+int8_t ICACHE_FLASH_ATTR getUInt16Arg(HttpdConnData *connData, char *name, uint16_t *config) {
+  char buff[16];
+  int len = httpdFindArg(connData->getArgs, name, buff, sizeof(buff));
+  if (len < 0) return 0; // not found, skip
+  int m = atoi(buff);
+  if (len > 6 || m < 0 || m > 65535) {
+    os_sprintf(buff, "Value for %s out of range", name);
+    errorResponse(connData, 400, buff);
+    return -1;
+  }
+  *config = m;
+  return 1;
+}
+
+int8_t ICACHE_FLASH_ATTR getBoolArg(HttpdConnData *connData, char *name, bool *config) {
+  char buff[16];
   int len = httpdFindArg(connData->getArgs, name, buff, sizeof(buff));
   if (len < 0) return 0; // not found, skip
 
-  if (strcmp(buff, "1") == 0 || strcmp(buff, "true") == 0) {
+  if (os_strcmp(buff, "1") == 0 || os_strcmp(buff, "true") == 0) {
     *config = true;
     return 1;
-      }
-  if (strcmp(buff, "0") == 0 || strcmp(buff, "false") == 0) {
+  }
+
+  if (os_strcmp(buff, "0") == 0 || os_strcmp(buff, "false") == 0) {
     *config = false;
     return 1;
-      }
+  }
+
   os_sprintf(buff, "Invalid value for %s", name);
   errorResponse(connData, 400, buff);
   return -1;
 }
 
-uint8_t ICACHE_FLASH_ATTR
-UTILS_StrToIP(const char* str, void *ip){
+uint8_t ICACHE_FLASH_ATTR UTILS_StrToIP(const char* str, void *ip){
   /* The count of the number of bytes processed. */
   int i;
   /* A pointer to the next digit to process. */
@@ -133,8 +163,8 @@ UTILS_StrToIP(const char* str, void *ip){
   return 1;
 }
 
-#define TOKEN(x) (os_strcmp(token, x) == 0)
 #if 0
+#define TOKEN(x) (os_strcmp(token, x) == 0)
 // Handle system information variables and print their value, returns the number of
 // characters appended to buff
 int ICACHE_FLASH_ATTR printGlobalInfo(char *buff, int buflen, char *token) {
@@ -172,16 +202,23 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
   os_strncpy(name, flashConfig.hostname, 12);
   name[12] = 0;
   // construct json response
-  os_sprintf(buff,
-      "{\"menu\": [\"Home\", \"/home.html\", "
-      "\"Wifi\", \"/wifi/wifi.html\","
-      "\"\xC2\xB5" "C Console\", \"/console.html\", "
+  os_sprintf(buff, 
+    "{ "
+      "\"menu\": [ "
+        "\"Home\", \"/home.html\", "
+        "\"WiFI\", \"/wifi/wifi.html\", "
+        "\"&#xb5;C Console\", \"/console.html\", "
+        "\"Services\", \"/services.html\", "
 #ifdef MQTT
-      "\"REST/MQTT\", \"/mqtt.html\","
+        "\"REST/MQTT\", \"/mqtt.html\", "
 #endif
-      "\"Debug log\", \"/log.html\" ],\n"
-      " \"version\": \"%s\","
-      "\"name\":\"%s\"}", esp_link_version, name);
+        "\"Debug log\", \"/log.html\""
+      " ], "
+      "\"version\": \"%s\", "
+      "\"name\": \"%s\""
+    " }", 
+  esp_link_version, name);
+
   httpdSend(connData, buff, -1);
   return HTTPD_CGI_DONE;
 }

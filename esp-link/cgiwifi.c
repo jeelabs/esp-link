@@ -13,7 +13,6 @@ Cgi/template routines for the /wifi url.
  * ----------------------------------------------------------------------------
  */
 
-
 #include <esp8266.h>
 #include "cgiwifi.h"
 #include "cgi.h"
@@ -22,12 +21,12 @@ Cgi/template routines for the /wifi url.
 #include "log.h"
 
 #ifdef CGIWIFI_DBG
-#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif
 
-static void wifiStartMDNS(struct ip_addr);
+bool mdns_started = false;
 
 // ===== wifi status change callbacks
 static WifiStateChangeCb wifi_state_change_cb[4];
@@ -61,28 +60,29 @@ static void ICACHE_FLASH_ATTR wifiHandleEventCb(System_Event_t *evt) {
     wifiState = wifiIsConnected;
     wifiReason = 0;
     DBG("Wifi connected to ssid %s, ch %d\n", evt->event_info.connected.ssid,
-        evt->event_info.connected.channel);
+      evt->event_info.connected.channel);
     statusWifiUpdate(wifiState);
     break;
   case EVENT_STAMODE_DISCONNECTED:
     wifiState = wifiIsDisconnected;
     wifiReason = evt->event_info.disconnected.reason;
     DBG("Wifi disconnected from ssid %s, reason %s (%d)\n",
-        evt->event_info.disconnected.ssid, wifiGetReason(), evt->event_info.disconnected.reason);
+      evt->event_info.disconnected.ssid, wifiGetReason(), evt->event_info.disconnected.reason);
     statusWifiUpdate(wifiState);
     break;
   case EVENT_STAMODE_AUTHMODE_CHANGE:
     DBG("Wifi auth mode: %d -> %d\n",
-        evt->event_info.auth_change.old_mode, evt->event_info.auth_change.new_mode);
+      evt->event_info.auth_change.old_mode, evt->event_info.auth_change.new_mode);
     break;
   case EVENT_STAMODE_GOT_IP:
     wifiState = wifiGotIP;
     wifiReason = 0;
     DBG("Wifi got ip:" IPSTR ",mask:" IPSTR ",gw:" IPSTR "\n",
-        IP2STR(&evt->event_info.got_ip.ip), IP2STR(&evt->event_info.got_ip.mask),
-        IP2STR(&evt->event_info.got_ip.gw));
+      IP2STR(&evt->event_info.got_ip.ip), IP2STR(&evt->event_info.got_ip.mask),
+      IP2STR(&evt->event_info.got_ip.gw));
     statusWifiUpdate(wifiState);
-    wifiStartMDNS(evt->event_info.got_ip.ip);
+    if (!mdns_started)
+      wifiStartMDNS(evt->event_info.got_ip.ip);
     break;
   case EVENT_SOFTAPMODE_STACONNECTED:
     DBG("Wifi AP: station " MACSTR " joined, AID = %d\n",
@@ -101,8 +101,7 @@ static void ICACHE_FLASH_ATTR wifiHandleEventCb(System_Event_t *evt) {
   }
 }
 
-void ICACHE_FLASH_ATTR
-wifiAddStateChangeCb(WifiStateChangeCb cb) {
+void ICACHE_FLASH_ATTR wifiAddStateChangeCb(WifiStateChangeCb cb) {
   for (int i = 0; i < 4; i++) {
     if (wifi_state_change_cb[i] == cb) return;
     if (wifi_state_change_cb[i] == NULL) {
@@ -113,21 +112,20 @@ wifiAddStateChangeCb(WifiStateChangeCb cb) {
   DBG("WIFI: max state change cb count exceeded\n");
 }
 
-static bool mdns_started = true;
-static struct mdns_info mdns_info;
-
-// cannot allocate the info struct on the stack, it crashes!
-static ICACHE_FLASH_ATTR
-void wifiStartMDNS(struct ip_addr ip) {
-  if (!mdns_started) {
-    os_memset(&mdns_info, 0, sizeof(struct mdns_info));
-    mdns_info.host_name = flashConfig.hostname;
-    mdns_info.server_name = "http", // service name
-    mdns_info.server_port = 80,     // service port
-    mdns_info.ipAddr = ip.addr,
-    espconn_mdns_init(&mdns_info);
-    mdns_started = true;
+void ICACHE_FLASH_ATTR wifiStartMDNS(struct ip_addr ip) {
+  if (flashConfig.mdns_enable) {
+    struct mdns_info *mdns_info = (struct mdns_info *)os_zalloc(sizeof(struct mdns_info));
+    mdns_info->host_name = flashConfig.hostname;
+    mdns_info->server_name = flashConfig.mdns_servername;
+    mdns_info->server_port = 80;
+    mdns_info->ipAddr = ip.addr;
+    espconn_mdns_init(mdns_info);    
   }
+  else {    
+    espconn_mdns_server_unregister();
+    espconn_mdns_close();
+  }
+  mdns_started = true;
 }
 
 // ===== wifi scanning
@@ -362,7 +360,7 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
   return HTTPD_CGI_DONE;
 }
 
-static bool parse_ip(char *buff, ip_addr_t *ip_ptr) {
+static bool ICACHE_FLASH_ATTR parse_ip(char *buff, ip_addr_t *ip_ptr) {
   char *next = buff; // where to start parsing next integer
   int found = 0;     // number of integers parsed
   uint32_t ip = 0;   // the ip addres parsed
@@ -621,6 +619,7 @@ int ICACHE_FLASH_ATTR cgiWifiInfo(HttpdConnData *connData) {
 void ICACHE_FLASH_ATTR wifiInit() {
   // wifi_set_phy_mode(2); // limit to 802.11b/g 'cause n is flaky
   int x = wifi_get_opmode() & 0x3;
+  x = x;
   DBG("Wifi init, mode=%s\n", wifiMode[x]);
   configWifiIP();
 

@@ -84,7 +84,7 @@ struct syslog_entry_t {
 
 syslog_host_t syslogserver;
 
-void ICACHE_FLASH_ATTR syslog_init(char *syslog_server);
+void ICACHE_FLASH_ATTR syslog_init(char *syslog_host);
 void ICACHE_FLASH_ATTR syslog(uint8_t facility, uint8_t severity, const char tag[], const char message[], ...);
 
 // some convenience macros

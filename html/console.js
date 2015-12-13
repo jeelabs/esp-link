@@ -21,7 +21,7 @@ function updateText(resp) {
 
   var delay = 3000;
   if (resp != null && resp.len > 0) {
-    console.log("updateText got", resp.len, "chars at", resp.start);
+//    console.log("updateText got", resp.len, "chars at", resp.start);
     var isScrolledToBottom = el.scrollHeight - el.clientHeight <= el.scrollTop + 1;
     //console.log("isScrolledToBottom="+isScrolledToBottom, "scrollHeight="+el.scrollHeight,
     //            "clientHeight="+el.clientHeight, "scrollTop="+el.scrollTop,

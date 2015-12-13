@@ -82,7 +82,7 @@ function scanResult() {
 }
 
 function scanAPs() {
-  console.log("scanning now");
+//  console.log("scanning now");
   if (blockScan) {
     scanTimeout = window.setTimeout(scanAPs, 1000);
     return;

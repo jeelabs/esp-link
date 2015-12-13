@@ -9,7 +9,6 @@
 * ----------------------------------------------------------------------------
 */
 
-
 #include <esp8266.h>
 #include "httpd.h"
 #include "httpdespfs.h"
@@ -29,18 +28,14 @@
 #include "console.h"
 #include "config.h"
 #include "log.h"
-#include <gpio.h>
+#include "gpio.h"
 #include "syslog.h"
-#include "sntp.h"
+#include "cgiservices.h"
 
-static int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData);
-static int ICACHE_FLASH_ATTR cgiSystemSet(HttpdConnData *connData);
-
-#define NOTICE(format, ...) do {	                                             \
+#define NOTICE(format, ...) do {	                                          \
 	LOG_NOTICE(format, ## __VA_ARGS__ );                                      \
 	os_printf(format "\n", ## __VA_ARGS__);                                   \
 } while ( 0 )
-
 
 /*
 This is the main url->function dispatching data struct.
@@ -62,6 +57,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/pgm/upload", cgiOptibootData, NULL },
   { "/log/text", ajaxLog, NULL },
   { "/log/dbg", ajaxLogDbg, NULL },
+  { "/log/reset", cgiReset, NULL },
   { "/console/reset", ajaxConsoleReset, NULL },
   { "/console/baud", ajaxConsoleBaud, NULL },
   { "/console/text", ajaxConsole, NULL },
@@ -78,11 +74,12 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/wifi/special", cgiWiFiSpecial, NULL },
   { "/system/info", cgiSystemInfo, NULL },
   { "/system/update", cgiSystemSet, NULL },
+  { "/services/info", cgiServicesInfo, NULL },
+  { "/services/update", cgiServicesSet, NULL },
   { "/pins", cgiPins, NULL },
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
-#endif
-
+#endif  
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
 };
@@ -102,105 +99,6 @@ char* esp_link_version = VERS_STR(VERSION);
 // address of espfs binary blob
 extern uint32_t _binary_espfs_img_start;
 
-static char *rst_codes[] = {
-  "normal", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", "external",
-};
-static char *flash_maps[] = {
-  "512KB:256/256", "256KB", "1MB:512/512", "2MB:512/512", "4MB:512/512",
-  "2MB:1024/1024", "4MB:1024/1024"
-};
-
-// enable SNTP client...
-static void ICACHE_FLASH_ATTR enableSNTP() {
-  if (flashConfig.sntp_server[0]) {
-	NOTICE("SNTP timesource set to %s", flashConfig.sntp_server);
-	sntp_stop();
-	sntp_setservername(0, flashConfig.sntp_server);
-	// sntp_set_timezone(flashConfig.timezone);	/* stay with GMT... */
-	sntp_init();
-  }
-}
-
-// Cgi to return various System information
-static int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
-  char buff[1024];
-
-  if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
-
-  uint8 part_id = system_upgrade_userbin_check();
-  uint32_t fid = spi_flash_get_id();
-  struct rst_info *rst_info = system_get_rst_info();
-
-  os_sprintf(buff, "{\"name\": \"%s\", \"reset cause\": \"%d=%s\", "
-      "\"size\": \"%s\"," "\"id\": \"0x%02lX 0x%04lX\"," "\"partition\": \"%s\","
-      "\"slip\": \"%s\"," "\"mqtt\": \"%s/%s\"," "\"baud\": \"%ld\","
-      "\"description\": \"%s\","
-      "\"syslog\": \"%s\","
-      "\"sntp\": \"%s\" "
-       "}",
-      flashConfig.hostname, rst_info->reason, rst_codes[rst_info->reason],
-      flash_maps[system_get_flash_size_map()], fid & 0xff, (fid&0xff00)|((fid>>16)&0xff),
-      part_id ? "user2.bin" : "user1.bin",
-      flashConfig.slip_enable ? "enabled" : "disabled",
-      flashConfig.mqtt_enable ? "enabled" : "disabled",
-      mqttState(), flashConfig.baud_rate, flashConfig.sys_descr,
-      flashConfig.syslog_host,
-      flashConfig.sntp_server
-      );
-
-  jsonHeader(connData, 200);
-  httpdSend(connData, buff, -1);
-  return HTTPD_CGI_DONE;
-}
-
-static ETSTimer reassTimer;
-
-// Cgi to update system info (name/description)
-static int ICACHE_FLASH_ATTR cgiSystemSet(HttpdConnData *connData) {
-  if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
-
-  int8_t n = getStringArg(connData, "name", flashConfig.hostname, sizeof(flashConfig.hostname));
-  int8_t d = getStringArg(connData, "description", flashConfig.sys_descr, sizeof(flashConfig.sys_descr));
-  int8_t t = getStringArg(connData, "sntp", flashConfig.sntp_server, sizeof(flashConfig.sntp_server));
-  int8_t l = getStringArg(connData, "syslog", flashConfig.syslog_host, sizeof(flashConfig.syslog_host));
-  if (n < 0 || d < 0 || t < 0 || l < 0) return HTTPD_CGI_DONE; // getStringArg has produced an error response
-
-  // set defaults for syslog server
-  // we also should add a config or services web page...
-  if (l > 0) {
-	// set defaults for syslog server
-	syslog_init(flashConfig.syslog_host);
-	flashConfig.syslog_minheap= 8192;
-	flashConfig.syslog_filter = SYSLOG_PRIO_DEBUG;
-	flashConfig.syslog_showtick= 1;		// show ESP µs Ticker in log message
-	flashConfig.syslog_showdate= 0;		// Synology does a log rotate if timestamp is in the past, so we simply don't send it
-	os_printf("flashConfig: syslog: %s, minheap: %d, filter: %d, showtick: %d, showdate: %d\n",
-		flashConfig.syslog_host, flashConfig.syslog_minheap, flashConfig.syslog_filter, flashConfig.syslog_showtick, flashConfig.syslog_showdate);
-  }
-
-  // (re)start SNTP client if server setting is changed
-  if (t > 0) {
-	enableSNTP();
-  }
-
-  if (n > 0) {
-    // schedule hostname change-over
-    os_timer_disarm(&reassTimer);
-    os_timer_setfn(&reassTimer, configWifiIP, NULL);
-    os_timer_arm(&reassTimer, 1000, 0); // 1 second for the response of this request to make it
-  }
-
-  if (configSave()) {
-    httpdStartResponse(connData, 204);
-    httpdEndHeaders(connData);
-  } else {
-    httpdStartResponse(connData, 500);
-    httpdEndHeaders(connData);
-    httpdSend(connData, "Failed to save config", -1);
-  }
-  return HTTPD_CGI_DONE;
-}
-
 extern void app_init(void);
 extern void mqtt_client_init(void);
 
@@ -212,7 +110,7 @@ void user_rf_pre_init(void) {
 // Main routine to initialize esp-link.
 void user_init(void) {
   // get the flash config so we know how to init things
-  //configWipe(); // uncomment to reset the config for testing purposes
+//  configWipe(); // uncomment to reset the config for testing purposes
   bool restoreOk = configRestore();
   // init gpio pin registers
   gpio_init();
@@ -278,7 +176,7 @@ void user_init(void) {
       fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
   NOTICE("** esp-link ready");
 
-  enableSNTP();
+  cgiServicesSNTPInit();
 
 #ifdef MQTT
   NOTICE("initializing MQTT");

@@ -5,8 +5,9 @@
 
     <div class="content flex-fill flex-vbox">
       <p>
-        <a id="reset-button" class="pure-button button-primary" href="#">Reset µC</a>
-        &nbsp;&nbsp;Baud:
+        <a id="reset-button" class="pure-button button-primary" href="#">Reset &#xb5;C</a>
+        &nbsp; <a id="clear-button" class="pure-button button-primary" href="#">Clear Log</a>
+        &nbsp; Baud:
         <select id="baud-sel" class="pure-button" href="#">
           <option value="460800">460800</option>
           <option value="250000">250000</option>
@@ -17,20 +18,7 @@
           <option value="19200">19200</option>
           <option value="9600">9600</option>
         </select>
-        <!--
-        &nbsp;&nbsp;Pgm baud:
-        <select id="baud-pgm" class="pure-button">
-          <option value="same">same</option>
-          <option value="460800">460800</option>
-          <option value="250000">250000</option>
-          <option value="230400">230400</option>
-          <option value="115200">115200</option>
-          <option value="57600">57600</option>
-          <option value="38400">38400</option>
-          <option value="19200">19200</option>
-          <option value="9600">9600</option>
-        </select> -->
-        &nbsp;&nbsp;Fmt: 8N1
+        &nbsp; Fmt: 8N1
       </p>
       <div class="pure-g">
         <div class="pure-u-1-4"><legend><b>Console</b></legend></div>
@@ -83,6 +71,12 @@
         function(resp) { showNotification("uC reset"); co.textEnd = 0; },
         function(s, st) { showWarning("Error resetting uC"); }
       );
+    });
+
+    $("#clear-button").addEventListener("click", function(e) {
+        e.preventDefault();
+        var co = $("#console");
+        co.innerHTML = "";
     });
 
     ajaxJson('GET', "/console/baud",
