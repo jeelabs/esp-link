@@ -20,9 +20,13 @@ extern "C" {
 
 enum syslog_state {
     SYSLOG_NONE,        // not initialized
-    SYSLOG_WAIT,        // initialized, waiting for Wifi
+    SYSLOG_WAIT,        // waiting for Wifi
+    SYSLOG_INIT,	// WIFI avail, must initialize
+    SYSLOG_DNSWAIT,	// WIFI avail, init done, waiting for DNS resolve
     SYSLOG_READY,       // Wifi established, ready to send
     SYSLOG_SENDING,     // UDP package on the air
+    SYSLOG_SEND,
+    SYSLOG_SENT,
     SYSLOG_HALTED,      // heap full, discard message
     SYSLOG_ERROR,
 };
@@ -78,6 +82,8 @@ struct syslog_host_t {
 typedef struct syslog_entry_t syslog_entry_t;
 struct syslog_entry_t {
     syslog_entry_t *next;
+    uint32_t	msgid;
+    uint32_t	tick;
     uint16_t	datagram_len;
     char	datagram[];
 };
