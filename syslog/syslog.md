@@ -17,11 +17,7 @@ PRI VERSION SP TIMESTAMP SP HOSTNAME SP APP-NAME SP PROCID SP MSGID SP MSG
 
 The meaning of TIMESTAMP, HOSTNAME, PROCID and MSGID is hardcoded, all others are parameters for the syslog function.
 
-syslog messages are queued on heap until the Wifi stack is fully initialized.
-If the remaining heap size reaches a given limit, syslog will add a final obituary
-and stop further logging until the queue is empty and sufficient heap space is
-available again.
-Example:
+syslog messages are queued on heap until the Wifi stack is fully initialized:
 
 ```
 Jan  1 00:00:00 192.168.254.82 esp_link 0.126850 1 Reset cause: 4=restart
@@ -35,6 +31,10 @@ Jan  1 00:00:03 192.168.254.82 SYSLOG 3.325626 8 syslogserver: 192.168.254.216:5
 Jan  1 00:00:03 192.168.254.82 esp_link 3.336756 9 syslog_init: host: 192.168.254.216, port: 514, lport: 24377, state: 4
 Dec 15 11:49:14 192.168.254.82 esp-link 18.037949 10 Accept port 23, conn=3fff5f68, pool slot 0
 ```
+
+If the remaining heap size reaches a given limit, syslog will add a final obituary
+and stop further logging until the queue is empty and sufficient heap space is
+available again.
 
 The module may be controlled by flashconfig variables:
 
