@@ -1,8 +1,21 @@
 syslog
 ======
 
-The lib implements a RFC5424 compliant syslog interface for ESP8266. The syslog
-message is send via UDP.
+The lib (tries to )implement a RFC5424 compliant syslog interface for ESP8266. syslog
+messages are send via UDP. Messages are send in the following format:
+
+```
+PRI VERSION SP TIMESTAMP SP HOSTNAME SP APP-NAME SP PROCID SP MSGID SP MSG
+  PRI:          msg priority: facility * 8 + severity
+  TIMESTAMP:    dash (no timestamp) or ISO8601 (2015-12-14T17:26:32Z)
+  HOSTNAME:     flashConfig.hostname
+  APP-NAME:     tag - (e.g. MQTT, mySQL, REST, ...)
+  PROCID:       dash or ESP system tick (µseconds since reboot)
+  MSGID:        counter - # syslog messages since reboot
+  MSG:          the syslog message
+```
+
+The meaning of TIMESTAMP, HOSTNAME, PROCID and MSGID is hardcoded, all others are parameters for the syslog function.
 
 syslog messages are queued on heap until the Wifi stack is fully initialized.
 If the remaining heap size reaches a given limit, syslog will add a final obituary
@@ -26,14 +39,14 @@ logging will be enabled again.
 * **syslog_filter: 0..7**
 
     **syslog_filter** is the minimum severity for sending a syslog message. The filter
-is applied against the message queue, so any message with a severity numerical lower
-than **syslog_filter** will be dropped instead of being send.
+is applied against the message queue, so any message with a severity numerical higher
+than **syslog_filter** will be dropped instead of being queued/send.
 
 * **syslog_showtick: 0|1**
 
     If **syslog_showtick** is set to **1**, syslog will insert an additional timestamp
-(system tick) as "PROCESS" field (before the users syslog message).
-The value shown is in ms, (1µs resolution) since (re)boot or timer overflow.
+(system tick) as "PROCID" field (before the users real syslog message).
+The value shown is in seconds, with 1µs resolution since (re)boot or timer overflow.
 
 * **syslog_showdate: 0|1**
 
@@ -92,19 +105,28 @@ usage: `syslog(uint8_t facility, uint8_t severity, const char *tag, const char *
 
 Examples
 ========
+    hostname="ems-link02", showtick=0, showdate=0
+    Syslog message: USER.NOTICE:  - ems-link02 esp_link - 20 syslog_init: host: 192.168.254.216, port: 514, lport: 28271, rsentcb: 40211e08, state: 4\n
 
-    showtick=0, showdate=0
-    Invocation: syslog()
-output:
+    hostname="ems-link02", showtick=1, showdate=0
+    Syslog message: USER.NOTICE:  - ems-link02 esp_link 3.325677 8 syslog_init: host: 192.168.254.216, port: 514, lport: 19368, rsentcb: 40211e08, state: 4\n
 
-    showtick=1, showdate=1
-    Invocation: syslog()
-output:
+    hostname="ems-link02", showtick=1, showdate=1, NTP not available
+    Syslog message: USER.NOTICE:  1970-01-01T00:00:03.325668Z ems-link02 esp_link 3.325668 8 syslog_init: host: 192.168.254.216, port: 514, lport: 36802, rsentcb: 40211e08, state: 4\n
 
-    showtick=1, showdate=1, NTP not available
-    Invocation: syslog()
-output:
+    hostname="ems-link02", showtick=1, showdate=1, NTP available
+    Syslog message: USER.NOTICE:  2015-12-15T11:15:29+00:00 ems-link02 esp_link 182.036860 13 syslog_init: host: 192.168.254.216, port: 514, lport: 43626, rsentcb: 40291db8, state: 4\n
 
-    showtick=1, showdate=1, NTP available
-    Invocation: syslog()
-output:
+Notes
+=====
++ The ESP8266 (NON-OS) needs a delay of **at least 2ms** between consecutive UDP packages. So the syslog throughput is restricted to approx. 500EPS.
+
++ If a syslog message doesn't have the timestamp set ( **syslog_showdate** == 0), the syslog _server_ will insert _it's own receive timestamp_ into the log message.
+
++ If **syslog_showdate** == 1, the syslog _server_ MAY replace it's own receive timestamp with the timestamp sent by the syslog client.
+
++ Some syslog servers don't show the fractional seconds of the syslog timestamp
+
++ Setting **syslog_showdate** will send timestamps from 1970 (because of using the internal ticker) until the **SNTP-client** got a valid NTP datagram. Some syslog servers (for example _Synology_) will roll over their database if they get such "old" syslog messages. In fact, you won't see those messages in your current syslog.
+
++ Some servers (e.g. _Synology_) won't show the syslog message if you set **facility** to **SYSLOG_FAC_SYSLOG**.

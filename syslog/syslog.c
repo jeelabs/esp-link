@@ -16,7 +16,6 @@
 
 extern void * mem_trim(void *m, size_t s);	// not well documented...
 
-#undef SYSLOG_DBG
 #ifdef SYSLOG_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
@@ -210,14 +209,15 @@ static void ICACHE_FLASH_ATTR syslog_gethostbyname_cb(const char *name, ip_addr_
  *******************************************************************************/
 void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
 {
-  syslogState = SYSLOG_HALTED;
 
   if (!*syslog_host) {
+    syslogState = SYSLOG_HALTED;
     return;
   }
 
   if (syslog_host == NULL) {
     // disable and unregister syslog handler
+    syslogState = SYSLOG_HALTED;
     if (syslog_espconn != NULL) {
       if (syslog_espconn->proto.udp) {
         // there's no counterpart to espconn_create...
@@ -235,6 +235,7 @@ void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
       pse = next;
     }
     syslogQueue = NULL;
+    syslogState = SYSLOG_HALTED;
     return;
   }
 
@@ -272,23 +273,22 @@ void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
   espconn_create(syslog_espconn);   						// create udp
 
   if (UTILS_StrToIP((const char *)host, (void*)&syslogHost.addr)) {
+    syslogState = SYSLOG_READY;
     syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "SYSLOG",
           "syslogserver: %s:%d", host, syslogHost.port);
-    syslogState = SYSLOG_READY;
   } else {
+    syslogState = SYSLOG_DNSWAIT;
     syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "SYSLOG",
           "resolving hostname: %s", host);
-    syslogState = SYSLOG_DNSWAIT;
     espconn_gethostbyname(syslog_espconn, host, &syslogHost.addr, syslog_gethostbyname_cb);
   }
 #ifdef SYSLOG_UDP_RECV
-  DBG("syslog_init: host: %s, port: %d, lport: %d, recvcb: %p, sentcb: %p, state: %d\n",
+  LOG_NOTICE("syslog_init: host: %s, port: %d, lport: %d, recvcb: %p, sstate: %d",
 		  host, syslogHost.port, syslog_espconn->proto.udp->local_port,
-		  syslog_udp_recv_cb, syslog_udp_sent_cb, syslogState	);
+		  syslog_udp_recv_cb, syslogState	);
 #else
-  DBG("syslog_init: host: %s, port: %d, lport: %d, rsentcb: %p, state: %d\n",
-		  host, syslogHost.port, syslog_espconn->proto.udp->local_port,
-		  syslog_udp_sent_cb, syslogState	);
+  LOG_NOTICE("syslog_init: host: %s, port: %d, lport: %d, state: %d",
+		  host, syslogHost.port, syslog_espconn->proto.udp->local_port, syslogState	);
 #endif
 }
 
@@ -357,9 +357,13 @@ syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *
     now = (realtime_stamp == 0) ? (se->tick / 1000000) : realtime_stamp;
     tp = gmtime(&now);
 
-    p += os_sprintf(p, "%4d-%02d-%02dT%02d:%02d:%02dZ ",
+    p += os_sprintf(p, "%4d-%02d-%02dT%02d:%02d:%02d",
 		    tp->tm_year + 1900, tp->tm_mon + 1, tp->tm_mday,
-		    tp->tm_hour, tp->tm_min, tp->tm_sec);
+        tp->tm_hour, tp->tm_min, tp->tm_sec);
+    if (realtime_stamp == 0)
+      p += os_sprintf(p, ".%06luZ ", se->tick % 1000000);
+    else
+      p += os_sprintf(p, "%+03d:00 ", flashConfig.timezone_offset);
   }
 
   // add HOSTNAME APP-NAME PROCID MSGID
@@ -455,6 +459,9 @@ void ICACHE_FLASH_ATTR syslog(uint8_t facility, uint8_t severity, const char *ta
   DBG("syslog: state=%d ", syslogState);
   if (syslogState == SYSLOG_ERROR ||
     syslogState == SYSLOG_HALTED)
+    return;
+
+  if (severity > flashConfig.syslog_filter)
     return;
 
   // compose the syslog message
