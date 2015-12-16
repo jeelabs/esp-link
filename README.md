@@ -14,20 +14,17 @@ It implements a number of features:
 The firmware includes a tiny HTTP server based on
 [esphttpd](http://www.esp8266.com/viewforum.php?f=34)
 with a simple web interface, many thanks to Jeroen Domburg for making it available!
-Many thanks to https://github.com/brunnels for contributions around the espduino functionality.
 
-###[Releases](https://github.com/jeelabs/esp-link/releases)
+Many thanks to https://github.com/brunnels for contributions in particular around the espduino
+functionality. Thank you also to https://github.com/susisstrolch and https://github.com/bc547 for
+additional contributions!
 
-- [V2.1.beta5](https://github.com/jeelabs/esp-link/releases/tag/v2.1.beta5) has the new built-in
-  stk500v1 programmer and works on all modules (esp-01 through esp-12). This is still beta-ware!
-- [V2.0.rc1](https://github.com/jeelabs/esp-link/releases/tag/v2.0.rc1) has REST support but
-  requires a 1MByte or 4MByte ESP8266 flash, e.g. esp-12 or wroom-02. Despite being labeled
-  as release candidate this is a pretty stable release.
-- [V1.0.4](https://github.com/jeelabs/esp-link/releases/tag/v1.0.4) is _stable_
-  and has the web server, transparent bridge, flash-programming support, but lacks
-  the REST and upcoming MQTT support. V1 works with 512KB flash, e.g. esp-01, esp-03, ...
-  Unless you've been using V1 and want to stay on it, the V1 series is really obsolete and
-  I recommend trying the latest V2 at this point.
+###[Releases & Downloads](https://github.com/jeelabs/esp-link/releases)
+
+- [V2.1.7](https://github.com/jeelabs/esp-link/releases/tag/v2.1.7) is the most recent release.
+  It has the new built-in stk500v1 programmer and works on all modules (esp-01 through esp-12).
+- [V2.2.beta1](https://github.com/jeelabs/esp-link/releases/tag/v2.2.beta1) will be coming
+  up shortly with mDNS, sNTP, and syslog support, stay tuned...
 
 For quick support and questions:
 [![Chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jeelabs/esp-link?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)

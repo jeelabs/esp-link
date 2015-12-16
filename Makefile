@@ -1,19 +1,26 @@
 #
 # Makefile for esp-link - https://github.com/jeelabs/esp-link
 #
+# Makefile heavily adapted to esp-link and wireless flashing by Thorsten von Eicken
+# Lots of work, in particular to support windows, by brunnels
+# Original from esphttpd and others...
+# VERBOSE=1
+#
 # Start by setting the directories for the toolchain a few lines down
 # the default target will build the firmware images
 # `make flash` will flash the esp serially
 # `make wiflash` will flash the esp over wifi
 # `VERBOSE=1 make ...` will print debug info
 # `ESP_HOSTNAME=my.esp.example.com make wiflash` is an easy way to override a variable
-#
+
 # optional local configuration file
 -include local.conf
-# Makefile heavily adapted to esp-link and wireless flashing by Thorsten von Eicken
-# Lots of work, in particular to support windows, by brunnels
-# Original from esphttpd and others...
-# VERBOSE=1
+
+# The Wifi station configuration can be hard-coded here, which makes esp-link come up in STA+AP
+# mode trying to connect to the specified AP *only* if the flash wireless settings are empty!
+# This happens on a full serial flash and avoids having to hunt for the AP...
+# STA_SSID ?= 
+# STA_PASS ?= 
 
 # --------------- toolchain configuration ---------------
 
@@ -95,25 +102,6 @@ HTML_COMPRESSOR ?= htmlcompressor-1.5.3.jar
 YUI_COMPRESSOR ?= yuicompressor-2.4.8.jar
 
 # -------------- End of config options -------------
-
-ifeq ("$(FLASH_SIZE)","512KB")
-# Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
-ESP_SPI_SIZE        ?= 0      # 0->512KB
-ESP_FLASH_MODE      ?= 0      # 0->QIO
-ESP_FLASH_FREQ_DIV  ?= 0      # 0->40Mhz
-ESP_FLASH_MAX       ?= 241664 # max bin file for 512KB flash: 236KB
-
-else
-# Winbond 25Q32 4MB flash, typ for esp-12
-# Here we're using two partitions of approx 0.5MB because that's what's easily available in terms
-# of linker scripts in the SDK. Ideally we'd use two partitions of approx 1MB, the remaining 2MB
-# cannot be used for code.
-ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
-ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
-ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
-ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
-#ESP_FLASH_MAX       ?= 1028096 # max bin file for 1MB flash partition: 1004KB
-endif
 
 HTML_PATH = $(abspath ./html)/
 WIFI_PATH = $(HTML_PATH)wifi/
@@ -293,7 +281,7 @@ vpath %.c $(SRC_DIR)
 define compile-objects
 $1/%.o: %.c
 	$(vecho) "CC $$<"
-	$(Q) $(CC) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CFLAGS)  -c $$< -o $$@
+	$(Q)$(CC) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CFLAGS)  -c $$< -o $$@
 endef
 
 .PHONY: all checkdirs clean webpages.espfs wiflash
