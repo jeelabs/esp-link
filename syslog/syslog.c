@@ -23,7 +23,6 @@ extern void * mem_trim(void *m, size_t s);	// not well documented...
 #endif
 
 #define WIFI_CHK_INTERVAL 1000	// ms to check Wifi statis
-static os_timer_t wifi_chk_timer;
 
 static struct espconn *syslog_espconn = NULL;
 static uint32_t syslog_msgid = 1;
@@ -33,6 +32,8 @@ static syslog_host_t	syslogHost;
 static syslog_entry_t *syslogQueue = NULL;
 
 static enum syslog_state syslogState = SYSLOG_NONE;
+
+static bool syslog_timer_armed = false;
 
 static void ICACHE_FLASH_ATTR syslog_add_entry(syslog_entry_t *entry);
 static void ICACHE_FLASH_ATTR syslog_chk_status(void);
@@ -45,6 +46,52 @@ static void ICACHE_FLASH_ATTR syslog_udp_recv_cb(void *arg, char *pusrdata, unsi
 
 #define syslog_send_udp() post_usr_task(syslog_task,0)
 
+#ifdef SYSLOG_DBG
+static char ICACHE_FLASH_ATTR *syslog_get_status(void) {
+      switch (syslogState)
+      {
+        case SYSLOG_NONE:
+          return "SYSLOG_NONE";
+        case SYSLOG_WAIT:
+          return "SYSLOG_WAIT";
+        case SYSLOG_INIT:
+          return "SYSLOG_INIT";
+        case SYSLOG_INITDONE:
+          return "SYSLOG_INITDONE";
+        case SYSLOG_DNSWAIT:
+          return "SYSLOG_DNSWAIT";
+        case SYSLOG_READY:
+          return "SYSLOG_READY";
+        case SYSLOG_SENDING:
+          return "SYSLOG_SENDING";
+        case SYSLOG_SEND:
+          return "SYSLOG_SEND";
+        case SYSLOG_SENT:
+          return "SYSLOG_SENT";
+        case SYSLOG_HALTED:
+          return "SYSLOG_HALTED";
+        case SYSLOG_ERROR:
+          return "SYSLOG_ERROR";
+        default:
+          break;
+      }
+      return "UNKNOWN ";
+}
+#endif
+
+static void ICACHE_FLASH_ATTR syslog_set_status(enum syslog_state state) {
+  syslogState = state;
+  DBG("[%dµs] %s: %s (%d)\n", WDEV_NOW(), __FUNCTION__, syslog_get_status(), state);
+}
+
+static void ICACHE_FLASH_ATTR syslog_timer_arm(int delay) {
+    static os_timer_t wifi_chk_timer = {};
+    syslog_timer_armed = true;
+    os_timer_disarm(&wifi_chk_timer);
+    os_timer_setfn(&wifi_chk_timer, (os_timer_func_t *)syslog_chk_status, NULL);
+    os_timer_arm(&wifi_chk_timer, delay, 0);
+}
+
 /******************************************************************************
  * FunctionName : syslog_chk_status
  * Description  : check whether get ip addr or not
@@ -55,10 +102,10 @@ static void ICACHE_FLASH_ATTR syslog_chk_status(void)
 {
   struct ip_info ipconfig;
 
-  //disarm timer first
-  os_timer_disarm(&wifi_chk_timer);
+  DBG("[%uµs] %s: id=%lu ", WDEV_NOW(), __FUNCTION__, syslogQueue ? syslogQueue->msgid : 0);
 
-  DBG("syslog_chk_status: state: %d ", syslogState);
+  //disarm timer first
+  syslog_timer_armed = false;
 
   //try to get ip info of ESP8266 station
   wifi_get_ip_info(STATION_IF, &ipconfig);
@@ -70,57 +117,52 @@ static void ICACHE_FLASH_ATTR syslog_chk_status(void)
     switch (syslogState)
       {
         case SYSLOG_WAIT:
-          DBG("state SYSLOG_WAIT: Wifi connected\n");
-          syslogState = SYSLOG_INIT;
-          os_timer_setfn(&wifi_chk_timer, (os_timer_func_t *)syslog_chk_status, NULL);
-          os_timer_arm(&wifi_chk_timer, 100, 0);
+          DBG("%s: Wifi connected\n", syslog_get_status());
+          syslog_set_status(SYSLOG_INIT);
+          syslog_timer_arm(100);
           break;
 
         case SYSLOG_INIT:
-          DBG("state SYSLOG_INIT: init syslog\n");
+          DBG("%s: init syslog\n", syslog_get_status());
+          syslog_set_status(SYSLOG_INITDONE);
           syslog_init(flashConfig.syslog_host);
-          os_timer_setfn(&wifi_chk_timer, (os_timer_func_t *)syslog_chk_status, NULL);
-          os_timer_arm(&wifi_chk_timer, 100, 0);
+          syslog_timer_arm(10);
           break;
 
         case SYSLOG_DNSWAIT:
-          DBG("state SYSLOG_DNSWAIT: wait for DNS resolver\n");
-          os_timer_setfn(&wifi_chk_timer, (os_timer_func_t *)syslog_chk_status, NULL);
-          os_timer_arm(&wifi_chk_timer, 100, 0);
-          syslogState = SYSLOG_READY;
+          DBG("%s: wait for DNS resolver\n", syslog_get_status());
+          syslog_timer_arm(10);
           break;
 
         case SYSLOG_READY:
-          DBG("state SYSLOG_READY: start sending\n");
+          DBG("%s: enforce sending\n", syslog_get_status());
           syslog_send_udp();
-          break;
+         break;
 
         case SYSLOG_SENDING:
-          DBG("state SYSLOG_SENDING: delay\n");
-          os_timer_setfn(&wifi_chk_timer, (os_timer_func_t *)syslog_chk_status, NULL);
-          os_timer_arm(&wifi_chk_timer, 2, 0);
-          syslogState = SYSLOG_SEND;
+          DBG("%s: delay\n", syslog_get_status());
+          syslog_set_status(SYSLOG_SEND);
+          syslog_timer_arm(2);
           break;
 
          case SYSLOG_SEND:
-          DBG("state SYSLOG_SEND: start sending\n");
+          DBG("%s: start sending\n", syslog_get_status());
           syslog_send_udp();
           break;
 
         default:
-           DBG("state DEFAULT: %d\n", syslogState);
+           DBG("%s: %d\n", syslog_get_status(), syslogState);
          break;
       }
   } else {
     if ((wifi_status == STATION_WRONG_PASSWORD ||
 	 wifi_status == STATION_NO_AP_FOUND ||
 	 wifi_status == STATION_CONNECT_FAIL)) {
-      syslogState = SYSLOG_ERROR;
+      syslog_set_status(SYSLOG_ERROR);
       os_printf("*** connect failure!!!\n");
     } else {
       DBG("re-arming timer...\n");
-      os_timer_setfn(&wifi_chk_timer, (os_timer_func_t *)syslog_chk_status, NULL);
-      os_timer_arm(&wifi_chk_timer, WIFI_CHK_INTERVAL, 0);
+      syslog_timer_arm(WIFI_CHK_INTERVAL);
     }
   }
 }
@@ -137,16 +179,19 @@ static void ICACHE_FLASH_ATTR syslog_udp_sent_cb(void *arg)
   struct espconn *pespconn = arg;
   (void) pespconn;
 
+  DBG("[%uµs] %s: id=%lu\n", WDEV_NOW(), __FUNCTION__, syslogQueue ? syslogQueue->msgid : 0);
+
   // datagram is delivered - free and advance queue
   syslog_entry_t *pse = syslogQueue;
   syslogQueue = syslogQueue -> next;
   os_free(pse);
 
   if (syslogQueue == NULL)
-    syslogState = SYSLOG_READY;
+    syslog_set_status(SYSLOG_READY);
   else {
     // UDP seems timecritical - we must ensure a minimum delay after each package...
-    syslogState = SYSLOG_SENDING;
+    syslog_set_status(SYSLOG_SENDING);
+    if (! syslog_timer_armed)
     syslog_chk_status();
   }
 }
@@ -154,8 +199,10 @@ static void ICACHE_FLASH_ATTR syslog_udp_sent_cb(void *arg)
 static void ICACHE_FLASH_ATTR
 syslog_udp_send_event(os_event_t *events) {
 //  os_printf("syslog_udp_send_event: %d %lu, %lu\n", syslogState, syslogQueue->msgid, syslogQueue->tick);
+  DBG("[%uµs] %s: id=%lu\n", WDEV_NOW(), __FUNCTION__, syslogQueue ? syslogQueue->msgid : 0);
+
   if (syslogQueue == NULL)
-    syslogState = SYSLOG_READY;
+    syslog_set_status(SYSLOG_READY);
   else {
     int res = 0;
     syslog_espconn->proto.udp->remote_port = syslogHost.port;			// ESP8266 udp remote port
@@ -189,15 +236,18 @@ static void ICACHE_FLASH_ATTR syslog_gethostbyname_cb(const char *name, ip_addr_
 {
   struct espconn *pespconn = (struct espconn *)arg;
   (void) pespconn;
+
+  DBG("[%uµs] %s\n", WDEV_NOW(), __FUNCTION__);
   if (ipaddr != NULL) {
     syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "SYSLOG",
           "resolved hostname: %s: " IPSTR, name, IP2STR(ipaddr));
     syslogHost.addr.addr = ipaddr->addr;
-    syslogState = SYSLOG_DNSWAIT;
+    syslog_set_status(SYSLOG_READY);
   } else {
-    syslogState = SYSLOG_ERROR;
-    DBG("syslog_gethostbyname_cb: state=SYSLOG_ERROR\n");
+    syslog_set_status(SYSLOG_ERROR);
+    DBG("syslog_gethostbyname_cb: status=%s\n", syslog_get_status());
   }
+  DBG("[%uµs] ex syslog_gethostbyname_cb()\n", WDEV_NOW());
 }
 
  /******************************************************************************
@@ -210,14 +260,15 @@ static void ICACHE_FLASH_ATTR syslog_gethostbyname_cb(const char *name, ip_addr_
 void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
 {
 
+  DBG("[%uµs] %s\n", WDEV_NOW(), __FUNCTION__);
   if (!*syslog_host) {
-    syslogState = SYSLOG_HALTED;
+    syslog_set_status(SYSLOG_HALTED);
     return;
-  }
+ }
 
   if (syslog_host == NULL) {
     // disable and unregister syslog handler
-    syslogState = SYSLOG_HALTED;
+    syslog_set_status(SYSLOG_HALTED);
     if (syslog_espconn != NULL) {
       if (syslog_espconn->proto.udp) {
         // there's no counterpart to espconn_create...
@@ -235,7 +286,6 @@ void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
       pse = next;
     }
     syslogQueue = NULL;
-    syslogState = SYSLOG_HALTED;
     return;
   }
 
@@ -272,24 +322,17 @@ void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
 //  wifi_set_broadcast_if(STATIONAP_MODE); // send UDP broadcast from both station and soft-AP interface
   espconn_create(syslog_espconn);   						// create udp
 
+  syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "SYSLOG",
+              "syslogserver: %s:%d %d", host, syslogHost.port, syslog_espconn->proto.udp->local_port);
+
   if (UTILS_StrToIP((const char *)host, (void*)&syslogHost.addr)) {
-    syslogState = SYSLOG_READY;
-    syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "SYSLOG",
-          "syslogserver: %s:%d", host, syslogHost.port);
+    syslog_set_status(SYSLOG_READY);
   } else {
-    syslogState = SYSLOG_DNSWAIT;
+    syslog_set_status(SYSLOG_DNSWAIT);
     syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "SYSLOG",
-          "resolving hostname: %s", host);
+          "must resolve hostname \"%s\"", host);
     espconn_gethostbyname(syslog_espconn, host, &syslogHost.addr, syslog_gethostbyname_cb);
   }
-#ifdef SYSLOG_UDP_RECV
-  LOG_NOTICE("syslog_init: host: %s, port: %d, lport: %d, recvcb: %p, sstate: %d",
-		  host, syslogHost.port, syslog_espconn->proto.udp->local_port,
-		  syslog_udp_recv_cb, syslogState	);
-#else
-  LOG_NOTICE("syslog_init: host: %s, port: %d, lport: %d, state: %d",
-		  host, syslogHost.port, syslog_espconn->proto.udp->local_port, syslogState	);
-#endif
 }
 
 /******************************************************************************
@@ -303,7 +346,7 @@ syslog_add_entry(syslog_entry_t *entry)
 {
   syslog_entry_t *pse = syslogQueue;
 
-  DBG("syslog_add_entry: %p", syslogQueue);
+  DBG("[%dµs] %s id=%lu\n", WDEV_NOW(), __FUNCTION__, entry->msgid);
   // append msg to syslog_queue
   if (pse == NULL)
     syslogQueue = entry;
@@ -312,7 +355,7 @@ syslog_add_entry(syslog_entry_t *entry)
       pse = pse->next;
     pse->next = entry;	// append msg to syslog queue
   }
-  DBG("%p %lu %d\n", entry, entry->msgid, system_get_free_heap_size());
+//   DBG("%p %lu %d\n", entry, entry->msgid, system_get_free_heap_size());
 
   // ensure we have sufficient heap for the rest of the system
   if (system_get_free_heap_size() < syslogHost.min_heap_size) {
@@ -321,7 +364,7 @@ syslog_add_entry(syslog_entry_t *entry)
       entry->next = syslog_compose(SYSLOG_FAC_USER, SYSLOG_PRIO_CRIT, "SYSLOG", "queue filled up, halted");
       if (syslogState == SYSLOG_READY)
         syslog_send_udp();
-      syslogState = SYSLOG_HALTED;
+      syslog_set_status(SYSLOG_HALTED);
     }
   }
 }
@@ -335,6 +378,7 @@ syslog_add_entry(syslog_entry_t *entry)
 LOCAL syslog_entry_t ICACHE_FLASH_ATTR *
 syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *fmt, ...)
 {
+  DBG("[%dµs] %s id=%lu\n", WDEV_NOW(), __FUNCTION__, syslog_msgid);
   syslog_entry_t *se = os_zalloc(sizeof (syslog_entry_t) + 1024);	// allow up to 1k datagram
   char *p = se->datagram;
   se->tick = WDEV_NOW();			// 0 ... 4294.967295s
@@ -456,7 +500,8 @@ syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *
  *******************************************************************************/
 void ICACHE_FLASH_ATTR syslog(uint8_t facility, uint8_t severity, const char *tag, const char *fmt, ...)
 {
-  DBG("syslog: state=%d ", syslogState);
+  DBG("[%dµs] %s status: %s\n", WDEV_NOW(), __FUNCTION__, syslog_get_status());
+
   if (syslogState == SYSLOG_ERROR ||
     syslogState == SYSLOG_HALTED)
     return;
@@ -473,7 +518,8 @@ void ICACHE_FLASH_ATTR syslog(uint8_t facility, uint8_t severity, const char *ta
   syslog_add_entry(se);
 
   if (syslogState == SYSLOG_NONE)
-    syslogState = SYSLOG_WAIT;
+    syslog_set_status(SYSLOG_WAIT);
 
-  syslog_chk_status();
+  if (! syslog_timer_armed)
+    syslog_chk_status();
 }

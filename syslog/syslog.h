@@ -22,6 +22,7 @@ enum syslog_state {
     SYSLOG_NONE,        // not initialized
     SYSLOG_WAIT,        // waiting for Wifi
     SYSLOG_INIT,	// WIFI avail, must initialize
+    SYSLOG_INITDONE,
     SYSLOG_DNSWAIT,	// WIFI avail, init done, waiting for DNS resolve
     SYSLOG_READY,       // Wifi established, ready to send
     SYSLOG_SENDING,     // UDP package on the air
