@@ -4,6 +4,7 @@
 # Makefile heavily adapted to esp-link and wireless flashing by Thorsten von Eicken
 # Lots of work, in particular to support windows, by brunnels
 # Original from esphttpd and others...
+# Added support for SOFTAP hard-coded configuration by KatAst
 # VERBOSE=1
 #
 # Start by setting the directories for the toolchain a few lines down
@@ -19,8 +20,36 @@
 # The Wifi station configuration can be hard-coded here, which makes esp-link come up in STA+AP
 # mode trying to connect to the specified AP *only* if the flash wireless settings are empty!
 # This happens on a full serial flash and avoids having to hunt for the AP...
-# STA_SSID ?= 
+# STA_SSID ?=
 # STA_PASS ?= 
+
+# The SOFTAP configuration can be hard-coded here, the minimum parameters to set are AP_SSID && AP_PASS
+# The AP SSID has to be at least 8 characters long, same for AP PASSWORD
+# The AP AUTH MODE can be set to ( default = AUTH_WPA_WPA2_PSK )
+#	AUTH_OPEN = 0, 
+#	AUTH_WEP, 
+#	AUTH_WPA_PSK, 
+#	AUTH_WPA2_PSK, 
+#	AUTH_WPA_WPA2_PSK
+# SSID hidden default 0, ( 0 | 1 ) 
+# Max connections default 4, ( 1 ~ 4 )
+# Beacon interval default 100, ( 100 ~ 60000ms )
+
+AP_SSID ?=esp-link-test
+AP_PASS ?=esp-link-test
+# AP_AUTH_MODE ?=AUTH_WPA_WPA2_PSK
+# AP_SSID_HIDDEN ?=0
+# AP_MAX_CONN ?=3
+# AP_BEACON_INTERVAL ?=150
+
+
+# If CHANGE_TO_STA is set to "yes" the esp-link module will switch to station mode
+# once successfully connected to an access point. Else it will stay in STA+AP mode.
+
+CHANGE_TO_STA ?= no
+
+# hostname or IP address for wifi flashing
+ESP_HOSTNAME        ?= esp-link
 
 # --------------- toolchain configuration ---------------
 
@@ -30,7 +59,7 @@ XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 
 # Base directory of the ESP8266 SDK package, absolute
 # Typically you'll download from Espressif's BBS, http://bbs.espressif.com/viewforum.php?f=5
-SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.5.0)
+SDK_BASE	?= $(abspath ../esp-open-sdk/esp_iot_sdk_v1.5.0)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
@@ -38,15 +67,6 @@ SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.5.0)
 ESPTOOL		?= $(abspath ../esp-open-sdk/esptool/esptool.py)
 ESPPORT		?= /dev/ttyUSB0
 ESPBAUD		?= 460800
-
-# The Wifi station configuration can be hard-coded here, which makes esp-link come up in STA+AP
-# mode trying to connect to the specified AP *only* if the flash wireless settings are empty!
-# This happens on a full serial flash and avoids having to hunt for the AP...
-# STA_SSID ?= 
-# STA_PASS ?= 
-
-# hostname or IP address for wifi flashing
-ESP_HOSTNAME        ?= esp-link
 
 # --------------- chipset configuration   ---------------
 
@@ -64,14 +84,9 @@ LED_CONN_PIN        ?= 0
 # GPIO pin used for "serial activity" LED, active low
 LED_SERIAL_PIN      ?= 14
 
-# --------------- esp-link config options ---------------
+# --------------- esp-link modules config options ---------------
 
-# If CHANGE_TO_STA is set to "yes" the esp-link module will switch to station mode
-# once successfully connected to an access point. Else it will stay in AP+STA mode.
-
-CHANGE_TO_STA ?= yes
-
-# Optional Modules
+# Optional Modules mqtt
 MODULES ?= mqtt rest syslog
 
 # --------------- esphttpd config options ---------------
@@ -266,6 +281,30 @@ endif
 
 ifneq ($(strip $(STA_PASS)),)
 CFLAGS		+= -DSTA_PASS="$(STA_PASS)"
+endif
+
+ifneq ($(strip $(AP_SSID)),)
+CFLAGS		+= -DAP_SSID="$(AP_SSID)"
+endif
+
+ifneq ($(strip $(AP_PASS)),)
+CFLAGS		+= -DAP_PASS="$(AP_PASS)"
+endif
+
+ifneq ($(strip $(AP_AUTH_MODE)),)
+CFLAGS		+= -DAP_AUTH_MODE="$(AP_AUTH_MODE)"
+endif
+
+ifneq ($(strip $(AP_SSID_HIDDEN)),)
+CFLAGS		+= -DAP_SSID_HIDDEN="$(AP_SSID_HIDDEN)"
+endif
+
+ifneq ($(strip $(AP_MAX_CONN)),)
+CFLAGS		+= -DAP_MAX_CONN="$(AP_MAX_CONN)"
+endif
+
+ifneq ($(strip $(AP_BEACON_INTERVAL)),)
+CFLAGS		+= -DAP_BEACON_INTERVAL="$(AP_BEACON_INTERVAL)"
 endif
 
 ifeq ("$(GZIP_COMPRESSION)","yes")
