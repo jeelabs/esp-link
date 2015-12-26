@@ -19,12 +19,34 @@ Cgi/template routines for the /wifi url.
 #include "status.h"
 #include "config.h"
 #include "log.h"
+#include "syslog.h"
 
 #ifdef CGIWIFI_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif
+
+#define LOG(severity, format, ...)  do {	\
+	char buffer[128];			\
+	os_sprintf(buffer, format, ## __VA_ARGS__);	\
+	syslog(SYSLOG_FAC_USER, severity, "WIFI", buffer);			\
+	DBG("WIFI %s\n", buffer);	\
+} while(0)
+
+#define NOTICE(format, ...) do {	\
+	LOG(SYSLOG_PRIO_NOTICE, format, ## __VA_ARGS__);	\
+} while(0)
+
+#define INFO(format, ...) do {	\
+	LOG(SYSLOG_PRIO_INFO, format, ## __VA_ARGS__);	\
+} while(0)
+
+#define WARNING(format, ...) do {	\
+	LOG(SYSLOG_PRIO_WARNING, format, ## __VA_ARGS__);	\
+} while(0)
+
+
 
 bool mdns_started = false;
 
@@ -59,25 +81,25 @@ static void ICACHE_FLASH_ATTR wifiHandleEventCb(System_Event_t *evt) {
   case EVENT_STAMODE_CONNECTED:
     wifiState = wifiIsConnected;
     wifiReason = 0;
-    DBG("Wifi connected to ssid %s, ch %d\n", evt->event_info.connected.ssid,
+    NOTICE("connected to ssid %s, ch %d", evt->event_info.connected.ssid,
       evt->event_info.connected.channel);
     statusWifiUpdate(wifiState);
     break;
   case EVENT_STAMODE_DISCONNECTED:
     wifiState = wifiIsDisconnected;
     wifiReason = evt->event_info.disconnected.reason;
-    DBG("Wifi disconnected from ssid %s, reason %s (%d)\n",
+    WARNING("disconnected from ssid %s, reason %s (%d)",
       evt->event_info.disconnected.ssid, wifiGetReason(), evt->event_info.disconnected.reason);
     statusWifiUpdate(wifiState);
     break;
   case EVENT_STAMODE_AUTHMODE_CHANGE:
-    DBG("Wifi auth mode: %d -> %d\n",
+    NOTICE("auth mode: %d -> %d",
       evt->event_info.auth_change.old_mode, evt->event_info.auth_change.new_mode);
     break;
   case EVENT_STAMODE_GOT_IP:
     wifiState = wifiGotIP;
     wifiReason = 0;
-    DBG("Wifi got ip:" IPSTR ",mask:" IPSTR ",gw:" IPSTR "\n",
+    NOTICE("got ip:" IPSTR ",mask:" IPSTR ",gw:" IPSTR,
       IP2STR(&evt->event_info.got_ip.ip), IP2STR(&evt->event_info.got_ip.mask),
       IP2STR(&evt->event_info.got_ip.gw));
     statusWifiUpdate(wifiState);
@@ -85,11 +107,11 @@ static void ICACHE_FLASH_ATTR wifiHandleEventCb(System_Event_t *evt) {
       wifiStartMDNS(evt->event_info.got_ip.ip);
     break;
   case EVENT_SOFTAPMODE_STACONNECTED:
-    DBG("Wifi AP: station " MACSTR " joined, AID = %d\n",
+    NOTICE("AP: station " MACSTR " joined, AID = %d",
         MAC2STR(evt->event_info.sta_connected.mac), evt->event_info.sta_connected.aid);
     break;
   case EVENT_SOFTAPMODE_STADISCONNECTED:
-    DBG("Wifi AP: station " MACSTR " left, AID = %d\n",
+    NOTICE("AP: station " MACSTR " left, AID = %d",
         MAC2STR(evt->event_info.sta_disconnected.mac), evt->event_info.sta_disconnected.aid);
     break;
   default:
@@ -109,7 +131,7 @@ void ICACHE_FLASH_ATTR wifiAddStateChangeCb(WifiStateChangeCb cb) {
       return;
     }
   }
-  DBG("WIFI: max state change cb count exceeded\n");
+  WARNING("max state change cb count exceeded");
 }
 
 void ICACHE_FLASH_ATTR wifiStartMDNS(struct ip_addr ip) {
@@ -154,7 +176,7 @@ void ICACHE_FLASH_ATTR wifiScanDoneCb(void *arg, STATUS status) {
   struct bss_info *bss_link = (struct bss_info *)arg;
 
   if (status!=OK) {
-    DBG("wifiScanDoneCb status=%d\n", status);
+    WARNING("wifiScanDoneCb status=%d", status);
     cgiWifiAps.scanInProgress=0;
     return;
   }
@@ -174,7 +196,7 @@ void ICACHE_FLASH_ATTR wifiScanDoneCb(void *arg, STATUS status) {
   //Allocate memory for access point data
   cgiWifiAps.apData=(ApData **)os_malloc(sizeof(ApData *)*n);
   cgiWifiAps.noAps=n;
-  DBG("Scan done: found %d APs\n", n);
+  INFO("Scan done: found %d APs", n);
 
   //Copy access point data to the static struct
   n=0;
@@ -183,7 +205,7 @@ void ICACHE_FLASH_ATTR wifiScanDoneCb(void *arg, STATUS status) {
     if (n>=cgiWifiAps.noAps) {
       //This means the bss_link changed under our nose. Shouldn't happen!
       //Break because otherwise we will write in unallocated memory.
-      DBG("Huh? I have more than the allocated %d aps!\n", cgiWifiAps.noAps);
+      WARNING("Huh? I have more than the allocated %d aps!", cgiWifiAps.noAps);
       break;
     }
     //Save the ap data.
@@ -191,7 +213,7 @@ void ICACHE_FLASH_ATTR wifiScanDoneCb(void *arg, STATUS status) {
     cgiWifiAps.apData[n]->rssi=bss_link->rssi;
     cgiWifiAps.apData[n]->enc=bss_link->authmode;
     strncpy(cgiWifiAps.apData[n]->ssid, (char*)bss_link->ssid, 32);
-    DBG("bss%d: %s (%d)\n", n+1, (char*)bss_link->ssid, bss_link->rssi);
+    INFO("bss%d: %s (%d)", n+1, (char*)bss_link->ssid, bss_link->rssi);
 
     bss_link = bss_link->next.stqe_next;
     n++;
@@ -202,7 +224,7 @@ void ICACHE_FLASH_ATTR wifiScanDoneCb(void *arg, STATUS status) {
 
 static ETSTimer scanTimer;
 static void ICACHE_FLASH_ATTR scanStartCb(void *arg) {
-  DBG("Starting a scan\n");
+  INFO("Starting a scan");
   wifi_station_scan(NULL, wifiScanDoneCb);
 }
 
@@ -287,13 +309,13 @@ static ETSTimer resetTimer;
 static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
   int x = wifi_station_get_connect_status();
   int m = wifi_get_opmode() & 0x3;
-  DBG("Wifi check: mode=%s status=%d\n", wifiMode[m], x);
+  NOTICE("check: mode=%s status=%d", wifiMode[m], x);
 
   if (x == STATION_GOT_IP) {
     if (m != 1) {
 #ifdef CHANGE_TO_STA
       // We're happily connected, go to STA mode
-      DBG("Wifi got IP. Going into STA mode..\n");
+      NOTICE("got IP. Going into STA mode..");
       wifi_set_opmode(1);
       os_timer_arm(&resetTimer, RESET_TIMEOUT, 0); // check one more time after switching to STA-only
 #endif
@@ -302,11 +324,11 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
     // no more resetTimer at this point, gotta use physical reset to recover if in trouble
   } else {
     if (m != 3) {
-      DBG("Wifi connect failed. Going into STA+AP mode..\n");
+      NOTICE("connect failed. Going into STA+AP mode..");
       wifi_set_opmode(3);
     }
     log_uart(true);
-    DBG("Enabling/continuing uart log\n");
+    INFO("Enabling/continuing uart log");
     os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
   }
 }
@@ -318,7 +340,7 @@ static ETSTimer reassTimer;
 
 // Callback actually doing reassociation
 static void ICACHE_FLASH_ATTR reassTimerCb(void *arg) {
-  DBG("Wifi changing association\n");
+  NOTICE("changing association");
   wifi_station_disconnect();
   stconf.bssid_set = 0;
   wifi_station_set_config(&stconf);
@@ -346,7 +368,7 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
     //Set to 0 if you want to disable the actual reconnecting bit
     os_strncpy((char*)stconf.ssid, essid, 32);
     os_strncpy((char*)stconf.password, passwd, 64);
-    DBG("Wifi try to connect to AP %s pw %s\n", essid, passwd);
+    NOTICE("try to connect to AP %s pw %s", essid, passwd);
 
     //Schedule disconnect/connect
     os_timer_disarm(&reassTimer);
@@ -407,7 +429,7 @@ void ICACHE_FLASH_ATTR configWifiIP() {
     if (wifi_station_dhcpc_status() == DHCP_STARTED)
       wifi_station_dhcpc_stop();
     wifi_station_dhcpc_start();
-    DBG("Wifi uses DHCP, hostname=%s\n", flashConfig.hostname);
+    NOTICE("uses DHCP, hostname=%s", flashConfig.hostname);
   } else {
     // no DHCP, we got static network config!
     wifi_station_dhcpc_stop();
@@ -416,7 +438,7 @@ void ICACHE_FLASH_ATTR configWifiIP() {
     ipi.netmask.addr = flashConfig.netmask;
     ipi.gw.addr = flashConfig.gateway;
     wifi_set_ip_info(0, &ipi);
-    DBG("Wifi uses static IP %d.%d.%d.%d\n", IP2STR(&ipi.ip.addr));
+    NOTICE("uses static IP %d.%d.%d.%d", IP2STR(&ipi.ip.addr));
   }
 #ifdef DEBUGIP
   debugIP();
@@ -492,7 +514,7 @@ int ICACHE_FLASH_ATTR cgiWiFiSetMode(HttpdConnData *connData) {
   len=httpdFindArg(connData->getArgs, "mode", buff, sizeof(buff));
   if (len!=0) {
     int m = atoi(buff);
-    DBG("Wifi switching to mode %d\n", m);
+    NOTICE("switching to mode %d", m);
     wifi_set_opmode(m&3);
     if (m == 1) {
       // STA-only mode, reset into STA+AP after a timeout if we don't get an IP address
@@ -620,7 +642,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
   // wifi_set_phy_mode(2); // limit to 802.11b/g 'cause n is flaky
   int x = wifi_get_opmode() & 0x3;
   x = x;
-  DBG("Wifi init, mode=%s\n", wifiMode[x]);
+  NOTICE("init, mode=%s", wifiMode[x]);
   configWifiIP();
 
   // The default sleep mode should be modem_sleep, but we set it here explicitly for good
