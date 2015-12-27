@@ -26,7 +26,7 @@
 # The SOFTAP configuration can be hard-coded here, the minimum parameters to set are AP_SSID && AP_PASS
 # The AP SSID has to be at least 8 characters long, same for AP PASSWORD
 # The AP AUTH MODE can be set to ( default = AUTH_WPA_WPA2_PSK )
-#	AUTH_OPEN = 0, 
+#	AUTH_OPEN, 
 #	AUTH_WEP, 
 #	AUTH_WPA_PSK, 
 #	AUTH_WPA2_PSK, 
@@ -35,12 +35,12 @@
 # Max connections default 4, ( 1 ~ 4 )
 # Beacon interval default 100, ( 100 ~ 60000ms )
 
-# AP_SSID ?=
-# AP_PASS ?=
-# AP_AUTH_MODE ?=
-# AP_SSID_HIDDEN ?=
-# AP_MAX_CONN ?=
-# AP_BEACON_INTERVAL ?=
+# AP_SSID ?=esp_link_test
+# AP_PASS ?=esp_link_test
+# AP_AUTH_MODE ?=AUTH_WPA_WPA2_PSK
+# AP_SSID_HIDDEN ?=0
+# AP_MAX_CONN ?=4
+# AP_BEACON_INTERVAL ?=100
 
 
 # If CHANGE_TO_STA is set to "yes" the esp-link module will switch to station mode
