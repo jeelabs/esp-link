@@ -26,7 +26,7 @@ int8_t getUInt16Arg(HttpdConnData *connData, char *name, uint16_t *config);
 
 // Get the HTTP query-string param 'name' and store it boolean value at 'config',
 // supports 1/true and 0/false, returns -1 on error, 0 if not found, 1 if found
-int8_t getBoolArg(HttpdConnData *connData, char *name, bool *config);
+int8_t getBoolArg(HttpdConnData *connData, char *name, uint8_t *config);
 
 int cgiMenu(HttpdConnData *connData);
 
