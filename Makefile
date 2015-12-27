@@ -35,12 +35,12 @@
 # Max connections default 4, ( 1 ~ 4 )
 # Beacon interval default 100, ( 100 ~ 60000ms )
 
-AP_SSID ?=esp-link-test
-AP_PASS ?=esp-link-test
-# AP_AUTH_MODE ?=AUTH_WPA_WPA2_PSK
-# AP_SSID_HIDDEN ?=0
-# AP_MAX_CONN ?=3
-# AP_BEACON_INTERVAL ?=150
+# AP_SSID ?=
+# AP_PASS ?=
+# AP_AUTH_MODE ?=
+# AP_SSID_HIDDEN ?=
+# AP_MAX_CONN ?=
+# AP_BEACON_INTERVAL ?=
 
 
 # If CHANGE_TO_STA is set to "yes" the esp-link module will switch to station mode

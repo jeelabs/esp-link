@@ -1,6 +1,6 @@
   <div id="main">
     <div class="header">
-      <h1>WiFi Configuration</h1>
+      <h1>WiFi Station Configuration</h1>
     </div>
 
     <div class="content">
@@ -19,7 +19,9 @@
           <tr><td>WiFi MAC</td><td id="wifi-mac"></td></tr>
           <tr><td colspan="2" id="wifi-warn"></td></tr>
           </tbody> </table>
-        </div></div>
+        </div>
+        
+        </div>
         <div class="pure-u-1 pure-u-md-1-2"><div class="card">
           <h1>WiFi Association</h1>
           <p id="reconnect" style="color: #600" hidden></p>
@@ -70,7 +72,7 @@
 
 <script type="text/javascript">
 </script>
-<script src="wifi.js"></script>
+<script src="wifiSta.js"></script>
 <script type="text/javascript">
 onLoad(function() {
   getWifiInfo();
