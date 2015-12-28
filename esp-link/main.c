@@ -112,7 +112,7 @@ void user_rf_pre_init(void) {
 void user_init(void) {
     
   // get the flash config so we know how to init things
-  configWipe(); // uncomment to reset the config for testing purposes
+  //configWipe(); // uncomment to reset the config for testing purposes
   bool restoreOk = configRestore();
   // Init gpio pin registers
   gpio_init();
