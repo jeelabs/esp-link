@@ -679,7 +679,7 @@ int ICACHE_FLASH_ATTR cgiWiFiSetMode(HttpdConnData *connData) {
         wifi_set_opmode(next_mode&3);
         
         if (previous_mode == 2) {
-            // movint to STA-only mode from AP, so reset into STA+AP after a timeout if we don't get an IP address
+            // moving to STA or STA+AP mode from AP
             stconf.bssid_set = 0;
             wifi_station_set_config(&stconf);
             wifi_station_connect();
@@ -688,7 +688,7 @@ int ICACHE_FLASH_ATTR cgiWiFiSetMode(HttpdConnData *connData) {
             os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
         }
         if(previous_mode == 1){
-            // moving to STA or STA+AP, so softap config call needed
+            // moving to AP or STA+AP, so softap config call needed
             wifi_softap_set_config(&apconf);
         }
         jsonHeader(connData, 200);
