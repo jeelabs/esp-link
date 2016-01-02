@@ -823,25 +823,17 @@ int ICACHE_FLASH_ATTR cgiWifiInfo(HttpdConnData *connData) {
 
 // Check string againt invalid characters
 int ICACHE_FLASH_ATTR checkString(char *str){
-    unsigned char strStripped[50];
-    int i = 0, c = 0;
+    int i = 0;
     for(; i < os_strlen(str); i++)
     {
         // Alphanumeric and underscore allowed
-        if (isalnum((unsigned char)str[i]) || str[i] == '_')
+        if (!(isalnum((unsigned char)str[i]) || str[i] == '_'))
         {
-            strStripped[c] = str[i];
-            c++;
+            os_printf("Error: String has non alphanumeric chars\n");
+            return 0;
         }
     }
-    strStripped[c] = '\0';
-    
-    if (os_strcmp((char *)str,(char *)&strStripped) == 0){
-        return 1;
-    }else{
-        os_printf("Error: String has non alphanumeric chars\n");
-        return 0;
-    }
+    return 1;
 }
 
 /*  Init the wireless
