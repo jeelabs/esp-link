@@ -312,6 +312,7 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
     if(m!=2){
         if( x == STATION_GOT_IP ){
 #ifdef CHANGE_TO_STA
+        if(m != 1)
             wifi_set_opmode(1);
 #endif
             log_uart(false);
