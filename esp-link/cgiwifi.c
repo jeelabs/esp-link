@@ -705,11 +705,6 @@ static char *wifiWarn[] = { 0,
     "Switch to <a href=\\\"#\\\" onclick=\\\"changeWifiMode(3)\\\">STA+AP mode</a>",
     "Switch to <a href=\\\"#\\\" onclick=\\\"changeWifiMode(3)\\\">STA+AP mode</a>",
     "Switch to <a href=\\\"#\\\" onclick=\\\"changeWifiMode(1)\\\">STA mode</a>",
-};
-
-static char *apWifiWarn[] = { 0,
-    "Switch to <a href=\\\"#\\\" onclick=\\\"changeWifiMode(3)\\\">STA+AP mode</a>",
-    "Switch to <a href=\\\"#\\\" onclick=\\\"changeWifiMode(3)\\\">STA+AP mode</a>",
     "Switch to <a href=\\\"#\\\" onclick=\\\"changeWifiMode(2)\\\">AP mode</a>",
 };
 
@@ -743,7 +738,8 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
     int p = wifi_get_phy_mode();
     char *phy = wifiPhy[p&3];
     char *warn = wifiWarn[op];
-    char *apwarn = apWifiWarn[op];
+    if (op == 3) op = 4; // Done to use only one set of warnings
+    char *apwarn = wifiWarn[op];
     char *apauth = apAuthMode[apconf.authmode];
     sint8 rssi = wifi_station_get_rssi();
     if (rssi > 0) rssi = 0;
