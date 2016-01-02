@@ -526,7 +526,7 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
     char buff[96];
     int len;
     // Do we need a password?
-    int pass_need=1;
+    bool pass_need=true;
     
     // Check extra security measure
     len=httpdFindArg(connData->getArgs, "100", buff, sizeof(buff));
@@ -543,9 +543,9 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
         os_memset(apconf.ssid, 0, 32);
         os_memcpy(apconf.ssid, buff, len);
         apconf.ssid_len = len;
-        pass_need = 1;
+        pass_need = true;
     }else{
-        pass_need = 0;
+        pass_need = false;
         jsonHeader(connData, 400);
         httpdSend(connData, "SSID not valid or out of range", -1);
         return HTTPD_CGI_DONE;
@@ -557,9 +557,9 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
             // STRING PREPROCESSING DONE IN CLIENT SIDE
             os_memset(apconf.password, 0, 64);
             os_memcpy(apconf.password, buff, len);
-            pass_need = 1;
+            pass_need = true;
         }else if (len == 0){
-            pass_need = 0;
+            pass_need = false;
             os_memset(apconf.password, 0, 64);
         }else{
             jsonHeader(connData, 400);
