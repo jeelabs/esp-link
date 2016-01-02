@@ -522,9 +522,7 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
         httpdSend(connData, "No changes allowed in STA mode", -1);
         return HTTPD_CGI_DONE;
     }
-    // Get Soft-Ap config, just in case
-    wifi_softap_get_config(&apconf);
-    
+
     char buff[96];
     int len;
     // Do we need a password?
