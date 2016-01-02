@@ -540,7 +540,7 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
     len=httpdFindArg(connData->getArgs, "ap_ssid", buff, sizeof(buff));
     if(checkString(buff) && len>7 && len<32){
         // STRING PREPROCESSING DONE IN CLIENT SIDE
-        memset(apconf.ssid, 0, 32);
+        os_memset(apconf.ssid, 0, 32);
         os_memcpy(apconf.ssid, buff, len);
         apconf.ssid_len = len;
         pass_need = 1;
@@ -555,12 +555,12 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
         len=httpdFindArg(connData->getArgs, "ap_password", buff, sizeof(buff));
         if(checkString(buff) && len>7 && len<62){
             // STRING PREPROCESSING DONE IN CLIENT SIDE
-            memset(apconf.password, 0, 64);
+            os_memset(apconf.password, 0, 64);
             os_memcpy(apconf.password, buff, len);
             pass_need = 1;
         }else if (len == 0){
             pass_need = 0;
-            memset(apconf.password, 0, 64);
+            os_memset(apconf.password, 0, 64);
         }else{
             jsonHeader(connData, 400);
             httpdSend(connData, "PASSWORD not valid or out of range", -1);
@@ -893,7 +893,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
     // Check if both ssid and pass are alphanumeric values
     if(checkString(VERS_STR(AP_SSID)) && checkString(VERS_STR(AP_PASS))){
         // Clean memory and set the value of SSID
-        memset(apconf.ssid, 0, 32);
+        os_memset(apconf.ssid, 0, 32);
         os_memcpy(apconf.ssid, VERS_STR(AP_SSID), os_strlen(VERS_STR(AP_SSID)));
         // Specify the length of pass
         apconf.ssid_len= os_strlen((char*)VERS_STR(AP_SSID));
@@ -901,7 +901,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
         int passlen = os_strlen(VERS_STR(AP_PASS));
         if( passlen > 7 && passlen < 64 ){
             // Clean memory and set the value of PASS
-            memset(apconf.password, 0, 64);
+            os_memset(apconf.password, 0, 64);
             os_memcpy(apconf.password, VERS_STR(AP_PASS), passlen);
             
             // Can't choose auth mode without a valid ssid and password
@@ -917,7 +917,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
             // If ssid is ok and no pass set auth open
             apconf.authmode = AUTH_OPEN;
             // Remove stored password
-            memset(apconf.password, 0, 64);
+            os_memset(apconf.password, 0, 64);
         }
     }// end of ssid and pass check
 #ifdef AP_SSID_HIDDEN
