@@ -859,9 +859,9 @@ void ICACHE_FLASH_ATTR wifiInit() {
     DBG("Wifi init, mode=%s\n",wifiMode[x]);
 
     
-    // STATION parameters only on a full flash, because default opmode is 2
+    // STATION parameters
 #if defined(STA_SSID) && defined(STA_PASS)
-    if( x == 2 ){
+
         // Set parameters
         if (os_strlen((char*)stconf.ssid) == 0 && os_strlen((char*)stconf.password) == 0) {
             os_strncpy((char*)stconf.ssid, VERS_STR(STA_SSID), 32);
@@ -873,7 +873,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
             stconf.bssid_set = 0;
             wifi_station_set_config(&stconf);
         }
-    }
+    
 #endif
     
     // Change SOFT_AP settings if defined
