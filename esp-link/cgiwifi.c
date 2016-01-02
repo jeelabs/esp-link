@@ -579,6 +579,8 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
                 // If out of range set by default
                 apconf.authmode = 4;
             }
+        }else{
+            apconf.authmode = 4;
         }
     }else{
         apconf.authmode = 0;
