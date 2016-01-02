@@ -37,7 +37,7 @@
 
 # AP_SSID ?=esp_link_test
 # AP_PASS ?=esp_link_test
-# AP_AUTH_MODE ?=0
+# AP_AUTH_MODE ?=4
 # AP_SSID_HIDDEN ?=0
 # AP_MAX_CONN ?=4
 # AP_BEACON_INTERVAL ?=100
@@ -46,7 +46,7 @@
 # If CHANGE_TO_STA is set to "yes" the esp-link module will switch to station mode
 # once successfully connected to an access point. Else it will stay in STA+AP mode.
 
-CHANGE_TO_STA ?= no
+CHANGE_TO_STA ?= yes
 
 # hostname or IP address for wifi flashing
 ESP_HOSTNAME        ?= esp-link
@@ -59,7 +59,7 @@ XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 
 # Base directory of the ESP8266 SDK package, absolute
 # Typically you'll download from Espressif's BBS, http://bbs.espressif.com/viewforum.php?f=5
-SDK_BASE	?= $(abspath ../esp-open-sdk/esp_iot_sdk_v1.5.0)
+SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.5.0)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
