@@ -877,17 +877,19 @@ void ICACHE_FLASH_ATTR wifiInit() {
 #endif
     
     // Change SOFT_AP settings if defined
-#if defined(AP_SSID) && defined(AP_PASS)
-    // Check if both ssid and pass are alphanumeric values
-    if(checkString(VERS_STR(AP_SSID)) && checkString(VERS_STR(AP_PASS))){
+#if defined(AP_SSID)
+    // Check if ssid and pass are alphanumeric values
+    int ssidlen = os_strlen(VERS_STR(AP_SSID));
+    if(checkString(VERS_STR(AP_SSID)) && ssidlen > 7 && ssidlen < 32){
         // Clean memory and set the value of SSID
         os_memset(apconf.ssid, 0, 32);
         os_memcpy(apconf.ssid, VERS_STR(AP_SSID), os_strlen(VERS_STR(AP_SSID)));
         // Specify the length of pass
-        apconf.ssid_len= os_strlen((char*)VERS_STR(AP_SSID));
+        apconf.ssid_len= ssidlen;
+#if defined(AP_PASS)
         // If pass is at least 8 and less than 64
         int passlen = os_strlen(VERS_STR(AP_PASS));
-        if( passlen > 7 && passlen < 64 ){
+        if( checkString(VERS_STR(AP_PASS)) && passlen > 7 && passlen < 64 ){
             // Clean memory and set the value of PASS
             os_memset(apconf.password, 0, 64);
             os_memcpy(apconf.password, VERS_STR(AP_PASS), passlen);
@@ -898,15 +900,16 @@ void ICACHE_FLASH_ATTR wifiInit() {
             if(AP_AUTH_MODE >= 0 && AP_AUTH_MODE <=4)
                 apconf.authmode = AP_AUTH_MODE;
 #else
-            // If not, use OPEN
-            apconf.authmode = AUTH_OPEN;
+            // If not, use WPA2
+            apconf.authmode = AUTH_WPA_WPA2_PSK;
 #endif
         }else if ( passlen == 0){
-            // If ssid is ok and no pass set auth open
+            // If ssid is ok and no pass, set auth open
             apconf.authmode = AUTH_OPEN;
             // Remove stored password
             os_memset(apconf.password, 0, 64);
         }
+#endif
     }// end of ssid and pass check
 #ifdef AP_SSID_HIDDEN
     // If set, use specified ssid hidden parameter
