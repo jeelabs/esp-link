@@ -855,9 +855,9 @@ void ICACHE_FLASH_ATTR wifiInit() {
     wifi_station_get_config_default(&stconf);
     wifi_softap_get_config_default(&apconf);
     
-#ifdef CGIWIFI_DBG
-    os_printf("Wifi init, mode=%s\n",wifiMode[x]);
-#endif
+
+    DBG("Wifi init, mode=%s\n",wifiMode[x]);
+
     
     // STATION parameters only on a full flash, because default opmode is 2
 #if defined(STA_SSID) && defined(STA_PASS)
@@ -866,9 +866,9 @@ void ICACHE_FLASH_ATTR wifiInit() {
         if (os_strlen((char*)stconf.ssid) == 0 && os_strlen((char*)stconf.password) == 0) {
             os_strncpy((char*)stconf.ssid, VERS_STR(STA_SSID), 32);
             os_strncpy((char*)stconf.password, VERS_STR(STA_PASS), 64);
-#ifdef CGIWIFI_DBG
-            os_printf("Wifi pre-config trying to connect to AP %s pw %s\n",(char*)stconf.ssid, (char*)stconf.password);
-#endif
+
+            DBG("Wifi pre-config trying to connect to AP %s pw %s\n",(char*)stconf.ssid, (char*)stconf.password);
+
             // wifi_set_phy_mode(2); // limit to 802.11b/g 'cause n is flaky
             stconf.bssid_set = 0;
             wifi_station_set_config(&stconf);
@@ -923,13 +923,11 @@ void ICACHE_FLASH_ATTR wifiInit() {
     if(AP_BEACON_INTERVAL >= 100 && AP_BEACON_INTERVAL <= 60000)
         apconf.beacon_interval = AP_BEACON_INTERVAL;
 #endif
-    // Check save softap config
+    // Check softap config
     bool softap_set_conf = wifi_softap_set_config(&apconf);
-#ifdef CGIWIFI_DBG
     // Debug info
-    //os_printf("Wifi AP parameters: %s pw %s\n",(char*)apconf.ssid, (char*)apconf.password);
-    os_printf("Wifi Soft-AP parameters change: %s\n",softap_set_conf? "success":"fail");
-#endif
+
+    DBG("Wifi Soft-AP parameters change: %s\n",softap_set_conf? "success":"fail");
 #endif // AP_SSID && AP_PASS
     
     configWifiIP();
