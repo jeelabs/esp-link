@@ -10,9 +10,9 @@
 #include "serbridge.h"
 #include "serled.h"
 
-#define SYNC_TIMEOUT  3600   // to achieve sync on initial baud rate, in milliseconds
-#define SYNC_INTERVAL   25   // interval at which we try to sync
-#define BAUD_INTERVAL  400   // interval after which we change baud rate
+#define SYNC_TIMEOUT  4800   // to achieve sync, in milliseconds
+#define SYNC_INTERVAL   77   // interval at which we try to sync
+#define BAUD_INTERVAL  600   // interval after which we change baud rate
 #define PGM_TIMEOUT  20000   // timeout when sync is achieved, in milliseconds
 #define PGM_INTERVAL   200   // send sync at this interval in ms when in programming mode
 
@@ -29,7 +29,9 @@
 static ETSTimer optibootTimer;
 
 static enum {                // overall programming states
-  stateSync = 0,             // trying to get sync
+  stateSync = 0,             // trying to get initial response
+  stateSync2,                // trying to get in sync
+  stateSync3,                // trying to get second sync
   stateGetSig,               // reading device signature
   stateGetVersLo,            // reading optiboot version, low bits
   stateGetVersHi,            // reading optiboot version, high bits
@@ -525,9 +527,14 @@ static void ICACHE_FLASH_ATTR optibootTimerCB(void *arg) {
         serbridgeReset();
         // no point sending chars if we just switched
       } else {
-        uart0_write_char(STK_GET_SYNC);
+        //uart0_write_char(STK_GET_SYNC);
+        uart0_write_char(CRC_EOP);
         uart0_write_char(CRC_EOP);
       }
+      break;
+    case stateSync2: // need one more CRC_EOP?
+      uart0_write_char(CRC_EOP);
+      progState++;
       break;
     case stateProg: // we're programming and we timed-out of inaction
       uart0_write_char(STK_GET_SYNC);
@@ -568,7 +575,8 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
 
   // dispatch based the current state
   switch (progState) {
-  case stateSync: // we're trying to get a sync response
+  case stateSync:  // we're trying to get a sync response
+  case stateSync3: // we're trying to get a second sync response
     // look for STK_INSYNC+STK_OK at end of buffer
     if (responseLen > 0 && responseBuf[responseLen-1] == STK_INSYNC) {
       // missing STK_OK after STK_INSYNC, shift stuff out and try again
@@ -576,12 +584,18 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
       responseLen = 1;
     } else if (responseLen > 1 && responseBuf[responseLen-2] == STK_INSYNC &&
         responseBuf[responseLen-1] == STK_OK) {
-      // got sync response, send signature request
-      progState++;
+      // got sync response, send more...
       os_memcpy(responseBuf, responseBuf+2, responseLen-2);
       responseLen -= 2;
-      uart0_write_char(STK_READ_SIGN);
-      uart0_write_char(CRC_EOP);
+      if (progState==stateSync) {
+        // need to deal with odd-even sync issue, send one more to see whether we get a response
+        uart0_write_char(CRC_EOP);
+      } else {
+        // got clean sync, send request to get signature
+        uart0_write_char(STK_READ_SIGN);
+        uart0_write_char(CRC_EOP);
+      }
+      progState++;
       armTimer(); // reset timer
     } else {
       // nothing useful, keep at most half the buffer for error message purposes
@@ -591,6 +605,18 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
         responseBuf[responseLen] = 0; // string terminator
       }
     }
+    break;
+  case stateSync2:  // we're trying to actually get in sync
+    if (responseLen > 1 && responseBuf[responseLen-2] == STK_INSYNC &&
+        responseBuf[responseLen-1] == STK_OK) {
+      // got sync response, send signature request
+      os_memcpy(responseBuf, responseBuf+2, responseLen-2);
+      responseLen -= 2;
+      uart0_write_char(STK_READ_SIGN);
+      uart0_write_char(CRC_EOP);
+      progState = stateGetSig;
+    }
+    armTimer(); // reset timer
     break;
   case stateGetSig: // expecting signature
     responseLen = skipInSync(responseBuf, responseLen);

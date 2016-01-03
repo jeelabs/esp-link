@@ -360,8 +360,8 @@ it starts the connection with the `?\r\n` synchronization sequence.
 
 ### Flashing an attached esp8266
 
-(This is not well tested, more details forthcoming...)
-Yes, you can use esp-link running on one esp8266 module to flash another esp8266 module!
+Yes, you can use esp-link running on one esp8266 module to flash another esp8266 module,
+however it is rather tricky! The problem is not electric, it is wifi interference.
 The basic idea is to use some method to direct the esp8266 flash program to port 2323 of
 esp-link. Using port 2323 with the appropriate wiring will cause the esp8266's reset and 
 gpio0 pins to be toggled such that the chip enters the flash programming mode.
@@ -377,6 +377,21 @@ baud rate to 115200 is recommended.)
 Another option is to use a serial-to-tcp port forwarding driver and point that to port 2323
 of esp-link. On windows users have reported success with
 [HW Virtual Serial Port](http://www.hw-group.com/products/hw_vsp/hw_vsp2_en.html)
+
+Now to the interference problem: once the attached esp8266 is reset it
+starts outputting its 26Mhz clock on gpio0, which needs to be attached to
+the esp8266 running esp-link (since it needs to drive gpio0 low during
+the reset to enter flash mode). This 26Mhz signal on gpio0 causes a
+significant amount of radio interference with the result that the esp8266
+running esp-link has trouble receiving Wifi packets. You can observe this
+by running a ping to esp-link in another window: as soon as the target
+esp8266 is reset, the pings become very slow or stop altogetehr. As soon
+as you remove power to the attached esp8266 the pings resume beautifully.
+
+To try and get the interference under control, try some of the following:
+add a series 100ohm resistor and 100pf capacitor to ground as close to
+the gpio0 pin as possible (basically a low pass filter); and/or pass
+the cable connecting the two esp8266's through a ferrite bead.
 
 Debug log
 ---------
