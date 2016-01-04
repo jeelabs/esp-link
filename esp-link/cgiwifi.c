@@ -821,7 +821,7 @@ int ICACHE_FLASH_ATTR checkString(char *str){
         // Alphanumeric and underscore allowed
         if (!(isalnum((unsigned char)str[i]) || str[i] == '_'))
         {
-            os_printf("Error: String has non alphanumeric chars\n");
+            DBG("Error: String has non alphanumeric chars\n");
             return 0;
         }
     }
