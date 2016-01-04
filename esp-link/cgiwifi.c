@@ -309,10 +309,10 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
     if ( x == STATION_GOT_IP ) {
       if (m != 1) {
 #ifdef CHANGE_TO_STA
-       // We're happily connected, go to STA mode
-       DBG("Wifi got IP. Going into STA mode..\n");
-       wifi_set_opmode(1);
-       os_timer_arm(&resetTimer, RESET_TIMEOUT, 0); // check one more time after switching to STA-only
+      // We're happily connected, go to STA mode
+      DBG("Wifi got IP. Going into STA mode..\n");
+      wifi_set_opmode(1);
+      os_timer_arm(&resetTimer, RESET_TIMEOUT, 0); // check one more time after switching to STA-only
 #endif
     }
     log_uart(false);
