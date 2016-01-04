@@ -106,7 +106,7 @@ int8_t ICACHE_FLASH_ATTR getUInt16Arg(HttpdConnData *connData, char *name, uint1
   return 1;
 }
 
-int8_t ICACHE_FLASH_ATTR getBoolArg(HttpdConnData *connData, char *name, uint8_t *config) {
+int8_t ICACHE_FLASH_ATTR getBoolArg(HttpdConnData *connData, char *name, bool *config) {
   char buff[16];
   int len = httpdFindArg(connData->getArgs, name, buff, sizeof(buff));
   if (len < 0) return 0; // not found, skip
