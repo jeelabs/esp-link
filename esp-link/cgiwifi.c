@@ -512,7 +512,6 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
     
     if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
     
-    
     // No changes for Soft-AP in STA mode
     int mode = wifi_get_opmode();
     if ( mode == 1 ){
@@ -523,7 +522,7 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
     
     char buff[96];
     int len;
-    // Do we need a password?
+    // Do we need a password or auth mode?
     bool pass_need=true;
     
     // Check extra security measure, this must be 1
@@ -534,7 +533,7 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
             return HTTPD_CGI_DONE;
         }
     }
-    // Get the new SSID and set
+    // Set new SSID
     len=httpdFindArg(connData->getArgs, "ap_ssid", buff, sizeof(buff));
     if(checkString(buff) && len>7 && len<32){
         // STRING PREPROCESSING DONE IN CLIENT SIDE
@@ -543,7 +542,7 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
         apconf.ssid_len = len;
         pass_need = true; // ssid ok, look for a valid password
     }else{
-        pass_need = false; // ssid wrong, neither pass not auth mode are needed
+        pass_need = false; // ssid wrong, neither pass nor auth mode are needed
         jsonHeader(connData, 400);
         httpdSend(connData, "SSID not valid or out of range", -1);
         return HTTPD_CGI_DONE;
@@ -552,12 +551,12 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
     if( pass_need ){
         len=httpdFindArg(connData->getArgs, "ap_password", buff, sizeof(buff));
         if(checkString(buff) && len>7 && len<64){
-            // STRING PREPROCESSING DONE IN CLIENT SIDE
+            // String preprocessing done in client side, wifiap.js line 31
             os_memset(apconf.password, 0, 64);
             os_memcpy(apconf.password, buff, len);
             pass_need = true; // pass ok, look for auth mode
         }else if (len == 0){
-            pass_need = false; // pass wrong, no need to look for an auth mode
+            pass_need = false; // pass wrong, don't look for auth mode
             os_memset(apconf.password, 0, 64);
         }else{
             jsonHeader(connData, 400);
@@ -578,6 +577,7 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
                 apconf.authmode = 4;
             }
         }else{
+            // Valid password but wrong auth mode, default 4
             apconf.authmode = 4;
         }
     }else{
@@ -591,7 +591,7 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
         if(value > 0 && value <= 4){
             apconf.max_connection = value;
         }else{
-            // If out of range set by default
+            // If out of range, set by default
             apconf.max_connection = 4;
         }
     }
@@ -602,7 +602,7 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
         if(value >= 100 && value <= 60000){
             apconf.beacon_interval = value;
         }else{
-            // If out of range set by default
+            // If out of range, set by default
             apconf.beacon_interval = 100;
         }
     }
@@ -613,12 +613,11 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
         if(value == 0  || value == 1){
             apconf.ssid_hidden = value;
         }else{
-            // If out of range set by default
+            // If out of range, set by default
             apconf.ssid_hidden = 0;
         }
     }
     // Store new configuration
-    // This should apply new config values
     wifi_softap_set_config(&apconf);
     
     jsonHeader(connData, 200);
@@ -672,7 +671,7 @@ int ICACHE_FLASH_ATTR cgiWiFiSetMode(HttpdConnData *connData) {
         wifi_set_opmode(next_mode&3);
         
         if (previous_mode == 2) {
-            // moving to STA or STA+AP mode from AP
+            // moving to STA or STA+AP mode from AP, try to connect and set timer
             stconf.bssid_set = 0;
             wifi_station_set_config(&stconf);
             wifi_station_connect();
@@ -681,7 +680,7 @@ int ICACHE_FLASH_ATTR cgiWiFiSetMode(HttpdConnData *connData) {
             os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
         }
         if(previous_mode == 1){
-            // moving to AP or STA+AP, so softap config call needed
+            // moving to AP or STA+AP from STA, so softap config call needed
             wifi_softap_set_config(&apconf);
         }
         jsonHeader(connData, 200);
@@ -730,7 +729,7 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
     int p = wifi_get_phy_mode();
     char *phy = wifiPhy[p&3];
     char *warn = wifiWarn[op];
-    if (op == 3) op = 4; // Done to use only one set of warnings
+    if (op == 3) op = 4; // Done to let user switch to AP only mode from Soft-AP settings page, using only one set of warnings
     char *apwarn = wifiWarn[op];
     char *apauth = apAuthMode[apconf.authmode];
     sint8 rssi = wifi_station_get_rssi();
@@ -847,13 +846,10 @@ void ICACHE_FLASH_ATTR wifiInit() {
     wifi_station_get_config_default(&stconf);
     wifi_softap_get_config_default(&apconf);
     
-    
     DBG("Wifi init, mode=%s\n",wifiMode[x]);
-    
     
     // STATION parameters
 #if defined(STA_SSID) && defined(STA_PASS)
-    
     // Set parameters
     if (os_strlen((char*)stconf.ssid) == 0 && os_strlen((char*)stconf.password) == 0) {
         os_strncpy((char*)stconf.ssid, VERS_STR(STA_SSID), 32);
@@ -865,7 +861,6 @@ void ICACHE_FLASH_ATTR wifiInit() {
         stconf.bssid_set = 0;
         wifi_station_set_config(&stconf);
     }
-    
 #endif
     
     // Change SOFT_AP settings if defined
@@ -876,7 +871,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
         // Clean memory and set the value of SSID
         os_memset(apconf.ssid, 0, 32);
         os_memcpy(apconf.ssid, VERS_STR(AP_SSID), os_strlen(VERS_STR(AP_SSID)));
-        // Specify the length of pass
+        // Specify the length of ssid
         apconf.ssid_len= ssidlen;
 #if defined(AP_PASS)
         // If pass is at least 8 and less than 64
@@ -885,7 +880,6 @@ void ICACHE_FLASH_ATTR wifiInit() {
             // Clean memory and set the value of PASS
             os_memset(apconf.password, 0, 64);
             os_memcpy(apconf.password, VERS_STR(AP_PASS), passlen);
-            
             // Can't choose auth mode without a valid ssid and password
 #ifdef AP_AUTH_MODE
             // If set, use specified auth mode
