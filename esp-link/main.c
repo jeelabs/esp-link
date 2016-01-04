@@ -110,7 +110,6 @@ void user_rf_pre_init(void) {
 
 // Main routine to initialize esp-link.
 void user_init(void) {
-    
   // get the flash config so we know how to init things
   //configWipe(); // uncomment to reset the config for testing purposes
   bool restoreOk = configRestore();
