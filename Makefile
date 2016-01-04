@@ -4,7 +4,6 @@
 # Makefile heavily adapted to esp-link and wireless flashing by Thorsten von Eicken
 # Lots of work, in particular to support windows, by brunnels
 # Original from esphttpd and others...
-# Added support for SOFTAP hard-coded configuration by KatAst
 # VERBOSE=1
 #
 # Start by setting the directories for the toolchain a few lines down
