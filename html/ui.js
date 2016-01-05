@@ -473,7 +473,7 @@ function setPins(ev) {
     url += sep + p + "=" + $("#pin-"+p).value;
     sep = "&";
   });
-  url += "&rxpup=" + ($("#pin-rxpup").selected ? "1" : "0");
+  url += "&rxpup=" + ($("#pin-rxpup").checked ? "1" : "0");
 //  console.log("set pins: " + url);
   ajaxSpin("POST", url, function() {
     showNotification("Pin assignment changed");
