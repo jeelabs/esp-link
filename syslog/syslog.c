@@ -194,15 +194,13 @@ static void ICACHE_FLASH_ATTR syslog_udp_sent_cb(void *arg)
     // UDP seems timecritical - we must ensure a minimum delay after each package...
     syslog_set_status(SYSLOG_SENDING);
     if (! syslog_timer_armed)
-    syslog_chk_status();
+      syslog_chk_status();
   }
 }
 
 static void ICACHE_FLASH_ATTR
 syslog_udp_send_event(os_event_t *events) {
-//  os_printf("syslog_udp_send_event: %d %lu, %lu\n", syslogState, syslogQueue->msgid, syslogQueue->tick);
   DBG("[%uµs] %s: id=%lu\n", WDEV_NOW(), __FUNCTION__, syslogQueue ? syslogQueue->msgid : 0);
-
   if (syslogQueue == NULL)
     syslog_set_status(SYSLOG_READY);
   else {
@@ -237,11 +235,12 @@ static void ICACHE_FLASH_ATTR syslog_udp_recv_cb(void *arg, char *pusrdata, unsi
 static void ICACHE_FLASH_ATTR syslog_gethostbyname_cb(const char *name, ip_addr_t *ipaddr, void *arg)
 {
   DBG("[%uµs] %s\n", WDEV_NOW(), __FUNCTION__);
+  struct espconn *pespconn = (struct espconn *)arg;
+  // espconn not longer required
+  os_free(pespconn->proto.udp);
+  os_free(pespconn);
+
   if (ipaddr != NULL) {
-    struct espconn *pespconn = (struct espconn *)arg;
-    // espconn not longer required
-    os_free(pespconn->proto.udp);
-    os_free(pespconn);
 
     syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "SYSLOG",
           "resolved hostname: %s: " IPSTR, name, IP2STR(ipaddr));
@@ -326,8 +325,6 @@ void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
 //  wifi_set_broadcast_if(STATIONAP_MODE); // send UDP broadcast from both station and soft-AP interface
   espconn_create(syslog_espconn);   						// create udp
 
-//  syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "SYSLOG", "syslogserver: %s:%d %d", host, syslogHost.port, syslog_espconn->proto.udp->local_port);
-
   if (UTILS_StrToIP((const char *)host, (void*)&syslogHost.addr)) {
     syslog_set_status(SYSLOG_READY);
   } else {
@@ -339,7 +336,6 @@ void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
       syslog_dnsconn->proto.udp = (esp_udp *)os_zalloc(sizeof(esp_udp));
 
     syslog_set_status(SYSLOG_DNSWAIT);
-//    syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "SYSLOG", "must resolve hostname \"%s\"", host);
     espconn_gethostbyname(syslog_dnsconn, host, &syslogHost.addr, syslog_gethostbyname_cb);
   }
 }
