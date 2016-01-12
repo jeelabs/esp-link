@@ -79,7 +79,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/pins", cgiPins, NULL },
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
-#endif  
+#endif
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
 };
@@ -174,7 +174,7 @@ void user_init(void) {
   uint32_t fid = spi_flash_get_id();
   NOTICE("Flash map %s, manuf 0x%02lX chip 0x%04lX", flash_maps[system_get_flash_size_map()],
       fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
-  NOTICE("** esp-link ready");
+  NOTICE("** %s: ready, heap=%ld", esp_link_version, (unsigned long)system_get_free_heap_size());
 
   cgiServicesSNTPInit();
 
