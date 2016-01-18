@@ -1,0 +1,124 @@
+  <div id="main">
+    <div class="header">
+      <h1>WiFi Soft-AP Configuration</h1>
+    </div>
+
+    <div class="content">
+      <div class="pure-g">
+        <div class="pure-u-1 pure-u-md-1-2">
+	     <div class="card">
+          <h1>Soft-AP State</h1>
+          <div id="wifi-spinner" class="spinner spinner-small">
+          </div>
+          <table id="wifi-table" class="pure-table pure-table-horizontal" hidden><tbody>
+          <tr><td>WiFi mode</td><td id="wifi-mode"></td></tr>
+          <tr><td>Soft-AP SSID</td><td id="wifi-apssid"></td></tr>
+          <tr><td>Soft-AP Password</td><td id="wifi-appass"></td></tr>
+          <tr><td>Soft-AP Channel</td><td id="wifi-apchan"></td></tr>
+		  <tr><td>Soft-AP Max Conn</td><td id="wifi-apmaxc"></td></tr>
+		  <tr><td>Soft-AP Hidden</td><td id="wifi-aphidd"></td></tr>
+          <tr><td>Soft-AP Beacon Int</td><td id="wifi-apbeac"></td></tr>
+          <tr><td>Soft-AP Auth Mode</td><td id="wifi-apauth"></td></tr>
+          <tr><td>Soft-AP MAC</td><td id="wifi-apmac"></td></tr>
+          <tr><td colspan="2" id="wifi-apwarn"></td></tr>
+          </tbody> </table>
+        </div><!-- card-->
+      </div><!-- pure-u-1 --> 
+        <div class="pure-u-1 pure-u-md-1-2">
+	      
+	      <div class="card">
+            <h1>Soft-AP Settings</h1>
+            <div id="AP_Settings-spinner" class="spinner spinner-small"></div>
+            
+            <form action="#" id="AP_Settings-form" class="pure-form" hidden>
+	           <!-- <input type="text" id="conn_check" name="ap_connex" value="0" hidden>-->
+              <legend>Soft-AP main settings, use with care!</legend>
+              
+              <div class="pure-form-stacked">
+                <label>Soft-AP SSID</label>
+                <input type="text" name="ap_ssid" />
+                <div class="popup">Change the name of your AP!</div>
+              </div>
+              
+              <div class="pure-form-stacked">
+                <label>Soft-AP Password</label>
+                <input type="text" name="ap_password" />
+                <div class="popup">Password must be at least 8 chars long!</div>
+              </div>
+              
+             <div class="pure-form-stacked">
+             <legend>Soft-AP Advanced Settings</legend> 
+             </div>
+             
+            <div class="form-horizontal">
+              <label for="AP_Settings-ron" style="margin-right:1em">
+                <input type="radio" name="ap" value="on" id="AP_Settings-ron"/>
+                Show </label>
+                <label for="AP_Settings-roff" style="margin-right:1em">
+                <input type="radio" name="ap" value="off" id="AP_Settings-roff"/>
+                Hide </label>
+            </div>
+            
+            <div id="AP_Settings-off" class="pure-form-stacked"></div> 
+            <div id="AP_Settings-on" class="pure-form-stacked">             
+              
+              <div class="pure-form-stacked">
+                <label>Soft-AP Max Connections</label>
+                <input type="text" name="ap_maxconn" />
+                <div class="popup">Max 4 ( default 4 )</div>
+              </div>
+              
+              <div class="pure-form-stacked">
+                <label>Soft-AP Beacon Interval</label>
+                <input type="text" name="ap_beacon" />
+                <div class="popup">Between 100 - 60000 ms ( default 100ms )</div>
+              </div>
+              
+              <div class="pure-form-stacked">   
+                <label>Soft-AP Auth Mode</label>
+                <select name="ap_authmode" href="#">
+                  <option value="0">OPEN</option>
+                  <option value="1">WEP</option>
+                  <option value="2">WPA_PSK</option>
+                  <option value="3">WPA2_PSK</option>
+                  <option value="4">WPA_WPA2_PSK</option>
+                </select>
+                <div class="popup">Default WPA_WPA2_PSK</div>
+              </div>
+              
+               <div class="form-horizontal">
+                <label><input type="checkbox" name="ap_hidden" />Soft-AP SSID hidden</label>
+                <div class="popup">Check this box to hide you Soft-AP SSID ( default Not Hidden )</div>
+              </div>
+              
+            </div>
+            
+              <button id="AP_Settings-button" type="submit" class="pure-button button-primary">
+                Change Soft-AP settings!
+              </button>
+
+            </form>
+          </div>
+        </div><!-- pure-u-1 -->
+      </div><!-- pure-g -->
+    </div><!-- content -->
+  </div><!-- main -->
+</div><!-- layout -->
+
+<script type="text/javascript">
+</script>
+<script src="wifiAp.js"></script>
+<script type="text/javascript">
+onLoad(function() {
+  // Show info about AP	
+  getWifiInfo();
+  // Fetch actual settings
+  fetchApSettings();
+  // Hide advanced settings
+  undoApAdvanced();
+  bnd($("#AP_Settings-ron"), "click", doApAdvanced);
+  bnd($("#AP_Settings-roff"), "click", undoApAdvanced); 
+  bnd($("#AP_Settings-form"), "submit", changeApSettings);
+});
+</script>
+</body></html>
