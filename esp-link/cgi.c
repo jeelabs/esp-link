@@ -202,7 +202,7 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
   os_strncpy(name, flashConfig.hostname, 12);
   name[12] = 0;
   // construct json response
-  os_sprintf(buff, 
+  os_sprintf(buff,
     "{ "
       "\"menu\": [ "
         "\"Home\", \"/home.html\", "
@@ -217,7 +217,7 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
       " ], "
       "\"version\": \"%s\", "
       "\"name\": \"%s\""
-    " }", 
+    " }",
   esp_link_version, name);
 
   httpdSend(connData, buff, -1);

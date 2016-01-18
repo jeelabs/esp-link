@@ -6,19 +6,11 @@
 #define CMD_H
 #include <esp8266.h>
 
-// Escape chars used by tuanpmt, dunno why he didn't use std ones...
-#define SLIP_START  0x7E
-#define SLIP_END    0x7F
-#define SLIP_REPL   0x7D
-#define SLIP_ESC(x) (x ^ 0x20)
-
-#if 0
-// Proper SLIP escape chars from RFC
+// Standard SLIP escape chars from RFC
 #define SLIP_END      0300    // indicates end of packet
 #define SLIP_ESC      0333    // indicates byte stuffing
 #define SLIP_ESC_END  0334    // ESC ESC_END means END data byte
 #define SLIP_ESC_ESC  0335    // ESC ESC_ESC means ESC data byte
-#endif
 
 typedef struct __attribute__((__packed__)) {
   uint16_t  len;      // length of data

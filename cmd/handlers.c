@@ -68,7 +68,7 @@ CMD_Null(CmdPacket *cmd) {
 }
 
 // Command handler for Reset command, this was originally to reset the ESP but we don't want to
-// do that is esp-link. It is still good to clear any information the ESP has about the attached
+// do that in esp-link. It is still good to clear any information the ESP has about the attached
 // uC.
 static uint32_t ICACHE_FLASH_ATTR
 CMD_Reset(CmdPacket *cmd) {

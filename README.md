@@ -29,6 +29,26 @@ additional contributions!
 For quick support and questions:
 [![Chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jeelabs/esp-link?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
+Esp-link goals
+--------------
+
+The goal of the esp-link project is to create an advanced Wifi co-processor. Esp-link assumes that
+there is a "main processor" (also referred to as "attached uController") and that esp-link's role
+is to facilitate communication over Wifi. Where esp-link is a bit unusual is that it's not really
+just a Wifi interface or a slave co-processor. In some sense it's the master, because the main
+processor can be reset, controlled and reprogrammed through esp-link. The three main areas of
+functionality in esp-link are:
+- reprogramming and debugging the attached uC
+- letting the attached uC make outbound communication and offloading the protocol processing
+- forwarding inbound communication and offloading the protocol processing (this part is the
+least developed)
+
+The goal of the project is also to remain focused on the above mission. In particular, esp-link
+is not a platform for stand-alone applications and it does not support connecting sensors or
+actuators directly to it. A few users have taken esp-link as a starting point for doing these
+things and that's great, but there's also value in keeping the mainline esp-link project
+focused on a clear mission.
+
 Esp-link uses
 -------------
 The simplest use of esp-link is as a transparent serial to wifi bridge. You can flash an attached
@@ -346,6 +366,35 @@ thus 3674/5760 = 0.63 (there are 10 baud per character).
 The efficiency is not 100% because there is protocol overhead (such as sync, record type, and
 length characters)
 and there is dead time waiting for an ack or preparing the next record to be sent.
+
+#### Details of built-in AVR flash algorithm
+
+The built-in flashing algorithm differs a bit from what avrdude does. The programming protocol
+states that STK_GET_SYNC+CRC_EOP (0x30 0x20) should be sent to synchronize, but that works poorly
+because the AVR's UART only buffers one character. This means that if STK_GET_SYNC+CRC_EOP is
+sent twice there is a high chance that only the last character (CRC_EOP) is actually
+received. If that is followed by another STK_GET_SYNC+CRC_EOP sequence then optiboot receives
+CRC_EOP+STK_GET_SYNC+CRC_EOP which causes it to abort and run the old sketch. Ending up in that
+situation is quite likely because optiboot initializes the UART as one of the first things, but
+then goes off an flashes an LED for ~300ms during which it doesn't empty the UART.
+
+Looking at the optiboot code, the good news is that CRC_EOP+CRC_EOP can be used to get an initial
+response without the overrun danger of the normal sync sequence and this is what esp-link does.
+The programming sequence runs as follows:
+
+- esp-link sends a brief reset pulse (1ms)
+- esp-link sends CRC_EOP+CRC_EOP ~50ms later
+- esp-link sends CRC_EOP+CRC_EOP every ~70-80ms
+- eventually optiboot responds with STK_INSYNC+STK_OK (0x14;0x10)
+- esp-link sends one CRC_EOP to sort out the even/odd issue
+- either optiboot responds with STK_INSYNC+STK_OK or nothing happens for 70-80ms, in which case
+  esp-link sends another CRC_EOP
+- esp-link sends STK_GET_SYNC+CRC_EOP and optiboot responds with STK_INSYNC+STK_OK and we're in
+  sync now
+- esp-link sends the next command (starts with 'u') and programming starts...
+
+If no sync is achieved, esp-link changes baud rate and the whole thing starts over with a reset
+pulse about 600ms, esp-link gives up after about 5 seconds and reports an error.
 
 ### Flashing an attached ARM processor
 

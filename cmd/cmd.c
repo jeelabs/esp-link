@@ -27,11 +27,13 @@ extern const CmdList commands[];
 static void ICACHE_FLASH_ATTR
 CMD_ProtoWrite(uint8_t data) {
   switch(data){
-  case SLIP_START:
   case SLIP_END:
-  case SLIP_REPL:
-    uart0_write_char(SLIP_REPL);
-    uart0_write_char(SLIP_ESC(data));
+    uart0_write_char(SLIP_ESC);
+    uart0_write_char(SLIP_ESC_END);
+    break;
+  case SLIP_ESC:
+    uart0_write_char(SLIP_ESC);
+    uart0_write_char(SLIP_ESC_ESC);
     break;
   default:
     uart0_write_char(data);
@@ -48,7 +50,7 @@ uint16_t ICACHE_FLASH_ATTR
 CMD_ResponseStart(uint16_t cmd, uint32_t callback, uint32_t _return, uint16_t argc) {
   uint16_t crc = 0;
 
-  uart0_write_char(SLIP_START);
+  uart0_write_char(SLIP_END);
   CMD_ProtoWriteBuf((uint8_t*)&cmd, 2);
   crc = crc16_data((uint8_t*)&cmd, 2, crc);
   CMD_ProtoWriteBuf((uint8_t*)&callback, 4);
@@ -124,17 +126,17 @@ CMD_parse_packet(uint8_t *buf, short len) {
   CmdPacket *packet = (CmdPacket*)buf;
   uint8_t *data_ptr = (uint8_t*)&packet->args;
   uint8_t *data_limit = data_ptr+len;
-  
+
   DBG("CMD_parse_packet: cmd=%d(%s) argc=%d cb=%p ret=%lu\n",
-      packet->cmd, 
-      cmd_names[packet->cmd], 
-      packet->argc, 
-      (void *)packet->callback, 
+      packet->cmd,
+      cmd_names[packet->cmd],
+      packet->argc,
+      (void *)packet->callback,
       packet->_return
   );
 
 #if 0
-  // print out arguments  
+  // print out arguments
   uint16_t argn = 0;
   uint16_t argc = packet->argc;
   while (data_ptr+2 < data_limit && argc--) {
