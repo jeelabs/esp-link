@@ -8,7 +8,7 @@
 #include "uart.h"
 
 #ifdef CMD_DBG
-#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
 static const char *cmd_names[] = {
   "NULL", "RESET", "IS_READY", "WIFI_CONNECT",
   "MQTT_SETUP", "MQTT_CONNECT", "MQTT_DISCONNECT",
@@ -124,17 +124,17 @@ CMD_parse_packet(uint8_t *buf, short len) {
   CmdPacket *packet = (CmdPacket*)buf;
   uint8_t *data_ptr = (uint8_t*)&packet->args;
   uint8_t *data_limit = data_ptr+len;
-  
+
   DBG("CMD_parse_packet: cmd=%d(%s) argc=%d cb=%p ret=%lu\n",
-      packet->cmd, 
-      cmd_names[packet->cmd], 
-      packet->argc, 
-      (void *)packet->callback, 
+      packet->cmd,
+      cmd_names[packet->cmd],
+      packet->argc,
+      (void *)packet->callback,
       packet->_return
   );
 
 #if 0
-  // print out arguments  
+  // print out arguments
   uint16_t argn = 0;
   uint16_t argc = packet->argc;
   while (data_ptr+2 < data_limit && argc--) {

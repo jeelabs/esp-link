@@ -18,7 +18,7 @@ Some random cgi routines.
 #include "config.h"
 
 #ifdef CGI_DBG
-#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif
@@ -202,7 +202,7 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
   os_strncpy(name, flashConfig.hostname, 12);
   name[12] = 0;
   // construct json response
-  os_sprintf(buff, 
+  os_sprintf(buff,
     "{ "
       "\"menu\": [ "
         "\"Home\", \"/home.html\", "
@@ -216,7 +216,7 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
       " ], "
       "\"version\": \"%s\", "
       "\"name\": \"%s\""
-    " }", 
+    " }",
   esp_link_version, name);
 
   httpdSend(connData, buff, -1);
