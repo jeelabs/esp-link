@@ -30,8 +30,8 @@ Cgi/template routines for the /wifi url.
 #define LOG(severity, format, ...)  do {	\
 	char buffer[128];			\
 	os_sprintf(buffer, format, ## __VA_ARGS__);	\
-	syslog(SYSLOG_FAC_USER, severity, "WIFI", buffer);			\
-	DBG("WIFI %s\n", buffer);	\
+	syslog(SYSLOG_FAC_USER, severity, "WIFI", buffer);                          \
+	DBG("%s %s\n", "WIFI", buffer);	                                            \
 } while(0)
 
 #define NOTICE(format, ...) do {	\
@@ -141,9 +141,9 @@ void ICACHE_FLASH_ATTR wifiStartMDNS(struct ip_addr ip) {
     mdns_info->server_name = flashConfig.mdns_servername;
     mdns_info->server_port = 80;
     mdns_info->ipAddr = ip.addr;
-    espconn_mdns_init(mdns_info);    
+    espconn_mdns_init(mdns_info);
   }
-  else {    
+  else {
     espconn_mdns_server_unregister();
     espconn_mdns_close();
   }
