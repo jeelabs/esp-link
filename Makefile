@@ -25,15 +25,15 @@
 # The SOFTAP configuration can be hard-coded here, the minimum parameters to set are AP_SSID && AP_PASS
 # The AP SSID has to be at least 8 characters long, same for AP PASSWORD
 # The AP AUTH MODE can be set to:
-#	0 = AUTH_OPEN, 
-#	1 = AUTH_WEP, 
-#	2 = AUTH_WPA_PSK, 
-#	3 = AUTH_WPA2_PSK, 
-#	4 = AUTH_WPA_WPA2_PSK
+#  0 = AUTH_OPEN, 
+#  1 = AUTH_WEP, 
+#  2 = AUTH_WPA_PSK, 
+#  3 = AUTH_WPA2_PSK, 
+#  4 = AUTH_WPA_WPA2_PSK
 # SSID hidden default 0, ( 0 | 1 ) 
 # Max connections default 4, ( 1 ~ 4 )
 # Beacon interval default 100, ( 100 ~ 60000ms )
-
+#
 # AP_SSID ?=esp_link_test
 # AP_PASS ?=esp_link_test
 # AP_AUTH_MODE ?=4
@@ -41,10 +41,8 @@
 # AP_MAX_CONN ?=4
 # AP_BEACON_INTERVAL ?=100
 
-
 # If CHANGE_TO_STA is set to "yes" the esp-link module will switch to station mode
 # once successfully connected to an access point. Else it will stay in STA+AP mode.
-
 CHANGE_TO_STA ?= yes
 
 # hostname or IP address for wifi flashing
@@ -58,7 +56,7 @@ XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 
 # Base directory of the ESP8266 SDK package, absolute
 # Typically you'll download from Espressif's BBS, http://bbs.espressif.com/viewforum.php?f=5
-SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.5.0)
+SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.5.1)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
@@ -387,15 +385,17 @@ flash: all
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 
+ifeq ($(OS),Windows_NT)
 tools/$(HTML_COMPRESSOR):
 	$(Q) mkdir -p tools
-  ifeq ($(OS),Windows_NT)
 	cd tools; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR) -O $(YUI_COMPRESSOR)
 	cd tools; wget --no-check-certificate https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR) -O $(HTML_COMPRESSOR)
-  else
+else
+tools/$(HTML_COMPRESSOR):
+	$(Q) mkdir -p tools
 	cd tools; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR)
 	cd tools; wget https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR)
-  endif
+endif
 
 ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 $(BUILD_BASE)/espfs_img.o: tools/$(HTML_COMPRESSOR)
