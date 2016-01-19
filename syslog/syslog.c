@@ -360,7 +360,8 @@ syslog_add_entry(syslog_entry_t *entry)
       pse = pse->next;
     pse->next = entry;	// append msg to syslog queue
   }
-  DBG("%p %lu %d %s\n", entry, entry->msgid, system_get_free_heap_size(), entry->datagram);
+  // Debug: show queue addr, current msgid, avail. heap and syslog datagram
+  // DBG("%p %lu %d %s\n", entry, entry->msgid, system_get_free_heap_size(), entry->datagram);
 
   // ensure we have sufficient heap for the rest of the system
   if (system_get_free_heap_size() < syslogHost.min_heap_size) {
