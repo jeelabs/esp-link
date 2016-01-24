@@ -45,13 +45,12 @@ slip_process() {
     if (crc == rcv) {
       CMD_parse_packet((uint8_t*)slip_buf, slip_len-2);
     } else {
-      os_printf("SLIP: bad CRC, crc=%x rcv=%x\n", crc, rcv);
+      os_printf("SLIP: bad CRC, crc=%04x rcv=%04x len=%d\n", crc, rcv, slip_len);
 
       for (short i=0; i<slip_len; i++) {
         if (slip_buf[i] >= ' ' && slip_buf[i] <= '~') {
           DBG("%c", slip_buf[i]);
-        }
-        else {
+        } else {
           DBG("\\%02X", slip_buf[i]);
         }
       }
@@ -79,12 +78,12 @@ static void ICACHE_FLASH_ATTR
 slip_parse_char(char c) {
   if (c == SLIP_END) {
     // either start or end of packet, process whatever we may have accumulated
+    DBG("SLIP: start or end len=%d inpkt=%d\n", slip_len, slip_inpkt);
     if (slip_len > 0) {
-      if (slip_inpkt) slip_process(); else console_process(slip_buf, slip_len);
+      if (slip_len > 2 && slip_inpkt) slip_process();
+      else console_process(slip_buf, slip_len);
     }
     slip_reset();
-    //slip_inpkt = true;
-    DBG("SLIP: start or end\n");
   } else if (slip_escaped) {
     // prev char was SLIP_ESC
     if (c == SLIP_ESC_END) c = SLIP_END;
@@ -94,7 +93,7 @@ slip_parse_char(char c) {
   } else if (slip_inpkt && c == SLIP_ESC) {
     slip_escaped = true;
   } else {
-    if (slip_len == 0 && slip_printable(c)) {
+    if (slip_len == 1 && slip_printable(slip_buf[0]) && slip_printable(c)) {
       // start of packet and it's a printable character, we're gonna assume that this is console text
       slip_inpkt = false;
     }
@@ -111,8 +110,8 @@ slip_parse_buf(char *buf, short length) {
 
   // if we're in-between packets (debug console) then print it now
   if (!slip_inpkt && length > 0) {
-    slip_process();
-    slip_reset();
+    console_process(slip_buf, slip_len);
+    slip_len = 0;
   }
 }
 

@@ -19,8 +19,7 @@
 #endif
 
 static uint32_t CMD_Null(CmdPacket *cmd);
-static uint32_t CMD_IsReady(CmdPacket *cmd);
-static uint32_t CMD_Reset(CmdPacket *cmd);
+//static uint32_t CMD_Reset(CmdPacket *cmd);
 static uint32_t CMD_WifiConnect(CmdPacket *cmd);
 static uint32_t CMD_AddCallback(CmdPacket *cmd);
 
@@ -30,9 +29,9 @@ static bool wifiCbAdded = false;
 
 // Command dispatch table for serial -> ESP commands
 const CmdList commands[] = {
-  {CMD_NULL,            CMD_Null},
-  {CMD_RESET,           CMD_Reset},
-  {CMD_IS_READY,        CMD_IsReady},
+  {CMD_NULL,            CMD_Null},        // no-op
+  //{CMD_SYNC,            CMD_Sync},        // synchronize
+  //{CMD_IS_READY,        CMD_IsReady},
   {CMD_WIFI_CONNECT,    CMD_WifiConnect},
 #ifdef MQTT
   {CMD_MQTT_SETUP,      MQTTCMD_Setup},
@@ -55,18 +54,13 @@ const CmdList commands[] = {
 #define MAX_CALLBACKS 12
 cmdCallback callbacks[MAX_CALLBACKS]; // cleared in CMD_Reset
 
-// Command handler for IsReady (healthcheck) command
-static uint32_t ICACHE_FLASH_ATTR
-CMD_IsReady(CmdPacket *cmd) {
-  return 1;
-}
-
 // Command handler for Null command
 static uint32_t ICACHE_FLASH_ATTR
 CMD_Null(CmdPacket *cmd) {
   return 1;
 }
 
+#if 0
 // Command handler for Reset command, this was originally to reset the ESP but we don't want to
 // do that in esp-link. It is still good to clear any information the ESP has about the attached
 // uC.
@@ -76,6 +70,7 @@ CMD_Reset(CmdPacket *cmd) {
   os_memset(callbacks, 0, sizeof(callbacks));
   return 1;
 }
+#endif
 
 static uint32_t ICACHE_FLASH_ATTR
 CMD_AddCb(char* name, uint32_t cb) {

@@ -20,7 +20,7 @@ typedef struct __attribute__((__packed__)) {
 typedef struct __attribute__((__packed__)) {
   uint16_t  cmd;      // command to perform, from CmdName enum
   uint32_t  callback; // callback pointer to embed in response
-  uint32_t  _return;  // return value to embed in response (?)
+  uint32_t  _return;  // token to embed in response
   uint16_t  argc;     // number of arguments to command
   CmdArg    args[0];  // really args[argc]
 } CmdPacket;
@@ -33,7 +33,7 @@ typedef struct {
 
 typedef enum {
   CMD_NULL = 0,
-  CMD_RESET,          // reset esp (not honored in this implementation)
+  CMD_SYNC,           // synchronize and clear
   CMD_IS_READY,       // health-check
   CMD_WIFI_CONNECT,   // (3) connect to AP (not honored in this implementation)
   CMD_MQTT_SETUP,
