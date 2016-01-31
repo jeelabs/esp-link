@@ -3,6 +3,8 @@
 // Adapted from: github.com/tuanpmt/esp_bridge, Created on: Mar 4, 2015, Author: Minh
 
 #include "esp8266.h"
+#include "c_types.h"
+#include "ip_addr.h"
 #include "rest.h"
 #include "cmd.h"
 
@@ -11,6 +13,27 @@
 #else
 #define DBG_REST(format, ...) do { } while(0)
 #endif
+
+typedef enum {
+  HEADER_GENERIC = 0,
+  HEADER_CONTENT_TYPE,
+  HEADER_USER_AGENT
+} HEADER_TYPE;
+
+typedef struct {
+  char           *host;
+  uint32_t       port;
+  uint32_t       security;
+  ip_addr_t      ip;
+  struct espconn *pCon;
+  char           *header;
+  char           *data;
+  uint16_t       data_len;
+  uint16_t       data_sent;
+  char           *content_type;
+  char           *user_agent;
+  uint32_t       resp_cb;
+} RestClient;
 
 
 // Connection pool for REST clients. Attached MCU's just call REST_setup and this allocates
@@ -32,7 +55,7 @@ tcpclient_recv(void *arg, char *pdata, unsigned short len) {
 
   // parse status line
   int pi = 0;
-  int32_t code = -1;
+  int16_t code = -1;
   char statusCode[4] = "\0\0\0\0";
   int statusLen = 0;
   bool inStatus = false;
@@ -69,15 +92,17 @@ tcpclient_recv(void *arg, char *pdata, unsigned short len) {
   //if (pi < len && pdata[pi] == '\r') pi++; // hacky!
 
   // collect body and send it
-  uint16_t crc;
   int body_len = len-pi;
-  DBG_REST("REST: status=%ld, body=%d\n", code, body_len);
+  DBG_REST("REST: status=%d, body=%d\n", code, body_len);
   if (pi == len) {
-    crc = CMD_ResponseStart(CMD_REST_EVENTS, client->resp_cb, code, 0);
+    cmdResponseStart(CMD_RESP_CB, client->resp_cb, 1);
+    cmdResponseBody(&code, sizeof(code));
+    cmdResponseEnd();
   } else {
-    crc = CMD_ResponseStart(CMD_REST_EVENTS, client->resp_cb, code, 1);
-    crc = CMD_ResponseBody(crc, (uint8_t*)(pdata+pi), body_len);
-    CMD_ResponseEnd(crc);
+    cmdResponseStart(CMD_RESP_CB, client->resp_cb, 2);
+    cmdResponseBody(&code, sizeof(code));
+    cmdResponseBody(pdata+pi, body_len>100?100:body_len);
+    cmdResponseEnd();
 #if 0
     os_printf("REST: body=");
     for (int j=pi; j<len; j++) os_printf(" %02x", pdata[j]);
@@ -89,7 +114,6 @@ tcpclient_recv(void *arg, char *pdata, unsigned short len) {
   //  espconn_secure_disconnect(client->pCon);
   //else
     espconn_disconnect(client->pCon);
-
 }
 
 static void ICACHE_FLASH_ATTR
@@ -173,33 +197,39 @@ rest_dns_found(const char *name, ip_addr_t *ipaddr, void *arg) {
   }
 }
 
-uint32_t ICACHE_FLASH_ATTR
+void ICACHE_FLASH_ATTR
 REST_Setup(CmdPacket *cmd) {
   CmdRequest req;
   uint32_t port, security;
+  int32_t err = -1; // error code in case of failure
 
   // start parsing the command
-  CMD_Request(&req, cmd);
-  if(CMD_GetArgc(&req) != 3) return 0;
+  cmdRequest(&req, cmd);
+  if(cmdGetArgc(&req) != 3) goto fail;
+  err--;
 
   // get the hostname
-  uint16_t len = CMD_ArgLen(&req);
-  if (len > 128) return 0; // safety check
+  uint16_t len = cmdArgLen(&req);
+  if (len > 128) goto fail; // safety check
+  err--;
   uint8_t *rest_host = (uint8_t*)os_zalloc(len + 1);
-  if (CMD_PopArg(&req, rest_host, len)) return 0;
+  if (cmdPopArg(&req, rest_host, len)) goto fail;
+  err--;
   rest_host[len] = 0;
 
   // get the port
-  if (CMD_PopArg(&req, (uint8_t*)&port, 4)) {
+  if (cmdPopArg(&req, (uint8_t*)&port, 2)) {
     os_free(rest_host);
-    return 0;
+    goto fail;
   }
+  err--;
 
   // get the security mode
-  if (CMD_PopArg(&req, (uint8_t*)&security, 4)) {
+  if (cmdPopArg(&req, (uint8_t*)&security, 1)) {
     os_free(rest_host);
-    return 0;
+    goto fail;
   }
+  err--;
 
   // clear connection structures the first time
   if (restNum == 0xff) {
@@ -224,7 +254,7 @@ REST_Setup(CmdPacket *cmd) {
   os_memset(client, 0, sizeof(RestClient));
   DBG_REST("REST: setup #%d host=%s port=%ld security=%ld\n", clientNum, rest_host, port, security);
 
-  client->resp_cb = cmd->callback;
+  client->resp_cb = cmd->value;
 
   client->host = (char *)rest_host;
   client->port = port;
@@ -249,35 +279,39 @@ REST_Setup(CmdPacket *cmd) {
 
   client->pCon->reverse = client;
 
-  return REST_CB | (uint32_t)clientNum;
+  cmdResponseStart(CMD_RESP_V, clientNum, 0);
+  cmdResponseEnd();
+  return;
+
+fail:
+  cmdResponseStart(CMD_RESP_V, err, 0);
+  cmdResponseEnd();
+  return;
 }
 
-uint32_t ICACHE_FLASH_ATTR
+void ICACHE_FLASH_ATTR
 REST_SetHeader(CmdPacket *cmd) {
   CmdRequest req;
-  CMD_Request(&req, cmd);
+  cmdRequest(&req, cmd);
 
-  if(CMD_GetArgc(&req) != 3)
-    return 0;
+  if(cmdGetArgc(&req) != 2) return;
 
   // Get client
-  uint32_t clientNum;
-  if (CMD_PopArg(&req, (uint8_t*)&clientNum, 4)) return 0;
-  if ((clientNum & 0xffff0000) != REST_CB) return 0;
-  RestClient *client = restClient + ((clientNum & 0xffff) % MAX_REST);
+  uint32_t clientNum = cmd->value;
+  RestClient *client = restClient + (clientNum % MAX_REST);
 
   // Get header selector
   uint32_t header_index;
-  if (CMD_PopArg(&req, (uint8_t*)&header_index, 4)) return 0;
+  if (cmdPopArg(&req, (uint8_t*)&header_index, 4)) return;
 
   // Get header value
-  uint16_t len = CMD_ArgLen(&req);
-  if (len > 256) return 0; //safety check
+  uint16_t len = cmdArgLen(&req);
+  if (len > 256) return; //safety check
   switch(header_index) {
   case HEADER_GENERIC:
     if(client->header) os_free(client->header);
     client->header = (char*)os_zalloc(len + 3);
-    CMD_PopArg(&req, (uint8_t*)client->header, len);
+    cmdPopArg(&req, (uint8_t*)client->header, len);
     client->header[len] = '\r';
     client->header[len+1] = '\n';
     client->header[len+2] = 0;
@@ -286,7 +320,7 @@ REST_SetHeader(CmdPacket *cmd) {
   case HEADER_CONTENT_TYPE:
     if(client->content_type) os_free(client->content_type);
     client->content_type = (char*)os_zalloc(len + 3);
-    CMD_PopArg(&req, (uint8_t*)client->content_type, len);
+    cmdPopArg(&req, (uint8_t*)client->content_type, len);
     client->content_type[len] = '\r';
     client->content_type[len+1] = '\n';
     client->content_type[len+2] = 0;
@@ -295,52 +329,50 @@ REST_SetHeader(CmdPacket *cmd) {
   case HEADER_USER_AGENT:
     if(client->user_agent) os_free(client->user_agent);
     client->user_agent = (char*)os_zalloc(len + 3);
-    CMD_PopArg(&req, (uint8_t*)client->user_agent, len);
+    cmdPopArg(&req, (uint8_t*)client->user_agent, len);
     client->user_agent[len] = '\r';
     client->user_agent[len+1] = '\n';
     client->user_agent[len+2] = 0;
     DBG_REST("REST: Set user_agent: %s\r\n", client->user_agent);
     break;
   }
-  return 1;
 }
 
-uint32_t ICACHE_FLASH_ATTR
+void ICACHE_FLASH_ATTR
 REST_Request(CmdPacket *cmd) {
   CmdRequest req;
-  CMD_Request(&req, cmd);
+  cmdRequest(&req, cmd);
   DBG_REST("REST: request");
+  if (cmd->argc != 2 && cmd->argc != 3) return;
+
   // Get client
-  uint32_t clientNum;
-  if (CMD_PopArg(&req, (uint8_t*)&clientNum, 4)) goto fail;
-  if ((clientNum & 0xffff0000) != REST_CB) goto fail;
-  clientNum &= 0xffff;
-  RestClient *client = restClient + clientNum % MAX_REST;
+  uint32_t clientNum = cmd->value;
+  RestClient *client = restClient + (clientNum % MAX_REST);
   DBG_REST(" #%ld", clientNum);
+
   // Get HTTP method
-  uint16_t len = CMD_ArgLen(&req);
+  uint16_t len = cmdArgLen(&req);
   if (len > 15) goto fail;
   char method[16];
-  CMD_PopArg(&req, method, len);
+  cmdPopArg(&req, method, len);
   method[len] = 0;
   DBG_REST(" method=%s", method);
+
   // Get HTTP path
-  len = CMD_ArgLen(&req);
+  len = cmdArgLen(&req);
   if (len > 1023) goto fail;
   char path[1024];
-  CMD_PopArg(&req, path, len);
+  cmdPopArg(&req, path, len);
   path[len] = 0;
   DBG_REST(" path=%s", path);
+
   // Get HTTP body
   uint32_t realLen = 0;
-  if (CMD_GetArgc(&req) == 3) {
+  if (cmdGetArgc(&req) == 2) {
     realLen = 0;
-    len = 0;
   } else {
-    CMD_PopArg(&req, (uint8_t*)&realLen, 4);
-
-    len = CMD_ArgLen(&req);
-    if (len > 2048 || realLen > len) goto fail;
+    realLen = cmdArgLen(&req);
+    if (realLen > 2048) goto fail;
   }
   DBG_REST(" bodyLen=%ld", realLen);
 
@@ -367,14 +399,14 @@ REST_Request(CmdPacket *cmd) {
   DBG_REST(" hdrLen=%d", client->data_len);
 
   if (realLen > 0) {
-    CMD_PopArg(&req, client->data + client->data_len, realLen);
+    cmdPopArg(&req, client->data + client->data_len, realLen);
     client->data_len += realLen;
   }
   DBG_REST("\n");
 
   //DBG_REST("REST request: %s", (char*)client->data);
 
-  DBG_REST("REST: pCon state=%d\n", client->pCon->state);
+  //DBG_REST("REST: pCon state=%d\n", client->pCon->state);
   client->pCon->state = ESPCONN_NONE;
   espconn_regist_connectcb(client->pCon, tcpclient_connect_cb);
   espconn_regist_reconcb(client->pCon, tcpclient_recon_cb);
@@ -392,9 +424,8 @@ REST_Request(CmdPacket *cmd) {
     espconn_gethostbyname(client->pCon, (char *)client->host, &client->ip, rest_dns_found);
   }
 
-  return 1;
+  return;
 
 fail:
   DBG_REST("\n");
-  return 0;
 }

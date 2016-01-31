@@ -43,7 +43,7 @@ slip_process() {
     uint16_t crc = crc16_data((uint8_t*)slip_buf, slip_len-2, 0);
     uint16_t rcv = ((uint16_t)slip_buf[slip_len-2]) | ((uint16_t)slip_buf[slip_len-1] << 8);
     if (crc == rcv) {
-      CMD_parse_packet((uint8_t*)slip_buf, slip_len-2);
+      cmdParsePacket((uint8_t*)slip_buf, slip_len-2);
     } else {
       os_printf("SLIP: bad CRC, crc=%04x rcv=%04x len=%d\n", crc, rcv, slip_len);
 
