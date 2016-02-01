@@ -382,7 +382,7 @@ baseflash: all
 
 flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
-	  0x00000 "$(SDK_BASE)/bin/boot_v1.4(b1).bin" 0x01000 $(FW_BASE)/user1.bin \
+	  0x00000 "$(SDK_BASE)/bin/boot_v1.5.bin" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 
 ifeq ($(OS),Windows_NT)
@@ -464,7 +464,7 @@ release: all
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user1.bin | cut -b 1-80
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user2.bin | cut -b 1-80
 	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
-		   "$(SDK_BASE)/bin/boot_v1.4(b1).bin" wiflash avrflash release/esp-link-$(BRANCH)
+		   "$(SDK_BASE)/bin/boot_v1.5.bin" wiflash avrflash release/esp-link-$(BRANCH)
 	$(Q) tar zcf esp-link-$(BRANCH).tgz -C release esp-link-$(BRANCH)
 	$(Q) echo "Release file: esp-link-$(BRANCH).tgz"
 	$(Q) rm -rf release
