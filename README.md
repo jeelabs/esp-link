@@ -235,18 +235,29 @@ Troubleshooting
 Building the firmware
 ---------------------
 The firmware has been built using the [esp-open-sdk](https://github.com/pfalcon/esp-open-sdk)
-on a Linux system. Create an esp8266 directory, install the esp-open-sdk into a sub-directory.
+on a Linux system. Create an esp8266 directory, install the esp-open-sdk into a sub-directory
+using the *non-standalone* install (i.e., there should not be an sdk directory in the esp-open-sdk
+dir when done installing, if you use the standalone install you will get compilation errors
+with std types, such as `uint32_t`).
+
 Download the Espressif SDK (use the version mentioned in the release notes) from their
 [download forum](http://bbs.espressif.com/viewforum.php?f=5) and also expand it into a
-sub-directory. Then clone the esp-link repository into a third sub-directory.
+sub-directory.
+
+Clone the esp-link repository into a third sub-directory and check out the tag you would like,
+such as `git checkout v2.1.7`.
 This way the relative paths in the Makefile will work.
 If you choose a different directory structure look at the Makefile for the appropriate environment
 variables to define.
+Do not use the source tarballs from the release page on github,
+these will give you trouble compiling because the Makefile uses git to determine the esp-link
+version being built.
 
 In order to OTA-update the esp8266 you should `export ESP_HOSTNAME=...` with the hostname or
 IP address of your module.
 
-Now, build the code: `make` in the top-level of esp-link.
+Now, build the code: `make` in the top-level of esp-link. If you want to se the commands being
+issued, use `VERBOSE=1 make`.
 
 A few notes from others (I can't fully verify these):
 - You may need to install `zlib1g-dev` and `python-serial`

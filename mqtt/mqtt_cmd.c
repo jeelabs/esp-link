@@ -13,74 +13,51 @@
 #define DBG(format, ...) do { } while(0)
 #endif
 
-// if MQTT_1_CLIENT is defined we only support the one client that is built into esp-link.
-// this keeps everything simpler. Undefining it brings back old code that supports creating
-// a new client and setting all its params. Most likely that old code no longer works...
-#define MQTT_1_CLIENT
-
-// callbacks to the attached uC
-uint32_t connectedCb = 0, disconnectCb = 0, publishedCb = 0, dataCb = 0;
-
 void ICACHE_FLASH_ATTR
-cmdMqttConnectedCb(uint32_t* args) {
-  MQTT_Client* client = (MQTT_Client*)args;
+cmdMqttConnectedCb(MQTT_Client* client) {
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
-  DBG("MQTT: Connected  connectedCb=%p, disconnectedCb=%p, publishedCb=%p, dataCb=%p\n",
-       (void*)cb->connectedCb,
-       (void*)cb->disconnectedCb,
-       (void*)cb->publishedCb,
-       (void*)cb->dataCb);
-  uint16_t crc = cmdResponseStart(CMD_MQTT_EVENTS, cb->connectedCb, 0, 0);
-  cmdResponseEnd(crc);
+  DBG("MQTT: Connected Cb=%p\n", (void*)cb->connectedCb);
+  cmdResponseStart(CMD_RESP_CB, cb->connectedCb, 0);
+  cmdResponseEnd();
 }
 
 void ICACHE_FLASH_ATTR
-cmdMqttDisconnectedCb(uint32_t* args) {
-  MQTT_Client* client = (MQTT_Client*)args;
+cmdMqttDisconnectedCb(MQTT_Client* client) {
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
-  DBG("MQTT: Disconnected\n");
-  uint16_t crc = cmdResponseStart(CMD_MQTT_EVENTS, cb->disconnectedCb, 0, 0);
-  cmdResponseEnd(crc);
+  DBG("MQTT: Disconnected cb=%p\n", (void*)cb->disconnectedCb);
+  cmdResponseStart(CMD_RESP_CB, cb->disconnectedCb, 0);
+  cmdResponseEnd();
 }
 
 void ICACHE_FLASH_ATTR
-cmdMqttPublishedCb(uint32_t* args) {
-  MQTT_Client* client = (MQTT_Client*)args;
+cmdMqttPublishedCb(MQTT_Client* client) {
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
-  DBG("MQTT: Published\n");
-  uint16_t crc = cmdResponseStart(CMD_MQTT_EVENTS, cb->publishedCb, 0, 0);
-  cmdResponseEnd(crc);
+  DBG("MQTT: Published cb=%p\n", (void*)cb->publishedCb);
+  cmdResponseStart(CMD_RESP_CB, cb->publishedCb, 0);
+  cmdResponseEnd();
 }
 
 void ICACHE_FLASH_ATTR
-cmdMqttDataCb(uint32_t* args, const char* topic, uint32_t topic_len, const char* data, uint32_t data_len) {
-  uint16_t crc = 0;
-  MQTT_Client* client = (MQTT_Client*)args;
+cmdMqttDataCb(MQTT_Client* client, const char* topic, uint32_t topic_len,
+    const char* data, uint32_t data_len)
+{
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
+  DBG("MQTT: Data cb=%p topic=%s len=%ld\n", (void*)cb->dataCb, topic, data_len);
 
-  crc = cmdResponseStart(CMD_MQTT_EVENTS, cb->dataCb, 0, 2);
-  crc = cmdResponseBody(crc, (uint8_t*)topic, topic_len);
-  crc = cmdResponseBody(crc, (uint8_t*)data, data_len);
-  cmdResponseEnd(crc);
+  cmdResponseStart(CMD_RESP_CB, cb->dataCb, 2);
+  cmdResponseBody(topic, topic_len);
+  cmdResponseBody(data, data_len);
+  cmdResponseEnd();
 }
 
-uint32_t ICACHE_FLASH_ATTR
+void ICACHE_FLASH_ATTR
 MQTTCMD_Lwt(CmdPacket *cmd) {
   CmdRequest req;
   cmdRequest(&req, cmd);
 
-  if (cmdGetArgc(&req) != 5)
-    return 0;
+  if (cmdGetArgc(&req) != 4) return;
 
-  // get mqtt client
-  uint32_t client_ptr;
-  cmdPopArg(&req, (uint8_t*)&client_ptr, 4);
-#ifdef MQTT_1_CLIENT
   MQTT_Client* client = &mqttClient;
-#else
-  MQTT_Client* client = (MQTT_Client*)client_ptr;
-  DBG("MQTT: MQTTCMD_Lwt client ptr=%p\n", (void*)client_ptr);
-#endif
 
   // free old topic & message
   if (client->connect_info.will_topic)
@@ -92,14 +69,14 @@ MQTTCMD_Lwt(CmdPacket *cmd) {
 
   // get topic
   len = cmdArgLen(&req);
-  if (len > 128) return 0; // safety check
+  if (len > 128) return; // safety check
   client->connect_info.will_topic = (char*)os_zalloc(len + 1);
   cmdPopArg(&req, client->connect_info.will_topic, len);
   client->connect_info.will_topic[len] = 0;
 
   // get message
   len = cmdArgLen(&req);
-  if (len > 128) return 0; // safety check
+  if (len > 128) return; // safety check
   client->connect_info.will_message = (char*)os_zalloc(len + 1);
   cmdPopArg(&req, client->connect_info.will_message, len);
   client->connect_info.will_message[len] = 0;
@@ -118,32 +95,22 @@ MQTTCMD_Lwt(CmdPacket *cmd) {
 
   // trigger a reconnect to set the LWT
   MQTT_Reconnect(client);
-  return 1;
 }
 
-uint32_t ICACHE_FLASH_ATTR
+void ICACHE_FLASH_ATTR
 MQTTCMD_Publish(CmdPacket *cmd) {
   CmdRequest req;
   cmdRequest(&req, cmd);
 
-  if (cmdGetArgc(&req) != 6)
-    return 0;
+  if (cmdGetArgc(&req) != 5) return;
 
-  // get mqtt client
-  uint32_t client_ptr;
-  cmdPopArg(&req, (uint8_t*)&client_ptr, 4);
-#ifdef MQTT_1_CLIENT
   MQTT_Client* client = &mqttClient;
-#else
-  MQTT_Client* client = (MQTT_Client*)client_ptr;
-  DBG("MQTT: MQTTCMD_Publish client ptr=%p\n", (void*)client_ptr);
-#endif
 
   uint16_t len;
 
   // get topic
   len = cmdArgLen(&req);
-  if (len > 128) return 0; // safety check
+  if (len > 128) return; // safety check
   uint8_t *topic = (uint8_t*)os_zalloc(len + 1);
   cmdPopArg(&req, topic, len);
   topic[len] = 0;
@@ -153,58 +120,46 @@ MQTTCMD_Publish(CmdPacket *cmd) {
   uint8_t *data = (uint8_t*)os_zalloc(len+1);
   if (!data) { // safety check
     os_free(topic);
-    return 0;
+    return;
   }
   cmdPopArg(&req, data, len);
   data[len] = 0;
 
-  uint32_t qos, retain, data_len;
+  uint16_t data_len;
+  uint8_t qos, retain;
 
   // get data length
-  // this isn't used but we have to pull it off the stack
-  cmdPopArg(&req, (uint8_t*)&data_len, 4);
+  cmdPopArg(&req, &data_len, sizeof(data_len));
 
   // get qos
-  cmdPopArg(&req, (uint8_t*)&qos, 4);
+  cmdPopArg(&req, &qos, sizeof(qos));
 
   // get retain
-  cmdPopArg(&req, (uint8_t*)&retain, 4);
+  cmdPopArg(&req, &retain, sizeof(retain));
 
-  DBG("MQTT: MQTTCMD_Publish topic=%s, data_len=%d, qos=%ld, retain=%ld\n",
-    topic,
-    os_strlen((char*)data),
-    qos,
-    retain);
+  DBG("MQTT: MQTTCMD_Publish topic=%s, data_len=%d, qos=%d, retain=%d\n",
+    topic, data_len, qos, retain);
 
-  MQTT_Publish(client, (char*)topic, (char*)data, (uint8_t)qos, (uint8_t)retain);
+  MQTT_Publish(client, (char*)topic, (char*)data, data_len, qos%3, retain&1);
   os_free(topic);
   os_free(data);
-  return 1;
+  return;
 }
 
-uint32_t ICACHE_FLASH_ATTR
+void ICACHE_FLASH_ATTR
 MQTTCMD_Subscribe(CmdPacket *cmd) {
   CmdRequest req;
   cmdRequest(&req, cmd);
 
-  if (cmdGetArgc(&req) != 3)
-    return 0;
+  if (cmdGetArgc(&req) != 2) return;
 
-  // get mqtt client
-  uint32_t client_ptr;
-  cmdPopArg(&req, (uint8_t*)&client_ptr, 4);
-#ifdef MQTT_1_CLIENT
   MQTT_Client* client = &mqttClient;
-#else
-  MQTT_Client* client = (MQTT_Client*)client_ptr;
-  DBG("MQTT: MQTTCMD_Subscribe client ptr=%p\n", (void*)client_ptr);
-#endif
 
   uint16_t len;
 
   // get topic
   len = cmdArgLen(&req);
-  if (len > 128) return 0; // safety check
+  if (len > 128) return; // safety check
   uint8_t* topic = (uint8_t*)os_zalloc(len + 1);
   cmdPopArg(&req, topic, len);
   topic[len] = 0;
@@ -217,22 +172,19 @@ MQTTCMD_Subscribe(CmdPacket *cmd) {
 
   MQTT_Subscribe(client, (char*)topic, (uint8_t)qos);
   os_free(topic);
-  return 1;
+  return;
 }
 
-uint32_t ICACHE_FLASH_ATTR
+void ICACHE_FLASH_ATTR
 MQTTCMD_Setup(CmdPacket *cmd) {
   CmdRequest req;
   cmdRequest(&req, cmd);
 
-#ifdef MQTT_1_CLIENT
   MQTT_Client* client = &mqttClient;
-  cmdSkipArg(&req);
-  cmdSkipArg(&req);
-  cmdSkipArg(&req);
-  cmdSkipArg(&req);
-  cmdSkipArg(&req);
-#else
+
+  if (cmdGetArgc(&req) != 4) return;
+
+#if 0
   if (cmdGetArgc(&req) != 9)
     return 0;
 
@@ -287,27 +239,28 @@ MQTTCMD_Setup(CmdPacket *cmd) {
 
   // create callback
   MqttCmdCb* callback = (MqttCmdCb*)os_zalloc(sizeof(MqttCmdCb));
-  uint32_t cb_data;
-
-  cmdPopArg(&req, (uint8_t*)&cb_data, 4);
-  callback->connectedCb = cb_data;
-  cmdPopArg(&req, (uint8_t*)&cb_data, 4);
-  callback->disconnectedCb = cb_data;
-  cmdPopArg(&req, (uint8_t*)&cb_data, 4);
-  callback->publishedCb = cb_data;
-  cmdPopArg(&req, (uint8_t*)&cb_data, 4);
-  callback->dataCb = cb_data;
-
+  cmdPopArg(&req, &callback->connectedCb, 4);
+  cmdPopArg(&req, &callback->disconnectedCb, 4);
+  cmdPopArg(&req, &callback->publishedCb, 4);
+  cmdPopArg(&req, &callback->dataCb, 4);
   client->user_data = callback;
+
+  DBG("MQTT connectedCb=%lx\n", callback->connectedCb);
 
   client->cmdConnectedCb = cmdMqttConnectedCb;
   client->cmdDisconnectedCb = cmdMqttDisconnectedCb;
   client->cmdPublishedCb = cmdMqttPublishedCb;
   client->cmdDataCb = cmdMqttDataCb;
 
-  return 0xf00df00d; //(uint32_t)client;
+  if (client->connState == MQTT_CONNECTED) {
+    if (callback->connectedCb)
+      cmdMqttConnectedCb(client);
+  } else if (callback->disconnectedCb) {
+    cmdMqttDisconnectedCb(client);
+  }
 }
 
+#if 0
 uint32_t ICACHE_FLASH_ATTR
 MQTTCMD_Connect(CmdPacket *cmd) {
   CmdRequest req;
@@ -383,3 +336,4 @@ MQTTCMD_Disconnect(CmdPacket *cmd) {
   return 1;
 #endif
 }
+#endif

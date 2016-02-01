@@ -44,14 +44,16 @@ typedef enum {
   MQTT_CONNECTED,       // conneted (or connecting)
 } tConnState;
 
+typedef struct MQTT_Client MQTT_Client; // forward definition
+
 // Simple notification callback
-typedef void (*MqttCallback)(uint32_t* args);
+typedef void (*MqttCallback)(MQTT_Client *client);
 // Callback with data messge
-typedef void (*MqttDataCallback)(uint32_t* args, const char* topic, uint32_t topic_len,
+typedef void (*MqttDataCallback)(MQTT_Client *client, const char* topic, uint32_t topic_len,
     const char* data, uint32_t data_len);
 
 // MQTTY client data structure
-typedef struct {
+struct MQTT_Client {
   struct espconn*     pCon;                   // socket
   // connection information
   char*               host;                   // MQTT server
@@ -89,7 +91,7 @@ typedef struct {
   MqttDataCallback    cmdDataCb;
   // misc
   void*               user_data;
-} MQTT_Client;
+};
 
 // Initialize client data structure
 void MQTT_Init(MQTT_Client* mqttClient, char* host, uint32 port,
@@ -119,7 +121,7 @@ void MQTT_Disconnect(MQTT_Client* mqttClient);
 bool MQTT_Subscribe(MQTT_Client* client, char* topic, uint8_t qos);
 
 // Publish a message
-bool MQTT_Publish(MQTT_Client* client, const char* topic, const char* data,
+bool MQTT_Publish(MQTT_Client* client, const char* topic, const char* data, uint16_t data_len,
     uint8_t qos, uint8_t retain);
 
 // Callback when connected

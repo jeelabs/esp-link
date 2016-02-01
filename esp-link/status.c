@@ -37,7 +37,7 @@ static void ICACHE_FLASH_ATTR mqttStatusCb(void *v) {
 
   char buf[128];
   mqttStatusMsg(buf);
-  MQTT_Publish(&mqttClient, flashConfig.mqtt_status_topic, buf, 1, 0);
+  MQTT_Publish(&mqttClient, flashConfig.mqtt_status_topic, buf, os_strlen(buf), 1, 0);
 }
 
 

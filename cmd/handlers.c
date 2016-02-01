@@ -35,8 +35,6 @@ const CmdList commands[] = {
   {CMD_CB_ADD,          "ADD_CB",         cmdAddCallback},
 #ifdef MQTT
   {CMD_MQTT_SETUP,      "MQTT_SETUP",     MQTTCMD_Setup},
-  {CMD_MQTT_CONNECT,    "MQTT_CONN",      MQTTCMD_Connect},
-  {CMD_MQTT_DISCONNECT, "MQTT_DISCON",    MQTTCMD_Disconnect},
   {CMD_MQTT_PUBLISH,    "MQTT_PUB",       MQTTCMD_Publish},
   {CMD_MQTT_SUBSCRIBE , "MQTT_SUB",       MQTTCMD_Subscribe},
   {CMD_MQTT_LWT,        "MQTT_LWT",       MQTTCMD_Lwt},

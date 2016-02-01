@@ -40,18 +40,14 @@ typedef enum {
   CMD_CB_EVENTS,
   CMD_GET_TIME,       // get current time in seconds since the unix epoch
 
-  CMD_MQTT_SETUP = 10,
-  CMD_MQTT_CONNECT,
-  CMD_MQTT_DISCONNECT,
-  CMD_MQTT_PUBLISH,
-  CMD_MQTT_SUBSCRIBE,
-  CMD_MQTT_LWT,
-  CMD_MQTT_EVENTS,
+  CMD_MQTT_SETUP = 10,  // set-up callbacks
+  CMD_MQTT_PUBLISH,     // publish a message
+  CMD_MQTT_SUBSCRIBE,   // subscribe to a topic
+  CMD_MQTT_LWT,         // set the last-will-topic and messge
 
   CMD_REST_SETUP = 20,
   CMD_REST_REQUEST,
   CMD_REST_SETHEADER,
-  CMD_REST_EVENTS,
 } CmdName;
 
 typedef void (*cmdfunc_t)(CmdPacket *cmd);
@@ -83,7 +79,7 @@ uint32_t cmdAddCb(char *name, uint32_t callback);
 // Start a response
 void cmdResponseStart(uint16_t cmd, uint32_t value, uint16_t argc);
 // Adds data to a response
-void cmdResponseBody(void* data, uint16_t len);
+void cmdResponseBody(const void* data, uint16_t len);
 // Ends a response
 void cmdResponseEnd();
 

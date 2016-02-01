@@ -34,7 +34,7 @@ cmdProtoWrite(uint8_t data) {
 }
 
 static void ICACHE_FLASH_ATTR
-cmdProtoWriteBuf(uint8_t *data, short len) {
+cmdProtoWriteBuf(const uint8_t *data, short len) {
   while (len--) cmdProtoWrite(*data++);
 }
 
@@ -56,7 +56,7 @@ cmdResponseStart(uint16_t cmd, uint32_t value, uint16_t argc) {
 
 // Adds data to a response, returns the partial CRC
 void ICACHE_FLASH_ATTR
-cmdResponseBody(void *data, uint16_t len) {
+cmdResponseBody(const void *data, uint16_t len) {
   cmdProtoWriteBuf((uint8_t*)&len, 2);
   resp_crc = crc16_data((uint8_t*)&len, 2, resp_crc);
 
