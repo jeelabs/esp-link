@@ -93,7 +93,7 @@ tcpclient_recv(void *arg, char *pdata, unsigned short len) {
 
   // collect body and send it
   int body_len = len-pi;
-  DBG("REST: status=%ld, body=%d\n", code, body_len);
+  DBG("REST: status=%d, body=%d\n", code, body_len);
   if (pi == len) {
     cmdResponseStart(CMD_RESP_CB, client->resp_cb, 1);
     cmdResponseBody(&code, sizeof(code));
