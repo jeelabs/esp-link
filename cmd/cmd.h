@@ -6,19 +6,11 @@
 #define CMD_H
 #include <esp8266.h>
 
-// Escape chars used by tuanpmt, dunno why he didn't use std ones...
-#define SLIP_START  0x7E
-#define SLIP_END    0x7F
-#define SLIP_REPL   0x7D
-#define SLIP_ESC(x) (x ^ 0x20)
-
-#if 0
-// Proper SLIP escape chars from RFC
+// Standard SLIP escape chars from RFC
 #define SLIP_END      0300    // indicates end of packet
 #define SLIP_ESC      0333    // indicates byte stuffing
 #define SLIP_ESC_END  0334    // ESC ESC_END means END data byte
 #define SLIP_ESC_ESC  0335    // ESC ESC_ESC means ESC data byte
-#endif
 
 typedef struct __attribute__((__packed__)) {
   uint16_t  len;      // length of data
@@ -27,9 +19,8 @@ typedef struct __attribute__((__packed__)) {
 
 typedef struct __attribute__((__packed__)) {
   uint16_t  cmd;      // command to perform, from CmdName enum
-  uint32_t  callback; // callback pointer to embed in response
-  uint32_t  _return;  // return value to embed in response (?)
   uint16_t  argc;     // number of arguments to command
+  uint32_t  value;    // callback pointer for response or first argument
   CmdArg    args[0];  // really args[argc]
 } CmdPacket;
 
@@ -41,66 +32,70 @@ typedef struct {
 
 typedef enum {
   CMD_NULL = 0,
-  CMD_RESET,          // reset esp (not honored in this implementation)
-  CMD_IS_READY,       // health-check
-  CMD_WIFI_CONNECT,   // (3) connect to AP (not honored in this implementation)
-  CMD_MQTT_SETUP,
-  CMD_MQTT_CONNECT,
-  CMD_MQTT_DISCONNECT,
-  CMD_MQTT_PUBLISH,
-  CMD_MQTT_SUBSCRIBE,
-  CMD_MQTT_LWT,
-  CMD_MQTT_EVENTS,
-  CMD_REST_SETUP,     // (11)
+  CMD_SYNC,           // synchronize and clear
+  CMD_RESP_V,         // response with a value
+  CMD_RESP_CB,        // response with a callback
+  CMD_WIFI_STATUS,    // get the current wifi status
+  CMD_CB_ADD,
+  CMD_CB_EVENTS,
+  CMD_GET_TIME,       // get current time in seconds since the unix epoch
+
+  CMD_MQTT_SETUP = 10,  // set-up callbacks
+  CMD_MQTT_PUBLISH,     // publish a message
+  CMD_MQTT_SUBSCRIBE,   // subscribe to a topic
+  CMD_MQTT_LWT,         // set the last-will-topic and messge
+
+  CMD_REST_SETUP = 20,
   CMD_REST_REQUEST,
   CMD_REST_SETHEADER,
-  CMD_REST_EVENTS,
-  CMD_CB_ADD,         // 15
-  CMD_CB_EVENTS
 } CmdName;
 
-typedef uint32_t (*cmdfunc_t)(CmdPacket *cmd);
+typedef void (*cmdfunc_t)(CmdPacket *cmd);
 
 typedef struct {
-  CmdName   sc_name;
-  cmdfunc_t sc_function;
+  CmdName   sc_name;     // name as CmdName enum
+  char      *sc_text;    // name as string
+  cmdfunc_t sc_function; // pointer to function
 } CmdList;
 
 #define CMD_CBNLEN 16
 typedef struct {
   char name[CMD_CBNLEN];
   uint32_t callback;
-} cmdCallback;
+} CmdCallback;
 
 // Used by slip protocol to cause parsing of a received packet
-void CMD_parse_packet(uint8_t *buf, short len);
+void cmdParsePacket(uint8_t *buf, short len);
 
 // Return the info about a callback to the attached uC by name, these are callbacks that the
 // attached uC registers using the ADD_SENSOR command
-cmdCallback* CMD_GetCbByName(char* name);
+CmdCallback* cmdGetCbByName(char* name);
+
+// Add a callback
+uint32_t cmdAddCb(char *name, uint32_t callback);
 
 // Responses
 
-// Start a response, returns the partial CRC
-uint16_t CMD_ResponseStart(uint16_t cmd, uint32_t callback, uint32_t _return, uint16_t argc);
-// Adds data to a response, returns the partial CRC
-uint16_t CMD_ResponseBody(uint16_t crc_in, uint8_t* data, short len);
+// Start a response
+void cmdResponseStart(uint16_t cmd, uint32_t value, uint16_t argc);
+// Adds data to a response
+void cmdResponseBody(const void* data, uint16_t len);
 // Ends a response
-void CMD_ResponseEnd(uint16_t crc);
+void cmdResponseEnd();
 
-//void CMD_Response(uint16_t cmd, uint32_t callback, uint32_t _return, uint16_t argc, CmdArg* args[]);
+//void cmdResponse(uint16_t cmd, uint32_t callback, uint32_t value, uint16_t argc, CmdArg* args[]);
 
 // Requests
 
 // Fill out a CmdRequest struct given a CmdPacket
-void CMD_Request(CmdRequest *req, CmdPacket* cmd);
+void cmdRequest(CmdRequest *req, CmdPacket* cmd);
 // Return the number of arguments given a request
-uint32_t CMD_GetArgc(CmdRequest *req);
+uint32_t cmdGetArgc(CmdRequest *req);
 // Return the length of the next argument
-uint16_t CMD_ArgLen(CmdRequest *req);
+uint16_t cmdArgLen(CmdRequest *req);
 // Copy next arg from request into the data pointer, returns 0 on success, -1 on error
-int32_t CMD_PopArg(CmdRequest *req, void *data, uint16_t len);
+int32_t cmdPopArg(CmdRequest *req, void *data, uint16_t len);
 // Skip next arg
-void CMD_SkipArg(CmdRequest *req);
+void cmdSkipArg(CmdRequest *req);
 
 #endif

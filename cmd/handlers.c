@@ -18,11 +18,10 @@
 #define DBG(format, ...) do { } while(0)
 #endif
 
-static uint32_t CMD_Null(CmdPacket *cmd);
-static uint32_t CMD_IsReady(CmdPacket *cmd);
-static uint32_t CMD_Reset(CmdPacket *cmd);
-static uint32_t CMD_WifiConnect(CmdPacket *cmd);
-static uint32_t CMD_AddCallback(CmdPacket *cmd);
+static void cmdNull(CmdPacket *cmd);
+static void cmdSync(CmdPacket *cmd);
+static void cmdWifiStatus(CmdPacket *cmd);
+static void cmdAddCallback(CmdPacket *cmd);
 
 // keep track of last status sent to uC so we can notify it when it changes
 static uint8_t lastWifiStatus = wifiIsDisconnected;
@@ -30,137 +29,143 @@ static bool wifiCbAdded = false;
 
 // Command dispatch table for serial -> ESP commands
 const CmdList commands[] = {
-  {CMD_NULL,            CMD_Null},
-  {CMD_RESET,           CMD_Reset},
-  {CMD_IS_READY,        CMD_IsReady},
-  {CMD_WIFI_CONNECT,    CMD_WifiConnect},
+  {CMD_NULL,            "NULL",           cmdNull},        // no-op
+  {CMD_SYNC,            "SYNC",           cmdSync},        // synchronize
+  {CMD_WIFI_STATUS,     "WIFI_STATUS",    cmdWifiStatus},
+  {CMD_CB_ADD,          "ADD_CB",         cmdAddCallback},
 #ifdef MQTT
-  {CMD_MQTT_SETUP,      MQTTCMD_Setup},
-  {CMD_MQTT_CONNECT,    MQTTCMD_Connect},
-  {CMD_MQTT_DISCONNECT, MQTTCMD_Disconnect},
-  {CMD_MQTT_PUBLISH,    MQTTCMD_Publish},
-  {CMD_MQTT_SUBSCRIBE , MQTTCMD_Subscribe},
-  {CMD_MQTT_LWT,        MQTTCMD_Lwt},
+  {CMD_MQTT_SETUP,      "MQTT_SETUP",     MQTTCMD_Setup},
+  {CMD_MQTT_PUBLISH,    "MQTT_PUB",       MQTTCMD_Publish},
+  {CMD_MQTT_SUBSCRIBE , "MQTT_SUB",       MQTTCMD_Subscribe},
+  {CMD_MQTT_LWT,        "MQTT_LWT",       MQTTCMD_Lwt},
 #endif
 #ifdef REST
-  {CMD_REST_SETUP,      REST_Setup},
-  {CMD_REST_REQUEST,    REST_Request},
-  {CMD_REST_SETHEADER,  REST_SetHeader},
+  {CMD_REST_SETUP,      "REST_SETUP",     REST_Setup},
+  {CMD_REST_REQUEST,    "REST_REQ",       REST_Request},
+  {CMD_REST_SETHEADER,  "REST_SETHDR",    REST_SetHeader},
 #endif
-  {CMD_CB_ADD,          CMD_AddCallback},
-  {CMD_NULL,            NULL}
 };
+
+//===== List of registered callbacks (to uC)
 
 // WifiCb plus 10 for sensors
 #define MAX_CALLBACKS 12
-cmdCallback callbacks[MAX_CALLBACKS]; // cleared in CMD_Reset
+CmdCallback callbacks[MAX_CALLBACKS]; // cleared in cmdSync
 
-// Command handler for IsReady (healthcheck) command
-static uint32_t ICACHE_FLASH_ATTR
-CMD_IsReady(CmdPacket *cmd) {
-  return 1;
-}
-
-// Command handler for Null command
-static uint32_t ICACHE_FLASH_ATTR
-CMD_Null(CmdPacket *cmd) {
-  return 1;
-}
-
-// Command handler for Reset command, this was originally to reset the ESP but we don't want to
-// do that is esp-link. It is still good to clear any information the ESP has about the attached
-// uC.
-static uint32_t ICACHE_FLASH_ATTR
-CMD_Reset(CmdPacket *cmd) {
-  // clear callbacks table
-  os_memset(callbacks, 0, sizeof(callbacks));
-  return 1;
-}
-
-static uint32_t ICACHE_FLASH_ATTR
-CMD_AddCb(char* name, uint32_t cb) {
+uint32_t ICACHE_FLASH_ATTR
+cmdAddCb(char* name, uint32_t cb) {
   for (uint8_t i = 0; i < MAX_CALLBACKS; i++) {
-    //os_printf("CMD_AddCb: index %d name=%s cb=%p\n", i, callbacks[i].name,
+    //os_printf("cmdAddCb: index %d name=%s cb=%p\n", i, callbacks[i].name,
     //  (void *)callbacks[i].callback);
     // find existing callback or add to the end
     if (os_strncmp(callbacks[i].name, name, CMD_CBNLEN) == 0 || callbacks[i].name[0] == '\0') {
       os_strncpy(callbacks[i].name, name, sizeof(callbacks[i].name));
       callbacks[i].name[CMD_CBNLEN-1] = 0; // strncpy doesn't null terminate
       callbacks[i].callback = cb;
-      DBG("CMD_AddCb: cb %s added at index %d\n", callbacks[i].name, i);
+      DBG("cmdAddCb: '%s'->0x%lx added at %d\n", callbacks[i].name, cb, i);
       return 1;
     }
   }
   return 0;
 }
 
-cmdCallback* ICACHE_FLASH_ATTR
-CMD_GetCbByName(char* name) {
+CmdCallback* ICACHE_FLASH_ATTR
+cmdGetCbByName(char* name) {
   for (uint8_t i = 0; i < MAX_CALLBACKS; i++) {
-    //os_printf("CMD_GetCbByName: index %d name=%s cb=%p\n", i, callbacks[i].name,
+    //os_printf("cmdGetCbByName: index %d name=%s cb=%p\n", i, callbacks[i].name,
     //  (void *)callbacks[i].callback);
     // if callback doesn't exist or it's null
     if (os_strncmp(callbacks[i].name, name, CMD_CBNLEN) == 0) {
-      DBG("CMD_GetCbByName: cb %s found at index %d\n", name, i);
+      DBG("cmdGetCbByName: cb %s found at index %d\n", name, i);
       return &callbacks[i];
     }
   }
-  os_printf("CMD_GetCbByName: cb %s not found\n", name);
+  os_printf("cmdGetCbByName: cb %s not found\n", name);
   return 0;
 }
 
+//===== Wifi callback
+
 // Callback from wifi subsystem to notify us of status changes
 static void ICACHE_FLASH_ATTR
-CMD_WifiCb(uint8_t wifiStatus) {
+cmdWifiCb(uint8_t wifiStatus) {
   if (wifiStatus != lastWifiStatus){
-    DBG("CMD_WifiCb: wifiStatus=%d\n", wifiStatus);
+    DBG("cmdWifiCb: wifiStatus=%d\n", wifiStatus);
     lastWifiStatus = wifiStatus;
-    cmdCallback *wifiCb = CMD_GetCbByName("wifiCb");
+    CmdCallback *wifiCb = cmdGetCbByName("wifiCb");
     if ((uint32_t)wifiCb->callback != -1) {
       uint8_t status = wifiStatus == wifiGotIP ? 5 : 1;
-      uint16_t crc = CMD_ResponseStart(CMD_WIFI_CONNECT, (uint32_t)wifiCb->callback, 0, 1);
-      crc = CMD_ResponseBody(crc, (uint8_t*)&status, 1);
-      CMD_ResponseEnd(crc);
+      cmdResponseStart(CMD_RESP_CB, (uint32_t)wifiCb->callback, 1);
+      cmdResponseBody((uint8_t*)&status, 1);
+      cmdResponseEnd();
     }
   }
 }
 
-// Command handler for Wifi connect command
-static uint32_t ICACHE_FLASH_ATTR
-CMD_WifiConnect(CmdPacket *cmd) {
-  CmdRequest req;
-  CMD_Request(&req, cmd);
-	if(cmd->argc != 2 || cmd->callback == 0)
-		return 0;
+//===== Command handlers
 
-  if (!wifiCbAdded) {
-    wifiAddStateChangeCb(CMD_WifiCb);    // register our callback with wifi subsystem
-    wifiCbAdded = true;
-  }
-  CMD_AddCb("wifiCb", (uint32_t)cmd->callback); // save the MCU's callback
-  lastWifiStatus = 0xff; // set to invalid value so we immediately send status cb in all cases
-  CMD_WifiCb(wifiState);
-
-  return 1;
+// Command handler for Null command
+static void ICACHE_FLASH_ATTR
+cmdNull(CmdPacket *cmd) {
 }
 
-// Command handler to add a callback to the named-callbacks list, this is for a callback to the uC
-static uint32_t ICACHE_FLASH_ATTR
-CMD_AddCallback(CmdPacket *cmd) {
+// Command handler for sync command
+static void ICACHE_FLASH_ATTR
+cmdSync(CmdPacket *cmd) {
   CmdRequest req;
-  CMD_Request(&req, cmd);
-  if (cmd->argc != 1 || cmd->callback == 0)
-    return 0;
+  cmdRequest(&req, cmd);
+  if(cmd->argc != 0 || cmd->value == 0) {
+    cmdResponseStart(CMD_RESP_V, 0, 0);
+    cmdResponseEnd();
+    return;
+  }
+
+  // clear callbacks table
+  os_memset(callbacks, 0, sizeof(callbacks));
+
+  // register our callback with wifi subsystem
+  if (!wifiCbAdded) {
+    wifiAddStateChangeCb(cmdWifiCb);
+    wifiCbAdded = true;
+  }
+
+  // send OK response
+  cmdResponseStart(CMD_RESP_V, cmd->value, 0);
+  cmdResponseEnd();
+
+  // save the MCU's callback and trigger an initial callback
+  cmdAddCb("wifiCb", cmd->value);
+  lastWifiStatus = 0xff; // set to invalid value so we immediately send status cb in all cases
+  cmdWifiCb(wifiState);
+
+  return;
+}
+
+// Command handler for wifi status command
+static void ICACHE_FLASH_ATTR
+cmdWifiStatus(CmdPacket *cmd) {
+  cmdResponseStart(CMD_RESP_V, wifiState, 0);
+  cmdResponseEnd();
+  return;
+}
+
+
+// Command handler to add a callback to the named-callbacks list, this is for a callback to the uC
+static void ICACHE_FLASH_ATTR
+cmdAddCallback(CmdPacket *cmd) {
+  CmdRequest req;
+  cmdRequest(&req, cmd);
+  if (cmd->argc != 1 || cmd->value == 0) return;
 
   char name[16];
   uint16_t len;
 
-  // get the sensor name
-  len = CMD_ArgLen(&req);
-  if (len > 15) return 0; // max size of name is 15 characters
-  if (CMD_PopArg(&req, (uint8_t *)name, len)) return 0;
+  // get the callback name
+  len = cmdArgLen(&req);
+  if (len > 15) return; // max size of name is 15 characters
+  if (cmdPopArg(&req, (uint8_t *)name, len)) return;
   name[len] = 0;
-  DBG("CMD_AddCallback: name=%s\n", name);
+  DBG("cmdAddCallback: name=%s\n", name);
 
-  return CMD_AddCb(name, (uint32_t)cmd->callback); // save the sensor callback
+  cmdAddCb(name, cmd->value); // save the sensor callback
 }

@@ -72,6 +72,8 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/wifi/connstatus", cgiWiFiConnStatus, NULL },
   { "/wifi/setmode", cgiWiFiSetMode, NULL },
   { "/wifi/special", cgiWiFiSpecial, NULL },
+  { "/wifi/apinfo", cgiApSettingsInfo, NULL },
+  { "/wifi/apchange", cgiApSettingsChange, NULL },  
   { "/system/info", cgiSystemInfo, NULL },
   { "/system/update", cgiSystemSet, NULL },
   { "/services/info", cgiServicesInfo, NULL },
@@ -86,7 +88,6 @@ HttpdBuiltInUrl builtInUrls[] = {
 
 #ifdef SHOW_HEAP_USE
 static ETSTimer prHeapTimer;
-
 static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
   os_printf("Heap: %ld\n", (unsigned long)system_get_free_heap_size());
 }
@@ -110,47 +111,23 @@ void user_rf_pre_init(void) {
 // Main routine to initialize esp-link.
 void user_init(void) {
   // get the flash config so we know how to init things
-//  configWipe(); // uncomment to reset the config for testing purposes
+  //configWipe(); // uncomment to reset the config for testing purposes
   bool restoreOk = configRestore();
-  // init gpio pin registers
+  // Init gpio pin registers
   gpio_init();
   gpio_output_set(0, 0, 0, (1<<15)); // some people tie it to GND, gotta ensure it's disabled
   // init UART
   uart_init(flashConfig.baud_rate, 115200);
   logInit(); // must come after init of uart
-  // say hello (leave some time to cause break in TX after boot loader's msg
+  // Say hello (leave some time to cause break in TX after boot loader's msg
   os_delay_us(10000L);
   os_printf("\n\n** %s\n", esp_link_version);
   os_printf("Flash config restore %s\n", restoreOk ? "ok" : "*FAILED*");
-
-#if defined(STA_SSID) && defined(STA_PASS)
-  int x = wifi_get_opmode() & 0x3;
-  if (x == 2) {
-    // we only force the STA settings when a full flash of the module has been made, which
-    // resets the wifi settings not to have anything configured
-    struct station_config stconf;
-    wifi_station_get_config(&stconf);
-
-    if (os_strlen((char*)stconf.ssid) == 0 && os_strlen((char*)stconf.password) == 0) {
-      os_strncpy((char*)stconf.ssid, VERS_STR(STA_SSID), 32);
-      os_strncpy((char*)stconf.password, VERS_STR(STA_PASS), 64);
-#ifdef CGIWIFI_DBG
-      os_printf("Wifi pre-config trying to connect to AP %s pw %s\n",
-          (char*)stconf.ssid, (char*)stconf.password);
-#endif
-      wifi_set_opmode(3); // sta+ap, will switch to sta-only 15 secs after connecting
-      stconf.bssid_set = 0;
-      wifi_station_set_config(&stconf);
-    }
-  }
-#endif
-
   // Status LEDs
   statusInit();
   serledInit();
   // Wifi
   wifiInit();
-
   // init the flash filesystem with the html stuff
   espFsInit(&_binary_espfs_img_start);
   //EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
@@ -176,15 +153,13 @@ void user_init(void) {
       fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
   NOTICE("** %s: ready, heap=%ld", esp_link_version, (unsigned long)system_get_free_heap_size());
 
+  // Init SNTP service
   cgiServicesSNTPInit();
-
 #ifdef MQTT
   NOTICE("initializing MQTT");
   mqtt_client_init();
 #endif
-
   NOTICE("initializing user application");
   app_init();
-
-  NOTICE("waiting for work to do...");
+  NOTICE("Waiting for work to do...");
 }

@@ -27,7 +27,7 @@
 #define RESTCMD_DBG
 #define SERBR_DBG
 #define SERLED_DBG
-#undef SLIP_DBG
+#define SLIP_DBG
 #define UART_DBG
 #define MDNS_DBG
 #define OPTIBOOT_DBG

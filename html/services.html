@@ -12,35 +12,41 @@
               <div id="syslog-spinner" class="spinner spinner-small"></div>
             </h1>
             <form action="#" id="Syslog-form" class="pure-form" hidden>
-              <legend>Syslog settings</legend>
               <div class="pure-form-stacked">
                 <label>Syslog Host</label>
                 <input type="text" name="syslog_host" />
-                <div class="popup">Use server [hostname:port] as UDP Syslog server</div>
+                <div class="popup">Esp-link sends event/debug info to this syslog host 
+                  (hostname:port). Leave empty to disable syslog.</div>
               </div>
               <div class="pure-form-stacked">
                 <label>Min Heap</label>
-                <input type="text" name="syslog_minheap" />
-                <label>Filter</label>
-                <select name="syslog_filter" href="#">
-                  <option value="0">EMERG</option>
-                  <option value="1">ALERT</option>
-                  <option value="2">CRIT</option>
-                  <option value="3">ERR</option>
-                  <option value="4">WARNING</option>
-                  <option value="5">NOTICE</option>
-                  <option value="6">INFO</option>
-                  <option value="7">DEBUG</option>
-                </select>
+                <div>
+                  <input type="text" name="syslog_minheap" />
+                  <div class="popup">Stop sending syslog if free heap drops below this many bytes</div>
+                </div>
+                <div>
+                  <label>Filter</label>
+                  <select name="syslog_filter" href="#">
+                    <option value="0">EMERG</option>
+                    <option value="1">ALERT</option>
+                    <option value="2">CRIT</option>
+                    <option value="3">ERR</option>
+                    <option value="4">WARNING</option>
+                    <option value="5">NOTICE</option>
+                    <option value="6">INFO</option>
+                    <option value="7">DEBUG</option>
+                  </select>
+                  <div class="popup">Minimum severity to send</div>
+                </div>
               </div>
-              <div class="form-horizontal">
-                <label>Show ESP &#xb5;C Ticker in log message</label>
+              <div>
                 <input type="checkbox" name="syslog_showtick" />
+                <label>Include esp-link millisecond ticker</label>
               </div>
-              <div class="form-horizontal">
-                <label>Show date in log message</label>
+              <div>
                 <input type="checkbox" name="syslog_showdate" />
-                <div class="popup">Synology does a log rotate if timestamp is in the past so disable to prevent this</div>
+                <label>Include esp-link datetime</label>
+                <div class="popup">Some syslog servers rotate log if timestamp is in the past so disable to prevent this</div>
               </div>
               <button id="Syslog-button" type="submit" class="pure-button button-primary">
                 Update Syslog settings!
@@ -56,12 +62,14 @@
               <div class="form-horizontal">
                 <input type="checkbox" name="mdns_enable"/>
                 <label>Enable mDNS</label>
+                <div class="popup">Esp-link can advertise its hostname and service name (both
+                  with a .local suffix) via multicast DNS.</div>
               </div>
               <br>
-              <legend>mDNS server settings</legend>
               <div class="pure-form-stacked">
-                <label>Server Name</label>
+                <label>Service Name</label>
                 <input type="text" name="mdns_servername"/>
+                <div class="popup">The default service is http. For the arduino IDE use arduino</div>
               </div>
               <button id="mDNS-button" type="submit" class="pure-button button-primary">
                 Update mDNS settings!
@@ -76,12 +84,18 @@
               <div id="sntp-spinner" class="spinner spinner-small"></div>
             </h1>
             <form action="#" id="SNTP-form" class="pure-form" hidden>
-              <legend>SNTP server settings</legend>
               <div class="pure-form-stacked">
-                <label>Timezone Offset</label>
-                <input type="text" name="timezone_offset" />
-                <label>SNTP Server</label>
-                <input type="text" name="sntp_server" />
+                <div>
+                  <label>SNTP Server</label>
+                  <input type="text" name="sntp_server" />
+                  <div class="popup">Simple Network Time Protocol server to query.
+                    Leave empty to disable SNTP</div>
+                </div>
+                <div>
+                  <label>Timezone Offset</label>
+                  <input type="text" name="timezone_offset" />
+                  <div class="popup">Offset hours to apply (no daylight savings support)</div>
+                </div>
               </div>
               <button id="SNTP-button" type="submit" class="pure-button button-primary">
                 Update SNTP settings!

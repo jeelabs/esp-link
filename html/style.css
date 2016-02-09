@@ -85,10 +85,10 @@ a:hover {
 .popup, div.popup {
   position: absolute;
   /*top: 100%;*/
-  bottom: 100%;
+  bottom: 125%;
   background-color: #fff0b3;
   border-radius: 5px;
-  border: 0px solid #000;
+  border: 1px solid #e6b800;
   color: #333;
   font-size: 80%;
   line-height: 110%;

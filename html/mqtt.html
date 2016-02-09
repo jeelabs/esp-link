@@ -14,7 +14,7 @@
           using parameters set below and stored in esp-link's flash settings. This allows 
           esp-link to take care of connection parameters and disconnect/reconnect operations.</p>
           <p>The MQTT client also supports sending periodic status messages about esp-link itself,
-          including WiFI RSSI, and free heap memory.</p>
+          including WiFi RSSI, and free heap memory.</p>
           <div class="form-horizontal">
             <input type="checkbox" name="slip-enable"/>
             <label>Enable SLIP on serial port</label>
@@ -28,11 +28,14 @@
               <div id="mqtt-spinner" class="spinner spinner-small"></div>
             </h1>
             <form action="#" id="mqtt-form" class="pure-form" hidden>
-              <input type="checkbox" name="mqtt-enable"/>
-              <label>Enable MQTT client</label>
-              <br>
-              <label>MQTT client state: </label>
-              <b id="mqtt-state"></b>
+              <div>
+                <input type="checkbox" name="mqtt-enable"/>
+                <label>Enable MQTT client</label>
+              </div>
+              <div>
+                <label>MQTT client state: </label>
+                <b id="mqtt-state"></b>
+              </div>
               <br>
               <legend>MQTT server settings</legend>
               <div class="pure-form-stacked">
@@ -68,11 +71,11 @@
                 <label>Enable status reporting via MQTT</label>
               </div>
               <br>
-              <legend>Status reporting settings</legend>
               <div class="pure-form-stacked">
-                <label>Topic</label>
+                <label>Status topic</label>
                 <input type="text" name="mqtt-status-topic"/>
                 Message: <tt id="mqtt-status-value"></tt>
+                <div class="popup">MQTT topic to which status message is sent</div>
               </div>
               <button id="mqtt-status-button" type="submit" class="pure-button button-primary">
                 Update status settings!

@@ -10,11 +10,11 @@ typedef struct {
   uint32_t dataCb;
 } MqttCmdCb;
 
-uint32_t MQTTCMD_Connect(CmdPacket *cmd);
-uint32_t MQTTCMD_Disconnect(CmdPacket *cmd);
-uint32_t MQTTCMD_Setup(CmdPacket *cmd);
-uint32_t MQTTCMD_Publish(CmdPacket *cmd);
-uint32_t MQTTCMD_Subscribe(CmdPacket *cmd);
-uint32_t MQTTCMD_Lwt(CmdPacket *cmd);
+void MQTTCMD_Connect(CmdPacket *cmd);
+void MQTTCMD_Disconnect(CmdPacket *cmd);
+void MQTTCMD_Setup(CmdPacket *cmd);
+void MQTTCMD_Publish(CmdPacket *cmd);
+void MQTTCMD_Subscribe(CmdPacket *cmd);
+void MQTTCMD_Lwt(CmdPacket *cmd);
 
 #endif /* MODULES_MQTT_CMD_H_ */

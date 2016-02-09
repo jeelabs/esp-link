@@ -17,8 +17,7 @@ uint8_t slip_disabled;   // temporarily disable slip to allow flashing of attach
 
 extern void ICACHE_FLASH_ATTR console_process(char *buf, short len);
 
-// This SLIP parser does not conform to RFC 1055 https://tools.ietf.org/html/rfc1055,
-// instead, it implements the framing implemented in https://github.com/tuanpmt/esp_bridge
+// This SLIP parser tries to conform to RFC 1055 https://tools.ietf.org/html/rfc1055.
 // It accumulates each packet into a static buffer and calls cmd_parse() when the end
 // of a packet is reached. It expects cmd_parse() to copy anything it needs from the
 // buffer elsewhere as the buffer is immediately reused.
@@ -38,48 +37,38 @@ static short slip_len;          // accumulated length in slip_buf
 // SLIP process a packet or a bunch of debug console chars
 static void ICACHE_FLASH_ATTR
 slip_process() {
-  if (slip_len < 1) return;
-
-  if (!slip_inpkt) {
-    // debug console stuff
-    console_process(slip_buf, slip_len);
-  } else {
+  if (slip_len > 2) {
     // proper SLIP packet, invoke command processor after checking CRC
     //os_printf("SLIP: rcv %d\n", slip_len);
-    if (slip_len > 2) {
-      uint16_t crc = crc16_data((uint8_t*)slip_buf, slip_len-2, 0);
-      uint16_t rcv = ((uint16_t)slip_buf[slip_len-2]) | ((uint16_t)slip_buf[slip_len-1] << 8);
-      if (crc == rcv) {
-        CMD_parse_packet((uint8_t*)slip_buf, slip_len-2);
-      } else {
-        os_printf("SLIP: bad CRC, crc=%x rcv=%x\n", crc, rcv);
+    uint16_t crc = crc16_data((uint8_t*)slip_buf, slip_len-2, 0);
+    uint16_t rcv = ((uint16_t)slip_buf[slip_len-2]) | ((uint16_t)slip_buf[slip_len-1] << 8);
+    if (crc == rcv) {
+      cmdParsePacket((uint8_t*)slip_buf, slip_len-2);
+    } else {
+      os_printf("SLIP: bad CRC, crc=%04x rcv=%04x len=%d\n", crc, rcv, slip_len);
 
-        for (short i=0; i<slip_len; i++) {
-          if (slip_buf[i] >= ' ' && slip_buf[i] <= '~') {
-            DBG("%c", slip_buf[i]);
-          }
-          else {
-            DBG("\\%02X", slip_buf[i]);
-          }
+      for (short i=0; i<slip_len; i++) {
+        if (slip_buf[i] >= ' ' && slip_buf[i] <= '~') {
+          DBG("%c", slip_buf[i]);
+        } else {
+          DBG("\\%02X", slip_buf[i]);
         }
-        DBG("\n");
       }
+      DBG("\n");
     }
   }
 }
 
-#if 0
 // determine whether a character is printable or not (or \r \n)
 static bool ICACHE_FLASH_ATTR
 slip_printable(char c) {
   return (c >= ' ' && c <= '~') || c == '\n' || c == '\r';
 }
-#endif
 
 static void ICACHE_FLASH_ATTR
 slip_reset() {
   //os_printf("SLIP: reset\n");
-  slip_inpkt = false;
+  slip_inpkt = true;
   slip_escaped = false;
   slip_len = 0;
 }
@@ -87,38 +76,29 @@ slip_reset() {
 // SLIP parse a single character
 static void ICACHE_FLASH_ATTR
 slip_parse_char(char c) {
-  if (!slip_inpkt) {
-    if (c == SLIP_START) {
-      if (slip_len > 0) console_process(slip_buf, slip_len);
-      slip_reset();
-      slip_inpkt = true;
-      DBG("SLIP: start\n");
-      return;
+  if (c == SLIP_END) {
+    // either start or end of packet, process whatever we may have accumulated
+    DBG("SLIP: start or end len=%d inpkt=%d\n", slip_len, slip_inpkt);
+    if (slip_len > 0) {
+      if (slip_len > 2 && slip_inpkt) slip_process();
+      else console_process(slip_buf, slip_len);
     }
+    slip_reset();
   } else if (slip_escaped) {
-    // prev char was SLIP_REPL
-    c = SLIP_ESC(c);
+    // prev char was SLIP_ESC
+    if (c == SLIP_ESC_END) c = SLIP_END;
+    if (c == SLIP_ESC_ESC) c = SLIP_ESC;
+    if (slip_len < SLIP_MAX) slip_buf[slip_len++] = c;
     slip_escaped = false;
+  } else if (slip_inpkt && c == SLIP_ESC) {
+    slip_escaped = true;
   } else {
-    switch (c) {
-    case SLIP_REPL:
-      slip_escaped = true;
-      return;
-    case SLIP_END:
-      // end of packet, process it and get ready for next one
-      if (slip_len > 0) slip_process();
-      slip_reset();
-      return;
-    case SLIP_START:
-      os_printf("SLIP: got SLIP_START while in packet?\n");
-      //os_printf("SLIP: rcv %d:", slip_len);
-      //for (int i=0; i<slip_len; i++) os_printf(" %02x", slip_buf[i]);
-      //os_printf("\n");
-      slip_reset();
-      return;
+    if (slip_len == 1 && slip_printable(slip_buf[0]) && slip_printable(c)) {
+      // start of packet and it's a printable character, we're gonna assume that this is console text
+      slip_inpkt = false;
     }
+    if (slip_len < SLIP_MAX) slip_buf[slip_len++] = c;
   }
-  if (slip_len < SLIP_MAX) slip_buf[slip_len++] = c;
 }
 
 // callback with a buffer of characters that have arrived on the uart
@@ -130,8 +110,8 @@ slip_parse_buf(char *buf, short length) {
 
   // if we're in-between packets (debug console) then print it now
   if (!slip_inpkt && length > 0) {
-    slip_process();
-    slip_reset();
+    console_process(slip_buf, slip_len);
+    slip_len = 0;
   }
 }
 

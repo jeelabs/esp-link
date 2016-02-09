@@ -10,11 +10,11 @@
 #include "serbridge.h"
 #include "serled.h"
 
-#define SYNC_TIMEOUT  4800   // to achieve sync, in milliseconds
-#define SYNC_INTERVAL   77   // interval at which we try to sync
+#define INIT_DELAY     150   // wait this many millisecs before sending anything
 #define BAUD_INTERVAL  600   // interval after which we change baud rate
-#define PGM_TIMEOUT  20000   // timeout when sync is achieved, in milliseconds
+#define PGM_TIMEOUT  20000   // timeout after sync is achieved, in milliseconds
 #define PGM_INTERVAL   200   // send sync at this interval in ms when in programming mode
+#define ATTEMPTS         8   // number of attempts total to make
 
 #ifdef OPTIBOOT_DBG
 #define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
@@ -29,15 +29,14 @@
 static ETSTimer optibootTimer;
 
 static enum {                // overall programming states
-  stateSync = 0,             // trying to get initial response
-  stateSync2,                // trying to get in sync
-  stateSync3,                // trying to get second sync
+  stateInit = 0,             // initial delay
+  stateSync,                 // waiting to hear back
   stateGetSig,               // reading device signature
   stateGetVersLo,            // reading optiboot version, low bits
   stateGetVersHi,            // reading optiboot version, high bits
   stateProg,                 // programming...
 } progState;
-static short syncCnt;        // counter & timeout for sync attempts
+static char* progStates[] = { "init", "sync", "sig", "ver0", "ver1", "prog" };
 static short baudCnt;        // counter for sync attempts at different baud rates
 static short ackWait;        // counter of expected ACKs
 static uint16_t optibootVers;
@@ -70,12 +69,11 @@ static void optibootTimerCB(void *);
 static void optibootUartRecv(char *buffer, short length);
 static bool processRecord(char *buf, short len);
 static bool programPage(void);
-static void armTimer(void);
+static void armTimer(uint32_t ms);
 static void initBaud(void);
 
 static void ICACHE_FLASH_ATTR optibootInit() {
-  progState = stateSync;
-  syncCnt = 0;
+  progState = stateInit;
   baudCnt = 0;
   uart0_baud(flashConfig.baud_rate);
   ackWait = 0;
@@ -142,7 +140,7 @@ int ICACHE_FLASH_ATTR cgiOptibootSync(HttpdConnData *connData) {
     // start sync timer
     os_timer_disarm(&optibootTimer);
     os_timer_setfn(&optibootTimer, optibootTimerCB, NULL);
-    os_timer_arm(&optibootTimer, 50, 0); // fire in 50ms and don't recur
+    os_timer_arm(&optibootTimer, INIT_DELAY, 0);
 
     // respond with optimistic OK
     noCacheHeaders(connData, 204);
@@ -155,7 +153,7 @@ int ICACHE_FLASH_ATTR cgiOptibootSync(HttpdConnData *connData) {
     if (!errMessage[0] && progState >= stateProg) {
       char buf[64];
       DBG("OB got sync\n");
-      os_sprintf(buf, "SYNC at %ld baud: Optiboot %d.%d",
+      os_sprintf(buf, "SYNC at %ld baud: bootloader v%d.%d",
           baudRate, optibootVers>>8, optibootVers&0xff);
       httpdSend(connData, buf, -1);
     } else if (errMessage[0] && progState == stateSync) {
@@ -202,7 +200,8 @@ static uint32_t ICACHE_FLASH_ATTR getHexValue(char *buf, short len) {
 //===== Cgi to write firmware to Optiboot, requires prior sync call
 int ICACHE_FLASH_ATTR cgiOptibootData(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
-  DBG("OB pgm: state=%d PrivData=%p postLen=%d\n", progState, connData->cgiPrivData, connData->post->len);
+  if (!optibootData)
+    DBG("OB pgm: state=%d postLen=%d\n", progState, connData->post->len);
 
   // check that we have sync
   if (errMessage[0] || progState < stateProg) {
@@ -427,7 +426,7 @@ static bool pollAck() {
 // Program a flash page
 static bool ICACHE_FLASH_ATTR programPage(void) {
   if (optibootData->pageLen == 0) return true;
-  armTimer(); // keep the timerCB out of the picture
+  armTimer(PGM_TIMEOUT); // keep the timerCB out of the picture
 
   if (ackWait > 7) {
     os_sprintf(errMessage, "Lost sync while programming\n");
@@ -436,7 +435,7 @@ static bool ICACHE_FLASH_ATTR programPage(void) {
 
   uint16_t pgmLen = optibootData->pageLen;
   if (pgmLen > optibootData->pgmSz) pgmLen = optibootData->pgmSz;
-  DBG("OB pgm %d@0x%lx ackWait=%d\n", pgmLen, optibootData->address, ackWait);
+  DBG("OB pgm %d@0x%lx\n", pgmLen, optibootData->address);
 
   // send address to optiboot (little endian format)
 #ifdef DBG_GPIO5
@@ -448,12 +447,12 @@ static bool ICACHE_FLASH_ATTR programPage(void) {
   uart0_write_char(addr & 0xff);
   uart0_write_char(addr >> 8);
   uart0_write_char(CRC_EOP);
-  armTimer();
+  armTimer(PGM_TIMEOUT);
   if (!pollAck()) {
     DBG("OB pgm failed in load address\n");
     return false;
   }
-  armTimer();
+  armTimer(PGM_TIMEOUT);
 
   // send page length (big-endian format, go figure...)
 #ifdef DBG_GPIO5
@@ -470,9 +469,9 @@ static bool ICACHE_FLASH_ATTR programPage(void) {
     uart0_write_char(optibootData->pageBuf[i]);
   uart0_write_char(CRC_EOP);
 
-  armTimer();
+  armTimer(PGM_TIMEOUT);
   bool ok = pollAck();
-  armTimer();
+  armTimer(PGM_TIMEOUT);
   if (!ok) {
     DBG("OB pgm failed in prog page\n");
     return false;
@@ -490,18 +489,17 @@ static bool ICACHE_FLASH_ATTR programPage(void) {
 
 //===== Rebooting and getting sync
 
-static void ICACHE_FLASH_ATTR armTimer() {
+static void ICACHE_FLASH_ATTR armTimer(uint32_t ms) {
   os_timer_disarm(&optibootTimer);
-  // time-out every 50ms, except when programming to allow for 9600baud (133ms for 128 bytes)
-  os_timer_arm(&optibootTimer, progState==stateProg ? PGM_INTERVAL : SYNC_INTERVAL, 0);
+  os_timer_arm(&optibootTimer, ms, 0);
 }
 
 static int baudRates[] = { 0, 9600, 57600, 115200 };
 
 static void ICACHE_FLASH_ATTR setBaud() {
-  baudRate = baudRates[(syncCnt / (BAUD_INTERVAL/SYNC_INTERVAL)) % 4];
+  baudRate = baudRates[(baudCnt++) % 4];
   uart0_baud(baudRate);
-  //DBG("OB changing to %d baud\n", b);
+  //DBG("OB changing to %ld baud\n", baudRate);
 }
 
 static void ICACHE_FLASH_ATTR initBaud() {
@@ -511,45 +509,41 @@ static void ICACHE_FLASH_ATTR initBaud() {
 
 static void ICACHE_FLASH_ATTR optibootTimerCB(void *arg) {
   // see whether we've issued so many sync in a row that it's time to give up
-  syncCnt++;
   switch (progState) {
-    case stateSync: // we're trying to get sync, all we do here is send a sync request
-      if (syncCnt >= SYNC_TIMEOUT/SYNC_INTERVAL) {
+    case stateInit: // initial delay expired, send sync chars
+        uart0_write_char(STK_GET_SYNC);
+        uart0_write_char(CRC_EOP);
+        progState++;
+        armTimer(BAUD_INTERVAL-INIT_DELAY);
+        return;
+    case stateSync: // oops, must have not heard back!?
+      if (baudCnt > ATTEMPTS) {
         // we're doomed, give up
-        DBG("OB sync abandoned after timeout, state=%d syncCnt=%d\n", progState, syncCnt);
+        DBG("OB abandoned after %d attempts\n", baudCnt);
         optibootInit();
-        strcpy(errMessage, "sync abandoned after timeout");
+        strcpy(errMessage, "sync abandoned after 8 attempts");
         return;
       }
-      if (syncCnt % (BAUD_INTERVAL/SYNC_INTERVAL) == 0) {
-        // time to switch baud rate and issue a reset
-        setBaud();
-        serbridgeReset();
-        // no point sending chars if we just switched
-      } else {
-        //uart0_write_char(STK_GET_SYNC);
-        uart0_write_char(CRC_EOP);
-        uart0_write_char(CRC_EOP);
-      }
-      break;
-    case stateSync2: // need one more CRC_EOP?
-      uart0_write_char(CRC_EOP);
-      progState++;
-      break;
+      // time to switch baud rate and issue a reset
+      DBG("OB no sync response @%ld baud\n", baudRate);
+      setBaud();
+      serbridgeReset();
+      progState = stateInit;
+      armTimer(INIT_DELAY);
+      return;
     case stateProg: // we're programming and we timed-out of inaction
       uart0_write_char(STK_GET_SYNC);
       uart0_write_char(CRC_EOP);
       ackWait++; // we now expect an ACK
-      break;
+      armTimer(PGM_INTERVAL);
+      return;
     default: // we're trying to get some info from optiboot and it should have responded!
       optibootInit(); // abort
-      os_sprintf(errMessage, "No response in state %d\n", progState);
+      os_sprintf(errMessage, "No response in state %s(%d) @%ld baud\n",
+          progStates[progState], progState, baudRate);
       DBG("OB %s\n", errMessage);
       return; // do not re-arm timer
   }
-
-  // we need to come back...
-  armTimer();
 }
 
 // skip in-sync responses
@@ -575,8 +569,9 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
 
   // dispatch based the current state
   switch (progState) {
-  case stateSync:  // we're trying to get a sync response
-  case stateSync3: // we're trying to get a second sync response
+  case stateInit:  // we haven't sent anything, this must be garbage
+    break;
+  case stateSync: // we're trying to get a sync response
     // look for STK_INSYNC+STK_OK at end of buffer
     if (responseLen > 0 && responseBuf[responseLen-1] == STK_INSYNC) {
       // missing STK_OK after STK_INSYNC, shift stuff out and try again
@@ -584,19 +579,14 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
       responseLen = 1;
     } else if (responseLen > 1 && responseBuf[responseLen-2] == STK_INSYNC &&
         responseBuf[responseLen-1] == STK_OK) {
-      // got sync response, send more...
+      // got sync response
       os_memcpy(responseBuf, responseBuf+2, responseLen-2);
       responseLen -= 2;
-      if (progState==stateSync) {
-        // need to deal with odd-even sync issue, send one more to see whether we get a response
-        uart0_write_char(CRC_EOP);
-      } else {
-        // got clean sync, send request to get signature
-        uart0_write_char(STK_READ_SIGN);
-        uart0_write_char(CRC_EOP);
-      }
+      // send request to get signature
+      uart0_write_char(STK_READ_SIGN);
+      uart0_write_char(CRC_EOP);
       progState++;
-      armTimer(); // reset timer
+      armTimer(PGM_INTERVAL); // reset timer
     } else {
       // nothing useful, keep at most half the buffer for error message purposes
       if (responseLen > RESP_SZ/2) {
@@ -605,18 +595,6 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
         responseBuf[responseLen] = 0; // string terminator
       }
     }
-    break;
-  case stateSync2:  // we're trying to actually get in sync
-    if (responseLen > 1 && responseBuf[responseLen-2] == STK_INSYNC &&
-        responseBuf[responseLen-1] == STK_OK) {
-      // got sync response, send signature request
-      os_memcpy(responseBuf, responseBuf+2, responseLen-2);
-      responseLen -= 2;
-      uart0_write_char(STK_READ_SIGN);
-      uart0_write_char(CRC_EOP);
-      progState = stateGetSig;
-    }
-    armTimer(); // reset timer
     break;
   case stateGetSig: // expecting signature
     responseLen = skipInSync(responseBuf, responseLen);
@@ -627,7 +605,7 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
         uart0_write_char(STK_GET_PARAMETER);
         uart0_write_char(0x82);
         uart0_write_char(CRC_EOP);
-        armTimer(); // reset timer
+        armTimer(PGM_INTERVAL); // reset timer
       } else {
         optibootInit(); // abort
         os_sprintf(errMessage, "Bad programmer signature: 0x%02x 0x%02x 0x%02x\n",
@@ -646,7 +624,7 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
       uart0_write_char(STK_GET_PARAMETER);
       uart0_write_char(0x81);
       uart0_write_char(CRC_EOP);
-      armTimer(); // reset timer
+      armTimer(PGM_INTERVAL); // reset timer
     }
     break;
   case stateGetVersHi: // expecting version
@@ -655,7 +633,7 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
       progState++;
       os_memcpy(responseBuf, responseBuf+3, responseLen-3);
       responseLen -= 3;
-      armTimer(); // reset timer
+      armTimer(PGM_INTERVAL); // reset timer
       ackWait = 0;
     }
     break;
@@ -666,7 +644,7 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
       os_memmove(responseBuf, responseBuf+2, responseLen-2);
       responseLen -= 2;
     }
-    armTimer(); // reset timer
+    armTimer(PGM_INTERVAL); // reset timer
   default:
     break;
   }
