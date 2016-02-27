@@ -380,6 +380,7 @@ syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *
 {
   DBG("[%dµs] %s id=%lu\n", WDEV_NOW(), __FUNCTION__, syslog_msgid);
   syslog_entry_t *se = os_zalloc(sizeof (syslog_entry_t) + 1024);	// allow up to 1k datagram
+  if (se == NULL) return NULL;
   char *p = se->datagram;
   se->tick = WDEV_NOW();			// 0 ... 4294.967295s
   se->msgid = syslog_msgid;
@@ -512,6 +513,7 @@ void ICACHE_FLASH_ATTR syslog(uint8_t facility, uint8_t severity, const char *ta
   // compose the syslog message
   void *arg = __builtin_apply_args();
   void *res = __builtin_apply((void*)syslog_compose, arg, 128);
+  if (res == NULL) return; // compose failed, probably due to malloc failure
   syslog_entry_t *se  = *(syslog_entry_t **)res;
 
   // and append it to the message queue
