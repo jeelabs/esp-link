@@ -63,7 +63,7 @@ cmdResponseBody(const void *data, uint16_t len) {
   cmdProtoWriteBuf(data, len);
   resp_crc = crc16_data(data, len, resp_crc);
 
-  uint16_t pad = (4-(len&3))&3; // get to multiple of 4
+  uint16_t pad = (4-((len+2)&3))&3; // get to multiple of 4
   if (pad > 0) {
     uint32_t temp = 0;
     cmdProtoWriteBuf((uint8_t*)&temp, pad);

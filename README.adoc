@@ -24,8 +24,8 @@ but significantly reqritten and no longer protocol compatible, thanks to tuanpmt
 inspiration!
 
 Many thanks to https://github.com/brunnels for contributions in particular around the espduino
-functionality. Thank you also to https://github.com/susisstrolch and https://github.com/bc547 for
-additional contributions!
+functionality. Thank you also to https://github.com/susisstrolch, https://github.com/bc547,
+and https://github.com/katast for additional contributions!
 
 [float]
 Table of Contents
