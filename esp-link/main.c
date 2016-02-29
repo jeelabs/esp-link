@@ -129,9 +129,14 @@ void user_init(void) {
   // Wifi
   wifiInit();
   // init the flash filesystem with the html stuff
+#ifdef USE_OTHER_PARTITION_FOR_ESPFS
+  uint32* addr = getNextFlashAddr();
+  espFsInit(addr);
+#else
   espFsInit(&_binary_espfs_img_start);
   //EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
   //os_printf("espFsInit %s\n", res?"ERR":"ok");
+#endif
   // mount the http handlers
   httpdInit(builtInUrls, 80);
   // init the wifi-serial transparent bridge (port 23)

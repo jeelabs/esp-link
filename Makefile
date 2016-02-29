@@ -68,7 +68,7 @@ ESPBAUD		?= 460800
 # --------------- chipset configuration   ---------------
 
 # Pick your flash size: "512KB", "1MB", or "4MB"
-FLASH_SIZE ?= 4MB
+FLASH_SIZE ?= 512KB
 
 # The pin assignments below are used when the settings in flash are invalid, they
 # can be changed via the web interface
@@ -84,7 +84,7 @@ LED_SERIAL_PIN      ?= 14
 # --------------- esp-link modules config options ---------------
 
 # Optional Modules mqtt
-MODULES ?= mqtt rest syslog
+#MODULES ?= mqtt rest syslog
 
 # --------------- esphttpd config options ---------------
 
@@ -113,18 +113,24 @@ COMPRESS_W_HTMLCOMPRESSOR ?= yes
 HTML_COMPRESSOR ?= htmlcompressor-1.5.3.jar
 YUI_COMPRESSOR ?= yuicompressor-2.4.8.jar
 
+
+# use this option to place the ESP FS in the other partition of the flash
+# which is currently not booted.
+# ONLY works with wifi update.
+USE_OTHER_PARTITION_FOR_ESPFS ?= yes
+
 # -------------- End of config options -------------
 
 HTML_PATH = $(abspath ./html)/
 WIFI_PATH = $(HTML_PATH)wifi/
 
-ESP_FLASH_MAX       ?= 503808  # max bin file
 
 ifeq ("$(FLASH_SIZE)","512KB")
 # Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
 ESP_SPI_SIZE        ?= 0       # 0->512KB (256KB+256KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
+ESP_FLASH_MAX       ?= 241664  # max bin file for 512KB flash: 236KB
 ET_FS               ?= 4m      # 4Mbit flash size in esptool flash command
 ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
@@ -134,6 +140,7 @@ else ifeq ("$(FLASH_SIZE)","1MB")
 ESP_SPI_SIZE        ?= 2       # 2->1MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80MHz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 1MB flash: 492KB
 ET_FS               ?= 8m      # 8Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0xFE000 # where to flash blank.bin to erase wireless settings
@@ -146,6 +153,7 @@ else ifeq ("$(FLASH_SIZE)","2MB")
 ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 1MB flash: 492KB
 ET_FS               ?= 16m     # 16Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x1FE000 # where to flash blank.bin to erase wireless settings
@@ -158,6 +166,7 @@ else
 ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 1MB flash: 492KB
 ET_FS               ?= 32m     # 32Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
@@ -253,7 +262,11 @@ SDK_TOOLS	:= $(addprefix $(SDK_BASE)/,$(SDK_TOOLSDIR))
 APPGEN_TOOL	:= $(addprefix $(SDK_TOOLS)/,$(APPGEN_TOOL))
 
 SRC			:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.c))
-OBJ			:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC)) $(BUILD_BASE)/espfs_img.o
+OBJ			:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC))
+ifneq ("$(USE_OTHER_PARTITION_FOR_ESPFS)","yes")
+OBJ			+= $(BUILD_BASE)/espfs_img.o
+endif
+
 LIBS		:= $(addprefix -l,$(LIBS))
 APP_AR		:= $(addprefix $(BUILD_BASE)/,$(TARGET)_app.a)
 USER1_OUT 	:= $(addprefix $(BUILD_BASE)/,$(TARGET).user1.out)
@@ -312,6 +325,10 @@ ifeq ("$(CHANGE_TO_STA)","yes")
 CFLAGS		+= -DCHANGE_TO_STA
 endif
 
+ifeq ("$(USE_OTHER_PARTITION_FOR_ESPFS)","yes")
+CFLAGS		+= -DUSE_OTHER_PARTITION_FOR_ESPFS
+endif
+
 vpath %.c $(SRC_DIR)
 
 define compile-objects
@@ -322,7 +339,7 @@ endef
 
 .PHONY: all checkdirs clean webpages.espfs wiflash
 
-all: echo_version checkdirs $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
+all: echo_version checkdirs $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(BUILD_BASE)/espfs_img.o
 
 echo_version:
 	@echo VERSION: $(VERSION)
