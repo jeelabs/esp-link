@@ -37,6 +37,15 @@
 // If defined, the default hostname for DHCP will include the chip ID to make it unique
 #undef CHIP_IN_HOSTNAME
 
+#ifndef SYSLOG
+#define LOG_DEBUG(format, ...) do { } while(0)
+#define LOG_NOTICE(format, ...) do { } while(0)
+#define LOG_WARN(format, ...) do { } while(0)
+#define LOG_INFO(format, ...) do { } while(0)
+#define LOG_ERR(format, ...) do { } while(0)
+#endif
+
+
 extern char* esp_link_version;
 extern uint8_t UTILS_StrToIP(const char* str, void *ip);
 

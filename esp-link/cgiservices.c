@@ -2,9 +2,12 @@
 #include "cgiwifi.h"
 #include "cgi.h"
 #include "config.h"
-#include "syslog.h"
 #include "sntp.h"
 #include "cgimqtt.h"
+
+#ifdef SYSLOG
+#include "syslog.h"
+#endif
 
 #ifdef CGISERVICES_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
@@ -138,6 +141,7 @@ int ICACHE_FLASH_ATTR cgiServicesInfo(HttpdConnData *connData) {
 int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   if (connData->conn == NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
+#ifdef SYSLOG
   int8_t syslog = 0;
 
   syslog |= getStringArg(connData, "syslog_host", flashConfig.syslog_host, sizeof(flashConfig.syslog_host));
@@ -154,6 +158,7 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   if (syslog > 0) {
     syslog_init(flashConfig.syslog_host);
   }
+#endif
 
   int8_t sntp = 0;
   sntp |= getInt8Arg(connData, "timezone_offset", &flashConfig.timezone_offset);

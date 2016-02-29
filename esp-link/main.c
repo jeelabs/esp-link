@@ -29,8 +29,11 @@
 #include "config.h"
 #include "log.h"
 #include "gpio.h"
-#include "syslog.h"
 #include "cgiservices.h"
+
+#ifdef SYSLOG
+#include "syslog.h"
+#endif
 
 #define NOTICE(format, ...) do {	                                          \
 	LOG_NOTICE(format, ## __VA_ARGS__ );                                      \
