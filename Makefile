@@ -84,7 +84,7 @@ LED_SERIAL_PIN      ?= 14
 # --------------- esp-link modules config options ---------------
 
 # Optional Modules mqtt
-#MODULES ?= mqtt rest syslog
+#MODULES ?= mqtt rest syslog cmd
 
 # --------------- esphttpd config options ---------------
 
@@ -124,6 +124,7 @@ USE_OTHER_PARTITION_FOR_ESPFS ?= yes
 HTML_PATH = $(abspath ./html)/
 WIFI_PATH = $(HTML_PATH)wifi/
 
+ET_PART1            ?= 0x01000
 
 ifeq ("$(FLASH_SIZE)","512KB")
 # Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
@@ -133,6 +134,7 @@ ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
 ESP_FLASH_MAX       ?= 241664  # max bin file for 512KB flash: 236KB
 ET_FS               ?= 4m      # 4Mbit flash size in esptool flash command
 ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
+ET_PART2            ?= 0x41000
 ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
 
 else ifeq ("$(FLASH_SIZE)","1MB")
@@ -143,6 +145,7 @@ ESP_FLASH_FREQ_DIV  ?= 15      # 15->80MHz
 ESP_FLASH_MAX       ?= 503808  # max bin file for 1MB flash: 492KB
 ET_FS               ?= 8m      # 8Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ET_PART2            ?= 0x81000
 ET_BLANK            ?= 0xFE000 # where to flash blank.bin to erase wireless settings
 
 else ifeq ("$(FLASH_SIZE)","2MB")
@@ -156,6 +159,7 @@ ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
 ESP_FLASH_MAX       ?= 503808  # max bin file for 1MB flash: 492KB
 ET_FS               ?= 16m     # 16Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ET_PART2            ?= 0x101000
 ET_BLANK            ?= 0x1FE000 # where to flash blank.bin to erase wireless settings
 
 else
@@ -214,7 +218,7 @@ endif
 
 # which modules (subdirectories) of the project to include in compiling
 LIBRARIES_DIR 	= libraries
-MODULES		  	+= espfs httpd user serial cmd esp-link
+MODULES		  	+= espfs httpd user serial esp-link
 MODULES			+= $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
 EXTRA_INCDIR 	= include .
 
@@ -395,12 +399,24 @@ wiflash: all
 	./wiflash $(ESP_HOSTNAME) $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
 
 baseflash: all
-	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x01000 $(FW_BASE)/user1.bin
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash $(ET_PART1) $(FW_BASE)/user1.bin
 
+
+ifeq ("$(USE_OTHER_PARTITION_FOR_ESPFS)","yes")
 flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
-	  0x00000 "$(SDK_BASE)/bin/boot_v1.5.bin" 0x01000 $(FW_BASE)/user1.bin \
+	  0x00000 "$(SDK_BASE)/bin/boot_v1.5.bin" \
+	  $(ET_PART1) $(FW_BASE)/user1.bin \
+	  $(ET_PART2) build/espfs.img \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
+else
+flash: all
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
+	  0x00000 "$(SDK_BASE)/bin/boot_v1.5.bin" \
+	  $(ET_PART1) $(FW_BASE)/user1.bin \
+	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
+endif
+
 
 ifeq ($(OS),Windows_NT)
 tools/$(HTML_COMPRESSOR):

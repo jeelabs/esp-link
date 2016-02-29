@@ -20,6 +20,8 @@ Some flash handling cgi routines. Used for reading the existing flash and updati
 #include "cgiflash.h"
 #include "espfs.h"
 
+#define SPI_FLASH_MEM_EMU_START_ADDR  0x40200000
+
 #ifdef CGIFLASH_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
@@ -57,7 +59,7 @@ static int ICACHE_FLASH_ATTR getNextSPIFlashAddr(void) {
 }
 
 uint32* const ICACHE_FLASH_ATTR getNextFlashAddr(void) {
-    const uint32 addr = 0x4200000 + getNextSPIFlashAddr();
+    const uint32 addr = SPI_FLASH_MEM_EMU_START_ADDR + getNextSPIFlashAddr();
 
     /* cast as a pointer, because it is the real address in this system,
      * for accessing the SPI flash position through the mem emu
