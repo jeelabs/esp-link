@@ -45,7 +45,7 @@ static char* ICACHE_FLASH_ATTR check_header(void *buf) {
 // check whether the flash map/size we have allows for OTA upgrade
 static bool canOTA(void) {
         enum flash_size_map map = system_get_flash_size_map();
-        return map >= FLASH_SIZE_8M_MAP_512_512;
+        return map >= FLASH_SIZE_4M_MAP_256_256;
 }
 
 static char *flash_too_small = "Flash too small for OTA update";

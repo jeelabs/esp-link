@@ -69,6 +69,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/flash/next", cgiGetFirmwareNext, NULL },
   { "/flash/upload", cgiUploadFirmware, NULL },
   { "/flash/reboot", cgiRebootFirmware, NULL },
+  { "/log/reset", cgiReset, NULL },
 #ifdef CGI_ADVANCED
   { "/pgm/sync", cgiOptibootSync, NULL },
   { "/pgm/upload", cgiOptibootData, NULL },
@@ -81,7 +82,6 @@ HttpdBuiltInUrl builtInUrls[] = {
 #ifdef LOG
   { "/log/text", ajaxLog, NULL },
   { "/log/dbg", ajaxLogDbg, NULL },
-  { "/log/reset", cgiReset, NULL },
 #endif
 #ifdef CONSOLE
   { "/console/reset", ajaxConsoleReset, NULL },
