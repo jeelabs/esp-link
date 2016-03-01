@@ -84,7 +84,7 @@ LED_SERIAL_PIN      ?= 14
 # --------------- esp-link modules config options ---------------
 
 # Optional Modules mqtt
-#MODULES ?= mqtt rest syslog cmd
+#MODULES ?= mqtt rest syslog cmd esp-link/cgiadv esp-link/log serial/console serial/serbridge
 
 # --------------- esphttpd config options ---------------
 
@@ -214,6 +214,26 @@ endif
 
 ifneq (,$(findstring syslog,$(MODULES)))
 	CFLAGS		+= -DSYSLOG
+endif
+
+ifneq (,$(findstring cmd,$(MODULES)))
+	CFLAGS		+= -DCMD
+endif
+
+ifneq (,$(findstring esp-link/cgiadv,$(MODULES)))
+	CFLAGS		+= -DCGI_ADVANCED
+endif
+
+ifneq (,$(findstring esp-link/log,$(MODULES)))
+	CFLAGS		+= -DLOG
+endif
+
+ifneq (,$(findstring serial/console,$(MODULES)))
+	CFLAGS		+= -DCONSOLE
+endif
+
+ifneq (,$(findstring serial/serbridge,$(MODULES)))
+	CFLAGS		+= -DSERIAL_BRIDGE
 endif
 
 # which modules (subdirectories) of the project to include in compiling
