@@ -114,9 +114,8 @@ HTML_COMPRESSOR ?= htmlcompressor-1.5.3.jar
 YUI_COMPRESSOR ?= yuicompressor-2.4.8.jar
 
 
-# use this option to place the ESP FS in the other partition of the flash
+# use this option to place the ESP FS image in the other partition of the flash
 # which is currently not booted.
-# ONLY works with wifi update.
 USE_OTHER_PARTITION_FOR_ESPFS ?= yes
 
 # -------------- End of config options -------------
@@ -422,7 +421,7 @@ else
 wiflash: all
 	./wiflash $(ESP_HOSTNAME) $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
 endif
-	
+
 baseflash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash $(ET_PART1) $(FW_BASE)/user1.bin
 
