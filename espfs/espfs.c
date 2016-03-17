@@ -182,6 +182,17 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(char *fileName) {
 	}
 }
 
+//Get file size.
+int ICACHE_FLASH_ATTR espFsSize(EspFsFile *fh) {
+	int32_t len;
+	if (fh==NULL) return 0;
+	if (fh->decompressor==COMPRESS_NONE)
+        memcpyAligned((char*)&len, (char*)&fh->header->fileLenComp, sizeof(int32_t));
+    else
+        memcpyAligned((char*)&len, (char*)&fh->header->fileLenDecomp, sizeof(int32_t));
+	return len;
+}
+
 //Read len bytes from the given file into buff. Returns the actual amount of bytes read.
 int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 	int flen, fdlen;

@@ -171,6 +171,24 @@ cmdPopArg(CmdRequest *req, void *data, uint16_t len) {
   return 0;
 }
 
+// Copy the next argument from a command structure into the data pointer, returns 0 on success
+// -1 on error
+int32_t ICACHE_FLASH_ATTR
+cmdPopArgPtr(CmdRequest *req, void **pPtr, uint16_t *pLen) {
+
+  if (req->arg_num >= req->cmd->argc)
+    return -1;
+
+  *pLen = *(uint16_t*)req->arg_ptr;
+
+  req->arg_ptr += 2;
+  *pPtr = req->arg_ptr;
+  req->arg_ptr += (*pLen+3)&~3; // round up to multiple of 4
+
+  req->arg_num ++;
+  return 0;
+}
+
 // Skip the next argument
 void ICACHE_FLASH_ATTR
 cmdSkipArg(CmdRequest *req) {
