@@ -19,8 +19,8 @@
 # The Wifi station configuration can be hard-coded here, which makes esp-link come up in STA+AP
 # mode trying to connect to the specified AP *only* if the flash wireless settings are empty!
 # This happens on a full serial flash and avoids having to hunt for the AP...
-STA_SSID ?= $(ESP_LINK_SSID)
-STA_PASS ?= $(ESP_LINK_PASSWD)
+STA_SSID ?=
+STA_PASS ?=
 
 # The SOFTAP configuration can be hard-coded here, the minimum parameters to set are AP_SSID && AP_PASS
 # The AP SSID has to be at least 8 characters long, same for AP PASSWORD
