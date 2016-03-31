@@ -20,7 +20,7 @@ The firmware includes a tiny HTTP server based on
 http://www.esp8266.com/viewforum.php?f=34[esphttpd]
 with a simple web interface, many thanks to Jeroen Domburg for making it available!
 The REST and MQTT functionality are loosely based on https://github.com/tuanpmt/espduino
-but significantly reqritten and no longer protocol compatible, thanks to tuanpmt for the
+but significantly rewritten and no longer protocol compatible, thanks to tuanpmt for the
 inspiration!
 
 Many thanks to https://github.com/brunnels for contributions in particular around the espduino
