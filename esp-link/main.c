@@ -73,7 +73,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/wifi/setmode", cgiWiFiSetMode, NULL },
   { "/wifi/special", cgiWiFiSpecial, NULL },
   { "/wifi/apinfo", cgiApSettingsInfo, NULL },
-  { "/wifi/apchange", cgiApSettingsChange, NULL },  
+  { "/wifi/apchange", cgiApSettingsChange, NULL },
   { "/system/info", cgiSystemInfo, NULL },
   { "/system/update", cgiSystemSet, NULL },
   { "/services/info", cgiServicesInfo, NULL },
@@ -81,7 +81,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/pins", cgiPins, NULL },
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
-#endif  
+#endif
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
 };
@@ -149,10 +149,10 @@ void user_init(void) {
     rst_info->exccause, rst_info->epc1, rst_info->epc2, rst_info->epc3,
     rst_info->excvaddr, rst_info->depc);
   uint32_t fid = spi_flash_get_id();
-  NOTICE("Flash map %s, manuf 0x%02lX chip 0x%04lX", flash_maps[system_get_flash_size_map()],
+  NOTICE("Flash map %s, manuf 0x%02X chip 0x%04X", flash_maps[system_get_flash_size_map()],
       fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
   NOTICE("** esp-link ready");
-    
+
   // Init SNTP service
   cgiServicesSNTPInit();
 #ifdef MQTT

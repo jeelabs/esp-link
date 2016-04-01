@@ -42,7 +42,7 @@ cmdMqttDataCb(MQTT_Client* client, const char* topic, uint32_t topic_len,
     const char* data, uint32_t data_len)
 {
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
-  DBG("MQTT: Data cb=%p topic=%s len=%ld\n", (void*)cb->dataCb, topic, data_len);
+  DBG("MQTT: Data cb=%p topic=%s len=%u\n", (void*)cb->dataCb, topic, data_len);
 
   cmdResponseStart(CMD_RESP_CB, cb->dataCb, 2);
   cmdResponseBody(topic, topic_len);
@@ -168,7 +168,7 @@ MQTTCMD_Subscribe(CmdPacket *cmd) {
   uint32_t qos = 0;
   cmdPopArg(&req, (uint8_t*)&qos, 4);
 
-  DBG("MQTT: MQTTCMD_Subscribe topic=%s, qos=%ld\n", topic, qos);
+  DBG("MQTT: MQTTCMD_Subscribe topic=%s, qos=%u\n", topic, qos);
 
   MQTT_Subscribe(client, (char*)topic, (uint8_t)qos);
   os_free(topic);
@@ -245,7 +245,7 @@ MQTTCMD_Setup(CmdPacket *cmd) {
   cmdPopArg(&req, &callback->dataCb, 4);
   client->user_data = callback;
 
-  DBG("MQTT connectedCb=%lx\n", callback->connectedCb);
+  DBG("MQTT connectedCb=%x\n", callback->connectedCb);
 
   client->cmdConnectedCb = cmdMqttConnectedCb;
   client->cmdDisconnectedCb = cmdMqttDisconnectedCb;

@@ -30,7 +30,7 @@ static char* ICACHE_FLASH_ATTR check_header(void *buf) {
   uint8_t *cd = (uint8_t *)buf;
 #ifdef CGIFLASH_DBG
   uint32_t *buf32 = buf;
-  os_printf("%p: %08lX %08lX %08lX %08lX\n", buf, buf32[0], buf32[1], buf32[2], buf32[3]);
+  os_printf("%p: %08X %08X %08X %08X\n", buf, buf32[0], buf32[1], buf32[2], buf32[3]);
 #endif
   if (cd[0] != 0xEA) return "IROM magic missing";
   if (cd[1] != 4 || cd[2] > 3 || (cd[3]>>4) > 6) return "bad flash header";

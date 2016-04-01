@@ -43,7 +43,7 @@ static uint16_t resp_crc;
 // Start a response, returns the partial CRC
 void ICACHE_FLASH_ATTR
 cmdResponseStart(uint16_t cmd, uint32_t value, uint16_t argc) {
-  DBG("cmdResponse: cmd=%d val=%ld argc=%d\n", cmd, value, argc);
+  DBG("cmdResponse: cmd=%d val=%d argc=%d\n", cmd, value, argc);
 
   uart0_write_char(SLIP_END);
   cmdProtoWriteBuf((uint8_t*)&cmd, 2);
@@ -107,7 +107,7 @@ cmdParsePacket(uint8_t *buf, short len) {
   uint8_t *data_ptr = (uint8_t*)&packet->args;
   uint8_t *data_limit = data_ptr+len;
 
-  DBG("cmdParsePacket: cmd=%d argc=%d value=%lu\n",
+  DBG("cmdParsePacket: cmd=%d argc=%d value=%u\n",
       packet->cmd,
       packet->argc,
       packet->value

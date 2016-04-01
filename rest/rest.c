@@ -252,7 +252,7 @@ REST_Setup(CmdPacket *cmd) {
     os_free(client->pCon);
   }
   os_memset(client, 0, sizeof(RestClient));
-  DBG_REST("REST: setup #%d host=%s port=%ld security=%ld\n", clientNum, rest_host, port, security);
+  DBG_REST("REST: setup #%d host=%s port=%d security=%d\n", clientNum, rest_host, port, security);
 
   client->resp_cb = cmd->value;
 
@@ -348,7 +348,7 @@ REST_Request(CmdPacket *cmd) {
   // Get client
   uint32_t clientNum = cmd->value;
   RestClient *client = restClient + (clientNum % MAX_REST);
-  DBG_REST(" #%ld", clientNum);
+  DBG_REST(" #%d", clientNum);
 
   // Get HTTP method
   uint16_t len = cmdArgLen(&req);
@@ -374,7 +374,7 @@ REST_Request(CmdPacket *cmd) {
     realLen = cmdArgLen(&req);
     if (realLen > 2048) goto fail;
   }
-  DBG_REST(" bodyLen=%ld", realLen);
+  DBG_REST(" bodyLen=%d", realLen);
 
   // we need to allocate memory for the header plus the body. First we count the length of the
   // header (including some extra counted "%s" and then we add the body length. We allocate the
@@ -393,7 +393,7 @@ REST_Request(CmdPacket *cmd) {
   if (client->data) os_free(client->data);
   client->data = (char*)os_zalloc(headerLen + realLen);
   if (client->data == NULL) goto fail;
-  DBG_REST(" totLen=%ld data=%p", headerLen + realLen, client->data);
+  DBG_REST(" totLen=%d data=%p", headerLen + realLen, client->data);
   client->data_len = os_sprintf((char*)client->data, headerFmt, method, path, client->host,
       client->header, realLen, client->content_type, client->user_agent);
   DBG_REST(" hdrLen=%d", client->data_len);
@@ -412,7 +412,7 @@ REST_Request(CmdPacket *cmd) {
   espconn_regist_reconcb(client->pCon, tcpclient_recon_cb);
 
   if(UTILS_StrToIP((char *)client->host, &client->pCon->proto.tcp->remote_ip)) {
-    DBG_REST("REST: Connect to ip %s:%ld\n",client->host, client->port);
+    DBG_REST("REST: Connect to ip %s:%d\n",client->host, client->port);
     //if(client->security){
     //  espconn_secure_connect(client->pCon);
     //}
@@ -420,7 +420,7 @@ REST_Request(CmdPacket *cmd) {
       espconn_connect(client->pCon);
     //}
   } else {
-    DBG_REST("REST: Connect to host %s:%ld\n", client->host, client->port);
+    DBG_REST("REST: Connect to host %s:%d\n", client->host, client->port);
     espconn_gethostbyname(client->pCon, (char *)client->host, &client->ip, rest_dns_found);
   }
 
