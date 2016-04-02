@@ -177,8 +177,11 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
         (len == 2 && strncmp(data, "?\n", 2) == 0) ||
         (len == 3 && strncmp(data, "?\r\n", 3) == 0)) {
       startPGM = true;
-      conn->conn_mode = cmPGM;
 
+      // Don't actually reboot the target until we've actually received
+      // serial data to send to the target.
+      conn->conn_mode = cmPGMInit;
+      return;
     // If the connection starts with a telnet negotiation we will do telnet
     }
     else if (len >= 3 && strncmp(data, (char[]){IAC, WILL, ComPortOpt}, 3) == 0) {
