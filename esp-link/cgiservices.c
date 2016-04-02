@@ -7,7 +7,7 @@
 #include "cgimqtt.h"
 
 #ifdef CGISERVICES_DBG
-#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif
@@ -92,10 +92,10 @@ int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
 }
 
 void ICACHE_FLASH_ATTR cgiServicesSNTPInit() {
-  if (flashConfig.sntp_server[0] != '\0') {
+  if (flashConfig.sntp_server[0] != '\0') {    
     sntp_stop();
     if (true == sntp_set_timezone(flashConfig.timezone_offset)) {
-      sntp_setservername(0, flashConfig.sntp_server);
+      sntp_setservername(0, flashConfig.sntp_server);  
       sntp_init();
     }
     DBG("SNTP timesource set to %s with offset %d\n", flashConfig.sntp_server, flashConfig.timezone_offset);
@@ -107,7 +107,7 @@ int ICACHE_FLASH_ATTR cgiServicesInfo(HttpdConnData *connData) {
 
   if (connData->conn == NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
-  os_sprintf(buff,
+  os_sprintf(buff, 
     "{ "
       "\"syslog_host\": \"%s\", "
       "\"syslog_minheap\": %d, "
@@ -118,7 +118,7 @@ int ICACHE_FLASH_ATTR cgiServicesInfo(HttpdConnData *connData) {
       "\"sntp_server\": \"%s\", "
       "\"mdns_enable\": \"%s\", "
       "\"mdns_servername\": \"%s\""
-    " }",
+    " }",    
     flashConfig.syslog_host,
     flashConfig.syslog_minheap,
     flashConfig.syslog_filter,
@@ -168,7 +168,7 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   int8_t mdns = 0;
   mdns |= getBoolArg(connData, "mdns_enable", &flashConfig.mdns_enable);
   if (mdns < 0) return HTTPD_CGI_DONE;
-
+    
   if (mdns > 0) {
     if (flashConfig.mdns_enable){
       DBG("Services: MDNS Enabled\n");
