@@ -17,7 +17,7 @@ char *mqttState(void) {
 #include "cgimqtt.h"
 
 #ifdef CGIMQTT_DBG
-#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif
@@ -134,7 +134,7 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
     mqtt_client_init();
 
   // if just enable changed we just need to bounce the client
-  }
+  } 
   else if (mqtt_en_chg > 0) {
     DBG("MQTT server enable=%d changed\n", flashConfig.mqtt_enable);
     if (flashConfig.mqtt_enable && strlen(flashConfig.mqtt_host) > 0)
@@ -154,7 +154,7 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
   // if SLIP-enable is toggled it gets picked-up immediately by the parser
   int slip_update = getBoolArg(connData, "slip-enable", &flashConfig.slip_enable);
   if (slip_update < 0) return HTTPD_CGI_DONE;
-  if (slip_update > 0)
+  if (slip_update > 0) 
     DBG("SLIP-enable changed: %d\n", flashConfig.slip_enable);
 
   DBG("Saving config\n");

@@ -13,9 +13,6 @@
 # `VERBOSE=1 make ...` will print debug info
 # `ESP_HOSTNAME=my.esp.example.com make wiflash` is an easy way to override a variable
 
-# CFLAGS may be changed by local.conf
-CFLAGS=
-
 # optional local configuration file
 -include local.conf
 
@@ -60,7 +57,6 @@ XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 # Base directory of the ESP8266 SDK package, absolute
 # Typically you'll download from Espressif's BBS, http://bbs.espressif.com/viewforum.php?f=5
 SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.5.1)
-BOOTFILE	?= $(abspath ../esp_iot_sdk_v1.5.1/bin/boot_v1.5.bin)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
@@ -191,6 +187,8 @@ TARGET		= httpd
 
 # espressif tool to concatenate sections for OTA upload using bootloader v1.2+
 APPGEN_TOOL	?= gen_appbin.py
+
+CFLAGS=
 
 # set defines for optional modules
 ifneq (,$(findstring mqtt,$(MODULES)))
@@ -328,7 +326,6 @@ all: echo_version checkdirs $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
 
 echo_version:
 	@echo VERSION: $(VERSION)
-	@echo MODULES: $(MODULES)
 
 $(USER1_OUT): $(APP_AR) $(LD_SCRIPT1)
 	$(vecho) "LD $@"
@@ -385,7 +382,7 @@ baseflash: all
 
 flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
-	  0x00000 "$(BOOTFILE)" 0x01000 $(FW_BASE)/user1.bin \
+	  0x00000 "$(SDK_BASE)/bin/boot_v1.5.bin" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 
 ifeq ($(OS),Windows_NT)
@@ -432,7 +429,7 @@ ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 else
 	$(Q) cp -r html/head- html_compressed;
 	$(Q) cp -r html/*.html html_compressed;
-	$(Q) cp -r html/wifi/*.html html_compressed/wifi;
+	$(Q) cp -r html/wifi/*.html html_compressed/wifi;	
 endif
 ifeq (,$(findstring mqtt,$(MODULES)))
 	$(Q) rm -rf html_compressed/mqtt.html
@@ -467,7 +464,7 @@ release: all
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user1.bin | cut -b 1-80
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user2.bin | cut -b 1-80
 	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
-		   "$(BOOTFILE)" wiflash avrflash release/esp-link-$(BRANCH)
+		   "$(SDK_BASE)/bin/boot_v1.5.bin" wiflash avrflash release/esp-link-$(BRANCH)
 	$(Q) tar zcf esp-link-$(BRANCH).tgz -C release esp-link-$(BRANCH)
 	$(Q) echo "Release file: esp-link-$(BRANCH).tgz"
 	$(Q) rm -rf release

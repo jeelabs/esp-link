@@ -8,7 +8,7 @@
 #include "cmd.h"
 
 #ifdef SLIP_DBG
-#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif

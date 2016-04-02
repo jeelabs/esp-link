@@ -16,18 +16,19 @@
 #define MAXUSRTASKS	 8
 
 #ifdef USRTASK_DBG
-#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
+#define DBG_USRTASK(format, ...) os_printf(format, ## __VA_ARGS__)
 #else
-#define DBG(format, ...) do { } while(0)
+#define DBG_USRTASK(format, ...) do { } while(0)
 #endif
 
 LOCAL os_event_t *_task_queue   = NULL;		// system_os_task queue
 LOCAL os_task_t  *usr_task_queue = NULL;	// user task queue
 
 // it seems save to run the usr_event_handler from RAM, so no ICACHE_FLASH_ATTR here...
+
 LOCAL void usr_event_handler(os_event_t *e)
 {
-  DBG("usr_event_handler: event %p (sig=%d, par=%p)\n", e, (int)e->sig, (void *)e->par);
+  DBG_USRTASK("usr_event_handler: event %p (sig=%d, par=%p)\n", e, (int)e->sig, (void *)e->par);
   if (usr_task_queue[e->sig] == NULL || e->sig < 0 || e->sig >= MAXUSRTASKS) {
     os_printf("usr_event_handler: task %d %s\n", (int)e->sig,
 	       usr_task_queue[e->sig] == NULL ? "not registered" : "out of range");
@@ -56,7 +57,7 @@ uint8_t register_usr_task (os_task_t event)
 {
   int task;
 
-  DBG("register_usr_task: %p\n", event);
+  DBG_USRTASK("register_usr_task: %p\n", event);
   if (_task_queue   == NULL || usr_task_queue == NULL)
     init_usr_task();
 
@@ -67,7 +68,7 @@ uint8_t register_usr_task (os_task_t event)
 
   for (task = 0; task < MAXUSRTASKS; task++) {
     if (usr_task_queue[task] == NULL) {
-      DBG("register_usr_task: assign task #%d\n", task);
+      DBG_USRTASK("register_usr_task: assign task #%d\n", task);
       usr_task_queue[task] = event;
       break;
     }
