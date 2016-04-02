@@ -151,7 +151,7 @@ void user_init(void) {
   uint32_t fid = spi_flash_get_id();
   NOTICE("Flash map %s, manuf 0x%02X chip 0x%04X", flash_maps[system_get_flash_size_map()],
       fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
-  NOTICE("** esp-link ready");
+  NOTICE("** %s: ready, heap=%ld", esp_link_version, (unsigned long)system_get_free_heap_size());
 
   // Init SNTP service
   cgiServicesSNTPInit();

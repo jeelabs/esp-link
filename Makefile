@@ -13,6 +13,9 @@
 # `VERBOSE=1 make ...` will print debug info
 # `ESP_HOSTNAME=my.esp.example.com make wiflash` is an easy way to override a variable
 
+# CFLAGS may be changed by local.conf
+CFLAGS=
+
 # optional local configuration file
 -include local.conf
 
@@ -54,16 +57,24 @@ ESP_HOSTNAME        ?= esp-link
 # Typically you'll install https://github.com/pfalcon/esp-open-sdk
 XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 
-# Base directory of the ESP8266 SDK package, absolute
-ifneq ($(wildcard ../esp-open-sdk/esp_iot_sdk_v1.5.2/.*),)
-# One that has been extracted as part of open-sdk
-SDK_BASE	?= $(abspath ../esp-open-sdk/esp_iot_sdk_v1.5.2)
-else
-ifneq ($(wildcard ../esp_iot_sdk_v1.5.1/.*),)
-# Manually downloaded from Espressif's BBS, http://bbs.espressif.com/viewforum.php?f=5
-SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.5.1)
+# Firmware version (if you change this expect to make code adjustments elsewhere!)
+SDK_VERS ?= esp_iot_sdk_v1.5.2
+
+# Try to find the firmware manually extracted, e.g. after downloading from Espressif's BBS,
+# http://bbs.espressif.com/viewforum.php?f=46
+SDK_BASE ?= $(wildcard ../$(SDK_VERS))
+
+# If the firmware isn't there, see whether it got downloaded as part of esp-open-sdk
+ifeq ($(SDK_BASE),)
+SDK_BASE := $(wildcard $(XTENSA_TOOLS_ROOT)/../../$(SDK_VERS))
 endif
-endif
+
+# Clean up SDK path
+SDK_BASE := $(abspath $(SDK_BASE))
+$(warning Using SDK from $(SDK_BASE))
+
+# Path to bootloader file
+BOOTFILE	?= $(SDK_BASE/bin/boot_v1.5.bin)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
@@ -194,8 +205,6 @@ TARGET		= httpd
 
 # espressif tool to concatenate sections for OTA upload using bootloader v1.2+
 APPGEN_TOOL	?= gen_appbin.py
-
-CFLAGS=
 
 # set defines for optional modules
 ifneq (,$(findstring mqtt,$(MODULES)))
@@ -333,6 +342,7 @@ all: echo_version checkdirs $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
 
 echo_version:
 	@echo VERSION: $(VERSION)
+	@echo MODULES: $(MODULES)
 
 $(USER1_OUT): $(APP_AR) $(LD_SCRIPT1)
 	$(vecho) "LD $@"
@@ -389,7 +399,7 @@ baseflash: all
 
 flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
-	  0x00000 "$(SDK_BASE)/bin/boot_v1.5.bin" 0x01000 $(FW_BASE)/user1.bin \
+	  0x00000 "$(BOOTFILE)" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 
 ifeq ($(OS),Windows_NT)
@@ -436,7 +446,7 @@ ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 else
 	$(Q) cp -r html/head- html_compressed;
 	$(Q) cp -r html/*.html html_compressed;
-	$(Q) cp -r html/wifi/*.html html_compressed/wifi;	
+	$(Q) cp -r html/wifi/*.html html_compressed/wifi;
 endif
 ifeq (,$(findstring mqtt,$(MODULES)))
 	$(Q) rm -rf html_compressed/mqtt.html
@@ -471,7 +481,7 @@ release: all
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user1.bin | cut -b 1-80
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user2.bin | cut -b 1-80
 	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
-		   "$(SDK_BASE)/bin/boot_v1.5.bin" wiflash avrflash release/esp-link-$(BRANCH)
+		   "$(BOOTFILE)" wiflash avrflash release/esp-link-$(BRANCH)
 	$(Q) tar zcf esp-link-$(BRANCH).tgz -C release esp-link-$(BRANCH)
 	$(Q) echo "Release file: esp-link-$(BRANCH).tgz"
 	$(Q) rm -rf release

@@ -17,7 +17,7 @@
 extern void * mem_trim(void *m, size_t s);	// not well documented...
 
 #ifdef SYSLOG_DBG
-#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif
@@ -25,6 +25,8 @@ extern void * mem_trim(void *m, size_t s);	// not well documented...
 #define WIFI_CHK_INTERVAL 1000	// ms to check Wifi statis
 
 static struct espconn *syslog_espconn = NULL;
+static struct espconn *syslog_dnsconn = NULL;
+
 static uint32_t syslog_msgid = 1;
 static uint8_t syslog_task = 0;
 
@@ -131,7 +133,7 @@ static void ICACHE_FLASH_ATTR syslog_chk_status(void)
 
         case SYSLOG_DNSWAIT:
           DBG("%s: wait for DNS resolver\n", syslog_get_status());
-          syslog_timer_arm(10);
+          syslog_timer_arm(100);
           break;
 
         case SYSLOG_READY:
@@ -156,10 +158,10 @@ static void ICACHE_FLASH_ATTR syslog_chk_status(void)
       }
   } else {
     if ((wifi_status == STATION_WRONG_PASSWORD ||
-	 wifi_status == STATION_NO_AP_FOUND ||
-	 wifi_status == STATION_CONNECT_FAIL)) {
+         wifi_status == STATION_NO_AP_FOUND ||
+         wifi_status == STATION_CONNECT_FAIL)) {
       syslog_set_status(SYSLOG_ERROR);
-      os_printf("*** connect failure!!!\n");
+      os_printf("*** connect failure %d!!!\n", wifi_status);
     } else {
       DBG("re-arming timer...\n");
       syslog_timer_arm(WIFI_CHK_INTERVAL);
@@ -192,15 +194,13 @@ static void ICACHE_FLASH_ATTR syslog_udp_sent_cb(void *arg)
     // UDP seems timecritical - we must ensure a minimum delay after each package...
     syslog_set_status(SYSLOG_SENDING);
     if (! syslog_timer_armed)
-    syslog_chk_status();
+      syslog_chk_status();
   }
 }
 
 static void ICACHE_FLASH_ATTR
 syslog_udp_send_event(os_event_t *events) {
-//  os_printf("syslog_udp_send_event: %d %lu, %lu\n", syslogState, syslogQueue->msgid, syslogQueue->tick);
   DBG("[%uµs] %s: id=%lu\n", WDEV_NOW(), __FUNCTION__, syslogQueue ? syslogQueue->msgid : 0);
-
   if (syslogQueue == NULL)
     syslog_set_status(SYSLOG_READY);
   else {
@@ -234,11 +234,14 @@ static void ICACHE_FLASH_ATTR syslog_udp_recv_cb(void *arg, char *pusrdata, unsi
  ******************************************************************************/
 static void ICACHE_FLASH_ATTR syslog_gethostbyname_cb(const char *name, ip_addr_t *ipaddr, void *arg)
 {
-  struct espconn *pespconn = (struct espconn *)arg;
-  (void) pespconn;
-
   DBG("[%uµs] %s\n", WDEV_NOW(), __FUNCTION__);
+  struct espconn *pespconn = (struct espconn *)arg;
+  // espconn not longer required
+  os_free(pespconn->proto.udp);
+  os_free(pespconn);
+
   if (ipaddr != NULL) {
+
     syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "SYSLOG",
           "resolved hostname: %s: " IPSTR, name, IP2STR(ipaddr));
     syslogHost.addr.addr = ipaddr->addr;
@@ -273,7 +276,7 @@ void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
       if (syslog_espconn->proto.udp) {
         // there's no counterpart to espconn_create...
         os_free(syslog_espconn->proto.udp);
-	  }
+      }
       os_free(syslog_espconn);
     }
     syslog_espconn = NULL;
@@ -322,16 +325,18 @@ void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
 //  wifi_set_broadcast_if(STATIONAP_MODE); // send UDP broadcast from both station and soft-AP interface
   espconn_create(syslog_espconn);   						// create udp
 
-  syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "SYSLOG",
-              "syslogserver: %s:%d %d", host, syslogHost.port, syslog_espconn->proto.udp->local_port);
-
   if (UTILS_StrToIP((const char *)host, (void*)&syslogHost.addr)) {
     syslog_set_status(SYSLOG_READY);
   } else {
+    // we use our own espconn structure to avoid side effects...
+    if (syslog_dnsconn == NULL)
+      syslog_dnsconn = (espconn *)os_zalloc(sizeof(espconn));
+
+    if (syslog_dnsconn->proto.udp == NULL)
+      syslog_dnsconn->proto.udp = (esp_udp *)os_zalloc(sizeof(esp_udp));
+
     syslog_set_status(SYSLOG_DNSWAIT);
-    syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "SYSLOG",
-          "must resolve hostname \"%s\"", host);
-    espconn_gethostbyname(syslog_espconn, host, &syslogHost.addr, syslog_gethostbyname_cb);
+    espconn_gethostbyname(syslog_dnsconn, host, &syslogHost.addr, syslog_gethostbyname_cb);
   }
 }
 
@@ -355,13 +360,15 @@ syslog_add_entry(syslog_entry_t *entry)
       pse = pse->next;
     pse->next = entry;	// append msg to syslog queue
   }
-//   DBG("%p %lu %d\n", entry, entry->msgid, system_get_free_heap_size());
+  // Debug: show queue addr, current msgid, avail. heap and syslog datagram
+  // DBG("%p %lu %d %s\n", entry, entry->msgid, system_get_free_heap_size(), entry->datagram);
 
   // ensure we have sufficient heap for the rest of the system
   if (system_get_free_heap_size() < syslogHost.min_heap_size) {
     if (syslogState != SYSLOG_HALTED) {
-      os_printf("syslog_add_entry: Warning: queue filled up, halted\n");
-      entry->next = syslog_compose(SYSLOG_FAC_USER, SYSLOG_PRIO_CRIT, "SYSLOG", "queue filled up, halted");
+      // os_printf("syslog_add_entry: Warning: queue filled up (%d), halted\n", system_get_free_heap_size());
+      entry->next = syslog_compose(SYSLOG_FAC_USER, SYSLOG_PRIO_CRIT, "SYSLOG", "queue filled up (%d), halted", system_get_free_heap_size());
+      os_printf("%s\n", entry->next->datagram);
       if (syslogState == SYSLOG_READY)
         syslog_send_udp();
       syslog_set_status(SYSLOG_HALTED);
@@ -378,6 +385,11 @@ syslog_add_entry(syslog_entry_t *entry)
 LOCAL syslog_entry_t ICACHE_FLASH_ATTR *
 syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *fmt, ...)
 {
+  union {
+    uint8_t buf[sizeof (syslog_entry_t) + 1024];
+    syslog_entry_t se;
+  } sl;
+
   DBG("[%dµs] %s id=%lu\n", WDEV_NOW(), __FUNCTION__, syslog_msgid);
   syslog_entry_t *se = os_zalloc(sizeof (syslog_entry_t) + 1024);	// allow up to 1k datagram
   if (se == NULL) return NULL;
@@ -399,21 +411,22 @@ syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *
 
     // create timestamp: FULL-DATE "T" PARTIAL-TIME "Z": 'YYYY-mm-ddTHH:MM:SSZ '
     // as long as realtime_stamp is 0 we use tick div 10⁶ as date
-    now = (realtime_stamp == 0) ? (se->tick / 1000000) : realtime_stamp;
+    now = (realtime_stamp == 0) ? (sl.se.tick / 1000000) : realtime_stamp;
     tp = gmtime(&now);
 
     p += os_sprintf(p, "%4d-%02d-%02dT%02d:%02d:%02d",
 		    tp->tm_year + 1900, tp->tm_mon + 1, tp->tm_mday,
         tp->tm_hour, tp->tm_min, tp->tm_sec);
     if (realtime_stamp == 0)
-      p += os_sprintf(p, ".%06uZ ", se->tick % 1000000);
+      p += os_sprintf(p, ".%06uZ ", sl.se.tick % 1000000);
     else
       p += os_sprintf(p, "%+03d:00 ", flashConfig.timezone_offset);
   }
 
   // add HOSTNAME APP-NAME PROCID MSGID
   if (flashConfig.syslog_showtick)
-    p += os_sprintf(p, "%s %s %u.%06u %u ", flashConfig.hostname, tag, se->tick / 1000000, se->tick % 1000000, syslog_msgid++);
+    p += os_sprintf(p, "%s %s %u.%06u %u ", flashConfig.hostname, tag, sl.se.tick / 1000000,
+        sl.se.tick % 1000000, syslog_msgid++);
   else
     p += os_sprintf(p, "%s %s - %u ", flashConfig.hostname, tag, syslog_msgid++);
 
@@ -423,8 +436,9 @@ syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *
   p += ets_vsprintf(p, fmt, arglist );
   va_end(arglist);
 
-  se->datagram_len = p - se->datagram;
-  se = mem_trim(se, sizeof(syslog_entry_t) + se->datagram_len + 1);
+  sl.se.datagram_len = 1 + p - sl.se.datagram;
+  syslog_entry_t *se = os_zalloc(sizeof (syslog_entry_t) + sl.se.datagram_len);
+  os_memcpy(se, &sl.se, sizeof (syslog_entry_t) + sl.se.datagram_len);
   return se;
 }
 
@@ -504,7 +518,8 @@ void ICACHE_FLASH_ATTR syslog(uint8_t facility, uint8_t severity, const char *ta
   DBG("[%dµs] %s status: %s\n", WDEV_NOW(), __FUNCTION__, syslog_get_status());
 
   if (syslogState == SYSLOG_ERROR ||
-    syslogState == SYSLOG_HALTED)
+    syslogState == SYSLOG_HALTED ||
+    flashConfig.syslog_host[0] == '\0')
     return;
 
   if (severity > flashConfig.syslog_filter)

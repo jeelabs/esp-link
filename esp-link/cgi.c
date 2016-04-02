@@ -18,7 +18,7 @@ Some random cgi routines.
 #include "config.h"
 
 #ifdef CGI_DBG
-#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
+#define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif
