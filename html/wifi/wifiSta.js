@@ -14,15 +14,15 @@ function createInputForAp(ap) {
   var bars    = e("div");
   var rssiVal = -Math.floor(ap.rssi/51)*32;
   bars.className = "lock-icon";
-  bars.style.backgroundPosition = "0px "+rssiVal+"px";
+  bars.style.backgroundPosition = "0px "+(rssiVal-1)+"px";
 
   var rssi = e("div");
   rssi.innerHTML = "" + ap.rssi +"dB";
 
   var encrypt = e("div");
-  var encVal  = "-64"; //assume wpa/wpa2
+  var encVal  = "-65"; //assume wpa/wpa2
   if (ap.enc == "0") encVal = "0"; //open
-  if (ap.enc == "1") encVal = "-32"; //wep
+  if (ap.enc == "1") encVal = "-33"; //wep
   encrypt.className = "lock-icon";
   encrypt.style.backgroundPosition = "-32px "+encVal+"px";
 
