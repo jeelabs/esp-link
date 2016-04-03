@@ -707,7 +707,8 @@ MQTT_Connect(MQTT_Client* client) {
   os_timer_arm(&client->mqttTimer, 1000, 1);
 
   // initiate the TCP connection or DNS lookup
-  os_printf("MQTT: Connect to %s:%d %p\n", client->host, client->port, client->pCon);
+  os_printf("MQTT: Connect to %s:%d %p (client=%p)\n",
+      client->host, client->port, client->pCon, client);
   if (UTILS_StrToIP((const char *)client->host,
         (void*)&client->pCon->proto.tcp->remote_ip)) {
     uint8_t err;
