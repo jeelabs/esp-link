@@ -2,24 +2,19 @@
 #include "cgiwifi.h"
 #include "cgi.h"
 #include "config.h"
-#include "syslog.h"
 #include "sntp.h"
 #include "cgimqtt.h"
+#include "stringdefs.h"
+
+#ifdef SYSLOG
+#include "syslog.h"
+#endif
 
 #ifdef CGISERVICES_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif
-
-char* rst_codes[7] = {
-  "normal", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", "external",
-};
-
-char* flash_maps[7] = {
-  "512KB:256/256", "256KB", "1MB:512/512", "2MB:512/512", "4MB:512/512",
-  "2MB:1024/1024", "4MB:1024/1024"
-};
 
 static ETSTimer reassTimer;
 
@@ -138,6 +133,7 @@ int ICACHE_FLASH_ATTR cgiServicesInfo(HttpdConnData *connData) {
 int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   if (connData->conn == NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
+#ifdef SYSLOG
   int8_t syslog = 0;
 
   syslog |= getStringArg(connData, "syslog_host", flashConfig.syslog_host, sizeof(flashConfig.syslog_host));
@@ -146,14 +142,15 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   if (syslog < 0) return HTTPD_CGI_DONE;
   syslog |= getUInt8Arg(connData, "syslog_filter", &flashConfig.syslog_filter);
   if (syslog < 0) return HTTPD_CGI_DONE;
-  syslog |= getBoolArg(connData, "syslog_showtick", &flashConfig.syslog_showtick);
+  syslog |= getBoolArg(connData, "syslog_showtick", (bool*)&flashConfig.syslog_showtick);
   if (syslog < 0) return HTTPD_CGI_DONE;
-  syslog |= getBoolArg(connData, "syslog_showdate", &flashConfig.syslog_showdate);
+  syslog |= getBoolArg(connData, "syslog_showdate", (bool*)&flashConfig.syslog_showdate);
   if (syslog < 0) return HTTPD_CGI_DONE;
 
   if (syslog > 0) {
     syslog_init(flashConfig.syslog_host);
   }
+#endif
 
   int8_t sntp = 0;
   sntp |= getInt8Arg(connData, "timezone_offset", &flashConfig.timezone_offset);
@@ -166,7 +163,7 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   }
 
   int8_t mdns = 0;
-  mdns |= getBoolArg(connData, "mdns_enable", &flashConfig.mdns_enable);
+  mdns |= getBoolArg(connData, "mdns_enable", (bool*)&flashConfig.mdns_enable);
   if (mdns < 0) return HTTPD_CGI_DONE;
     
   if (mdns > 0) {

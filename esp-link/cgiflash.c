@@ -18,6 +18,9 @@ Some flash handling cgi routines. Used for reading the existing flash and updati
 #include <osapi.h>
 #include "cgi.h"
 #include "cgiflash.h"
+#include "espfs.h"
+
+#define SPI_FLASH_MEM_EMU_START_ADDR  0x40200000
 
 #ifdef CGIFLASH_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
@@ -42,10 +45,27 @@ static char* ICACHE_FLASH_ATTR check_header(void *buf) {
 // check whether the flash map/size we have allows for OTA upgrade
 static bool canOTA(void) {
         enum flash_size_map map = system_get_flash_size_map();
-        return map >= FLASH_SIZE_8M_MAP_512_512;
+        return map >= FLASH_SIZE_4M_MAP_256_256;
 }
 
 static char *flash_too_small = "Flash too small for OTA update";
+
+static int ICACHE_FLASH_ATTR getNextSPIFlashAddr(void) {
+    const uint8 id = system_upgrade_userbin_check();
+    const int address = id == 1 ? 4*1024                   // either start after 4KB boot partition
+        : 4*1024 + FIRMWARE_SIZE + 16*1024 + 4*1024; // 4KB boot, fw1, 16KB user param, 4KB reserved
+
+    return address;
+}
+
+uint32* const ICACHE_FLASH_ATTR getNextFlashAddr(void) {
+    const uint32 addr = SPI_FLASH_MEM_EMU_START_ADDR + getNextSPIFlashAddr();
+
+    /* cast as a pointer, because it is the real address in this system,
+     * for accessing the SPI flash position through the mem emu
+     */
+    return (uint32*)addr;
+}
 
 //===== Cgi to query which firmware needs to be uploaded next
 int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
@@ -95,7 +115,14 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
       connData->post->len < 1024) err = "Invalid request";
 
   // check that data starts with an appropriate header
-  if (err == NULL && offset == 0) err = check_header(connData->post->buff);
+  if (err == NULL && offset == 0) {
+      err = check_header(connData->post->buff);
+
+      /* update anyway, if it is an ESP FS image */
+      if (err != NULL && espFsIsImage(connData->post->buff)) {
+          err = NULL;
+      }
+  }
 
   // make sure we're buffering in 1024 byte chunks
   if (err == NULL && offset % 1024 != 0) {
@@ -117,13 +144,12 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
   }
 
   // let's see which partition we need to flash and what flash address that puts us at
-  uint8 id = system_upgrade_userbin_check();
-  int address = id == 1 ? 4*1024                   // either start after 4KB boot partition
-      : 4*1024 + FIRMWARE_SIZE + 16*1024 + 4*1024; // 4KB boot, fw1, 16KB user param, 4KB reserved
+  int address = getNextSPIFlashAddr();
   address += offset;
 
   // erase next flash block if necessary
   if (address % SPI_FLASH_SEC_SIZE == 0){
+    const uint8 id = system_upgrade_userbin_check();
     DBG("Flashing 0x%05x (id=%d)\n", address, 2 - id);
     spi_flash_erase_sector(address/SPI_FLASH_SEC_SIZE);
   }
@@ -155,9 +181,7 @@ int ICACHE_FLASH_ATTR cgiRebootFirmware(HttpdConnData *connData) {
 
   // sanity-check that the 'next' partition actually contains something that looks like
   // valid firmware
-  uint8 id = system_upgrade_userbin_check();
-  int address = id == 1 ? 4*1024                   // either start after 4KB boot partition
-      : 4*1024 + FIRMWARE_SIZE + 16*1024 + 4*1024; // 4KB boot, fw1, 16KB user param, 4KB reserved
+  const int address = getNextSPIFlashAddr();
   uint32 buf[8];
   DBG("Checking %p\n", (void *)address);
   spi_flash_read(address, buf, sizeof(buf));

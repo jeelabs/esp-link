@@ -4,9 +4,13 @@
 #include "uart.h"
 #include "cgi.h"
 #include "uart.h"
-#include "serbridge.h"
 #include "config.h"
 #include "console.h"
+
+#ifdef SERIAL_BRIDGE
+#include "serbridge.h"
+#endif
+
 
 // Microcontroller console capturing the last 1024 characters received on the uart so
 // they can be shown on a web page
@@ -54,7 +58,9 @@ ajaxConsoleReset(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
   jsonHeader(connData, 200);
   console_rd = console_wr = console_pos = 0;
+#ifdef SERIAL_BRIDGE
   serbridgeReset();
+#endif
   return HTTPD_CGI_DONE;
 }
 

@@ -95,11 +95,11 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
 
   if (mqtt_server < 0) return HTTPD_CGI_DONE;
   mqtt_server |= getBoolArg(connData, "mqtt-clean-session",
-      &flashConfig.mqtt_clean_session);
+      (bool*)&flashConfig.mqtt_clean_session);
 
   if (mqtt_server < 0) return HTTPD_CGI_DONE;
   int8_t mqtt_en_chg = getBoolArg(connData, "mqtt-enable",
-      &flashConfig.mqtt_enable);
+      (bool*)&flashConfig.mqtt_enable);
 
   char buff[16];
 
@@ -145,14 +145,14 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
 
   // no action required if mqtt status settings change, they just get picked up at the
   // next status tick
-  if (getBoolArg(connData, "mqtt-status-enable", &flashConfig.mqtt_status_enable) < 0)
+  if (getBoolArg(connData, "mqtt-status-enable", (bool*)&flashConfig.mqtt_status_enable) < 0)
     return HTTPD_CGI_DONE;
   if (getStringArg(connData, "mqtt-status-topic",
         flashConfig.mqtt_status_topic, sizeof(flashConfig.mqtt_status_topic)) < 0)
     return HTTPD_CGI_DONE;
 
   // if SLIP-enable is toggled it gets picked-up immediately by the parser
-  int slip_update = getBoolArg(connData, "slip-enable", &flashConfig.slip_enable);
+  int slip_update = getBoolArg(connData, "slip-enable", (bool*)&flashConfig.slip_enable);
   if (slip_update < 0) return HTTPD_CGI_DONE;
   if (slip_update > 0) 
     DBG("SLIP-enable changed: %d\n", flashConfig.slip_enable);

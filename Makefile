@@ -56,7 +56,7 @@ XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 
 # Base directory of the ESP8266 SDK package, absolute
 # Typically you'll download from Espressif's BBS, http://bbs.espressif.com/viewforum.php?f=5
-SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.5.1)
+SDK_BASE	?= $(abspath ../esp-open-sdk/sdk)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
@@ -68,7 +68,7 @@ ESPBAUD		?= 460800
 # --------------- chipset configuration   ---------------
 
 # Pick your flash size: "512KB", "1MB", or "4MB"
-FLASH_SIZE ?= 4MB
+FLASH_SIZE ?= 512KB
 
 # The pin assignments below are used when the settings in flash are invalid, they
 # can be changed via the web interface
@@ -84,7 +84,7 @@ LED_SERIAL_PIN      ?= 14
 # --------------- esp-link modules config options ---------------
 
 # Optional Modules mqtt
-MODULES ?= mqtt rest syslog
+#MODULES ?= mqtt rest syslog cmd esp-link/cgiadv esp-link/log serial/console serial/serbridge
 
 # --------------- esphttpd config options ---------------
 
@@ -113,20 +113,27 @@ COMPRESS_W_HTMLCOMPRESSOR ?= yes
 HTML_COMPRESSOR ?= htmlcompressor-1.5.3.jar
 YUI_COMPRESSOR ?= yuicompressor-2.4.8.jar
 
+
+# use this option to place the ESP FS image in the other partition of the flash
+# which is currently not booted.
+USE_OTHER_PARTITION_FOR_ESPFS ?= yes
+
 # -------------- End of config options -------------
 
 HTML_PATH = $(abspath ./html)/
 WIFI_PATH = $(HTML_PATH)wifi/
 
-ESP_FLASH_MAX       ?= 503808  # max bin file
+ET_PART1            ?= 0x01000
 
 ifeq ("$(FLASH_SIZE)","512KB")
 # Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
 ESP_SPI_SIZE        ?= 0       # 0->512KB (256KB+256KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
+ESP_FLASH_MAX       ?= 241664  # max bin file for 512KB flash: 236KB
 ET_FS               ?= 4m      # 4Mbit flash size in esptool flash command
 ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
+ET_PART2            ?= 0x41000
 ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
 
 else ifeq ("$(FLASH_SIZE)","1MB")
@@ -134,8 +141,10 @@ else ifeq ("$(FLASH_SIZE)","1MB")
 ESP_SPI_SIZE        ?= 2       # 2->1MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80MHz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 1MB flash: 492KB
 ET_FS               ?= 8m      # 8Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ET_PART2            ?= 0x81000
 ET_BLANK            ?= 0xFE000 # where to flash blank.bin to erase wireless settings
 
 else ifeq ("$(FLASH_SIZE)","2MB")
@@ -146,8 +155,10 @@ else ifeq ("$(FLASH_SIZE)","2MB")
 ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 1MB flash: 492KB
 ET_FS               ?= 16m     # 16Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ET_PART2            ?= 0x101000
 ET_BLANK            ?= 0x1FE000 # where to flash blank.bin to erase wireless settings
 
 else
@@ -158,6 +169,7 @@ else
 ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 1MB flash: 492KB
 ET_FS               ?= 32m     # 32Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
@@ -203,9 +215,29 @@ ifneq (,$(findstring syslog,$(MODULES)))
 	CFLAGS		+= -DSYSLOG
 endif
 
+ifneq (,$(findstring cmd,$(MODULES)))
+	CFLAGS		+= -DCMD
+endif
+
+ifneq (,$(findstring esp-link/cgiadv,$(MODULES)))
+	CFLAGS		+= -DCGI_ADVANCED
+endif
+
+ifneq (,$(findstring esp-link/log,$(MODULES)))
+	CFLAGS		+= -DLOG
+endif
+
+ifneq (,$(findstring serial/console,$(MODULES)))
+	CFLAGS		+= -DCONSOLE
+endif
+
+ifneq (,$(findstring serial/serbridge,$(MODULES)))
+	CFLAGS		+= -DSERIAL_BRIDGE
+endif
+
 # which modules (subdirectories) of the project to include in compiling
 LIBRARIES_DIR 	= libraries
-MODULES		  	+= espfs httpd user serial cmd esp-link
+MODULES		  	+= espfs httpd user serial esp-link
 MODULES			+= $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
 EXTRA_INCDIR 	= include .
 
@@ -253,7 +285,11 @@ SDK_TOOLS	:= $(addprefix $(SDK_BASE)/,$(SDK_TOOLSDIR))
 APPGEN_TOOL	:= $(addprefix $(SDK_TOOLS)/,$(APPGEN_TOOL))
 
 SRC			:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.c))
-OBJ			:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC)) $(BUILD_BASE)/espfs_img.o
+OBJ			:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC))
+ifneq ("$(USE_OTHER_PARTITION_FOR_ESPFS)","yes")
+OBJ			+= $(BUILD_BASE)/espfs_img.o
+endif
+
 LIBS		:= $(addprefix -l,$(LIBS))
 APP_AR		:= $(addprefix $(BUILD_BASE)/,$(TARGET)_app.a)
 USER1_OUT 	:= $(addprefix $(BUILD_BASE)/,$(TARGET).user1.out)
@@ -312,6 +348,10 @@ ifeq ("$(CHANGE_TO_STA)","yes")
 CFLAGS		+= -DCHANGE_TO_STA
 endif
 
+ifeq ("$(USE_OTHER_PARTITION_FOR_ESPFS)","yes")
+CFLAGS		+= -DUSE_OTHER_PARTITION_FOR_ESPFS
+endif
+
 vpath %.c $(SRC_DIR)
 
 define compile-objects
@@ -322,7 +362,7 @@ endef
 
 .PHONY: all checkdirs clean webpages.espfs wiflash
 
-all: echo_version checkdirs $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
+all: echo_version checkdirs $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(BUILD_BASE)/espfs_img.o
 
 echo_version:
 	@echo VERSION: $(VERSION)
@@ -374,16 +414,33 @@ checkdirs: $(BUILD_DIR)
 $(BUILD_DIR):
 	$(Q) mkdir -p $@
 
+ifeq ("$(USE_OTHER_PARTITION_FOR_ESPFS)","yes")
+wiflash: all
+	./wiflash $(ESP_HOSTNAME) $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin build/espfs.img
+else
 wiflash: all
 	./wiflash $(ESP_HOSTNAME) $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
+endif
 
 baseflash: all
-	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash 0x01000 $(FW_BASE)/user1.bin
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash $(ET_PART1) $(FW_BASE)/user1.bin
 
+
+ifeq ("$(USE_OTHER_PARTITION_FOR_ESPFS)","yes")
 flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
-	  0x00000 "$(SDK_BASE)/bin/boot_v1.5.bin" 0x01000 $(FW_BASE)/user1.bin \
+	  0x00000 "$(SDK_BASE)/bin/boot_v1.5.bin" \
+	  $(ET_PART1) $(FW_BASE)/user1.bin \
+	  $(ET_PART2) build/espfs.img \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
+else
+flash: all
+	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
+	  0x00000 "$(SDK_BASE)/bin/boot_v1.5.bin" \
+	  $(ET_PART1) $(FW_BASE)/user1.bin \
+	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
+endif
+
 
 ifeq ($(OS),Windows_NT)
 tools/$(HTML_COMPRESSOR):
@@ -447,6 +504,18 @@ endif
 
 # edit the loader script to add the espfs section to the end of irom with a 4 byte alignment.
 # we also adjust the sizes of the segments 'cause we need more irom0
+# in the end the only thing that matters wrt size is that the whole shebang fits into the
+# 236KB available (in a 512KB flash)
+ifeq ("$(FLASH_SIZE)","512KB")
+build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld
+	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
+			-e '/^  irom0_0_seg/ s/2B000/38000/' \
+			$(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld >$@
+build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld
+	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
+			-e '/^  irom0_0_seg/ s/2B000/38000/' \
+			$(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
+else
 build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/6B000/7C000/' \
@@ -455,6 +524,7 @@ build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/6B000/7C000/' \
 			$(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld >$@
+endif
 
 espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 	$(Q) $(MAKE) -C espfs/mkespfsimage GZIP_COMPRESSION="$(GZIP_COMPRESSION)"

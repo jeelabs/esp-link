@@ -67,6 +67,17 @@ Accessing the flash through the mem emulation at 0x40200000 is a bit hairy: All 
 a memory exception, crashing the program.
 */
 
+bool ICACHE_FLASH_ATTR espFsIsImage(const void* const flashAddress) {
+    // check if there is valid header at address
+    EspFsHeader testHeader;
+    os_memcpy(&testHeader, flashAddress, sizeof(EspFsHeader));
+#ifdef ESPFS_DBG
+        os_printf("ESP FS magic is 0x%08x, should 0x%08x, at %p\n", (uint32)testHeader.magic, ESPFS_MAGIC, flashAddress);
+#endif
+    return (testHeader.magic == ESPFS_MAGIC);
+}
+
+
 EspFsInitResult ICACHE_FLASH_ATTR espFsInit(void *flashAddress) {
 	// base address must be aligned to 4 bytes
 	if (((int)flashAddress & 3) != 0) {
@@ -74,9 +85,7 @@ EspFsInitResult ICACHE_FLASH_ATTR espFsInit(void *flashAddress) {
 	}
 
 	// check if there is valid header at address
-	EspFsHeader testHeader;
-	os_memcpy(&testHeader, flashAddress, sizeof(EspFsHeader));
-	if (testHeader.magic != ESPFS_MAGIC) {
+    if ( !espFsIsImage(flashAddress) ) {
 		return ESPFS_INIT_RESULT_NO_IMAGE;
 	}
 

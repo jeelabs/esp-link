@@ -10,7 +10,10 @@
 #include "console.h"
 #include "slip.h"
 #include "cmd.h"
+
+#ifdef SYSLOG
 #include "syslog.h"
+#endif
 
 #define SKIP_AT_RESET
 
@@ -405,12 +408,16 @@ serbridgeConnectCb(void *arg)
 #ifdef SERBR_DBG
   os_printf("Accept port %d, conn=%p, pool slot %d\n", conn->proto.tcp->local_port, conn, i);
 #endif
+#ifdef SYSLOG
   syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "esp-link", "Accept port %d, conn=%p, pool slot %d\n", conn->proto.tcp->local_port, conn, i);
+#endif
   if (i==MAX_CONN) {
 #ifdef SERBR_DBG
     os_printf("Aiee, conn pool overflow!\n");
 #endif
+#ifdef SYSLOG
 	syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_WARNING, "esp-link", "Aiee, conn pool overflow!\n");
+#endif
     espconn_disconnect(conn);
     return;
   }

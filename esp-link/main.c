@@ -14,23 +14,39 @@
 #include "httpdespfs.h"
 #include "cgi.h"
 #include "cgiwifi.h"
-#include "cgipins.h"
-#include "cgitcp.h"
 #include "cgimqtt.h"
 #include "cgiflash.h"
-#include "cgioptiboot.h"
 #include "auth.h"
 #include "espfs.h"
 #include "uart.h"
-#include "serbridge.h"
 #include "status.h"
 #include "serled.h"
-#include "console.h"
 #include "config.h"
-#include "log.h"
 #include "gpio.h"
+#include "stringdefs.h"
+
+#ifdef LOG
+#include "log.h"
+#endif
+
+#ifdef SYSLOG
 #include "syslog.h"
+#endif
+
+#ifdef CONSOLE
+#include "console.h"
+#endif
+
+#ifdef SERIAL_BRIDGE
+#include "serbridge.h"
+#endif
+
+#ifdef CGI_ADVANCED
 #include "cgiservices.h"
+#include "cgipins.h"
+#include "cgitcp.h"
+#include "cgioptiboot.h"
+#endif
 
 #define NOTICE(format, ...) do {	                                          \
 	LOG_NOTICE(format, ## __VA_ARGS__ );                                      \
@@ -53,15 +69,26 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/flash/next", cgiGetFirmwareNext, NULL },
   { "/flash/upload", cgiUploadFirmware, NULL },
   { "/flash/reboot", cgiRebootFirmware, NULL },
+  { "/log/reset", cgiReset, NULL },
+#ifdef CGI_ADVANCED
   { "/pgm/sync", cgiOptibootSync, NULL },
   { "/pgm/upload", cgiOptibootData, NULL },
+  { "/pins", cgiPins, NULL },
+  { "/system/info", cgiSystemInfo, NULL },
+  { "/system/update", cgiSystemSet, NULL },
+  { "/services/info", cgiServicesInfo, NULL },
+  { "/services/update", cgiServicesSet, NULL },
+#endif
+#ifdef LOG
   { "/log/text", ajaxLog, NULL },
   { "/log/dbg", ajaxLogDbg, NULL },
-  { "/log/reset", cgiReset, NULL },
+#endif
+#ifdef CONSOLE
   { "/console/reset", ajaxConsoleReset, NULL },
   { "/console/baud", ajaxConsoleBaud, NULL },
   { "/console/text", ajaxConsole, NULL },
   { "/console/send", ajaxConsoleSend, NULL },
+#endif
   //Enable the line below to protect the WiFi configuration with an username/password combo.
   //    {"/wifi/*", authBasic, myPassFn},
   { "/wifi", cgiRedirect, "/wifi/wifi.html" },
@@ -74,11 +101,6 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/wifi/special", cgiWiFiSpecial, NULL },
   { "/wifi/apinfo", cgiApSettingsInfo, NULL },
   { "/wifi/apchange", cgiApSettingsChange, NULL },  
-  { "/system/info", cgiSystemInfo, NULL },
-  { "/system/update", cgiSystemSet, NULL },
-  { "/services/info", cgiServicesInfo, NULL },
-  { "/services/update", cgiServicesSet, NULL },
-  { "/pins", cgiPins, NULL },
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
 #endif  
@@ -118,7 +140,9 @@ void user_init(void) {
   gpio_output_set(0, 0, 0, (1<<15)); // some people tie it to GND, gotta ensure it's disabled
   // init UART
   uart_init(flashConfig.baud_rate, 115200);
+#ifdef LOG
   logInit(); // must come after init of uart
+#endif
   // Say hello (leave some time to cause break in TX after boot loader's msg
   os_delay_us(10000L);
   os_printf("\n\n** %s\n", esp_link_version);
@@ -128,15 +152,23 @@ void user_init(void) {
   serledInit();
   // Wifi
   wifiInit();
+
   // init the flash filesystem with the html stuff
-  espFsInit(&_binary_espfs_img_start);
-  //EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
-  //os_printf("espFsInit %s\n", res?"ERR":"ok");
+#ifdef USE_OTHER_PARTITION_FOR_ESPFS
+  uint32* addr = getNextFlashAddr();
+  const EspFsInitResult res = espFsInit(addr);
+#else
+  const EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
+#endif
+  os_printf("espFsInit %s (%u)\n", res?"ERR":"ok", res);
+
   // mount the http handlers
   httpdInit(builtInUrls, 80);
+#ifdef SERIAL_BRIDGE
   // init the wifi-serial transparent bridge (port 23)
   serbridgeInit(23, 2323);
   uart_add_recv_cb(&serbridgeUartCb);
+#endif
 #ifdef SHOW_HEAP_USE
   os_timer_disarm(&prHeapTimer);
   os_timer_setfn(&prHeapTimer, prHeapTimerCb, NULL);
@@ -153,8 +185,10 @@ void user_init(void) {
       fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
   NOTICE("** esp-link ready");
     
+#ifdef CGI_ADVANCED
   // Init SNTP service
   cgiServicesSNTPInit();
+#endif
 #ifdef MQTT
   NOTICE("initializing MQTT");
   mqtt_client_init();
