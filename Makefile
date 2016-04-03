@@ -19,8 +19,8 @@
 # The Wifi station configuration can be hard-coded here, which makes esp-link come up in STA+AP
 # mode trying to connect to the specified AP *only* if the flash wireless settings are empty!
 # This happens on a full serial flash and avoids having to hunt for the AP...
-# STA_SSID ?=
-# STA_PASS ?= 
+STA_SSID ?=
+STA_PASS ?=
 
 # The SOFTAP configuration can be hard-coded here, the minimum parameters to set are AP_SSID && AP_PASS
 # The AP SSID has to be at least 8 characters long, same for AP PASSWORD
@@ -56,7 +56,7 @@ XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 
 # Base directory of the ESP8266 SDK package, absolute
 # Typically you'll download from Espressif's BBS, http://bbs.espressif.com/viewforum.php?f=5
-SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.5.1)
+SDK_BASE	?= $(abspath ../esp_iot_sdk_v1.5.2)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
