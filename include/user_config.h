@@ -19,7 +19,7 @@
 #define CONFIG_DBG
 #define LOG_DBG
 #define STATUS_DBG
-#undef HTTPD_DBG
+#define HTTPD_DBG
 #define MQTT_DBG
 #define MQTTCMD_DBG
 #undef PKTBUF_DBG
