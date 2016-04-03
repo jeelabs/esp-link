@@ -305,9 +305,11 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
   int m = wifi_get_opmode() & 0x3;
   DBG("Wifi check: mode=%s status=%d\n", wifiMode[m], x);
 
-  if(m!=2){
-    if ( x == STATION_GOT_IP ) {
-      if (m != 1) {
+  if (m == 2) return; // 2=AP, in AP-only mode we don't do any auto-switching
+
+  if ( x == STATION_GOT_IP ) {
+    // if we got an IP we could switch to STA-only...
+    if (m != 1) { // 1=STA
 #ifdef CHANGE_TO_STA
       // We're happily connected, go to STA mode
       DBG("Wifi got IP. Going into STA mode..\n");
@@ -317,16 +319,16 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
     }
     log_uart(false);
     // no more resetTimer at this point, gotta use physical reset to recover if in trouble
- } else {
-   if (m != 3) {
-       DBG("Wifi connect failed. Going into STA+AP mode..\n");
-       wifi_set_opmode(3);
-       wifi_softap_set_config(&apconf);
+  } else {
+    // we don't have an IP address
+    if (m != 3) {
+      DBG("Wifi connect failed. Going into STA+AP mode..\n");
+      wifi_set_opmode(3);
+      wifi_softap_set_config(&apconf);
     }
     log_uart(true);
     DBG("Enabling/continuing uart log\n");
     os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
-    }
   }
 }
 
@@ -829,11 +831,12 @@ int ICACHE_FLASH_ATTR checkString(char *str){
  */
 void ICACHE_FLASH_ATTR wifiInit() {
 
-    // Check te wifi opmode
+    // Check the wifi opmode
     int x = wifi_get_opmode() & 0x3;
 
-    // Set opmode to 3 to let system scan aps, otherwise it won't scan
-    wifi_set_opmode(3);
+    // If STA is enabled switch to STA+AP to allow for recovery, it will then switch to STA-only
+    // once it gets an IP address
+    if (x == 1) wifi_set_opmode(3);
 
     // Call both STATION and SOFTAP default config
     wifi_station_get_config_default(&stconf);
@@ -841,7 +844,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
 
     DBG("Wifi init, mode=%s\n",wifiMode[x]);
 
-    // STATION parameters
+    // Change STATION parameters, if defined in the Makefile
 #if defined(STA_SSID) && defined(STA_PASS)
     // Set parameters
     if (os_strlen((char*)stconf.ssid) == 0 && os_strlen((char*)stconf.password) == 0) {
@@ -856,7 +859,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
     }
 #endif
 
-    // Change SOFT_AP settings if defined in Makefile
+    // Change SOFT_AP settings, if defined in Makefile
 #if defined(AP_SSID)
     // Check if ssid and pass are alphanumeric values
     int ssidlen = os_strlen(VERS_STR(AP_SSID));
