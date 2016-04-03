@@ -413,7 +413,7 @@ syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *
 
   // add HOSTNAME APP-NAME PROCID MSGID
   if (flashConfig.syslog_showtick)
-    p += os_sprintf(p, "%s %s %lu.%06lu %lu ", flashConfig.hostname, tag, se->tick / 1000000,
+    p += os_sprintf(p, "%s %s %u.%06u %u ", flashConfig.hostname, tag, se->tick / 1000000,
         se->tick % 1000000, syslog_msgid++);
   else
     p += os_sprintf(p, "%s %s - %u ", flashConfig.hostname, tag, syslog_msgid++);
