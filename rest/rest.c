@@ -200,7 +200,8 @@ rest_dns_found(const char *name, ip_addr_t *ipaddr, void *arg) {
 void ICACHE_FLASH_ATTR
 REST_Setup(CmdPacket *cmd) {
   CmdRequest req;
-  uint32_t port, security;
+  uint16_t port;
+  uint8_t security;
   int32_t err = -1; // error code in case of failure
 
   // start parsing the command
@@ -252,7 +253,7 @@ REST_Setup(CmdPacket *cmd) {
     os_free(client->pCon);
   }
   os_memset(client, 0, sizeof(RestClient));
-  DBG_REST("REST: setup #%d host=%s port=%ld security=%ld\n", clientNum, rest_host, port, security);
+  DBG_REST("REST: setup #%d host=%s port=%d security=%d\n", clientNum, rest_host, port, security);
 
   client->resp_cb = cmd->value;
 
