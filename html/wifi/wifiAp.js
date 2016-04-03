@@ -26,15 +26,14 @@ function changeApSettings(e) {
     if (inputs[i].type == "checkbox") {
       var val = (inputs[i].checked) ? 1 : 0;
       url += "&" + inputs[i].name + "=" + val;
-    }
-    else{
-	    var clean = inputs[i].value.replace(/[^\w]/gi, "");
-	    var comp = clean.localeCompare(inputs[i].value);
-	    if ( comp != 0 ){
-		    showWarning("Invalid characters in " + specials[inputs[i].name]);
-		    return;
-	    }	
-	    url += "&" + inputs[i].name + "=" + clean; 
+    } else {
+      var clean = inputs[i].value.replace(/[^!-~]/g, "");
+      var comp = clean.localeCompare(inputs[i].value);
+      if ( comp != 0 ){
+        showWarning("Invalid characters in " + specials[inputs[i].name]);
+        return;
+      }
+      url += "&" + inputs[i].name + "=" + clean;
     }
   };
 
@@ -72,8 +71,8 @@ function displayApSettings(data) {
       } else el.value = data[v];
     }
   });
-  
-  $("#AP_Settings-spinner").setAttribute("hidden", ""); 
+
+  $("#AP_Settings-spinner").setAttribute("hidden", "");
   $("#AP_Settings-form").removeAttribute("hidden");
   showWarning("Don't modify SOFTAP parameters with active connections");
   window.setTimeout(hideWarning(), 2000);
