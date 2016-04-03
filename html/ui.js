@@ -273,6 +273,7 @@ onLoad(function() {
       var v = $("#version");
       if (v != null) { v.innerHTML = data.version; }
 
+      $('title')[0].innerHTML = data["name"];
       setEditToClick("system-name", data["name"]);
     }, function() { setTimeout(getMenu, 1000); });
   };
@@ -302,19 +303,6 @@ function getWifiInfo() {
 }
 
 //===== System info
-
-function setEditToClick(klass, value) {
-  domForEach($("."+klass), function(div) {
-    if (div.children.length > 0) {
-      domForEach(div.children, function(el) {
-        if (el.nodeName === "INPUT") el.value = value;
-        else if (el.nodeName !== "DIV") el.innerHTML = value;
-      });
-    } else {
-      div.innerHTML = value;
-    }
-  });
-}
 
 function showSystemInfo(data) {
   Object.keys(data).forEach(function(v) {
@@ -366,6 +354,18 @@ function makeAjaxInput(klass, field) {
   });
 }
 
+function setEditToClick(klass, value) {
+  domForEach($("."+klass), function(div) {
+    if (div.children.length > 0) {
+      domForEach(div.children, function(el) {
+        if (el.nodeName === "INPUT") el.value = value;
+        else if (el.nodeName !== "DIV") el.innerHTML = value;
+      });
+    } else {
+      div.innerHTML = value;
+    }
+  });
+}
 
 //===== Notifications
 
