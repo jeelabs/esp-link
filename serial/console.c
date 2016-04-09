@@ -76,7 +76,7 @@ ajaxConsoleBaud(HttpdConnData *connData) {
   }
 
   jsonHeader(connData, status);
-  os_sprintf(buff, "{\"rate\": %ld}", flashConfig.baud_rate);
+  os_sprintf(buff, "{\"rate\": %d}", flashConfig.baud_rate);
   httpdSend(connData, buff, -1);
   return HTTPD_CGI_DONE;
 }
@@ -86,14 +86,14 @@ ajaxConsoleSend(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
   char buff[2048];
   int len, status = 400;
-  
+
   // figure out where to start in buffer based on URI param
   len = httpdFindArg(connData->getArgs, "text", buff, sizeof(buff));
   if (len > 0) {
     uart0_tx_buffer(buff, len);
     status = 200;
   }
-  
+
   jsonHeader(connData, status);
   return HTTPD_CGI_DONE;
 }

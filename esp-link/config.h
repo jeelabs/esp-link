@@ -13,7 +13,7 @@ typedef struct {
   char     hostname[32];               // if using DHCP
   uint32_t staticip, netmask, gateway; // using DHCP if staticip==0
   uint8_t  log_mode;                   // UART log debug mode
-  int8_t   swap_uart;                  // swap uart0 to gpio 13&15
+  uint8_t   swap_uart;                  // swap uart0 to gpio 13&15
   uint8_t  tcp_enable, rssi_enable;    // TCP client settings
   char     api_key[48];                // RSSI submission API key (Grovestreams for now)
   uint8_t  slip_enable, mqtt_enable,   // SLIP protocol, MQTT client
@@ -21,9 +21,9 @@ typedef struct {
            mqtt_timeout,               // MQTT send timeout
            mqtt_clean_session;         // MQTT clean session
   uint16_t mqtt_port, mqtt_keepalive;  // MQTT Host port, MQTT Keepalive timer
-  char     mqtt_host[32], 
-           mqtt_clientid[48], 
-           mqtt_username[32], 
+  char     mqtt_host[32],
+           mqtt_clientid[48],
+           mqtt_username[32],
            mqtt_password[32],
            mqtt_status_topic[32];
   char     sys_descr[129];             // system description
@@ -35,7 +35,7 @@ typedef struct {
            syslog_showtick,              // show system tick (µs)
            syslog_showdate;              // populate SYSLOG date field
   uint8_t  mdns_enable;
-  char     mdns_servername[32];           
+  char     mdns_servername[32];
   int8_t   timezone_offset;
 } FlashConfig;
 extern FlashConfig flashConfig;

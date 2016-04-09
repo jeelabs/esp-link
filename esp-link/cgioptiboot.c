@@ -153,7 +153,7 @@ int ICACHE_FLASH_ATTR cgiOptibootSync(HttpdConnData *connData) {
     if (!errMessage[0] && progState >= stateProg) {
       char buf[64];
       DBG("OB got sync\n");
-      os_sprintf(buf, "SYNC at %ld baud: bootloader v%d.%d",
+      os_sprintf(buf, "SYNC at %d baud: bootloader v%d.%d",
           baudRate, optibootVers>>8, optibootVers&0xff);
       httpdSend(connData, buf, -1);
     } else if (errMessage[0] && progState == stateSync) {
@@ -314,7 +314,7 @@ int ICACHE_FLASH_ATTR cgiOptibootData(HttpdConnData *connData) {
     float dt = ((system_get_time() - optibootData->startTime)/1000)/1000.0; // in seconds
     uint16_t pgmDone = optibootData->pgmDone;
     optibootInit();
-    os_sprintf(errMessage, "Success. %d bytes at %ld baud in %d.%ds, %dB/s %d%% efficient",
+    os_sprintf(errMessage, "Success. %d bytes at %d baud in %d.%ds, %dB/s %d%% efficient",
         pgmDone, baudRate, (int)dt, (int)(dt*10)%10, (int)(pgmDone/dt),
         (int)(100.0*(10.0*pgmDone/baudRate)/dt));
   } else {
@@ -387,7 +387,7 @@ static bool ICACHE_FLASH_ATTR processRecord(char *buf, short len) {
     optibootData->eof = true;
     break;
   case 0x04: // address
-    DBG("OB address 0x%lx\n", getHexValue(buf+8, 4) << 16);
+    DBG("OB address 0x%x\n", getHexValue(buf+8, 4) << 16);
     // program any remaining partial page
     if (optibootData->pageLen > 0)
       if (!programPage()) return false;
@@ -435,7 +435,7 @@ static bool ICACHE_FLASH_ATTR programPage(void) {
 
   uint16_t pgmLen = optibootData->pageLen;
   if (pgmLen > optibootData->pgmSz) pgmLen = optibootData->pgmSz;
-  DBG("OB pgm %d@0x%lx\n", pgmLen, optibootData->address);
+  DBG("OB pgm %d@0x%x\n", pgmLen, optibootData->address);
 
   // send address to optiboot (little endian format)
 #ifdef DBG_GPIO5
@@ -525,7 +525,7 @@ static void ICACHE_FLASH_ATTR optibootTimerCB(void *arg) {
         return;
       }
       // time to switch baud rate and issue a reset
-      DBG("OB no sync response @%ld baud\n", baudRate);
+      DBG("OB no sync response @%d baud\n", baudRate);
       setBaud();
       serbridgeReset();
       progState = stateInit;
@@ -539,7 +539,7 @@ static void ICACHE_FLASH_ATTR optibootTimerCB(void *arg) {
       return;
     default: // we're trying to get some info from optiboot and it should have responded!
       optibootInit(); // abort
-      os_sprintf(errMessage, "No response in state %s(%d) @%ld baud\n",
+      os_sprintf(errMessage, "No response in state %s(%d) @%d baud\n",
           progStates[progState], progState, baudRate);
       DBG("OB %s\n", errMessage);
       return; // do not re-arm timer

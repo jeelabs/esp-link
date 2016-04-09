@@ -497,9 +497,11 @@ mqtt_dns_found(const char* name, ip_addr_t* ipaddr, void* arg) {
 
   if (ipaddr == NULL) {
     os_printf("MQTT: DNS lookup failed\n");
-    client->timeoutTick = client->reconTimeout;
-    if (client->reconTimeout < 128) client->reconTimeout <<= 1;
-    client->connState = TCP_RECONNECT_REQ; // the timer will kick-off a reconnection
+    if (client != NULL) {
+      client->timeoutTick = client->reconTimeout;
+      if (client->reconTimeout < 128) client->reconTimeout <<= 1;
+      client->connState = TCP_RECONNECT_REQ; // the timer will kick-off a reconnection
+    }
     return;
   }
   DBG_MQTT("MQTT: ip %d.%d.%d.%d\n",
@@ -508,7 +510,7 @@ mqtt_dns_found(const char* name, ip_addr_t* ipaddr, void* arg) {
             *((uint8 *)&ipaddr->addr + 2),
             *((uint8 *)&ipaddr->addr + 3));
 
-  if (client->ip.addr == 0 && ipaddr->addr != 0) {
+  if (client != NULL && client->ip.addr == 0 && ipaddr->addr != 0) {
     os_memcpy(client->pCon->proto.tcp->remote_ip, &ipaddr->addr, 4);
     uint8_t err;
     if (client->security)
@@ -705,7 +707,8 @@ MQTT_Connect(MQTT_Client* client) {
   os_timer_arm(&client->mqttTimer, 1000, 1);
 
   // initiate the TCP connection or DNS lookup
-  os_printf("MQTT: Connect to %s:%d %p\n", client->host, client->port, client->pCon);
+  os_printf("MQTT: Connect to %s:%d %p (client=%p)\n",
+      client->host, client->port, client->pCon, client);
   if (UTILS_StrToIP((const char *)client->host,
         (void*)&client->pCon->proto.tcp->remote_ip)) {
     uint8_t err;

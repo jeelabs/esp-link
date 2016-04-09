@@ -66,11 +66,11 @@ int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
       "\"name\": \"%s\", "
       "\"reset cause\": \"%d=%s\", "
       "\"size\": \"%s\", "
-      "\"id\": \"0x%02lX 0x%04lX\", "
+      "\"id\": \"0x%02X 0x%04X\", "
       "\"partition\": \"%s\", "
       "\"slip\": \"%s\", "
       "\"mqtt\": \"%s/%s\", "
-      "\"baud\": \"%ld\", "
+      "\"baud\": \"%d\", "
       "\"description\": \"%s\""
     " }",
     flashConfig.hostname,

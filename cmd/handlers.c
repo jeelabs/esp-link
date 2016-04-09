@@ -62,7 +62,7 @@ cmdAddCb(char* name, uint32_t cb) {
       os_strncpy(callbacks[i].name, name, sizeof(callbacks[i].name));
       callbacks[i].name[CMD_CBNLEN-1] = 0; // strncpy doesn't null terminate
       callbacks[i].callback = cb;
-      DBG("cmdAddCb: '%s'->0x%lx added at %d\n", callbacks[i].name, cb, i);
+      DBG("cmdAddCb: '%s'->0x%x added at %d\n", callbacks[i].name, cb, i);
       return 1;
     }
   }

@@ -305,9 +305,11 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
   int m = wifi_get_opmode() & 0x3;
   DBG("Wifi check: mode=%s status=%d\n", wifiMode[m], x);
 
-  if(m!=2){
-    if ( x == STATION_GOT_IP ) {
-      if (m != 1) {
+  if (m == 2) return; // 2=AP, in AP-only mode we don't do any auto-switching
+
+  if ( x == STATION_GOT_IP ) {
+    // if we got an IP we could switch to STA-only...
+    if (m != 1) { // 1=STA
 #ifdef CHANGE_TO_STA
       // We're happily connected, go to STA mode
       DBG("Wifi got IP. Going into STA mode..\n");
@@ -317,16 +319,16 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
     }
     log_uart(false);
     // no more resetTimer at this point, gotta use physical reset to recover if in trouble
- } else {
-   if (m != 3) {
-       DBG("Wifi connect failed. Going into STA+AP mode..\n");
-       wifi_set_opmode(3);
-       wifi_softap_set_config(&apconf);
+  } else {
+    // we don't have an IP address
+    if (m != 3) {
+      DBG("Wifi connect failed. Going into STA+AP mode..\n");
+      wifi_set_opmode(3);
+      wifi_softap_set_config(&apconf);
     }
     log_uart(true);
     DBG("Enabling/continuing uart log\n");
     os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
-    }
   }
 }
 
@@ -533,7 +535,7 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
     }
     // Set new SSID
     len=httpdFindArg(connData->getArgs, "ap_ssid", buff, sizeof(buff));
-    if(checkString(buff) && len>7 && len<32){
+    if(checkString(buff) && len>0 && len<=32){
         // STRING PREPROCESSING DONE IN CLIENT SIDE
         os_memset(apconf.ssid, 0, 32);
         os_memcpy(apconf.ssid, buff, len);
@@ -545,13 +547,11 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
     }
     // Set new PASSWORD
     len=httpdFindArg(connData->getArgs, "ap_password", buff, sizeof(buff));
-    if(checkString(buff) && len>7 && len<64){
+    os_memset(apconf.password, 0, 64);
+    if (checkString(buff) && len>7 && len<=64) {
         // String preprocessing done in client side, wifiap.js line 31
-        os_memset(apconf.password, 0, 64);
         os_memcpy(apconf.password, buff, len);
-    }else if (len == 0){
-        os_memset(apconf.password, 0, 64);
-    }else{
+    } else if (len != 0) {
         jsonHeader(connData, 400);
         httpdSend(connData, "PASSWORD not valid or out of range", -1);
         return HTTPD_CGI_DONE;
@@ -733,11 +733,17 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
     uint8_t chan = wifi_get_channel();
 
     len = os_sprintf(buff,
-                     "\"mode\": \"%s\", \"modechange\": \"%s\", \"ssid\": \"%s\", \"status\": \"%s\", \"phy\": \"%s\", "
-                     "\"rssi\": \"%ddB\", \"warn\": \"%s\",  \"apwarn\": \"%s\",\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\", \"chan\":\"%d\", \"apssid\": \"%s\", "
-                     "\"appass\": \"%s\", \"apchan\": \"%d\", \"apmaxc\": \"%d\", \"aphidd\": \"%s\", \"apbeac\": \"%d\", \"apauth\": \"%s\",\"apmac\":\"%02x:%02x:%02x:%02x:%02x:%02x\"",
-                     mode, MODECHANGE, (char*)stconf.ssid, status, phy, rssi, warn, apwarn,
-                     mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5], chan, (char*)apconf.ssid,(char*)apconf.password,apconf.channel,apconf.max_connection,apconf.ssid_hidden?"enabled":"disabled",apconf.beacon_interval, apauth,apmac_addr[0], apmac_addr[1], apmac_addr[2], apmac_addr[3], apmac_addr[4], apmac_addr[5]);
+        "\"mode\": \"%s\", \"modechange\": \"%s\", \"ssid\": \"%s\", \"status\": \"%s\", "
+        "\"phy\": \"%s\", \"rssi\": \"%ddB\", \"warn\": \"%s\",  \"apwarn\": \"%s\", "
+        "\"mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\", \"chan\":\"%d\", \"apssid\": \"%s\", "
+        "\"appass\": \"%s\", \"apchan\": \"%d\", \"apmaxc\": \"%d\", \"aphidd\": \"%s\", "
+        "\"apbeac\": \"%d\", \"apauth\": \"%s\",\"apmac\":\"%02x:%02x:%02x:%02x:%02x:%02x\"",
+        mode, MODECHANGE, (char*)stconf.ssid, status, phy, rssi, warn, apwarn,
+        mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5],
+        chan, (char*)apconf.ssid, (char*)apconf.password, apconf.channel, apconf.max_connection,
+        apconf.ssid_hidden?"enabled":"disabled", apconf.beacon_interval,
+        apauth,apmac_addr[0], apmac_addr[1], apmac_addr[2], apmac_addr[3], apmac_addr[4],
+        apmac_addr[5]);
 
     struct ip_info info;
     if (wifi_get_ip_info(0, &info)) {
@@ -806,12 +812,9 @@ int ICACHE_FLASH_ATTR cgiWifiInfo(HttpdConnData *connData) {
 
 // Check string againt invalid characters
 int ICACHE_FLASH_ATTR checkString(char *str){
-    int i = 0;
-    for(; i < os_strlen(str); i++)
-    {
-        // Alphanumeric and underscore allowed
-        if (!(isalnum((unsigned char)str[i]) || str[i] == '_'))
-        {
+    for(int i=0; i<os_strlen(str); i++) {
+        // We allow any printable character
+        if (str[i] < '!' || str[i] > '~') {
             DBG("Error: String has non alphanumeric chars\n");
             return 0;
         }
@@ -828,11 +831,12 @@ int ICACHE_FLASH_ATTR checkString(char *str){
  */
 void ICACHE_FLASH_ATTR wifiInit() {
 
-    // Check te wifi opmode
+    // Check the wifi opmode
     int x = wifi_get_opmode() & 0x3;
 
-    // Set opmode to 3 to let system scan aps, otherwise it won't scan
-    wifi_set_opmode(3);
+    // If STA is enabled switch to STA+AP to allow for recovery, it will then switch to STA-only
+    // once it gets an IP address
+    if (x == 1) wifi_set_opmode(3);
 
     // Call both STATION and SOFTAP default config
     wifi_station_get_config_default(&stconf);
@@ -840,7 +844,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
 
     DBG("Wifi init, mode=%s\n",wifiMode[x]);
 
-    // STATION parameters
+    // Change STATION parameters, if defined in the Makefile
 #if defined(STA_SSID) && defined(STA_PASS)
     // Set parameters
     if (os_strlen((char*)stconf.ssid) == 0 && os_strlen((char*)stconf.password) == 0) {
@@ -855,7 +859,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
     }
 #endif
 
-    // Change SOFT_AP settings if defined
+    // Change SOFT_AP settings, if defined in Makefile
 #if defined(AP_SSID)
     // Check if ssid and pass are alphanumeric values
     int ssidlen = os_strlen(VERS_STR(AP_SSID));
@@ -909,7 +913,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
     // Debug info
 
     DBG("Wifi Soft-AP parameters change: %s\n",softap_set_conf? "success":"fail");
-#endif // AP_SSID && AP_PASS
+#endif // if defined(AP_SSID)
 
     configWifiIP();
 
