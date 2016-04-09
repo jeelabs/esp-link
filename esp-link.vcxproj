@@ -72,6 +72,7 @@
     <ClInclude Include="httpd\base64.h" />
     <ClInclude Include="httpd\httpd.h" />
     <ClInclude Include="httpd\httpdespfs.h" />
+    <ClInclude Include="include\c_types.h" />
     <ClInclude Include="include\esp8266.h" />
     <ClInclude Include="include\espmissingincludes.h" />
     <ClInclude Include="include\uart_hw.h" />
@@ -140,7 +141,7 @@
   <PropertyGroup>
     <NMakeOutput />
     <NMakePreprocessorDefinitions>__ets__;_STDINT_H;ICACHE_FLASH;__MINGW32__;__WIN32__;MQTT;REST;SYSLOG;FIRMWARE_SIZE</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>.\syslog;.\rest;.\esp-link;.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.5.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>.\syslog;.\rest;.\esp-link;.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.5.2\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
     <ExecutablePath />
     <ReferencePath />
     <LibraryPath />
