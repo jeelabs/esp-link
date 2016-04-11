@@ -1,3 +1,5 @@
+#define USE_US_TIMER
+
 #include <esp8266.h>
 #include "cgiwifi.h"
 #include "cgi.h"
@@ -36,7 +38,7 @@ int ICACHE_FLASH_ATTR cgiSystemSet(HttpdConnData *connData) {
     // schedule hostname change-over
     os_timer_disarm(&reassTimer);
     os_timer_setfn(&reassTimer, configWifiIP, NULL);
-    os_timer_arm(&reassTimer, 1000, 0); // 1 second for the response of this request to make it
+    os_timer_arm_us(&reassTimer, 1 * 1000000, 0); // 1 second for the response of this request to make it
   }
 
   if (configSave()) {
@@ -92,10 +94,10 @@ int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
 }
 
 void ICACHE_FLASH_ATTR cgiServicesSNTPInit() {
-  if (flashConfig.sntp_server[0] != '\0') {    
+  if (flashConfig.sntp_server[0] != '\0') {
     sntp_stop();
     if (true == sntp_set_timezone(flashConfig.timezone_offset)) {
-      sntp_setservername(0, flashConfig.sntp_server);  
+      sntp_setservername(0, flashConfig.sntp_server);
       sntp_init();
     }
     DBG("SNTP timesource set to %s with offset %d\n", flashConfig.sntp_server, flashConfig.timezone_offset);
@@ -107,7 +109,7 @@ int ICACHE_FLASH_ATTR cgiServicesInfo(HttpdConnData *connData) {
 
   if (connData->conn == NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
-  os_sprintf(buff, 
+  os_sprintf(buff,
     "{ "
       "\"syslog_host\": \"%s\", "
       "\"syslog_minheap\": %d, "
@@ -118,7 +120,7 @@ int ICACHE_FLASH_ATTR cgiServicesInfo(HttpdConnData *connData) {
       "\"sntp_server\": \"%s\", "
       "\"mdns_enable\": \"%s\", "
       "\"mdns_servername\": \"%s\""
-    " }",    
+    " }",
     flashConfig.syslog_host,
     flashConfig.syslog_minheap,
     flashConfig.syslog_filter,
@@ -168,7 +170,7 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   int8_t mdns = 0;
   mdns |= getBoolArg(connData, "mdns_enable", &flashConfig.mdns_enable);
   if (mdns < 0) return HTTPD_CGI_DONE;
-    
+
   if (mdns > 0) {
     if (flashConfig.mdns_enable){
       DBG("Services: MDNS Enabled\n");

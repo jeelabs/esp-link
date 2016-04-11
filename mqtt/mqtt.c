@@ -37,6 +37,8 @@
 // Allow messages that don't require ACK to be sent even when pending_buffer is != NULL
 // Set dup flag in retransmissions
 
+#define USE_US_TIMER
+
 #include <esp8266.h>
 #include "pktbuf.h"
 #include "mqtt.h"
@@ -704,7 +706,7 @@ MQTT_Connect(MQTT_Client* client) {
   // start timer function to tick every second
   os_timer_disarm(&client->mqttTimer);
   os_timer_setfn(&client->mqttTimer, (os_timer_func_t *)mqtt_timer, client);
-  os_timer_arm(&client->mqttTimer, 1000, 1);
+  os_timer_arm_us(&client->mqttTimer, 1 * 1000000, 1);
 
   // initiate the TCP connection or DNS lookup
   os_printf("MQTT: Connect to %s:%d %p (client=%p)\n",

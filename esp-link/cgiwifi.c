@@ -13,6 +13,8 @@ Cgi/template routines for the /wifi url.
  * ----------------------------------------------------------------------------
  */
 
+#define USE_US_TIMER
+
 #include <esp8266.h>
 #include "cgiwifi.h"
 #include "cgi.h"
@@ -222,7 +224,7 @@ static int ICACHE_FLASH_ATTR cgiWiFiStartScan(HttpdConnData *connData) {
     cgiWifiAps.scanInProgress = 1;
     os_timer_disarm(&scanTimer);
     os_timer_setfn(&scanTimer, scanStartCb, NULL);
-    os_timer_arm(&scanTimer, 200, 0);
+    os_timer_arm_us(&scanTimer, 200000, 0);
   }
   return HTTPD_CGI_DONE;
 }
@@ -314,7 +316,7 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
       // We're happily connected, go to STA mode
       DBG("Wifi got IP. Going into STA mode..\n");
       wifi_set_opmode(1);
-      os_timer_arm(&resetTimer, RESET_TIMEOUT, 0); // check one more time after switching to STA-only
+      os_timer_arm_us(&resetTimer, RESET_TIMEOUT * 1000, 0); // check one more time after switching to STA-only
 #endif
     }
     log_uart(false);
@@ -328,7 +330,7 @@ static void ICACHE_FLASH_ATTR resetTimerCb(void *arg) {
     }
     log_uart(true);
     DBG("Enabling/continuing uart log\n");
-    os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
+    os_timer_arm_us(&resetTimer, RESET_TIMEOUT * 1000, 0);
   }
 }
 
@@ -347,7 +349,7 @@ static void ICACHE_FLASH_ATTR reassTimerCb(void *arg) {
   // IP address
   os_timer_disarm(&resetTimer);
   os_timer_setfn(&resetTimer, resetTimerCb, NULL);
-  os_timer_arm(&resetTimer, 4*RESET_TIMEOUT, 0);
+  os_timer_arm_us(&resetTimer, 4*RESET_TIMEOUT * 1000, 0);
 }
 
 // This cgi uses the routines above to connect to a specific access point with the
@@ -376,7 +378,7 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
     //Schedule disconnect/connect
     os_timer_disarm(&reassTimer);
     os_timer_setfn(&reassTimer, reassTimerCb, NULL);
-    os_timer_arm(&reassTimer, 1000, 0); // 1 second for the response of this request to make it
+    os_timer_arm_us(&reassTimer, 1 * 1000000, 0); // 1 second for the response of this request to make it
     jsonHeader(connData, 200);
   } else {
     jsonHeader(connData, 400);
@@ -500,7 +502,7 @@ int ICACHE_FLASH_ATTR cgiWiFiSpecial(HttpdConnData *connData) {
   // schedule change-over
   os_timer_disarm(&reassTimer);
   os_timer_setfn(&reassTimer, configWifiIP, NULL);
-  os_timer_arm(&reassTimer, 1000, 0); // 1 second for the response of this request to make it
+  os_timer_arm_us(&reassTimer, 1 * 1000000, 0); // 1 second for the response of this request to make it
   // return redirect info
   jsonHeader(connData, 200);
   httpdSend(connData, url, -1);
@@ -669,7 +671,7 @@ int ICACHE_FLASH_ATTR cgiWiFiSetMode(HttpdConnData *connData) {
             wifi_station_connect();
             os_timer_disarm(&resetTimer);
             os_timer_setfn(&resetTimer, resetTimerCb, NULL);
-            os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
+            os_timer_arm_us(&resetTimer, RESET_TIMEOUT * 1000, 0);
         }
         if(previous_mode == 1){
             // moving to AP or STA+AP from STA, so softap config call needed
@@ -784,7 +786,7 @@ int ICACHE_FLASH_ATTR cgiWiFiConnStatus(HttpdConnData *connData) {
       // Reset into AP-only mode sooner.
       os_timer_disarm(&resetTimer);
       os_timer_setfn(&resetTimer, resetTimerCb, NULL);
-      os_timer_arm(&resetTimer, 1000, 0);
+      os_timer_arm_us(&resetTimer, 1 * 1000000, 0);
     }
   }
 #endif
@@ -926,5 +928,5 @@ void ICACHE_FLASH_ATTR wifiInit() {
     // check on the wifi in a few seconds to see whether we need to switch mode
     os_timer_disarm(&resetTimer);
     os_timer_setfn(&resetTimer, resetTimerCb, NULL);
-    os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
+    os_timer_arm_us(&resetTimer, RESET_TIMEOUT * 1000, 0);
 }

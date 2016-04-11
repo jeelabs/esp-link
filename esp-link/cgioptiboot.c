@@ -1,5 +1,7 @@
 // Copyright (c) 2015 by Thorsten von Eicken, see LICENSE.txt in the esp-link repo
 
+#define USE_US_TIMER
+
 #include <esp8266.h>
 #include <osapi.h>
 #include "cgi.h"
@@ -140,7 +142,7 @@ int ICACHE_FLASH_ATTR cgiOptibootSync(HttpdConnData *connData) {
     // start sync timer
     os_timer_disarm(&optibootTimer);
     os_timer_setfn(&optibootTimer, optibootTimerCB, NULL);
-    os_timer_arm(&optibootTimer, INIT_DELAY, 0);
+    os_timer_arm_us(&optibootTimer, INIT_DELAY * 1000, 0);
 
     // respond with optimistic OK
     noCacheHeaders(connData, 204);
@@ -491,7 +493,7 @@ static bool ICACHE_FLASH_ATTR programPage(void) {
 
 static void ICACHE_FLASH_ATTR armTimer(uint32_t ms) {
   os_timer_disarm(&optibootTimer);
-  os_timer_arm(&optibootTimer, ms, 0);
+  os_timer_arm_us(&optibootTimer, ms * 1000, 0);
 }
 
 static int baudRates[] = { 0, 9600, 57600, 115200 };
