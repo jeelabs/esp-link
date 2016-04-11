@@ -37,6 +37,7 @@ typedef struct {
   uint8_t  mdns_enable;
   char     mdns_servername[32];
   int8_t   timezone_offset;
+  int8_t   uart0_tx_enable_pin;
 } FlashConfig;
 extern FlashConfig flashConfig;
 

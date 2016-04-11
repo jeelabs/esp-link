@@ -9,6 +9,8 @@
 * ----------------------------------------------------------------------------
 */
 
+#define USE_US_TIMER
+
 #include <esp8266.h>
 #include "httpd.h"
 #include "httpdespfs.h"
@@ -110,6 +112,7 @@ void user_rf_pre_init(void) {
 
 // Main routine to initialize esp-link.
 void user_init(void) {
+  system_timer_reinit();
   // get the flash config so we know how to init things
   //configWipe(); // uncomment to reset the config for testing purposes
   bool restoreOk = configRestore();
@@ -117,7 +120,7 @@ void user_init(void) {
   gpio_init();
   gpio_output_set(0, 0, 0, (1<<15)); // some people tie it to GND, gotta ensure it's disabled
   // init UART
-  uart_init(flashConfig.baud_rate, 115200);
+  uart_init(flashConfig.baud_rate, flashConfig.uart0_tx_enable_pin, 115200);
   logInit(); // must come after init of uart
   // Say hello (leave some time to cause break in TX after boot loader's msg
   os_delay_us(10000L);
