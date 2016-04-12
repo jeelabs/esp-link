@@ -111,8 +111,14 @@
     <None Include="html\ui.js" />
     <None Include="html\wifi\wifi.html" />
     <None Include="html\wifi\wifi.js" />
+    <None Include="html\wifi\wifiAp.html" />
+    <None Include="html\wifi\wifiAp.js" />
+    <None Include="html\wifi\wifiSta.html" />
+    <None Include="html\wifi\wifiSta.js" />
     <None Include="Makefile" />
+    <None Include="README.adoc" />
     <None Include="README.md" />
+    <None Include="syslog\syslog.md" />
     <None Include="wiflash" />
     <None Include="WINDOWS.md" />
   </ItemGroup>
@@ -122,6 +128,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="html\favicon.ico" />
+    <Image Include="html\wifi\icons.png" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A92F0CAA-F89B-4F78-AD2A-A042429BD87F}</ProjectGuid>

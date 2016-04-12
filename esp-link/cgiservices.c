@@ -2,7 +2,9 @@
 #include "cgiwifi.h"
 #include "cgi.h"
 #include "config.h"
+#ifdef SYSLOG
 #include "syslog.h"
+#endif
 #include "sntp.h"
 #include "cgimqtt.h"
 
@@ -152,7 +154,9 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   if (syslog < 0) return HTTPD_CGI_DONE;
 
   if (syslog > 0) {
+#ifdef SYSLOG
     syslog_init(flashConfig.syslog_host);
+#endif
   }
 
   int8_t sntp = 0;
