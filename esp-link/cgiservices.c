@@ -111,21 +111,25 @@ int ICACHE_FLASH_ATTR cgiServicesInfo(HttpdConnData *connData) {
 
   os_sprintf(buff, 
     "{ "
+#ifdef SYSLOG
       "\"syslog_host\": \"%s\", "
       "\"syslog_minheap\": %d, "
       "\"syslog_filter\": %d, "
       "\"syslog_showtick\": \"%s\", "
       "\"syslog_showdate\": \"%s\", "
+#endif
       "\"timezone_offset\": %d, "
       "\"sntp_server\": \"%s\", "
       "\"mdns_enable\": \"%s\", "
       "\"mdns_servername\": \"%s\""
-    " }",    
+    " }",
+#ifdef SYSLOG
     flashConfig.syslog_host,
     flashConfig.syslog_minheap,
     flashConfig.syslog_filter,
     flashConfig.syslog_showtick ? "enabled" : "disabled",
     flashConfig.syslog_showdate ? "enabled" : "disabled",
+#endif
     flashConfig.timezone_offset,
     flashConfig.sntp_server,
     flashConfig.mdns_enable ? "enabled" : "disabled",
@@ -140,6 +144,7 @@ int ICACHE_FLASH_ATTR cgiServicesInfo(HttpdConnData *connData) {
 int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   if (connData->conn == NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
+#ifdef SYSLOG
   int8_t syslog = 0;
 
   syslog |= getStringArg(connData, "syslog_host", flashConfig.syslog_host, sizeof(flashConfig.syslog_host));
@@ -154,10 +159,9 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   if (syslog < 0) return HTTPD_CGI_DONE;
 
   if (syslog > 0) {
-#ifdef SYSLOG
     syslog_init(flashConfig.syslog_host);
-#endif
   }
+#endif
 
   int8_t sntp = 0;
   sntp |= getInt8Arg(connData, "timezone_offset", &flashConfig.timezone_offset);
