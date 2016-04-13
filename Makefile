@@ -13,6 +13,10 @@
 # Original from esphttpd and others...
 #VERBOSE=1
 
+#  Include optionnal local configuration
+#
+-include Makefile.local
+
 # --------------- toolchain configuration ---------------
 
 # Base directory for the compiler. Needs a / at the end.
