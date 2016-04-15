@@ -48,6 +48,10 @@ CHANGE_TO_STA ?= yes
 # hostname or IP address for wifi flashing
 ESP_HOSTNAME        ?= esp-link
 
+#  Include optionnal local configuration
+#
+-include Makefile.local
+
 # --------------- toolchain configuration ---------------
 
 # Base directory for the compiler. Needs a / at the end.
