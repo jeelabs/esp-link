@@ -24,7 +24,8 @@ typedef struct serbridgeConnData {
   enum connModes	conn_mode;	// connection mode
   uint8_t		tn_state;	// Telnet state machine state
   char			tn_opt ;	// Telnet option
-  int			tn_vlen ;	// Telnet option value length
+  uint32_t		tn_value ;	// Telnet option value
+  char			tn_vlen ;	// Telnet option value length
   uint16		txbufferlen;	// length of data in txbuffer
   char			*txbuffer;	// buffer for the data to send
   char			*sentbuffer;	// buffer sent, awaiting callback to get freed

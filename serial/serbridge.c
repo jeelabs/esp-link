@@ -1,7 +1,6 @@
 // Copyright 2015 by Thorsten von Eicken, see LICENSE.txt
 
-/*  Modified by Christophe Duparquet: implementation of RFC 2217 to use the
- *  Diabolo bootloader through pySerial-3.0.
+/*  Modified by Christophe Duparquet: extended implementation of RFC 2217
  *
  *  Verified on ESP-WROOM-02 with the following configuration:
  *    Reset:      gpio5
@@ -41,6 +40,9 @@
 
 #define SKIP_AT_RESET
 
+
+/*  ESP8266
+ */
 #define IROM			ICACHE_FLASH_ATTR
 #define REG_BRR			(*(volatile uint32_t*)0x60000014)
 #define REG_CONF0		(*(volatile uint32_t*)0x60000020)
@@ -60,6 +62,7 @@ void (*programmingCB)(char *buffer, short length) = NULL;
 serbridgeConnData connData[MAX_CONN];
 
 static sint8 IROM	espbuffsend(serbridgeConnData *conn, const char *data, uint16 len) ;
+static sint8 IROM	espbuffsend_tn(serbridgeConnData *conn, const char *data, uint16 len) ;
 
 
 // Telnet protocol (RFC854) characters
@@ -84,7 +87,6 @@ static sint8 IROM	espbuffsend(serbridgeConnData *conn, const char *data, uint16 
 #define SET_CONTROL		5	//   suboption "CONTROL"
 #define PURGE_DATA		12	//   suboption "PURGE"
 
-#define SERBR_DBG
 
 #ifdef SERBR_DBG
 #  define dbgf(...)	do { os_printf(__VA_ARGS__); }while(0)
@@ -111,501 +113,469 @@ enum {
 };
 
 
-/*  Process bytes comming from a telnet connection
+/*  Telnet state machine: process one byte comming from a telnet connection
  */
-static void IROM telnet_unwrap ( serbridgeConnData *conn, uint8_t *buf, int len )
+static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
 {
 #define state		conn->tn_state
 #define opt		conn->tn_opt
 #define vlen		conn->tn_vlen
+#define value		conn->tn_value
 
-  static uint32_t	value ;	// Value of subnegociated paramater
-
-  dbgf("TELNET:");
-  for ( int i=0; i<len; i++ ) {
-    dbgf(" %02X", buf[i]);
+  if ( state == ST_NORMAL ) {
+    if ( c == IAC )
+      state = ST_IAC ;
+    else
+      uart0_write_char(c) ;
+    return ;
   }
-  dbgf(" \n");
 
-  for ( int i=0 ; i<len ; i++ ) {
-    uint8_t c = buf[i];
-
-    if ( state == ST_NORMAL ) {
-      if ( c == IAC )
-	state = ST_IAC ;
-      else
-	uart0_write_char(c) ;
-    }
-    else if ( state == ST_IAC ) {
-      if ( c == IAC ) {
-	/*
-	 *  Dual IAC means char \xFF
-	 */
-	uart0_write_char(0xFF);
-      }
-      else if ( c == DONT || c == DO || c == WONT || c == WILL ) {
-	/*
-	 *  Beginning of negociation
-	 */
-	opt = c ;
-	state = ST_NEGO ;
-      }
-      else if ( c == SB ) {
-	/*
-	 *  Beginning of sub option
-	 */
-	opt = c ;
-	state = ST_SB ;
-      }
-      else if ( c == SE ) {
-	/*
-	 *  End of sub option
-	 */
-	opt = c ;
-	state = ST_NORMAL ;
-      }
-    }
-    else if ( state == ST_NEGO ) {
-      dbgf("TELNET: IAC NEGO (%02X)", c);
-      if ( c == BINARY ||
-	   c == ECHO ||
-	   c == SUPPRESS_GO_AHEAD ||
-	   c == COM_PORT_OPTION ) {
-	/*
-	 *  Acknowledge positive requests for known options
-	 */
-	dbgf(": OK\n");
-	if ( opt == DO )
-	  opt = WILL ;
-	else if ( opt == WILL )
-	  opt = DO ;
-      }
-      else {
-	/*
-	 *  Deny positive requests for unknown options
-	 */
-	dbgf(": REJECTED\n");
-	if ( opt == DO )
-	  opt = WONT ;
-	else if ( opt == WILL )
-	  opt = DONT ;
-      }
+  if ( state == ST_IAC ) {
+    if ( c == IAC ) {
       /*
-       *  Send reply
+       *  Dual IAC means char \xFF
        */
-      espbuffsend( conn, (char[]){IAC,opt,c}, 3 );
+      uart0_write_char(0xFF);
       state = ST_NORMAL ;
-    }
-    else if ( state == ST_SB ) {
-      if ( c == COM_PORT_OPTION )
-	state = ST_COMPORT ;
-      else
-	state = ST_WAIT_IAC ;
-    }
-    else if ( state == ST_WAIT_IAC ) {
-      if ( c == IAC )
-	state = ST_IAC ;
-    }
-    else if ( state == ST_COMPORT ) {
-      vlen = 0 ;
-      if ( c == SET_BAUDRATE ) {
-	dbgf("  BAUDRATE:");
-	state = ST_BAUDRATE ;
-      } else if ( c == SET_DATASIZE ) {
-	dbgf("  DATASIZE:");
-	state = ST_DATASIZE ;
-      } else if ( c == SET_PARITY ) {
-	dbgf("  PARITY:");
-	state = ST_PARITY ;
-      } else if ( c == SET_STOPSIZE ) {
-	dbgf("  STOPSIZE:");
-	state = ST_STOPSIZE ;
-      } else if ( c == SET_CONTROL ) {
-	dbgf("  CONTROL:");
-	state = ST_CONTROL ;
-      } else if ( c == PURGE_DATA ) {
-	dbgf("  PURGE:");
-	state = ST_PURGE ;
-      } else {
-	dbgf("UNKNOWN: %02X\n", c);
-	state = ST_WAIT_IAC ;
-      }
-    }
-    else if ( state == ST_BAUDRATE ) {
-      /*
-       *  Get 4 bytes of baudrate (MSB first)
-       */
-      dbgf(" %02X", c);
-
-      value <<= 8 ;
-      value += c ;
-      vlen++ ;
-      if ( vlen == 4 ) {
-	if ( value == 0 ) {
-	  /*
-	   *  Null value means the client requests the actual value
-	   */
-	  value = (int)(0.5 + 80e6 / REG_BRR );
-	}
-	else {
-	  /*
-	   *  Write non-null value
-	   */
-	  REG_BRR = (int)(0.5 + 80e6/value) ;
-	}
-	/*
-	 *  Acknowledge
-	 */
-	dbgf(" = %ld\n", value);
-	char v0 = value ;
-	char v1 = value >> 8 ;
-	char v2 = value >> 16 ;
-	char v3 = value >> 24 ;
-	espbuffsend( conn,
-		     (char[]){IAC,SB,COM_PORT_OPTION,100+SET_BAUDRATE,v3,v2,v1,v0,IAC,SE},
-		     10 );
-	state = ST_WAIT_IAC ;
-      }
-    }
-    else if ( state == ST_DATASIZE ) {
-      if ( c == 0 ) {
-	/*
-	 *  Null value means the client requests the actual value
-	 */
-	c = 5 + ((REG_CONF0>>2) & 0x03) ;
-      }
-      else if ( c >= 5 && c <= 8 ) {
-	/*
-	 *  Store databits in bits 3..2 of register conf0
-	 */
-	REG_CONF0 = (REG_CONF0 & ~0xC) | ((c-5)<<2) ;
-      }
-      if ( c >= 5 && c <= 8 ) {
-	/*
-	 *  Acknowledge
-	 */
-	dbgf(" %d\n", c );
-	espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_DATASIZE,c,IAC,SE},7 );
-      }
-      state = ST_WAIT_IAC ;
-    }
-    else if ( state == ST_PARITY ) {
-      /*
-       *  CONF0 bits 1..0
-       */
-      if ( c == 0 ) {
-	/*
-	 *  Request Current Parity
-	 */
-	c = (REG_CONF0>>2) & 0x03 ;
-	if ( c==2 )
-	  c = 1 ;
-	else if ( c==3 )
-	  c = 2 ;
-	else
-	  c = 3 ;
-	goto parity_notify ;
-      }
-      if ( c==1 || c==2 || c==3 ) {
-	/*
-	 *  1  NONE
-	 *  2  ODD
-	 *  3  EVEN
-	 */
-	char d ;
-	if ( c==1 )
-	  d = 0 ;
-	else if ( c==2 )
-	  d = 3 ;
-	else
-	  d = 2 ;
-	REG_CONF0 = (REG_CONF0 & ~0x3) | d ;
-	goto parity_notify ;
-      }
-      state = ST_WAIT_IAC ;
       return ;
-
-    parity_notify:
-      dbgf(" %d\n", c );
-      espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_PARITY,c,IAC,SE},7 );
-      state = ST_WAIT_IAC ;
     }
-    else if ( state == ST_STOPSIZE ) {
+    else if ( c == DONT || c == DO || c == WONT || c == WILL ) {
       /*
-       *  CONF0 bits 5..4
+       *  Beginning of negociation
        */
-      if ( c == 0 ) {
-	/*
-	 *  0  Request Current Stop Bit Size
-	 */
-	c = REG_CONF0>>4 & 0x03 ;
-	if ( c==2 )
-	  c = 3 ;
-	else if ( c==3 )
-	  c = 2 ;
-      }
-      else if ( c >= 1 && c <= 3 ) {
-	/*
-	 *  1  1 bit
-	 *  2  2 bits
-	 *  3  1.5 bit
-	 */
-	char d = c ;
-	if ( c==2 )
-	  d = 3 ;
-	else if ( c==3 )
-	  d = 2 ;
-	REG_CONF0 = (REG_CONF0 & ~0x30) | (d<<4) ;
-      }
-      if ( c >= 1 && c <= 3 ) {
-	dbgf(" %d\n", c );
-	espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_STOPSIZE,c,IAC,SE},7 );
-      }
-      state = ST_WAIT_IAC ;
-    }
-    else if ( state == ST_CONTROL ) {
-      if ( c == 1 ) {
-	/*
-	 *  Use No Flow Control (outbound/both)
-	 *
-	 *  Disable TX hardware flow: conf0 bit 15 = 0
-	 *  Disable RX hardware flow: conf1 bit 23 = 0
-	 */
-	REG_CONF0 &= ~(1ULL<<15) ;
-	REG_CONF1 &= ~(1ULL<<23) ;
-	goto control_notify ;
-      }
-      else if ( c == 5 ) {
-	/*
-	 *  Set BREAK State ON
-	 */
-	REG_CONF0 |= (1ULL<<8) ;
-	goto control_notify ;
-      }
-      else if ( c == 6 ) {
-	/*
-	 *  Set BREAK State OFF
-	 */
-	REG_CONF0 &= ~(1ULL<<8) ;
-	goto control_notify ;
-      }
-      else if ( c == 8 ) {
-#if 0
-	/*
-	 *  Set DTR Signal State ON
-	 *
-	 *  Assert DTR: conf0 bit 7
-	 */
-	REG_CONF0 |= (1ULL<<7) ;
-#else
-	/*
-	 *  Set DTR Signal State ON
-	 *
-	 *  Drive MCU reset LOW
-	 */
-        if (mcu_reset_pin >= 0) {
-          dbgf("MCU reset gpio%d\n", mcu_reset_pin);
-          GPIO_OUTPUT_SET(mcu_reset_pin, 0);
-        }
-        else dbgf("MCU reset: no pin\n");
-#endif
-	goto control_notify ;
-      }
-      else if ( c == 9 ) {
-#if 0
-	/*
-	 *  Set DTR Signal State OFF
-	 *
-	 *  Assert DTR: conf0 bit 7
-	 */
-	REG_CONF0 &= ~(1ULL<<7) ;
-#else
-	/*
-	 *  Set DTR Signal State OFF
-	 *
-	 *  Drive MCU reset HIGH
-	 */
-        if (mcu_reset_pin >= 0) {
-          dbgf("MCU reset gpio%d\n", mcu_reset_pin);
-          GPIO_OUTPUT_SET(mcu_reset_pin, 1);
-        }
-        else dbgf("MCU reset: no pin\n");
-#endif
-	goto control_notify ;
-      }
-      else if ( c == 11 ) {
-	/*
-	 *  Set RTS Signal State ON
-	 *
-	 *  Assert RTS: conf0 bit 6 = 1
-	 */
-	REG_CONF0 |= (1ULL<<6) ;
-	goto control_notify ;
-      }
-      else if ( c == 12 ) {
-	/*
-	 *  Set RTS Signal State OFF
-	 *
-	 *  Assert RTS: conf0 bit 6 = 0
-	 */
-	REG_CONF0 &= ~(1ULL<<6) ;
-	goto control_notify ;
-      }
-      state = ST_WAIT_IAC ;
+      opt = c ;
+      state = ST_NEGO ;
       return ;
-
-    control_notify:
-      dbgf(" %d\n", c );
-      espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_CONTROL,c,IAC,SE},7 );
-      state = ST_WAIT_IAC ;
     }
-    else if ( state == ST_PURGE ) {
-      if ( c == 1 ) {
-	/*
-	 *  Purge access server receive data buffer
-	 *
-	 *  Reset RX FIFO: conf0 bit 17 = 1
-	 */
-	//	REG_CONF0 |= (1ULL<<17) ;
-	goto purge_notify ;
-      }
-      else if ( c == 2 ) {
-	/*
-	 *  Purge access server transmit data buffer
-	 *
-	 *  Reset TX FIFO: conf0 bit 18 = 1
-	 */
-	//	REG_CONF0 |= (1ULL<<18) ;
-	goto purge_notify ;
-      }
-      state = ST_WAIT_IAC ;
+    else if ( c == SB ) {
+      /*
+       *  Beginning of sub option
+       */
+      opt = c ;
+      state = ST_SB ;
       return ;
-
-    purge_notify:
-      dbgf(" %d\n", c );
-      espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+PURGE_DATA,c,IAC,SE},7 );
-      state = ST_WAIT_IAC ;
     }
+    else if ( c == SE ) {
+      /*
+       *  End of sub option
+       */
+      opt = c ;
+      state = ST_NORMAL ;
+      return ;
+    }
+    return ;
   }
+
+  if ( state == ST_NEGO ) {
+    dbgf("TELNET: IAC NEGO (%02X)", c);
+    if ( c == BINARY ||
+	 c == ECHO ||
+	 c == SUPPRESS_GO_AHEAD ||
+	 c == COM_PORT_OPTION ) {
+      /*
+       *  Acknowledge positive requests for known options
+       */
+      dbgf(": OK\n");
+      if ( opt == DO )
+	opt = WILL ;
+      else if ( opt == WILL )
+	opt = DO ;
+    }
+    else {
+      /*
+       *  Deny positive requests for unknown options
+       */
+      dbgf(": REJECTED\n");
+      if ( opt == DO )
+	opt = WONT ;
+      else if ( opt == WILL )
+	opt = DONT ;
+    }
+    /*
+     *  Send reply
+     */
+    espbuffsend( conn, (char[]){IAC,opt,c}, 3 );
+    state = ST_NORMAL ;
+    return ;
+  }
+
+  if ( state == ST_SB ) {
+    if ( c == COM_PORT_OPTION )
+      state = ST_COMPORT ;
+    else
+      state = ST_WAIT_IAC ;
+    return ;
+  }
+
+  if ( state == ST_WAIT_IAC ) {
+    if ( c == IAC )
+      state = ST_IAC ;
+    return ;
+  }
+
+  if ( state == ST_COMPORT ) {
+    if ( c == SET_BAUDRATE ) {
+      dbgf("  BAUDRATE:");
+      vlen = 0 ;
+      state = ST_BAUDRATE ;
+    } else if ( c == SET_DATASIZE ) {
+      dbgf("  DATASIZE:");
+      state = ST_DATASIZE ;
+    } else if ( c == SET_PARITY ) {
+      dbgf("  PARITY:");
+      state = ST_PARITY ;
+    } else if ( c == SET_STOPSIZE ) {
+      dbgf("  STOPSIZE:");
+      state = ST_STOPSIZE ;
+    } else if ( c == SET_CONTROL ) {
+      dbgf("  CONTROL:");
+      state = ST_CONTROL ;
+    } else if ( c == PURGE_DATA ) {
+      dbgf("  PURGE:");
+      state = ST_PURGE ;
+    } else {
+      dbgf("UNKNOWN: %02X\n", c);
+      state = ST_WAIT_IAC ;
+    }
+    return ;
+  }
+
+  if ( state == ST_BAUDRATE ) {
+    /*
+     *  Get 4 bytes of baudrate (MSB first)
+     */
+    dbgf(" %02X", c);
+
+    value <<= 8 ;
+    value += c ;
+    vlen++ ;
+    if ( vlen == 4 ) {
+      /*
+       *  4 bytes received, process the value
+       *
+       *  Note: must acknowledge with the value that was set otherwise the
+       *  pyserial client considers that the set value is rejected.
+       */
+      if ( value == 0 )
+	/*
+	 *  Get actual baudrate
+	 */
+	value = (int)(0.5 + 80e6/REG_BRR);
+      else
+	/*
+	 *  Set baudrate
+	 */
+	REG_BRR = (int)(0.5 + 80e6/value);
+
+      /*  Acknowledge
+       */
+      dbgf(" = %ld\n", value);
+      char v0 = value ;
+      char v1 = value >> 8 ;
+      char v2 = value >> 16 ;
+      char v3 = value >> 24 ;
+      espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_BAUDRATE}, 4 );
+      espbuffsend_tn( conn, (char[]){v3,v2,v1,v0}, 4 );
+      espbuffsend( conn, (char[]){IAC,SE}, 2 );
+      state = ST_WAIT_IAC ;
+      return ;
+    }
+    return ;
+  }
+
+  if ( state == ST_DATASIZE ) {
+    if ( c >= 5 && c <= 8 ) {
+      /*
+       *  Set data size
+       *  Store databits in bits 3..2 of register conf0
+       */
+      REG_CONF0 = (REG_CONF0 & ~0xC) | ((c-5)<<2) ;
+    }
+    else {
+      /*
+       *  Get data size
+       */
+      c = 5 + ((REG_CONF0>>2) & 0x03) ;
+    }
+
+    /*  Acknowledge datasize
+     */
+    dbgf(" %d\n", c );
+    espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_DATASIZE,c,IAC,SE},7 );
+    state = ST_WAIT_IAC ;
+    return ;
+  }
+
+  if ( state == ST_PARITY ) {
+    if ( c == 0 ) {
+      /*
+       *  Get actual parity: CONF0 bits 1..0
+       */
+      c = (REG_CONF0>>2) & 0x03 ;
+      if ( c==2 )
+	c = 1 ;
+      else if ( c==3 )
+	c = 2 ;
+      else
+	c = 3 ;
+    }
+    else if ( c==1 || c==2 || c==3 ) {
+      /*
+       *  Set parity
+       *    1  NONE
+       *    2  ODD
+       *    3  EVEN
+       */
+      char d ;
+      if ( c==1 )
+	d = 0 ;
+      else if ( c==2 )
+	d = 3 ;
+      else
+	d = 2 ;
+      REG_CONF0 = (REG_CONF0 & ~0x3) | d ;
+    }
+    else {
+      /*
+       *  Do not acknowledge unknown parity value
+       */
+      state = ST_WAIT_IAC ;
+      return ;
+    }
+
+    /*  Acknowledge parity
+     */
+    dbgf(" %d\n", c );
+    espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_PARITY,c,IAC,SE},7 );
+    state = ST_WAIT_IAC ;
+    return ;
+  }
+
+  if ( state == ST_STOPSIZE ) {
+    if ( c == 0 ) {
+      /*
+       *  Get actual stop bits: CONF0 bits 5..4
+       */
+      c = REG_CONF0>>4 & 0x03 ;
+      if ( c==2 )
+	c = 3 ;
+      else if ( c==3 )
+	c = 2 ;
+    }
+    else if ( c >= 1 && c <= 3 ) {
+      /*
+       *  Set stop bits
+       *    1  1 bit
+       *    2  2 bits
+       *    3  1.5 bit
+       */
+      char d = c ;
+      if ( c==2 )
+	d = 3 ;
+      else if ( c==3 )
+	d = 2 ;
+      REG_CONF0 = (REG_CONF0 & ~0x30) | (d<<4) ;
+    }
+    else {
+      /*
+       *  Do not acknowledge unknown stop bits value
+       */
+      state = ST_WAIT_IAC ;
+      return ;
+    }
+
+    /*  Acknowledge stop bits
+     */
+    dbgf(" %d\n", c );
+    espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_STOPSIZE,c,IAC,SE},7 );
+    state = ST_WAIT_IAC ;
+    return ;
+  }
+
+  if ( state == ST_CONTROL ) {
+    if ( c == 1 ) {
+      /*
+       *  Use No Flow Control (outbound/both)
+       *
+       *  Disable TX hardware flow: CONF0 bit 15 = 0
+       *  Disable RX hardware flow: CONF1 bit 23 = 0
+       */
+      REG_CONF0 &= ~(1ULL<<15) ;
+      REG_CONF1 &= ~(1ULL<<23) ;
+    }
+    else if ( c == 5 ) {
+      /*
+       *  Set BREAK State ON
+       */
+      REG_CONF0 |= (1ULL<<8) ;
+    }
+    else if ( c == 6 ) {
+      /*
+       *  Set BREAK State OFF
+       */
+      REG_CONF0 &= ~(1ULL<<8) ;
+    }
+    else if ( c == 8 ) {
+#ifdef USE_UART_CONTROL_LINES
+      /*
+       *  Set DTR Signal State ON
+       *
+       *  Assert DTR: CONF0 bit 7
+       */
+      REG_CONF0 |= (1ULL<<7) ;
+#else
+      /*
+       *  Set DTR Signal State ON
+       *
+       *  Drive MCU reset LOW
+       */
+      if (mcu_reset_pin >= 0) {
+	dbgf("MCU reset gpio%d\n", mcu_reset_pin);
+	GPIO_OUTPUT_SET(mcu_reset_pin, 0);
+      }
+      else
+	dbgf("MCU reset: no pin\n");
+#endif
+    }
+    else if ( c == 9 ) {
+#ifdef USE_UART_CONTROL_LINES
+      /*
+       *  Set DTR Signal State OFF
+       *
+       *  Assert DTR: CONF0 bit 7
+       */
+      REG_CONF0 &= ~(1ULL<<7) ;
+#else
+      /*
+       *  Set DTR Signal State OFF
+       *
+       *  Drive MCU reset HIGH
+       */
+      if (mcu_reset_pin >= 0) {
+	dbgf("MCU reset gpio%d\n", mcu_reset_pin);
+	GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+      }
+      else
+	dbgf("MCU reset: no pin\n");
+#endif
+    }
+    else if ( c == 11 ) {
+#ifdef USE_UART_CONTROL_LINES
+      /*
+       *  Set RTS Signal State ON
+       *
+       *  Assert RTS: CONF0 bit 6 = 1
+       */
+      REG_CONF0 |= (1ULL<<6) ;
+#else
+      /*
+       *  Set RTS Signal State ON
+       *
+       *  Drive MCU ISP pin LOW
+       */
+      if (mcu_isp_pin >= 0) {
+	dbgf("MCU ISP gpio%d\n", mcu_isp_pin);
+	GPIO_OUTPUT_SET(mcu_isp_pin, 0);
+	os_delay_us(100L);
+      }
+      else
+	dbgf("MCU isp: no pin\n");
+      slip_disabled++;
+#endif
+    }
+    else if ( c == 12 ) {
+#ifdef USE_UART_CONTROL_LINES
+      /*
+       *  Set RTS Signal State OFF
+       *
+       *  Assert RTS: CONF0 bit 6 = 0
+       */
+      REG_CONF0 &= ~(1ULL<<6) ;
+#else
+      /*
+       *  Set RTS Signal State OFF
+       *
+       *  Drive MCU ISP pin HIGH
+       */
+      if (mcu_isp_pin >= 0) {
+	GPIO_OUTPUT_SET(mcu_isp_pin, 1);
+	os_delay_us(100L);
+      }
+      if (slip_disabled > 0) slip_disabled--;
+#endif
+    }
+    else {
+      /*
+       *  Do not acknowledge unknown control
+       */
+      state = ST_WAIT_IAC ;
+      return ;
+    }
+
+    /*  Acknowledge control
+     */
+    dbgf(" %d\n", c );
+    espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_CONTROL,c,IAC,SE},7 );
+    state = ST_WAIT_IAC ;
+    return ;
+  }
+
+  if ( state == ST_PURGE ) {
+    if ( c == 1 ) {
+      /*
+       *  Purge access server receive data buffer
+       *
+       *  Reset RX FIFO: CONF0 bit 17 = 1
+       */
+      //	REG_CONF0 |= (1ULL<<17) ;
+    }
+    else if ( c == 2 ) {
+      /*
+       *  Purge access server transmit data buffer
+       *
+       *  Reset TX FIFO: CONF0 bit 18 = 1
+       */
+      //	REG_CONF0 |= (1ULL<<18) ;
+    }
+    else {
+      state = ST_WAIT_IAC ;
+      return ;
+    }
+
+    /*  Acknowledge purge
+     */
+    dbgf(" %d\n", c );
+    espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+PURGE_DATA,c,IAC,SE},7 );
+    state = ST_WAIT_IAC ;
+    return ;
+  }
+
+  /*  Unexpected char
+   */
+  state = ST_WAIT_IAC ;
 
 #undef state
 #undef opt
 #undef vlen
+#undef value
 }
 
 
-#if 0 /* OLD TELNET */
-//===== TCP -> UART
-
-// Telnet protocol characters
-#define IAC        255  // escape
-#define WILL       251  // negotiation
-#define SB         250  // subnegotiation begin
-#define SE         240  // subnegotiation end
-#define ComPortOpt  44  // COM port options
-#define SetControl   5  // Set control lines
-#define DTR_ON       8  // used here to reset microcontroller
-#define DTR_OFF      9
-#define RTS_ON      11  // used here to signal ISP (in-system-programming) to uC
-#define RTS_OFF     12
-
-// telnet state machine states
-enum { TN_normal, TN_iac, TN_will, TN_start, TN_end, TN_comPort, TN_setControl };
-
-// process a buffer-full on a telnet connection and return the ending telnet state
-static uint8_t ICACHE_FLASH_ATTR
-telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
+/*  Process bytes comming from a telnet connection
+ */
+static void IROM telnet_process_buf ( serbridgeConnData *conn, uint8_t *buf, int len )
 {
-  for (int i=0; i<len; i++) {
-    uint8_t c = inBuf[i];
-    switch (state) {
-    default:
-    case TN_normal:
-      if (c == IAC) state = TN_iac; // escape char: see what's next
-      else uart0_write_char(c);     // regular char
-      break;
-    case TN_iac:
-      switch (c) {
-      case IAC:                     // second escape -> write one to outbuf and go normal again
-        state = TN_normal;
-        uart0_write_char(c);
-        break;
-      case WILL:                    // negotiation
-        state = TN_will;
-        break;
-      case SB:                      // command sequence begin
-        state = TN_start;
-        break;
-      case SE:                      // command sequence end
-        state = TN_normal;
-        break;
-      default:                      // not sure... let's ignore
-        uart0_write_char(IAC);
-        uart0_write_char(c);
-      }
-      break;
-    case TN_will:
-      state = TN_normal;            // yes, we do COM port options, let's go back to normal
-      break;
-    case TN_start:                  // in command seq, now comes the type of cmd
-      if (c == ComPortOpt) state = TN_comPort;
-      else state = TN_end;          // an option we don't know, skip 'til the end seq
-      break;
-    case TN_end:                    // wait for end seq
-      if (c == IAC) state = TN_iac; // simple wait to accept end or next escape seq
-      break;
-    case TN_comPort:
-      if (c == SetControl) state = TN_setControl;
-      else state = TN_end;
-      break;
-    case TN_setControl:             // switch control line and delay a tad
-      switch (c) {
-      case DTR_ON:
-        if (mcu_reset_pin >= 0) {
 #ifdef SERBR_DBG
-          os_printf("MCU reset gpio%d\n", mcu_reset_pin);
-#endif
-          GPIO_OUTPUT_SET(mcu_reset_pin, 0);
-          os_delay_us(100L);
-        }
-#ifdef SERBR_DBG
-        else { os_printf("MCU reset: no pin\n"); }
-#endif
-        break;
-      case DTR_OFF:
-        if (mcu_reset_pin >= 0) {
-          GPIO_OUTPUT_SET(mcu_reset_pin, 1);
-          os_delay_us(100L);
-        }
-        break;
-      case RTS_ON:
-        if (mcu_isp_pin >= 0) {
-#ifdef SERBR_DBG
-          os_printf("MCU ISP gpio%d\n", mcu_isp_pin);
-#endif
-          GPIO_OUTPUT_SET(mcu_isp_pin, 0);
-          os_delay_us(100L);
-        }
-#ifdef SERBR_DBG
-        else { os_printf("MCU isp: no pin\n"); }
-#endif
-        slip_disabled++;
-        break;
-      case RTS_OFF:
-        if (mcu_isp_pin >= 0) {
-          GPIO_OUTPUT_SET(mcu_isp_pin, 1);
-          os_delay_us(100L);
-        }
-        if (slip_disabled > 0) slip_disabled--;
-        break;
-      }
-      state = TN_end;
-      break;
-    }
+  os_printf("TELNET:");
+  for ( int i=0; i<len; i++ ) {
+    os_printf(" %02X", buf[i]);
   }
-  return state;
+  os_printf(" \n");
+#endif
+
+  for ( int i=0 ; i<len ; i++ )
+    telnet_process_char( conn, buf[i] );
 }
-#endif /* OLD TELNET */
 
 
 // Generate a reset pulse for the attached microcontroller
@@ -650,7 +620,7 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
       startPGM = true;
       conn->conn_mode = cmPGM;
 
-    // If the connection starts with a telnet negotiation we will do telnet
+      // If the connection starts with a telnet negotiation we will do telnet
     }
     //    else if (len >= 3 && strncmp(data, (char[]){IAC, WILL, COM_PORT_OPTION}, 3) == 0) {
     else if ( len>2 && data[0]==IAC && (data[1]==WILL || data[1]==DO) ) {
@@ -661,14 +631,14 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
       os_printf("telnet mode\n");
 #endif
 
-    // looks like a plain-vanilla connection!
+      // looks like a plain-vanilla connection!
     }
     else {
       conn->conn_mode = cmTransparent;
     }
 
-  // if we start out in cmPGM mode due to a connection to the second port we need to do the
-  // reset dance right away
+    // if we start out in cmPGM mode due to a connection to the second port we need to do the
+    // reset dance right away
   } else if (conn->conn_mode == cmPGMInit) {
     conn->conn_mode = cmPGM;
     startPGM = true;
@@ -697,12 +667,14 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
 #endif
   }
 
-
-  // write the buffer to the uart
-  if (conn->conn_mode == cmTelnet) {
-    telnet_unwrap(conn, (uint8_t *)data, len);
+  if ( conn->conn_mode == cmTelnet ) {
+    /*
+     *  Process Telnet protocol
+     */
+    telnet_process_buf( conn, (uint8_t *)data, len );
   } else {
-    uart0_tx_buffer(data, len);
+    // write the buffer to the uart
+    uart0_tx_buffer( data, len );
   }
 
   serledFlash(50); // short blink on serial LED
@@ -735,13 +707,54 @@ sendtxbuffer(serbridgeConnData *conn)
   return result;
 }
 
+
+//  Escape '\xFF' bytes in buffer for Telnet protocol before sending it over the
+//  air
+//
+static sint8 ICACHE_FLASH_ATTR
+espbuffsend_tn ( serbridgeConnData *conn, const char *data, uint16 len )
+{
+  //  How many bytes for the new buffer?
+  //
+  int n = 0 ;
+  for ( int i=0 ; i<len ; i++ )
+    if ( data[i] == 0xFF )
+      n++ ;
+
+  //  Allocate and populate new buffer if necessary
+  //
+  if ( n ) {
+    char *tnbuf = os_zalloc(len+n);
+    if ( tnbuf == NULL ) {
+      os_printf("espbuffsend: could not allocate buffer for telnet escape\n");
+      return -128;
+    }
+
+    n = 0 ;
+    for ( int i=0 ; i<len ; i++ ) {
+      tnbuf[n++] = data[i] ;
+      if ( data[i] == 0xFF )
+	tnbuf[n++] = 0xFF ;
+    }
+
+    //  Send buffer
+    //
+    sint8 result = espbuffsend( conn, tnbuf, n );
+    os_free( tnbuf );
+    return result ;
+  }
+  
+  return espbuffsend( conn, data, len );
+}
+
+
 // espbuffsend adds data to the send buffer. If the previous send was completed it calls
 // sendtxbuffer and espconn_sent.
 // Returns ESPCONN_OK (0) for success, -128 if buffer is full or error from  espconn_sent
 // Use espbuffsend instead of espconn_sent as it solves the problem that espconn_sent must
 // only be called *after* receiving an espconn_sent_callback for the previous packet.
 static sint8 ICACHE_FLASH_ATTR
-espbuffsend(serbridgeConnData *conn, const char *data, uint16 len)
+espbuffsend(serbridgeConnData *conn, const char *data, uint16 len )
 {
   if (conn->txbufferlen >= MAX_TXBUFFER) goto overflow;
 
@@ -771,7 +784,7 @@ espbuffsend(serbridgeConnData *conn, const char *data, uint16 len)
   }
   return result;
 
-overflow:
+ overflow:
   if (conn->txoverflow_at) {
     // we've already been overflowing
     if (system_get_time() - conn->txoverflow_at > 10*1000*1000) {
@@ -812,44 +825,8 @@ console_process(char *buf, short len)
   // push the buffer into each open connection
   for (short i=0; i<MAX_CONN; i++) {
     if (connData[i].conn) {
-      if ( connData[i].conn_mode == cmTelnet ) {
-	/*
-	 *  Double 0xFF bytes in buf of Telnet connections
-	 */
-
-	//  How many bytes for the new buffer?
-	//
-	int n = 0 ;
-	for ( int i=0 ; i<len ; i++ )
-	  if ( buf[i] == 0xFF )
-	    n++ ;
-
-	//  Allocate and populate new buffer if necessary
-	//
-	if ( n ) {
-	  char *tmpbuf = os_zalloc(len+n);
-	  if ( tmpbuf == NULL ) {
-	    os_printf("serbridge: could not allocate buffer for telnet "
-		      "escape, conn %p\n", &connData[i]);
-	    connData[i].txoverflow_at = system_get_time();
-	    return ;
-	  }
-
-	  n = 0 ;
-	  for ( int i=0 ; i<len ; i++ ) {
-	    tmpbuf[n++] = buf[i] ;
-	    if ( buf[i] == 0xFF )
-	      tmpbuf[n++] = 0xFF ;
-	  }
-
-	  //  Send buffer
-	  //
-	  espbuffsend( &connData[i], tmpbuf, n );
-	  os_free( tmpbuf );
-	}
-	else
-	  espbuffsend( &connData[i], buf, len );
-      }
+      if ( connData[i].conn_mode == cmTelnet )
+	espbuffsend_tn( &connData[i], buf, len );
       else
 	espbuffsend( &connData[i], buf, len );
     }
@@ -952,7 +929,7 @@ serbridgeInitPins()
   mcu_isp_pin = flashConfig.isp_pin;
 #ifdef SERBR_DBG
   os_printf("Serbridge pins: reset=%d isp=%d swap=%d\n",
-      mcu_reset_pin, mcu_isp_pin, flashConfig.swap_uart);
+	    mcu_reset_pin, mcu_isp_pin, flashConfig.swap_uart);
 #endif
 
   if (flashConfig.swap_uart) {
