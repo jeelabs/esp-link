@@ -3,28 +3,30 @@
 /*  Modified by Christophe Duparquet: extended implementation of RFC 2217
  *
  *  Verified on ESP-WROOM-02 with the following configuration:
- *    Reset:      gpio5
+ *    Reset:	  gpio5
  *    ISP/Flash:  disabled
- *    Conn LED:   gpio4
+ *    Conn LED:	  gpio4
  *    Serial LED: disabled
  *    UART pins:  swapped
  *    RX pull-up: yes
  *
  *    ESP connections:
- *      GPIO2 (#7) / 3V3 (#1) -> 1kR
- *      GPIO0 (#8) / 3V3 (#1) -> 1kR
- *      GPIO0 (#8) = USB serial RTS
- *      GPIO13 (#5) / GPIO15 (#6) -> 1kR
- *      GPIO15 (#6) / GND (#9) -> 10kR
- *      EN (#2) / 3V3 (#1) -> 10 kR
- *      #18 = #13 = #1 = GND
- *      RST (#15) -> USB serial RTS
+ *	GPIO2 (#7) / 3V3 (#1) -> 1kR
+ *	GPIO0 (#8) / 3V3 (#1) -> 1kR
+ *	GPIO0 (#8) = USB serial RTS
+ *	GPIO13 (#5) / GPIO15 (#6) -> 1kR
+ *	GPIO15 (#6) / GND (#9) -> 10kR
+ *	EN (#2) / 3V3 (#1) -> 10 kR
+ *	#18 = #13 = #1 = GND
+ *	RST (#15) -> USB serial RTS
  *
  *    ATtiny85 (3V3) connections:
- *      RESET (#1) -> ESP pin GPIO5 (#14)
- *      RXTX  (#2) -> ESP pin GPIO13 (#5)
+ *	RESET (#1) -> ESP pin GPIO5 (#14)
+ *	RXTX  (#2) -> ESP pin GPIO13 (#5)
  *
- *    Command: diabolo -t rfc2217://192.168.1.78:23
+ *    Commands (using pyserial-3.0):
+ *      python -m serial.tools.miniterm rfc2217://192.168.1.78:23
+ *	diabolo -t rfc2217://192.168.1.78:23 --keep-txd-low 0.1 --read-flash
  */
 
 #include "esp8266.h"
@@ -41,12 +43,18 @@
 #define SKIP_AT_RESET
 
 
-/*  ESP8266
+/*  ESP8266 hardware registers
  */
-#define IROM			ICACHE_FLASH_ATTR
 #define REG_BRR			(*(volatile uint32_t*)0x60000014)
 #define REG_CONF0		(*(volatile uint32_t*)0x60000020)
 #define REG_CONF1		(*(volatile uint32_t*)0x60000024)
+
+
+#ifdef SERBR_DBG
+#  define DBG(...)	do { os_printf(__VA_ARGS__); }while(0)
+#else
+#  define DBG(...)	do{}while(0)
+#endif
 
 
 static struct espconn serbridgeConn1; // plain bridging port
@@ -54,15 +62,15 @@ static struct espconn serbridgeConn2; // programming port
 static esp_tcp serbridgeTcp1, serbridgeTcp2;
 static int8_t mcu_reset_pin, mcu_isp_pin;
 
-extern uint8_t slip_disabled;   // disable slip to allow flashing of attached MCU
+extern uint8_t slip_disabled;	// disable slip to allow flashing of attached MCU
 
 void (*programmingCB)(char *buffer, short length) = NULL;
 
 // Connection pool
 serbridgeConnData connData[MAX_CONN];
 
-static sint8 IROM	espbuffsend(serbridgeConnData *conn, const char *data, uint16 len) ;
-static sint8 IROM	espbuffsend_tn(serbridgeConnData *conn, const char *data, uint16 len) ;
+static sint8 ICACHE_FLASH_ATTR	espbuffsend(serbridgeConnData *conn, const char *data, uint16 len) ;
+static sint8 ICACHE_FLASH_ATTR	espbuffsend_tn(serbridgeConnData *conn, const char *data, uint16 len) ;
 
 
 // Telnet protocol (RFC854) characters
@@ -88,13 +96,6 @@ static sint8 IROM	espbuffsend_tn(serbridgeConnData *conn, const char *data, uint
 #define PURGE_DATA		12	//   suboption "PURGE"
 
 
-#ifdef SERBR_DBG
-#  define dbgf(...)	do { os_printf(__VA_ARGS__); }while(0)
-#else
-#  define dbgf(...)	do{}while(0)
-#endif
-
-
 /*  Telnet state machine states
  */
 enum {
@@ -115,7 +116,8 @@ enum {
 
 /*  Telnet state machine: process one byte comming from a telnet connection
  */
-static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
+static void ICACHE_FLASH_ATTR
+telnet_process_char ( serbridgeConnData *conn, char c )
 {
 #define state		conn->tn_state
 #define opt		conn->tn_opt
@@ -167,7 +169,7 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
   }
 
   if ( state == ST_NEGO ) {
-    dbgf("TELNET: IAC NEGO (%02X)", c);
+    DBG("TELNET: IAC NEGO (%02X)", c);
     if ( c == BINARY ||
 	 c == ECHO ||
 	 c == SUPPRESS_GO_AHEAD ||
@@ -175,7 +177,7 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
       /*
        *  Acknowledge positive requests for known options
        */
-      dbgf(": OK\n");
+      DBG(": OK\n");
       if ( opt == DO )
 	opt = WILL ;
       else if ( opt == WILL )
@@ -185,14 +187,14 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
       /*
        *  Deny positive requests for unknown options
        */
-      dbgf(": REJECTED\n");
+      DBG(": REJECTED\n");
       if ( opt == DO )
 	opt = WONT ;
       else if ( opt == WILL )
 	opt = DONT ;
     }
     /*
-     *  Send reply
+     *	Send reply
      */
     espbuffsend( conn, (char[]){IAC,opt,c}, 3 );
     state = ST_NORMAL ;
@@ -215,26 +217,26 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
 
   if ( state == ST_COMPORT ) {
     if ( c == SET_BAUDRATE ) {
-      dbgf("  BAUDRATE:");
+      DBG("  BAUDRATE:");
       vlen = 0 ;
       state = ST_BAUDRATE ;
     } else if ( c == SET_DATASIZE ) {
-      dbgf("  DATASIZE:");
+      DBG("  DATASIZE:");
       state = ST_DATASIZE ;
     } else if ( c == SET_PARITY ) {
-      dbgf("  PARITY:");
+      DBG("  PARITY:");
       state = ST_PARITY ;
     } else if ( c == SET_STOPSIZE ) {
-      dbgf("  STOPSIZE:");
+      DBG("  STOPSIZE:");
       state = ST_STOPSIZE ;
     } else if ( c == SET_CONTROL ) {
-      dbgf("  CONTROL:");
+      DBG("  CONTROL:");
       state = ST_CONTROL ;
     } else if ( c == PURGE_DATA ) {
-      dbgf("  PURGE:");
+      DBG("  PURGE:");
       state = ST_PURGE ;
     } else {
-      dbgf("UNKNOWN: %02X\n", c);
+      DBG("UNKNOWN: %02X\n", c);
       state = ST_WAIT_IAC ;
     }
     return ;
@@ -242,9 +244,9 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
 
   if ( state == ST_BAUDRATE ) {
     /*
-     *  Get 4 bytes of baudrate (MSB first)
+     *	Get 4 bytes of baudrate (MSB first)
      */
-    dbgf(" %02X", c);
+    DBG(" %02X", c);
 
     value <<= 8 ;
     value += c ;
@@ -258,18 +260,22 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
        */
       if ( value == 0 )
 	/*
-	 *  Get actual baudrate
+	 *  Get baudrate
 	 */
-	value = (int)(0.5 + 80e6/REG_BRR);
+	//value = (int)(0.5 + 80e6/REG_BRR);
+	value = flashConfig.baud_rate ;
       else
 	/*
 	 *  Set baudrate
 	 */
-	REG_BRR = (int)(0.5 + 80e6/value);
+	//REG_BRR = (int)(0.5 + 80e6/value);
+	//UART_SetBaudrate(0,value); /* Not supported? */
+	flashConfig.baud_rate = value ;
+      uart0_baud( value );
 
       /*  Acknowledge
        */
-      dbgf(" = %ld\n", value);
+      DBG(" = %ld\n", value);
       char v0 = value ;
       char v1 = value >> 8 ;
       char v2 = value >> 16 ;
@@ -286,8 +292,7 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
   if ( state == ST_DATASIZE ) {
     if ( c >= 5 && c <= 8 ) {
       /*
-       *  Set data size
-       *  Store databits in bits 3..2 of register conf0
+       *  Set data size: CONF0 bits 3..2
        */
       REG_CONF0 = (REG_CONF0 & ~0xC) | ((c-5)<<2) ;
     }
@@ -298,9 +303,9 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
       c = 5 + ((REG_CONF0>>2) & 0x03) ;
     }
 
-    /*  Acknowledge datasize
+    /*	Acknowledge datasize
      */
-    dbgf(" %d\n", c );
+    DBG(" %d\n", c );
     espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_DATASIZE,c,IAC,SE},7 );
     state = ST_WAIT_IAC ;
     return ;
@@ -343,9 +348,9 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
       return ;
     }
 
-    /*  Acknowledge parity
+    /*	Acknowledge parity
      */
-    dbgf(" %d\n", c );
+    DBG(" %d\n", c );
     espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_PARITY,c,IAC,SE},7 );
     state = ST_WAIT_IAC ;
     return ;
@@ -384,9 +389,9 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
       return ;
     }
 
-    /*  Acknowledge stop bits
+    /*	Acknowledge stop bits
      */
-    dbgf(" %d\n", c );
+    DBG(" %d\n", c );
     espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_STOPSIZE,c,IAC,SE},7 );
     state = ST_WAIT_IAC ;
     return ;
@@ -418,84 +423,68 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
     else if ( c == 8 ) {
 #ifdef USE_UART_CONTROL_LINES
       /*
-       *  Set DTR Signal State ON
-       *
-       *  Assert DTR: CONF0 bit 7
+       *  Set DTR Signal State ON: CONF0 bit 7 = 1
        */
       REG_CONF0 |= (1ULL<<7) ;
 #else
       /*
-       *  Set DTR Signal State ON
-       *
-       *  Drive MCU reset LOW
+       *  Set DTR Signal State ON: drive MCU reset LOW
        */
       if (mcu_reset_pin >= 0) {
-	dbgf("MCU reset gpio%d\n", mcu_reset_pin);
+	DBG("MCU reset gpio%d\n", mcu_reset_pin);
 	GPIO_OUTPUT_SET(mcu_reset_pin, 0);
       }
       else
-	dbgf("MCU reset: no pin\n");
+	DBG("MCU reset: no pin\n");
 #endif
     }
     else if ( c == 9 ) {
 #ifdef USE_UART_CONTROL_LINES
       /*
-       *  Set DTR Signal State OFF
-       *
-       *  Assert DTR: CONF0 bit 7
+       *  Set DTR Signal State OFF: CONF0 bit 7 = 0
        */
       REG_CONF0 &= ~(1ULL<<7) ;
 #else
       /*
-       *  Set DTR Signal State OFF
-       *
-       *  Drive MCU reset HIGH
+       *  Set DTR Signal State OFF: drive MCU reset HIGH
        */
       if (mcu_reset_pin >= 0) {
-	dbgf("MCU reset gpio%d\n", mcu_reset_pin);
+	DBG("MCU reset gpio%d\n", mcu_reset_pin);
 	GPIO_OUTPUT_SET(mcu_reset_pin, 1);
       }
       else
-	dbgf("MCU reset: no pin\n");
+	DBG("MCU reset: no pin\n");
 #endif
     }
     else if ( c == 11 ) {
 #ifdef USE_UART_CONTROL_LINES
       /*
-       *  Set RTS Signal State ON
-       *
-       *  Assert RTS: CONF0 bit 6 = 1
+       *  Set RTS Signal State ON: CONF0 bit 6 = 1
        */
       REG_CONF0 |= (1ULL<<6) ;
 #else
       /*
-       *  Set RTS Signal State ON
-       *
-       *  Drive MCU ISP pin LOW
+       *  Set RTS Signal State ON: drive MCU ISP pin LOW
        */
       if (mcu_isp_pin >= 0) {
-	dbgf("MCU ISP gpio%d\n", mcu_isp_pin);
+	DBG("MCU ISP gpio%d\n", mcu_isp_pin);
 	GPIO_OUTPUT_SET(mcu_isp_pin, 0);
 	os_delay_us(100L);
       }
       else
-	dbgf("MCU isp: no pin\n");
+	DBG("MCU isp: no pin\n");
       slip_disabled++;
 #endif
     }
     else if ( c == 12 ) {
 #ifdef USE_UART_CONTROL_LINES
       /*
-       *  Set RTS Signal State OFF
-       *
-       *  Assert RTS: CONF0 bit 6 = 0
+       *  Set RTS Signal State OFF: CONF0 bit 6 = 0
        */
       REG_CONF0 &= ~(1ULL<<6) ;
 #else
       /*
-       *  Set RTS Signal State OFF
-       *
-       *  Drive MCU ISP pin HIGH
+       *  Set RTS Signal State OFF: drive MCU ISP pin HIGH
        */
       if (mcu_isp_pin >= 0) {
 	GPIO_OUTPUT_SET(mcu_isp_pin, 1);
@@ -512,9 +501,9 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
       return ;
     }
 
-    /*  Acknowledge control
+    /*	Acknowledge control
      */
-    dbgf(" %d\n", c );
+    DBG(" %d\n", c );
     espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+SET_CONTROL,c,IAC,SE},7 );
     state = ST_WAIT_IAC ;
     return ;
@@ -542,17 +531,15 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
       return ;
     }
 
-    /*  Acknowledge purge
+    /*	Acknowledge purge
      */
-    dbgf(" %d\n", c );
+    DBG(" %d\n", c );
     espbuffsend( conn, (char[]){IAC,SB,COM_PORT_OPTION,100+PURGE_DATA,c,IAC,SE},7 );
     state = ST_WAIT_IAC ;
     return ;
   }
 
-  /*  Unexpected char
-   */
-  state = ST_WAIT_IAC ;
+  /*  Unknown state  */
 
 #undef state
 #undef opt
@@ -563,7 +550,8 @@ static void IROM telnet_process_char ( serbridgeConnData *conn, char c )
 
 /*  Process bytes comming from a telnet connection
  */
-static void IROM telnet_process_buf ( serbridgeConnData *conn, uint8_t *buf, int len )
+static void ICACHE_FLASH_ATTR
+telnet_process_buf ( serbridgeConnData *conn, uint8_t *buf, int len )
 {
 #ifdef SERBR_DBG
   os_printf("TELNET:");
@@ -615,14 +603,14 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
 
     // If the connection starts with the Arduino or ARM reset sequence we perform a RESET
     if ((len == 2 && strncmp(data, "0 ", 2) == 0) ||
-        (len == 2 && strncmp(data, "?\n", 2) == 0) ||
-        (len == 3 && strncmp(data, "?\r\n", 3) == 0)) {
+	(len == 2 && strncmp(data, "?\n", 2) == 0) ||
+	(len == 3 && strncmp(data, "?\r\n", 3) == 0)) {
       startPGM = true;
       conn->conn_mode = cmPGM;
 
       // If the connection starts with a telnet negotiation we will do telnet
     }
-    //    else if (len >= 3 && strncmp(data, (char[]){IAC, WILL, COM_PORT_OPTION}, 3) == 0) {
+    //	  else if (len >= 3 && strncmp(data, (char[]){IAC, WILL, COM_PORT_OPTION}, 3) == 0) {
     else if ( len>2 && data[0]==IAC && (data[1]==WILL || data[1]==DO) ) {
       conn->conn_mode = cmTelnet;
       conn->tn_state = ST_NORMAL;
@@ -669,7 +657,7 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
 
   if ( conn->conn_mode == cmTelnet ) {
     /*
-     *  Process Telnet protocol
+     *	Process Telnet protocol
      */
     telnet_process_buf( conn, (uint8_t *)data, len );
   } else {
@@ -714,37 +702,16 @@ sendtxbuffer(serbridgeConnData *conn)
 static sint8 ICACHE_FLASH_ATTR
 espbuffsend_tn ( serbridgeConnData *conn, const char *data, uint16 len )
 {
-  //  How many bytes for the new buffer?
-  //
-  int n = 0 ;
-  for ( int i=0 ; i<len ; i++ )
-    if ( data[i] == 0xFF )
-      n++ ;
+  sint8 r ;
 
-  //  Allocate and populate new buffer if necessary
-  //
-  if ( n ) {
-    char *tnbuf = os_zalloc(len+n);
-    if ( tnbuf == NULL ) {
-      os_printf("espbuffsend: could not allocate buffer for telnet escape\n");
-      return -128;
-    }
-
-    n = 0 ;
-    for ( int i=0 ; i<len ; i++ ) {
-      tnbuf[n++] = data[i] ;
-      if ( data[i] == 0xFF )
-	tnbuf[n++] = 0xFF ;
-    }
-
-    //  Send buffer
-    //
-    sint8 result = espbuffsend( conn, tnbuf, n );
-    os_free( tnbuf );
-    return result ;
+  for ( char const *p=data ; p<data+len ; p++ ) {
+    if ( (r = espbuffsend( conn, p, 1 )) != 0 )
+      return r ;
+    if ( *p == '\xFF' && (r = espbuffsend( conn, p, 1 )) != 0 )
+      return r ;
   }
-  
-  return espbuffsend( conn, data, len );
+
+  return 0;
 }
 
 
@@ -937,23 +904,23 @@ serbridgeInitPins()
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, 4);
     PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTCK_U);
     if (flashConfig.rx_pullup) PIN_PULLUP_EN(PERIPHS_IO_MUX_MTDO_U);
-    else                       PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTDO_U);
+    else		       PIN_PULLUP_DIS(PERIPHS_IO_MUX_MTDO_U);
     system_uart_swap();
   } else {
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, 0);
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0RXD_U, 0);
     PIN_PULLUP_DIS(PERIPHS_IO_MUX_U0TXD_U);
     if (flashConfig.rx_pullup) PIN_PULLUP_EN(PERIPHS_IO_MUX_U0RXD_U);
-    else                       PIN_PULLUP_DIS(PERIPHS_IO_MUX_U0RXD_U);
+    else		       PIN_PULLUP_DIS(PERIPHS_IO_MUX_U0RXD_U);
     system_uart_de_swap();
   }
 
   // set both pins to 1 before turning them on so we don't cause a reset
-  if (mcu_isp_pin >= 0)   GPIO_OUTPUT_SET(mcu_isp_pin, 1);
+  if (mcu_isp_pin >= 0)	  GPIO_OUTPUT_SET(mcu_isp_pin, 1);
   if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 1);
   // switch pin mux to make these pins GPIO pins
   if (mcu_reset_pin >= 0) makeGpio(mcu_reset_pin);
-  if (mcu_isp_pin >= 0)   makeGpio(mcu_isp_pin);
+  if (mcu_isp_pin >= 0)	  makeGpio(mcu_isp_pin);
 }
 
 // Start transparent serial bridge TCP server on specified port (typ. 23)
