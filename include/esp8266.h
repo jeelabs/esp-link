@@ -14,6 +14,8 @@
 #include <ets_sys.h>
 #include <gpio.h>
 #include <mem.h>
+
+#define USE_US_TIMER
 #include <osapi.h>
 #include <upgrade.h>
 

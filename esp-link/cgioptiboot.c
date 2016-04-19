@@ -1,9 +1,6 @@
 // Copyright (c) 2015 by Thorsten von Eicken, see LICENSE.txt in the esp-link repo
 
-#define USE_US_TIMER
-
 #include <esp8266.h>
-#include <osapi.h>
 #include "cgi.h"
 #include "cgioptiboot.h"
 #include "config.h"

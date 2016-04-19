@@ -37,8 +37,6 @@
 // Allow messages that don't require ACK to be sent even when pending_buffer is != NULL
 // Set dup flag in retransmissions
 
-#define USE_US_TIMER
-
 #include <esp8266.h>
 #include "pktbuf.h"
 #include "mqtt.h"

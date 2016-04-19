@@ -1,7 +1,5 @@
 // Copyright 2015 by Thorsten von Eicken, see LICENSE.txt
 
-#define USE_US_TIMER
-
 #include <esp8266.h>
 #include <config.h>
 #include <serled.h>

@@ -13,8 +13,6 @@ Cgi/template routines for the /wifi url.
  * ----------------------------------------------------------------------------
  */
 
-#define USE_US_TIMER
-
 #include <esp8266.h>
 #include "cgiwifi.h"
 #include "cgi.h"

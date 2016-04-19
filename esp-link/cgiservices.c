@@ -1,4 +1,3 @@
-#define USE_US_TIMER
 
 #include <esp8266.h>
 #include "cgiwifi.h"

@@ -13,10 +13,7 @@ Some flash handling cgi routines. Used for reading the existing flash and updati
  * ----------------------------------------------------------------------------
  */
 
-#define USE_US_TIMER
-
 #include <esp8266.h>
-#include <osapi.h>
 #include "cgi.h"
 #include "cgiflash.h"
 

@@ -8,8 +8,6 @@
  *
  */
 
-#define USE_US_TIMER
-
 #include <esp8266.h>
 #include "config.h"
 #include "syslog.h"

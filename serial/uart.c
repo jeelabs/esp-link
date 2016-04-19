@@ -17,11 +17,9 @@
  * ----------------------------------------------------------------------------
  * Heavily modified and enhanced by Thorsten von Eicken in 2015
  */
-#define USE_US_TIMER
 #include "esp8266.h"
 #include "task.h"
 #include "uart.h"
-#include <osapi.h>
 
 #ifdef UART_DBG
 #define DBG_UART(format, ...) os_printf(format, ## __VA_ARGS__)
