@@ -69,6 +69,9 @@ tx_enable(bool state)
 #endif
 }
 
+os_timer_t uart_tx_enable_timer;
+bool uart_tx_enable_timer_inited = false;
+
 /******************************************************************************
  * FunctionName : tx_completed_interrupt
  * Description  : Internal used function
@@ -77,8 +80,9 @@ tx_enable(bool state)
  * Returns      : NONE
 *******************************************************************************/
 static void ICACHE_FLASH_ATTR
-tx_completed_interrupt(void *arg)
+tx_completed_interrupt(void *unused)
 {
+	os_timer_disarm(&uart_tx_enable_timer);
 	tx_enable(false);
 }
 
@@ -152,8 +156,6 @@ uart_config(uint8 uart_no)
   WRITE_PERI_REG(UART_INT_CLR(uart_no), 0xffff);
 }
 
-os_timer_t uart_tx_enable_timer;
-bool uart_tx_enable_timer_inited = false;
 
 /******************************************************************************
  * FunctionName : uart1_tx_one_char
@@ -168,12 +170,13 @@ uart_tx_one_char(uint8 uart, uint8 c)
   //Wait until there is room in the FIFO
   while (((READ_PERI_REG(UART_STATUS(uart))>>UART_TXFIFO_CNT_S)&UART_TXFIFO_CNT)>=100) ;
   //Send the character
-  if (UART0 == uart) {
+  if (UART0 == uart && uart0_tx_enable_pin >= 0) {
 	if (uart_tx_enable_timer_inited) {
-      // If a tx_completed_interrupt has already been scheduled, cancel it before it fires during our transmission
+      // A tx_completed_interrupt may have already been scheduled, cancel it before it fires during our transmission
 	  os_timer_disarm(&uart_tx_enable_timer);
 	} else {
 	  os_timer_setfn(&uart_tx_enable_timer, tx_completed_interrupt, NULL);
+	  uart_tx_enable_timer_inited = true;
 	}
 
     tx_enable(true);
