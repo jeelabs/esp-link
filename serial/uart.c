@@ -131,6 +131,7 @@ uart_config(uint8 uart_no)
 
 	uint32_t tx_empty_bits = 0;
 	if (uart0_tx_enable_pin >= 0) {
+	  // Set the empty threshold to 0 and enable the buffer empty interrupt
 	  tx_empty_bits = (0 & UART_TXFIFO_EMPTY_THRHD) << UART_TXFIFO_EMPTY_THRHD_S | UART_TXFIFO_EMPTY_INT_ENA;
 	}
     WRITE_PERI_REG(UART_CONF1(uart_no),
