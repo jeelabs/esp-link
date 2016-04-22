@@ -31,7 +31,11 @@ function updateText(resp) {
     if (resp.start > el.textEnd) {
       el.innerHTML = el.innerHTML.concat("\r\n<missing lines\r\n");
     }
-    el.innerHTML = el.innerHTML.concat(resp.text);
+    el.innerHTML = el.innerHTML.concat(resp.text
+       .replace(/&/g, '&amp;')
+       .replace(/</g, '&lt;')
+       .replace(/>/g, '&gt;')
+       .replace(/"/g, '&quot;'));
     el.textEnd = resp.start + resp.len;
     delay = 500;
 
