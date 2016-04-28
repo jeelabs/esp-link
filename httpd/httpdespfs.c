@@ -40,7 +40,7 @@ cgiEspFsHook(HttpdConnData *connData) {
 
 	if (file==NULL) {
 		//First call to this cgi. Open the file so we can read it.
-		file=espFsOpen(connData->url);
+		file=espFsOpen(espLinkCtx, connData->url);
 		if (file==NULL) {
 			return HTTPD_CGI_NOTFOUND;
 		}

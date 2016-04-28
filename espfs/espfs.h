@@ -7,10 +7,19 @@ typedef enum {
 	ESPFS_INIT_RESULT_BAD_ALIGN,
 } EspFsInitResult;
 
-typedef struct EspFsFile EspFsFile;
+typedef enum {
+	ESPFS_MEMORY,
+	ESPFS_FLASH,
+} EspFsSource;
 
-EspFsInitResult espFsInit(void *flashAddress);
-EspFsFile *espFsOpen(char *fileName);
+typedef struct EspFsFile EspFsFile;
+typedef struct EspFsContext EspFsContext;
+
+extern EspFsContext * espLinkCtx;
+extern EspFsContext * userCtx;
+
+EspFsInitResult espFsInit(EspFsContext *ctx, void *flashAddress, EspFsSource source);
+EspFsFile *espFsOpen(EspFsContext *ctx, char *fileName);
 int espFsFlags(EspFsFile *fh);
 int espFsRead(EspFsFile *fh, char *buff, int len);
 void espFsClose(EspFsFile *fh);
