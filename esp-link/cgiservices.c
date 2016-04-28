@@ -68,6 +68,7 @@ int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
       "\"name\": \"%s\", "
       "\"reset cause\": \"%d=%s\", "
       "\"size\": \"%s\", "
+      "\"upload-size\": \"%d\", "
       "\"id\": \"0x%02X 0x%04X\", "
       "\"partition\": \"%s\", "
       "\"slip\": \"%s\", "
@@ -79,6 +80,7 @@ int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
     rst_info->reason,
     rst_codes[rst_info->reason],
     flash_maps[system_get_flash_size_map()],
+    getUserPageSectionEnd()-getUserPageSectionStart(),
     fid & 0xff, (fid & 0xff00) | ((fid >> 16) & 0xff),
     part_id ? "user2.bin" : "user1.bin",
     flashConfig.slip_enable ? "enabled" : "disabled",

@@ -215,6 +215,7 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
 #endif
         "\"Debug log\", \"/log.html\","
         "\"Upgrade Firmware\", \"/flash.html\""
+        "\"Web Server\", \"/web-server.html\""
       " ], "
       "\"version\": \"%s\", "
       "\"name\": \"%s\""
