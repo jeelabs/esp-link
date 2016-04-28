@@ -49,4 +49,7 @@ bool configRestore(void);
 void configWipe(void);
 const size_t getFlashSize();
 
+const uint32_t getUserPageSectionStart();
+const uint32_t getUserPageSectionEnd();
+
 #endif
