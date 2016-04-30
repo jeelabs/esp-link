@@ -132,6 +132,7 @@ static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
   if (conn->post->buff != NULL) os_free(conn->post->buff);
   conn->cgi = NULL;
   conn->post->buff = NULL;
+  conn->post->multipartBoundary = NULL;
 }
 
 //Stupid li'l helper function that returns the value of a hex char.
@@ -509,6 +510,7 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
       if (data[x] == '\n' && (char *)os_strstr(conn->priv->head, "\r\n\r\n") != NULL) {
         //Indicate we're done with the headers.
         conn->post->len = 0;
+	conn->post->multipartBoundary = NULL;
         //Reset url data
         conn->url = NULL;
         //Iterate over all received headers and parse them.
