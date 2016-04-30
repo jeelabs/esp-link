@@ -16,10 +16,11 @@ typedef struct EspFsFile EspFsFile;
 typedef struct EspFsContext EspFsContext;
 
 extern EspFsContext * espLinkCtx;
-extern EspFsContext * userCtx;
+extern EspFsContext * userPageCtx;
 
 EspFsInitResult espFsInit(EspFsContext *ctx, void *flashAddress, EspFsSource source);
 EspFsFile *espFsOpen(EspFsContext *ctx, char *fileName);
+int espFsIsValid(EspFsContext *ctx);
 int espFsFlags(EspFsFile *fh);
 int espFsRead(EspFsFile *fh, char *buff, int len);
 void espFsClose(EspFsFile *fh);

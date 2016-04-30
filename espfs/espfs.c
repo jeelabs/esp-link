@@ -42,10 +42,10 @@ It's written for use with httpd, but doesn't need to be used as such.
 #include "espfs.h"
 
 EspFsContext espLinkCtxDef;
-EspFsContext userCtxDef;
+EspFsContext userPageCtxDef;
 
 EspFsContext * espLinkCtx = &espLinkCtxDef;
-EspFsContext * userCtx = &userCtxDef;
+EspFsContext * userPageCtx = &userPageCtxDef;
 
 struct EspFsContext
 {
@@ -247,5 +247,7 @@ void ICACHE_FLASH_ATTR espFsClose(EspFsFile *fh) {
 	os_free(fh);
 }
 
-
+int ICACHE_FLASH_ATTR espFsIsValid(EspFsContext *ctx) {
+	return ctx->valid;
+}
 
