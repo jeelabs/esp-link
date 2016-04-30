@@ -19,6 +19,7 @@
 #include "cgimqtt.h"
 #include "cgiflash.h"
 #include "cgioptiboot.h"
+#include "cgiwebserver.h"
 #include "auth.h"
 #include "espfs.h"
 #include "uart.h"
@@ -97,6 +98,7 @@ HttpdBuiltInUrl builtInUrls[] = {
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
 #endif
+  { "/web-server/upload", cgiWebServerUpload, NULL },
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
 };
