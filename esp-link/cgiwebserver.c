@@ -5,27 +5,40 @@
 #include "cgi.h"
 #include "cgioptiboot.h"
 #include "multipart.h"
+#include "espfsformat.h"
 
-void webServerMultipartCallback(MultipartCmd cmd, char *data, int dataLen, int position)
+int webServerMultipartCallback(MultipartCmd cmd, char *data, int dataLen, int position)
 {
   switch(cmd)
   {
     case FILE_START:
-      os_printf("CB: File start: %s\n", data);
+      // do nothing
       break;
     case FILE_DATA:
-      os_printf("CB: Data (%d): %s\n", position, data);
+      if( position < 4 )
+      {
+        for(int p = position; p < 4; p++ )
+        {
+          if( data[p - position] != ((ESPFS_MAGIC >> (p * 8) ) & 255 ) )
+          {
+            os_printf("Not an espfs image!\n");
+            return 1;
+          }
+          data[p - position] = 0xFF; // clean espfs magic to mark as invalid
+        }
+      }
+      // TODO: flash write
       break;
     case FILE_DONE:
-      os_printf("CB: Done\n");
+      // TODO: finalize changes, set back espfs magic
       break;
   }
+  return 0;
 }
 
 MultipartCtx webServerContext = {.callBack = webServerMultipartCallback, .position = 0, .recvPosition = 0, .startTime = 0, .boundaryBuffer = NULL};
 
 int ICACHE_FLASH_ATTR cgiWebServerUpload(HttpdConnData *connData)
 {
-  os_printf("WebServer upload\n");
   return multipartProcess(&webServerContext, connData);
 }
