@@ -13,11 +13,20 @@ Connector to let httpd use the espfs filesystem to serve the files in it.
  * ----------------------------------------------------------------------------
  */
 #include "httpdespfs.h"
+#include "config.h"
 
 // The static files marked with FLAG_GZIP are compressed and will be served with GZIP compression.
 // If the client does not advertise that he accepts GZIP send following warning message (telnet users for e.g.)
 static const char *gzipNonSupportedMessage = "HTTP/1.0 501 Not implemented\r\nServer: esp8266-httpd/"HTTPDVER"\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 52\r\n\r\nYour browser does not accept gzip-compressed data.\r\n";
 
+void ICACHE_FLASH_ATTR httpdespfsInit()
+{
+	espFsInit(userPageCtx, (void *)getUserPageSectionStart(), ESPFS_FLASH);
+	if( espFsIsValid( userPageCtx ) )
+		os_printf("Valid user file system found!\n");
+	else
+		os_printf("No user file system found!\n");
+}
 
 //This is a catch-all cgi function. It takes the url passed to it, looks up the corresponding
 //path in the filesystem and if it exists, passes the file through. This simulates what a normal
@@ -42,7 +51,14 @@ cgiEspFsHook(HttpdConnData *connData) {
 		//First call to this cgi. Open the file so we can read it.
 		file=espFsOpen(espLinkCtx, connData->url);
 		if (file==NULL) {
-			return HTTPD_CGI_NOTFOUND;
+			if( espFsIsValid(userPageCtx) )
+			{
+				file = espFsOpen(userPageCtx, connData->url );
+				if( file == NULL )
+					return HTTPD_CGI_NOTFOUND;
+			}
+			else
+				return HTTPD_CGI_NOTFOUND;
 		}
 
 		// The gzip checking code is intentionally without #ifdefs because checking
