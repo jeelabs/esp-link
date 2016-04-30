@@ -6,14 +6,14 @@
 
 #define BOUNDARY_SIZE 100
 
-void multipartAllocBoundaryBuffer(MultipartCtx * context)
+void ICACHE_FLASH_ATTR multipartAllocBoundaryBuffer(MultipartCtx * context)
 {
   if( context->boundaryBuffer == NULL )
     context->boundaryBuffer = (char *)os_malloc(3*BOUNDARY_SIZE + 1);
   context->boundaryBufferPtr = 0;
 }
 
-void multipartFreeBoundaryBuffer(MultipartCtx * context)
+void ICACHE_FLASH_ATTR multipartFreeBoundaryBuffer(MultipartCtx * context)
 {
   if( context->boundaryBuffer != NULL )
   {
@@ -22,7 +22,7 @@ void multipartFreeBoundaryBuffer(MultipartCtx * context)
   }
 }
 
-int multipartProcessBoundaryBuffer(MultipartCtx * context, char * boundary, char * buff, int len, int last)
+int ICACHE_FLASH_ATTR multipartProcessBoundaryBuffer(MultipartCtx * context, char * boundary, char * buff, int len, int last)
 {
   if( len != 0 )
   {
