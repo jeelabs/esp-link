@@ -155,54 +155,78 @@ int ICACHE_FLASH_ATTR espFsFlags(EspFsFile *fh) {
 	return (int)flags;
 }
 
+void ICACHE_FLASH_ATTR espFsIteratorInit(EspFsContext *ctx, EspFsIterator *iterator)
+{
+	if( ctx->data == NULL )
+	{
+		iterator->ctx = NULL;
+		return;
+	}
+	iterator->ctx = ctx;
+	iterator->p = ctx->data;
+}
+
+int ICACHE_FLASH_ATTR espFsIteratorNext(EspFsIterator *iterator)
+{
+	if( iterator->ctx == NULL )
+		return 0;
+	
+	char * p = iterator->p;
+	
+	iterator->node = p;
+	EspFsHeader * hdr = &iterator->header;
+	espfs_memcpy(iterator->ctx, hdr, p, sizeof(EspFsHeader));
+	
+	if (hdr->magic!=ESPFS_MAGIC) {
+#ifdef ESPFS_DBG
+		os_printf("Magic mismatch. EspFS image broken.\n");
+#endif
+		return 0;
+	}
+	if (hdr->flags&FLAG_LASTFILE) {
+		//os_printf("End of image.\n");
+		return 0;
+	}
+	
+	p += sizeof(EspFsHeader);
+	
+	//Grab the name of the file.
+	espfs_memcpy(iterator->ctx, iterator->name, p, sizeof(iterator->name));
+	
+	p+=hdr->nameLen+hdr->fileLenComp;
+	if ((int)p&3) p+=4-((int)p&3); //align to next 32bit val
+	iterator->p = p;
+	return 1;
+}
+
 //Open a file and return a pointer to the file desc struct.
 EspFsFile ICACHE_FLASH_ATTR *espFsOpen(EspFsContext *ctx, char *fileName) {
-	if (ctx->data == NULL) {
+	EspFsIterator it;
+	espFsIteratorInit(ctx, &it);
+	if (it.ctx == NULL) {
 #ifdef ESPFS_DBG
 		os_printf("Call espFsInit first!\n");
 #endif
 		return NULL;
 	}
-	char *p=ctx->data;
-	char *hpos;
-	char namebuf[256];
-	EspFsHeader h;
-	EspFsFile *r;
 	//Strip initial slashes
 	while(fileName[0]=='/') fileName++;
-	//Go find that file!
-	while(1) {
-		hpos=p;
-		//Grab the next file header.
-		espfs_memcpy(ctx, &h, p, sizeof(EspFsHeader));
-		if (h.magic!=ESPFS_MAGIC) {
-#ifdef ESPFS_DBG
-			os_printf("Magic mismatch. EspFS image broken.\n");
-#endif
-			return NULL;
-		}
-		if (h.flags&FLAG_LASTFILE) {
-			//os_printf("End of image.\n");
-			return NULL;
-		}
-		//Grab the name of the file.
-		p+=sizeof(EspFsHeader);
-		espfs_memcpy(ctx, namebuf, p, sizeof(namebuf));
-//		os_printf("Found file '%s'. Namelen=%x fileLenComp=%x, compr=%d flags=%d\n",
-//				namebuf, (unsigned int)h.nameLen, (unsigned int)h.fileLenComp, h.compression, h.flags);
-		if (os_strcmp(namebuf, fileName)==0) {
+	
+	//Search the file
+	while( espFsIteratorNext(&it) ) 
+	{
+		if (os_strcmp(it.name, fileName)==0) {
 			//Yay, this is the file we need!
-			p+=h.nameLen; //Skip to content.
-			r=(EspFsFile *)os_malloc(sizeof(EspFsFile)); //Alloc file desc mem
+			EspFsFile * r=(EspFsFile *)os_malloc(sizeof(EspFsFile)); //Alloc file desc mem
 			//os_printf("Alloc %p[%d]\n", r, sizeof(EspFsFile));
 			if (r==NULL) return NULL;
 			r->ctx = ctx;
-			r->header=(EspFsHeader *)hpos;
-			r->decompressor=h.compression;
-			r->posComp=p;
-			r->posStart=p;
+			r->header=(EspFsHeader *)it.node;
+			r->decompressor=it.header.compression;
+			r->posComp=it.node + it.header.nameLen  + sizeof(EspFsHeader);
+			r->posStart=it.node + it.header.nameLen  + sizeof(EspFsHeader);
 			r->posDecomp=0;
-			if (h.compression==COMPRESS_NONE) {
+			if (it.header.compression==COMPRESS_NONE) {
 				r->decompData=NULL;
 			} else {
 #ifdef ESPFS_DBG
@@ -212,10 +236,8 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(EspFsContext *ctx, char *fileName) {
 			}
 			return r;
 		}
-		//We don't need this file. Skip name and file
-		p+=h.nameLen+h.fileLenComp;
-		if ((int)p&3) p+=4-((int)p&3); //align to next 32bit val
 	}
+	return NULL;
 }
 
 //Read len bytes from the given file into buff. Returns the actual amount of bytes read.
