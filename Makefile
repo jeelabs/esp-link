@@ -101,7 +101,7 @@ LED_SERIAL_PIN      ?= 14
 # --------------- esp-link modules config options ---------------
 
 # Optional Modules mqtt
-MODULES ?= mqtt rest syslog
+MODULES ?= mqtt rest syslog web-server
 
 # --------------- esphttpd config options ---------------
 
@@ -218,6 +218,10 @@ endif
 
 ifneq (,$(findstring syslog,$(MODULES)))
 	CFLAGS		+= -DSYSLOG
+endif
+
+ifneq (,$(findstring web-server,$(MODULES)))
+	CFLAGS		+= -DWEBSERVER
 endif
 
 # which modules (subdirectories) of the project to include in compiling

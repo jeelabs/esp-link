@@ -31,6 +31,7 @@
 #include "log.h"
 #include "gpio.h"
 #include "cgiservices.h"
+#include "web-server.h"
 
 #ifdef SYSLOG
 #include "syslog.h"
@@ -157,7 +158,7 @@ void user_init(void) {
   //os_printf("espFsInit %s\n", res?"ERR":"ok");
   // mount the http handlers
   httpdInit(builtInUrls, 80);
-  httpdespfsInit();
+  webServerInit();
   
   // init the wifi-serial transparent bridge (port 23)
   serbridgeInit(23, 2323);
