@@ -221,7 +221,8 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(EspFsContext *ctx, char *fileName) {
 			//os_printf("Alloc %p[%d]\n", r, sizeof(EspFsFile));
 			if (r==NULL) return NULL;
 			r->ctx = ctx;
-			r->header=(EspFsHeader *)it.node;
+			r->header=(EspFsHeader *)os_malloc(sizeof(EspFsHeader));
+			os_memcpy(r->header, &it.header, sizeof(EspFsHeader));
 			r->decompressor=it.header.compression;
 			r->posComp=it.node + it.header.nameLen  + sizeof(EspFsHeader);
 			r->posStart=it.node + it.header.nameLen  + sizeof(EspFsHeader);
@@ -266,6 +267,9 @@ int ICACHE_FLASH_ATTR espFsRead(EspFsFile *fh, char *buff, int len) {
 void ICACHE_FLASH_ATTR espFsClose(EspFsFile *fh) {
 	if (fh==NULL) return;
 	//os_printf("Freed %p\n", fh);
+	if( fh->header != NULL )
+		os_free( fh->header );
+	fh->header = NULL;
 	os_free(fh);
 }
 
