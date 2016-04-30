@@ -22,7 +22,7 @@ void multipartFreeBoundaryBuffer(MultipartCtx * context)
   }
 }
 
-void multipartProcessBoundaryBuffer(MultipartCtx * context, char * boundary, char * buff, int len, int last)
+int multipartProcessBoundaryBuffer(MultipartCtx * context, char * boundary, char * buff, int len, int last)
 {
   if( len != 0 )
   {
@@ -35,7 +35,7 @@ void multipartProcessBoundaryBuffer(MultipartCtx * context, char * boundary, cha
   while( context->boundaryBufferPtr > 0 )
   {
     if( ! last && context->boundaryBufferPtr <= 2 * BOUNDARY_SIZE )
-      return;
+      return 0;
   
     int dataSize = BOUNDARY_SIZE;
   
@@ -96,7 +96,8 @@ void multipartProcessBoundaryBuffer(MultipartCtx * context, char * boundary, cha
                       {
                         context->boundaryBuffer[pos] = 0;
                         os_printf("Uploading file: %s\n", context->boundaryBuffer + start);
-                        context->callBack( FILE_START, context->boundaryBuffer + start, pos - start, 0 );
+                        if( context->callBack( FILE_START, context->boundaryBuffer + start, pos - start, 0 ) )
+			  return 1;
                         context->boundaryBuffer[pos] = '"';
                         context->state = STATE_SEARCH_HEADER_END;
                       }
@@ -111,7 +112,8 @@ void multipartProcessBoundaryBuffer(MultipartCtx * context, char * boundary, cha
           {
             char c = context->boundaryBuffer[dataSize];
             context->boundaryBuffer[dataSize] = 0; // add terminating zero (for easier handling)
-            context->callBack( FILE_DATA, context->boundaryBuffer, dataSize, context->position );
+            if( context->callBack( FILE_DATA, context->boundaryBuffer, dataSize, context->position ) )
+	      return 1;
             context->boundaryBuffer[dataSize] = c;
             context->position += dataSize;
           }
@@ -126,7 +128,8 @@ void multipartProcessBoundaryBuffer(MultipartCtx * context, char * boundary, cha
       dataSize += os_strlen(boundary);
       if( context->state == STATE_UPLOAD_FILE )
       {
-        context->callBack( FILE_DONE, NULL, 0, context->position );
+        if( context->callBack( FILE_DONE, NULL, 0, context->position ) )
+	  return 1;
         os_printf("File upload done\n");
       }
 
@@ -136,6 +139,7 @@ void multipartProcessBoundaryBuffer(MultipartCtx * context, char * boundary, cha
     context->boundaryBufferPtr -= dataSize;
     os_memcpy(context->boundaryBuffer, context->boundaryBuffer + dataSize, context->boundaryBufferPtr);
   }
+  return 0;
 }
 
 int ICACHE_FLASH_ATTR multipartProcess(MultipartCtx * context, HttpdConnData * connData )
@@ -162,25 +166,42 @@ int ICACHE_FLASH_ATTR multipartProcess(MultipartCtx * context, HttpdConnData * c
       multipartAllocBoundaryBuffer(context);
     }
 
-    int feed = 0;
-    while( feed < post->buffLen )
+    if( context->state != STATE_ERROR )
     {
-      int len = post->buffLen - feed;
-      if( len > BOUNDARY_SIZE )
-        len = BOUNDARY_SIZE;
-      multipartProcessBoundaryBuffer(context, post->multipartBoundary, post->buff + feed, len, 0);
-      feed += len;
+      int feed = 0;
+      while( feed < post->buffLen )
+      {
+        int len = post->buffLen - feed;
+        if( len > BOUNDARY_SIZE )
+          len = BOUNDARY_SIZE;
+        if( multipartProcessBoundaryBuffer(context, post->multipartBoundary, post->buff + feed, len, 0) )
+        {
+          context->state = STATE_ERROR;
+          break;
+        }
+        feed += len;
+      }
     }
     
     context->recvPosition += post->buffLen;
     if( context->recvPosition < post->len )
       return HTTPD_CGI_MORE;
 
-    multipartProcessBoundaryBuffer(context, post->multipartBoundary, NULL, 0, 1);
+    if( context->state != STATE_ERROR )
+    {
+      if( multipartProcessBoundaryBuffer(context, post->multipartBoundary, NULL, 0, 1) )
+        context->state = STATE_ERROR;
+    }
+    
     multipartFreeBoundaryBuffer( context );
-
-    httpdStartResponse(connData, 204);
-    httpdEndHeaders(connData);
+    
+    if( context->state == STATE_ERROR )
+      errorResponse(connData, 400, "Invalid file upload!");
+    else
+    {
+      httpdStartResponse(connData, 204);
+      httpdEndHeaders(connData);
+    }
     return HTTPD_CGI_DONE;
   }
   else {

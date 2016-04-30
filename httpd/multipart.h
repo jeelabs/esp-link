@@ -13,10 +13,11 @@ typedef enum {
   STATE_SEARCH_BOUNDARY = 0,
   STATE_SEARCH_HEADER,
   STATE_SEARCH_HEADER_END,
-  STATE_UPLOAD_FILE
+  STATE_UPLOAD_FILE,
+  STATE_ERROR,
 } MultipartState;
 
-typedef void (* MultipartCallback)(MultipartCmd cmd, char *data, int dataLen, int position);
+typedef int (* MultipartCallback)(MultipartCmd cmd, char *data, int dataLen, int position);
 
 typedef struct {
   MultipartCallback callBack;
