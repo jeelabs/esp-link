@@ -3,7 +3,9 @@
 
 #include <esp8266.h>
 
-void webServerInit();
+void   webServerInit();
+
+char * webServerUserPages();
 
 #endif /* WEB_SERVER_H */
 
