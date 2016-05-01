@@ -15,9 +15,10 @@ void ICACHE_FLASH_ATTR webServerBrowseFiles()
 	char buffer[1024];
 	buffer[0] = 0;
 	
-	EspFsIterator it;
-	espFsIteratorInit(userPageCtx, &it);
+	if( espFsIsValid( userPageCtx ) )
 	{
+		EspFsIterator it;
+		espFsIteratorInit(userPageCtx, &it);
 		while( espFsIteratorNext(&it) )
 		{
 			int nlen = strlen(it.name);
@@ -65,11 +66,10 @@ void ICACHE_FLASH_ATTR webServerBrowseFiles()
 void ICACHE_FLASH_ATTR webServerInit()
 {
 	espFsInit(userPageCtx, (void *)getUserPageSectionStart(), ESPFS_FLASH);
-	if( espFsIsValid( userPageCtx ) ) {
+	if( espFsIsValid( userPageCtx ) )
 		os_printf("Valid user file system found!\n");
-		webServerBrowseFiles();
-	}
 	else
 		os_printf("No user file system found!\n");
+	webServerBrowseFiles();
 }
 
