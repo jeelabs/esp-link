@@ -7,6 +7,7 @@
 #include "multipart.h"
 #include "espfsformat.h"
 #include "config.h"
+#include "web-server.h"
 
 int ICACHE_FLASH_ATTR webServerMultipartCallback(MultipartCmd cmd, char *data, int dataLen, int position)
 {
@@ -59,6 +60,7 @@ int ICACHE_FLASH_ATTR webServerMultipartCallback(MultipartCmd cmd, char *data, i
       {
         uint32_t magic = ESPFS_MAGIC;
         spi_flash_write( (int)getUserPageSectionStart(), (uint32_t *)&magic, sizeof(uint32_t) );
+	webServerInit();
       }
       break;
   }
