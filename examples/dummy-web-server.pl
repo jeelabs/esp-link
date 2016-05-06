@@ -47,7 +47,6 @@ while ($client = $server->accept())
        
        my $httpReq = parse_http( $client );
        #print Dumper($httpReq);
-       print Dumper($httpReq->{url});
        my $httpResp = process_http( $httpReq );
        #print Dumper($httpResp);
 
@@ -204,6 +203,17 @@ sub process_http
       }
       return content_response($cnt, $url); 
     }
+    if( -f "$pth/web-server/$url" )
+    {
+      my $cnt = slurp( "$pth/web-server/$url" );
+      
+      if( $url =~ /\.html$/ )
+      {
+        my $prep = slurp( "$pth/head-user-" );
+        $cnt = "$prep$cnt";
+      }
+      return content_response($cnt, $url); 
+    }
     elsif( grep { $_->[0] eq $url } @webmethods )
     {
       my @mth = grep { $_->[0] eq $url } @webmethods;
@@ -241,7 +251,7 @@ sub getMenu
       " ], " .
       "\"version\": \"%s\", " .
       "\"name\": \"%s\"" .
-    " }", "", "dummy", "dummy-esp-link");
+    " }", readUserPages(), "dummy", "dummy-esp-link");
 
   return $out;
 }
@@ -259,4 +269,54 @@ sub getSystemInfo
 sub getWifiInfo
 {
   return '{"mode": "STA", "modechange": "yes", "ssid": "DummySSID", "status": "got IP address", "phy": "11n", "rssi": "-45dB", "warn": "Switch to <a href=\"#\" onclick=\"changeWifiMode(3)\">STA+AP mode</a>",  "apwarn": "Switch to <a href=\"#\" onclick=\"changeWifiMode(3)\">STA+AP mode</a>", "mac":"12:34:56:78:9a:bc", "chan":"11", "apssid": "ESP_012345", "appass": "", "apchan": "11", "apmaxc": "4", "aphidd": "disabled", "apbeac": "100", "apauth": "OPEN","apmac":"12:34:56:78:9a:bc", "ip": "192.168.1.2", "netmask": "255.255.255.0", "gateway": "192.168.1.1", "hostname": "esp-link", "staticip": "0.0.0.0", "dhcp": "on"}';
+}
+
+sub read_dir_structure
+{
+  my ($dir, $base) = @_;
+
+  my @files;
+  
+  opendir my $dh, $dir or die "Could not open '$dir' for reading: $!\n";
+
+  while (my $file = readdir $dh) {
+    if ($file eq '.' or $file eq '..') {
+      next;
+    }
+
+    my $path = "$dir/$file";
+    if( -d "$path" )
+    {
+      my @sd = read_dir_structure($path, "$base/$file");
+      push @files, @sd ;
+    }
+    else
+    {
+      push @files, "$base/$file";
+    }
+  }
+
+  close( $dh );
+  
+  $_ =~ s/^\/// for(@files);
+  return @files;
+}
+
+sub readUserPages
+{
+  my $pth = dirname $0;
+  my @files = read_dir_structure( "$pth/web-server", "/" );
+  
+  @files = grep { $_ =~ /\.html$/ } @files;
+  
+  my $add = '';
+  for my $f ( @files )
+  {
+    my $nam = $f;
+    $nam =~ s/\.html$//;
+    $nam =~ s/[^\/]*\///g;
+    $add .= ", \"$nam\", \"$f\"";
+  }
+  
+  return $add;
 }
