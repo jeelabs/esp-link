@@ -20,6 +20,13 @@ die "cannot create socket $!\n" unless $server;
 print "server waiting for client connection on port 7777\n";
  
 
+my @webmethods = (
+  [ "menu", \&getMenu ],
+  [ "pins", \&getPins ],
+  [ "system/info", \&getSystemInfo ],
+  [ "wifi/info", \&getWifiInfo ],
+);
+ 
 my $client;
 
 while ($client = $server->accept())
@@ -39,9 +46,10 @@ while ($client = $server->accept())
        close $server;
        
        my $httpReq = parse_http( $client );
-       print Dumper($httpReq);
+       #print Dumper($httpReq);
+       print Dumper($httpReq->{url});
        my $httpResp = process_http( $httpReq );
-       print Dumper($httpResp);
+       #print Dumper($httpResp);
 
        my $data = "HTTP/1.1 " . $httpResp->{code} . " " . $httpResp->{text} . "\r\n";
        
@@ -58,7 +66,6 @@ while ($client = $server->accept())
          $data .= $httpResp->{body};
        }
  
- print "$data\n\n";
        $client->send($data);
  
        if( $httpResp->{done} )
@@ -146,6 +153,29 @@ sub slurp
   return $cnt;
 }
 
+sub content_response
+{
+  my ($content, $url) = @_;
+  
+  my %resp;
+  $resp{code} = 200;
+  $resp{text} = "OK";
+  $resp{done} = 1;
+  $resp{body} = $content;
+      
+  $resp{fields} = {};
+  $resp{fields}{'Content-Length'} = length($content);
+      
+  $resp{fields}{'Content-Type'} = "text/json";
+  $resp{fields}{'Content-Type'} = "text/html; charset=UTF-8" if( $url =~ /\.html$/ );
+  $resp{fields}{'Content-Type'} = "text/css" if( $url =~ /\.css$/ );
+  $resp{fields}{'Content-Type'} = "text/javascript" if( $url =~ /\.js$/ );
+  $resp{fields}{'Content-Type'} = "image/gif" if( $url =~ /\.ico$/ );
+  $resp{fields}{'Connection'} = 'close';
+      
+  return \%resp;
+}
+
 sub process_http
 {
   my ($httpReq) = @_;
@@ -172,23 +202,14 @@ sub process_http
         my $prep = slurp( "$pth/../html/head-" );
         $cnt = "$prep$cnt";
       }
+      return content_response($cnt, $url); 
+    }
+    elsif( grep { $_->[0] eq $url } @webmethods )
+    {
+      my @mth = grep { $_->[0] eq $url } @webmethods;
+      my $webm = $mth[0];
       
-      my %resp;
-      $resp{code} = 200;
-      $resp{text} = "OK";
-      $resp{done} = 1;
-      $resp{body} = $cnt;
-      
-      $resp{fields} = {};
-      $resp{fields}{'Content-Length'} = length($cnt);
-      
-      $resp{fields}{'Content-Type'} = "text/html; charset=UTF-8" if( $url =~ /\.html$/ );
-      $resp{fields}{'Content-Type'} = "text/css" if( $url =~ /\.css$/ );
-      $resp{fields}{'Content-Type'} = "text/javascript" if( $url =~ /\.js$/ );
-      $resp{fields}{'Content-Type'} = "image/gif" if( $url =~ /\.ico$/ );
-      $resp{fields}{'Connection'} = 'close';
-      
-      return \%resp;
+      return content_response( $webm->[1]->(), $url );
     }
     else
     {
@@ -199,4 +220,43 @@ sub process_http
   # TODO
   
   return error_response(400, "Invalid HTTP request");
+}
+
+sub getMenu
+{
+  my $out = sprintf(
+    "{ " .
+      "\"menu\": [ " .
+        "\"Home\", \"/home.html\", " .
+        "\"WiFi Station\", \"/wifi/wifiSta.html\", " .
+        "\"WiFi Soft-AP\", \"/wifi/wifiAp.html\", " .
+        "\"&#xb5;C Console\", \"/console.html\", " .
+        "\"Services\", \"/services.html\", " .
+#ifdef MQTT
+        "\"REST/MQTT\", \"/mqtt.html\", " .
+#endif
+        "\"Debug log\", \"/log.html\", " .
+        "\"Web Server\", \"/web-server.html\"" .
+	"%s" .
+      " ], " .
+      "\"version\": \"%s\", " .
+      "\"name\": \"%s\"" .
+    " }", "", "dummy", "dummy-esp-link");
+
+  return $out;
+}
+
+sub getPins
+{
+  return '{ "reset":12, "isp":-1, "conn":-1, "ser":2, "swap":0, "rxpup":1 }';
+}
+
+sub getSystemInfo
+{
+  return '{ "name": "esp-link-dummy", "reset cause": "6=external", "size": "4MB:512/512", "upload-size": "3145728", "id": "0xE0 0x4016", "partition": "user2.bin", "slip": "disabled", "mqtt": "disabled/disconnected", "baud": "57600", "description": "" }';
+}
+
+sub getWifiInfo
+{
+  return '{"mode": "STA", "modechange": "yes", "ssid": "DummySSID", "status": "got IP address", "phy": "11n", "rssi": "-45dB", "warn": "Switch to <a href=\"#\" onclick=\"changeWifiMode(3)\">STA+AP mode</a>",  "apwarn": "Switch to <a href=\"#\" onclick=\"changeWifiMode(3)\">STA+AP mode</a>", "mac":"12:34:56:78:9a:bc", "chan":"11", "apssid": "ESP_012345", "appass": "", "apchan": "11", "apmaxc": "4", "aphidd": "disabled", "apbeac": "100", "apauth": "OPEN","apmac":"12:34:56:78:9a:bc", "ip": "192.168.1.2", "netmask": "255.255.255.0", "gateway": "192.168.1.1", "hostname": "esp-link", "staticip": "0.0.0.0", "dhcp": "on"}';
 }
