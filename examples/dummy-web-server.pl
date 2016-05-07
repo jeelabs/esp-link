@@ -430,7 +430,8 @@ sub process_user_comm_voltage
   my $voltage = (((time - $startTime) % 60) - 30) / 30.0 + 4.0;
   $voltage = sprintf("%.2f V", $voltage);
   
-  my $r = '{"voltage": "' . $voltage . '"}';
+  my $table = ', "table": [["Time", "Min", "AVG", "Max"], ["0s-10s", "1 V", "3 V", "5 V"], ["10s-20s", "1 V", "2 V", "3 V"]]';
+  my $r = '{"voltage": "' . $voltage . '"' . $table . '}';
   return content_response($r, $http->{url});
 }
 
