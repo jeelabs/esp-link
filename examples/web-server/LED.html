@@ -3,21 +3,32 @@
   </div>
 
   <div class="content">
-    <p>
-      <button id="btn_on" type="button">Turn on</button>
-      <button id="btn_blink" type="button">Start blinking</button>
-      <button id="btn_off" type="button">Turn off</button>
-    </p>
-    <p id="text"/>
-    <p>
-      <form>
-        Frequency:
-        <input type="range" name="frequency" min="1" max="25">
-        <input type="submit">
-      </form>
-    </p>
-    <p>
-      <ul id="led_history"/>
-    </p>
+    <div class="pure-g"><div class="pure-u-1 pure-u-md-1-2">
+      <div class="card">
+        <h1>Control</h1>
+        <button id="btn_on" type="button">Turn on</button>
+        <button id="btn_blink" type="button">Start blinking</button>
+        <button id="btn_off" type="button">Turn off</button>
+        <p id="text"/>
+      </div>
+      <div class="card">
+        <h1>Frequency and pattern</h1>
+        <form>
+          <b>Pattern:</b><br/>
+          <input type="radio" name="pattern" value="25_75">25% on 75% off</input><br/>
+          <input type="radio" name="pattern" value="50_50">50% on 50% off</input><br/>
+          <input type="radio" name="pattern" value="75_25">75% on 25% off</input><br/>
+        
+          <b>Frequency:</b><br/>
+          <input type="range" name="frequency" min="1" max="25"><br/>
+          <input type="submit">
+        </form>
+      </div></div>
+      <div class="pure-u-1 pure-u-md-1-2">
+      <div class="card" style="min-height: 400px">
+        <h1>Logs</h1>
+        <ul id="led_history"/>
+      </div>      
+    </div></div>
   </div>
 </body></html>

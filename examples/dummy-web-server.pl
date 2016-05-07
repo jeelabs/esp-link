@@ -12,7 +12,7 @@ my $ledLabel   : shared = "LED is turned off";
 my $ledFreq    : shared = 10;
 my @ledHistory : shared;
 my $startTime  : shared = time;
-
+my $pattern    : shared = "50_50";
 
 # auto-flush on socket
 $| = 1;
@@ -401,13 +401,21 @@ sub process_user_comm_led
     if( exists $http->{postArgs}{frequency} )
     {
       $ledFreq = $http->{postArgs}{frequency};
-      led_add_history("Set LED frequency to $ledFreq Hz");
+      led_add_history("Set frequency to $ledFreq Hz");
+    }
+    if( exists $http->{postArgs}{pattern} )
+    {
+      $pattern = $http->{postArgs}{pattern};
+      my $out = $pattern;
+      $out =~ s/_/\% - /;
+      $out .= "%";
+      led_add_history("Set pattern to $out");
     }
     return simple_response(204, "OK");
   }
   elsif( $http->{urlArgs}{reason} eq "load" )
   {
-    $loadData = ', "frequency": ' . $ledFreq; 
+    $loadData = ', "frequency": ' . $ledFreq . ', "pattern": "' . $pattern . '"'; 
   }
 
   my $list = ", \"led_history\": [" . join(", ", map { "\"$_\"" } @ledHistory ) . "]";
