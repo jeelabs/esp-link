@@ -29,7 +29,8 @@ FlashConfig flashDefault = {
   .rx_pullup	  = 1,
   .sntp_server  = "us.pool.ntp.org\0",
   .syslog_host = "\0", .syslog_minheap = 8192, .syslog_filter = 7, .syslog_showtick = 1, .syslog_showdate = 0,
-  .mdns_enable = 1, .mdns_servername = "http\0", .timezone_offset = 0
+  .mdns_enable = 1, .mdns_servername = "http\0", .timezone_offset = 0,
+  .uart0_tx_enable_pin = -1
 };
 
 typedef union {
