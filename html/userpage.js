@@ -27,7 +27,8 @@ function notifyResponse( data )
     var elem = document.getElementById(v);
     if( elem != null )
     {
-      if(elem.tagName == "P" || elem.tagName == "DIV")
+      if(elem.tagName == "P" || elem.tagName == "DIV" || elem.tagName == "SPAN" || elem.tagName == "TR" || elem.tagName == "TH" || elem.tagName == "TD" ||
+         elem.tagName == "TEXTAREA" )
       {
         elem.innerHTML = data[v];
       }
@@ -40,6 +41,36 @@ function notifyResponse( data )
           html = html.concat("<li>" + list[i] + "</li>");
         }
 
+        elem.innerHTML = html;
+      }
+      if(elem.tagName == "TABLE")
+      {
+        var list = data[v];
+        var html = "";
+
+        if( list.length > 0 )
+        {
+          var ths = list[0];
+          html = html.concat("<tr>");
+
+          for (var i=0; i<ths.length; i++) {
+            html = html.concat("<th>" + ths[i] + "</th>");
+          }
+
+          html = html.concat("</tr>");
+        }
+
+        for (var i=1; i<list.length; i++) {
+          var tds = list[i];
+          html = html.concat("<tr>");
+
+          for (var j=0; j<tds.length; j++) {
+            html = html.concat("<td>" + tds[j] + "</td>");
+          }
+          
+          html = html.concat("</tr>");
+        }
+        
         elem.innerHTML = html;
       }
     }
