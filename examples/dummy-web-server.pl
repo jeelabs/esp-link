@@ -8,8 +8,10 @@ use IO::Socket::INET;
 use Data::Dumper;
 use File::Basename;
 
-my $ledLabel : shared = "LED is turned off";
-my $ledFreq  : shared = 10;
+my $ledLabel   : shared = "LED is turned off";
+my $ledFreq    : shared = 10;
+my @ledHistory : shared;
+my $startTime  : shared = time;
 
 
 # auto-flush on socket
@@ -20,7 +22,7 @@ my $server = new IO::Socket::INET (
     LocalHost => '0.0.0.0',
     LocalPort => '7777',
     Proto => 'tcp',
-    Listen => 5,
+    Listen => 25,
     Reuse => 1
 );
 die "cannot create socket $!\n" unless $server;
@@ -67,7 +69,7 @@ while ($client = $server->accept())
        if( $httpResp->{done} )
        {
          # notify client that response has been sent
-         #shutdown($client, 1);
+         shutdown($client, 1);
        }
    } );
    close $client;        # Only meaningful in the client 
@@ -351,6 +353,24 @@ sub readUserPages
   return $add;
 }
 
+sub led_add_history
+{
+  my ($msg) = @_;
+  pop @ledHistory if @ledHistory >= 10;
+  
+  my $elapsed = time - $startTime;
+  my $secs = $elapsed % 60;
+  my $mins = int($elapsed / 60) % 60;
+  my $hours = int($elapsed / 3600) % 24;
+  
+  $secs = "0$secs" if length($secs) == 1;
+  $mins = "0$mins" if length($mins) == 1;
+  $hours = "0$hours" if length($hours) == 1;
+  
+  $msg = "$hours:$mins:$secs $msg";
+  unshift @ledHistory, $msg;
+}
+
 sub process_user_comm_led
 {
   my ($http) = @_;
@@ -363,14 +383,17 @@ sub process_user_comm_led
     if($btn eq "btn_on" )
     {
       $ledLabel = "LED is turned on";
+      led_add_history("Set LED on");
     }
     elsif($btn eq "btn_blink" )
     {
       $ledLabel = "LED is blinking";
+      led_add_history("Set LED blinking");
     }
     elsif($btn eq "btn_off" )
     {
       $ledLabel = "LED is turned off";
+      led_add_history("Set LED off");
     }
   }
   elsif( $http->{urlArgs}{reason} eq "submit" )
@@ -378,6 +401,7 @@ sub process_user_comm_led
     if( exists $http->{postArgs}{frequency} )
     {
       $ledFreq = $http->{postArgs}{frequency};
+      led_add_history("Set LED frequency to $ledFreq Hz");
     }
     return simple_response(204, "OK");
   }
@@ -385,8 +409,9 @@ sub process_user_comm_led
   {
     $loadData = ', "frequency": ' . $ledFreq; 
   }
-  
-  my $r = '{"text": "' . $ledLabel . '"' . $loadData . '}';
+
+  my $list = ", \"led_history\": [" . join(", ", map { "\"$_\"" } @ledHistory ) . "]";
+  my $r = '{"text": "' . $ledLabel . '"' . $list . $loadData . '}';
   return content_response($r, $http->{url});
 }
 
