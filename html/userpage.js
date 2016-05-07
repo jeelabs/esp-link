@@ -23,6 +23,10 @@ function notifyResponse( data )
           el.value = data[v];
         }
       }
+      if(el.tagName == "SELECT")
+      {
+        el.value = data[v];
+      }
     }
     var elem = document.getElementById(v);
     if( elem != null )

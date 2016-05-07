@@ -13,6 +13,11 @@ my $ledFreq    : shared = 10;
 my @ledHistory : shared;
 my $startTime  : shared = time;
 my $pattern    : shared = "50_50";
+my $userFname  : shared;
+my $userLname  : shared;
+my $userAge    : shared;
+my $userGender : shared;
+
 
 # auto-flush on socket
 $| = 1;
@@ -353,6 +358,20 @@ sub readUserPages
   return $add;
 }
 
+sub jsonString
+{
+  my ($text) = @_;
+  return 'null' if ! defined $text;
+  return "\"$text\"";
+}
+
+sub jsonNumber
+{
+  my ($num) = @_;
+  return 'null' if ! defined $num;
+  return $num + 0;
+}
+
 sub led_add_history
 {
   my ($msg) = @_;
@@ -435,6 +454,44 @@ sub process_user_comm_voltage
   return content_response($r, $http->{url});
 }
 
+sub process_user_comm_user
+{
+  my ($http) = @_;
+
+  
+  if( $http->{urlArgs}{reason} eq "submit" )
+  {
+    if( exists $http->{postArgs}{last_name} )
+    {
+      $userLname = $http->{postArgs}{last_name};
+    }
+    if( exists $http->{postArgs}{first_name} )
+    {
+      $userFname = $http->{postArgs}{first_name};
+    }
+    if( exists $http->{postArgs}{age} )
+    {
+      $userAge = $http->{postArgs}{age};
+    }
+    if( exists $http->{postArgs}{gender} )
+    {
+      $userGender = $http->{postArgs}{gender};
+    }
+    return simple_response(204, "OK");
+  }
+  elsif( $http->{urlArgs}{reason} eq "load" )
+  {
+    my $r = '{"last_name": '  . jsonString($userLname) .
+           ', "first_name": ' . jsonString($userFname) .
+           ', "age": '        . jsonNumber($userAge) .
+           ', "gender": '     . jsonString($userGender) . '}';
+           
+    return content_response($r, $http->{url});
+  }
+  
+  return content_response("{}", $http->{url});
+}
+
 sub process_user_comm()
 {
   my ($http) = @_;
@@ -447,5 +504,10 @@ sub process_user_comm()
   if( $http->{url} eq '/Voltage.html.json' )
   {
     return process_user_comm_voltage($http);
+  }
+
+  if( $http->{url} eq '/User.html.json' )
+  {
+    return process_user_comm_user($http);
   }
 }
