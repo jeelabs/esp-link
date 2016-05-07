@@ -17,6 +17,7 @@ my $userFname  : shared;
 my $userLname  : shared;
 my $userAge    : shared;
 my $userGender : shared;
+my $userNotifs : shared;
 
 
 # auto-flush on socket
@@ -477,14 +478,19 @@ sub process_user_comm_user
     {
       $userGender = $http->{postArgs}{gender};
     }
+    if( exists $http->{postArgs}{notifications} )
+    {
+      $userNotifs = $http->{postArgs}{notifications};
+    }
     return simple_response(204, "OK");
   }
   elsif( $http->{urlArgs}{reason} eq "load" )
   {
-    my $r = '{"last_name": '  . jsonString($userLname) .
-           ', "first_name": ' . jsonString($userFname) .
-           ', "age": '        . jsonNumber($userAge) .
-           ', "gender": '     . jsonString($userGender) . '}';
+    my $r = '{"last_name": '    . jsonString($userLname) .
+           ', "first_name": '   . jsonString($userFname) .
+           ', "age": '          . jsonNumber($userAge) .
+           ', "gender": '       . jsonString($userGender) .
+           ', "notifications":' . jsonString($userNotifs) . '}';
            
     return content_response($r, $http->{url});
   }

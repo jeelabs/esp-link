@@ -3,6 +3,7 @@
 var loadCounter = 0;
 var refreshRate = 0;
 var refreshTimer;
+var hiddenInputs = [];
 
 function notifyResponse( data )
 {
@@ -17,6 +18,10 @@ function notifyResponse( data )
         if( el.type == "radio" )
         {
           el.checked = data[v] == el.value;
+        }
+        else if( el.type == "checkbox" )
+        {
+          el.checked = data[v] == "on";
         }
         else
         {
@@ -108,6 +113,34 @@ function refreshFormData()
   } , 250);
 }
 
+function recalculateHiddenInputs()
+{
+  for(var i=0; i < hiddenInputs.length; i++)
+  {
+    var hinput = hiddenInputs[i];
+    var name = hinput.name;
+    
+    var elems = document.getElementsByName(name);
+    for(var j=0; j < elems.length; j++ )
+    {
+      var chk = elems[j];
+      var inptp = chk.type;
+      if( inptp == "checkbox" ) {
+        if( chk.checked )
+        {
+          hinput.disabled = true;
+          hinput.value = "on";
+        }
+        else
+        {
+          hinput.disabled = false;
+          hinput.value = "off";
+        }
+      }
+    }
+  }
+}
+
 document.addEventListener("DOMContentLoaded", function(){
   // collect buttons
   var btns = document.getElementsByTagName("button");
@@ -141,6 +174,7 @@ document.addEventListener("DOMContentLoaded", function(){
     loadCounter = 4;
 
     frm.onsubmit = function () {
+      recalculateHiddenInputs();
       refreshFormData();
       return true;
     };
@@ -154,6 +188,40 @@ document.addEventListener("DOMContentLoaded", function(){
     if( meta.getAttribute("name") == "refresh-rate" )
     {
       refreshRate = meta.getAttribute("content");
+    }
+  }
+
+  // collect checkboxes
+  var inputs = document.getElementsByTagName("input");
+
+  for (ndx = 0; ndx < inputs.length; ndx++) {
+    var inp = inputs[ndx];
+    if( inp.getAttribute("type") == "checkbox" )
+    {
+      var name = inp.getAttribute("name");
+      var hasHidden = false;
+      if( name != null )
+      {
+        var inpelems = document.getElementsByName(name);
+        for(var i=0; i < inpelems.length; i++ )
+        {
+           var inptp = inpelems[i].type;
+           if( inptp == "hidden" )
+             hasHidden = true;
+        }
+      }
+      
+      if( !hasHidden )
+      {
+        var parent = inp.parentElement;
+ 
+        var input = document.createElement("input");
+        input.type = "hidden";
+        input.name = inp.name;
+
+	parent.appendChild(input);
+        hiddenInputs.push(input);
+      }
     }
   }
 
