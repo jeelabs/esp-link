@@ -2,6 +2,7 @@
 
 #include "espfs.h"
 #include "config.h"
+#include "cgi.h"
 
 char * webServerPages = NULL;
 
@@ -21,7 +22,7 @@ void ICACHE_FLASH_ATTR webServerBrowseFiles()
 		espFsIteratorInit(userPageCtx, &it);
 		while( espFsIteratorNext(&it) )
 		{
-			int nlen = strlen(it.name);
+			int nlen = os_strlen(it.name);
 			if( nlen >= 6 )
 			{
 				if( os_strcmp( it.name + nlen-5, ".html" ) == 0 )
@@ -50,7 +51,7 @@ void ICACHE_FLASH_ATTR webServerBrowseFiles()
 					os_strcat(buffer, "\"");
 				}
 			}
-			if( strlen(buffer) > 600 )
+			if( os_strlen(buffer) > 600 )
 				break;
 		}
 	}
@@ -58,7 +59,7 @@ void ICACHE_FLASH_ATTR webServerBrowseFiles()
 	if( webServerPages != NULL )
 		os_free( webServerPages );
 	
-	int len = strlen(buffer) + 1;
+	int len = os_strlen(buffer) + 1;
 	webServerPages = (char *)os_malloc( len );
 	os_memcpy( webServerPages, buffer, len );
 }
@@ -73,3 +74,9 @@ void ICACHE_FLASH_ATTR webServerInit()
 	webServerBrowseFiles();
 }
 
+int ICACHE_FLASH_ATTR webServerProcessJsonQuery(HttpdConnData *connData)
+{
+	os_printf("URL: %s\n", connData->url);
+	errorResponse(connData, 400, "Slip protocol is not enabled!");
+	return HTTPD_CGI_DONE;
+}
