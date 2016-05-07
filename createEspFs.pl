@@ -22,7 +22,7 @@ for my $file (@structured)
     $name =~ s/\.gz$//;
   }
 
-  my $head = '<!doctype html><html><head><title>esp-link</title><link rel=stylesheet href="/pure.css"><link rel=stylesheet href="/style.css"><meta name=viewport content="width=device-width, initial-scale=1"><script src="/ui.js"></script></head><body><div id=layout>';
+  my $head = '<!doctype html><html><head><title>esp-link</title><link rel=stylesheet href="/pure.css"><link rel=stylesheet href="/style.css"><meta name=viewport content="width=device-width, initial-scale=1"><script src="/ui.js"></script><script src="/userpage.js"></script></head><body><div id=layout>';
   
   open IF, "<", "$dir/$file" or die "Can't read file: $!";
   my @fc = <IF>;
