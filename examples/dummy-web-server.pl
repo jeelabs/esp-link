@@ -423,6 +423,17 @@ sub process_user_comm_led
   return content_response($r, $http->{url});
 }
 
+sub process_user_comm_voltage
+{
+  my ($http) = @_;
+
+  my $voltage = (((time - $startTime) % 60) - 30) / 30.0 + 4.0;
+  $voltage = sprintf("%.2f V", $voltage);
+  
+  my $r = '{"voltage": "' . $voltage . '"}';
+  return content_response($r, $http->{url});
+}
+
 sub process_user_comm()
 {
   my ($http) = @_;
@@ -430,5 +441,10 @@ sub process_user_comm()
   if( $http->{url} eq '/LED.html.json' )
   {
     return process_user_comm_led($http);
+  }
+
+  if( $http->{url} eq '/Voltage.html.json' )
+  {
+    return process_user_comm_voltage($http);
   }
 }
