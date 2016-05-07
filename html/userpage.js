@@ -4,6 +4,16 @@
 function notifyResponse( data )
 {
   Object.keys(data).forEach(function(v) {
+    var elems = document.getElementsByName(v);
+    var ndx;
+    for(ndx = 0; ndx < elems.length; ndx++ )
+    {
+      var el = elems[ndx];
+      if(el.tagName == "INPUT")
+      {
+        el.value = data[v];
+      }
+    }
     var elem = document.getElementById(v);
     if( elem != null )
     {
@@ -38,7 +48,20 @@ document.addEventListener("DOMContentLoaded", function(){
       btn.onclick = fn;
     }
   }
-  
+
+  // collect forms
+  var frms = document.getElementsByTagName("form");
+
+  for (ndx = 0; ndx < frms.length; ndx++) {
+    var frm = frms[ndx];
+    
+    var method = frm.method;
+    var action = frm.action;
+    
+    frm.method = "POST";
+    frm.action = window.location.pathname + ".json?reason=submit";
+  }
+
   // load variables at first time
   var loadVariables = function() {
     ajaxJson("GET", window.location.pathname + ".json?reason=load", notifyResponse,

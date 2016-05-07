@@ -9,6 +9,7 @@ use Data::Dumper;
 use File::Basename;
 
 my $ledLabel : shared = "LED is turned off";
+my $ledFreq  : shared = 10;
 
 
 # auto-flush on socket
@@ -85,7 +86,6 @@ sub parse_http
       $client->recv($buf, 1024);
       $data .= $buf;
     }while( $data !~ /\r\n\r\n/s );
-    #print "Query: $data\n";
  
     my %resp;
     
@@ -121,6 +121,23 @@ sub parse_http
         $resp{method} = 'ERROR';
         $resp{error} = 'Invalid HTTP request';
       }
+      
+      if( $resp{method} eq 'POST' )
+      {
+        my $remaining = join("\r\n", @lines);
+        my $cnt_len = $resp{fields}{'Content-Length'};
+     
+        while( length($remaining) < $cnt_len )
+        {
+          my $buf = "";
+          $client->recv($buf, 1024);
+          $remaining .= $buf;
+        }
+        
+        $resp{postData} = $remaining;
+        my %pargs = split /[=\&]/, $remaining;
+        $resp{postArgs} = \%pargs;
+      }
     }
     else
     {
@@ -131,7 +148,7 @@ sub parse_http
     return \%resp;
 }
 
-sub error_response
+sub simple_response
 {
   my ($code, $msg) = @_;
 
@@ -183,7 +200,7 @@ sub process_http
   my ($httpReq) = @_;
   if( $httpReq->{method} eq 'ERROR' )
   {
-    return error_response(400, $httpReq->{error});
+    return simple_response(400, $httpReq->{error});
   }
   
   if( $httpReq->{url} =~ /\.json$/ )
@@ -238,13 +255,11 @@ sub process_http
     }
     else
     {
-      return error_response(404, "File not found");
+      return simple_response(404, "File not found");
     }
   }
   
-  # TODO
-  
-  return error_response(400, "Invalid HTTP request");
+  return simple_response(400, "Invalid HTTP request");
 }
 
 sub getMenu
@@ -339,6 +354,7 @@ sub readUserPages
 sub process_user_comm_led
 {
   my ($http) = @_;
+  my $loadData = '';
 
   if( $http->{urlArgs}{reason} eq "button" )
   {
@@ -357,8 +373,20 @@ sub process_user_comm_led
       $ledLabel = "LED is turned off";
     }
   }
- 
-  my $r = '{"text": "' . $ledLabel . '"}';
+  elsif( $http->{urlArgs}{reason} eq "submit" )
+  {
+    if( exists $http->{postArgs}{frequency} )
+    {
+      $ledFreq = $http->{postArgs}{frequency};
+    }
+    return simple_response(204, "OK");
+  }
+  elsif( $http->{urlArgs}{reason} eq "load" )
+  {
+    $loadData = ', "frequency": ' . $ledFreq; 
+  }
+  
+  my $r = '{"text": "' . $ledLabel . '"' . $loadData . '}';
   return content_response($r, $http->{url});
 }
 
