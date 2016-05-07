@@ -1,6 +1,8 @@
 //===== Java script for user pages
 
 var loadCounter = 0;
+var refreshRate = 0;
+var refreshTimer;
 
 function notifyResponse( data )
 {
@@ -42,6 +44,14 @@ function notifyResponse( data )
       }
     }
   });
+  
+  if( refreshRate != 0 )
+  {
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout( function () {
+      ajaxJson("GET", window.location.pathname + ".json?reason=refresh", notifyResponse );
+    }, refreshRate );
+  }
 }
 
 function notifyButtonPressed( btnId )
@@ -99,6 +109,17 @@ document.addEventListener("DOMContentLoaded", function(){
       refreshFormData();
       return true;
     };
+  }
+
+  // collect metas
+  var metas = document.getElementsByTagName("meta");
+
+  for (ndx = 0; ndx < metas.length; ndx++) {
+    var meta = metas[ndx];
+    if( meta.getAttribute("name") == "refresh-rate" )
+    {
+      refreshRate = meta.getAttribute("content");
+    }
   }
 
   // load variables at first time
