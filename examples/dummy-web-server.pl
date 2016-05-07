@@ -1,9 +1,15 @@
 #!/usr/bin/perl
 use strict;
 
+use threads;
+use threads::shared;
+
 use IO::Socket::INET;
 use Data::Dumper;
 use File::Basename;
+
+my $ledLabel : shared = "LED is turned off";
+
 
 # auto-flush on socket
 $| = 1;
@@ -31,17 +37,7 @@ my $client;
 
 while ($client = $server->accept())
 {
-   my $pid ;
-   while (not defined ($pid = fork()))
-   {
-     sleep 5;
-   }
-   if ($pid)
-   {
-       close $client;        # Only meaningful in the client 
-   }
-   else
-   {
+   threads->create( sub {
        $client->autoflush(1);    # Always a good idea 
        close $server;
        
@@ -72,7 +68,8 @@ while ($client = $server->accept())
          # notify client that response has been sent
          #shutdown($client, 1);
        }
-   }
+   } );
+   close $client;        # Only meaningful in the client 
 }
 
 exit(0);
@@ -101,7 +98,13 @@ sub parse_http
       $head =~ s/(GET|POST) //;
       if( $head =~ /^([^ ]+) HTTP\/\d\.\d/ )
       {
-        $resp{url} = $1;
+        my $args = $1;
+        my $u = $args;
+        $u =~ s/\?.*$//g;
+        $args =~ s/^.*\?//g;
+        my %arg = split /[=\&]/, $args;
+        $resp{urlArgs} = \%arg;
+        $resp{url} = $u;
         
         my %fields;
         while( my $arg = shift @lines )
@@ -181,6 +184,18 @@ sub process_http
   if( $httpReq->{method} eq 'ERROR' )
   {
     return error_response(400, $httpReq->{error});
+  }
+  
+  if( $httpReq->{url} =~ /\.json$/ )
+  {
+    my $url = $httpReq->{url};
+    $url =~ s/\.json$//;
+    my $pth = dirname $0;
+    
+    if( -f "$pth/web-server/$url" )
+    {
+      return process_user_comm($httpReq);
+    }
   }
   
   if( $httpReq->{method} eq 'GET' )
@@ -319,4 +334,40 @@ sub readUserPages
   }
   
   return $add;
+}
+
+sub process_user_comm_led
+{
+  my ($http) = @_;
+
+  if( $http->{urlArgs}{reason} eq "button" )
+  {
+    my $btn = $http->{urlArgs}{id};
+    
+    if($btn eq "btn_on" )
+    {
+      $ledLabel = "LED is turned on";
+    }
+    elsif($btn eq "btn_blink" )
+    {
+      $ledLabel = "LED is blinking";
+    }
+    elsif($btn eq "btn_off" )
+    {
+      $ledLabel = "LED is turned off";
+    }
+  }
+ 
+  my $r = '{"text": "' . $ledLabel . '"}';
+  return content_response($r, $http->{url});
+}
+
+sub process_user_comm()
+{
+  my ($http) = @_;
+
+  if( $http->{url} eq '/LED.html.json' )
+  {
+    return process_user_comm_led($http);
+  }
 }
