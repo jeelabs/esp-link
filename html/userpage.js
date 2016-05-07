@@ -12,7 +12,14 @@ function notifyResponse( data )
       var el = elems[ndx];
       if(el.tagName == "INPUT")
       {
-        el.value = data[v];
+        if( el.type == "radio" )
+        {
+          el.checked = data[v] == el.value;
+        }
+        else
+        {
+          el.value = data[v];
+        }
       }
     }
     var elem = document.getElementById(v);
@@ -20,18 +27,18 @@ function notifyResponse( data )
     {
       if(elem.tagName == "P" || elem.tagName == "DIV")
       {
-	elem.innerHTML = data[v];
+        elem.innerHTML = data[v];
       }
       if(elem.tagName == "UL" || elem.tagName == "OL")
       {
-	var list = data[v];
-	var html = "";
+        var list = data[v];
+        var html = "";
 
-	for (var i=0; i<list.length; i++) {
+        for (var i=0; i<list.length; i++) {
           html = html.concat("<li>" + list[i] + "</li>");
         }
 
-	elem.innerHTML = html;
+        elem.innerHTML = html;
       }
     }
   });
@@ -49,8 +56,8 @@ function refreshFormData()
       notifyResponse(resp);
       if( loadCounter > 0 )
       {
-	loadCounter--;
-	refreshFormData();
+        loadCounter--;
+        refreshFormData();
       }
     } );
   } , 250);
