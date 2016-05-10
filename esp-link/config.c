@@ -134,7 +134,7 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
     char hostname[16];
     os_strcpy(hostname, "esp-link-");
     os_strcat(hostname, chipIdStr);
-    os_memcpy(&flashConfig.hostname, hostname, os_strlen(hostname));u
+    os_memcpy(&flashConfig.hostname, hostname, os_strlen(hostname));
 #endif
     os_memcpy(&flashConfig.mqtt_clientid, &flashConfig.hostname, os_strlen(flashConfig.hostname));
     os_memcpy(&flashConfig.mqtt_status_topic, &flashConfig.hostname, os_strlen(flashConfig.hostname));
