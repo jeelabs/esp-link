@@ -393,7 +393,7 @@ function showNotification(text) {
 //===== GPIO Pin mux card
 
 var pinPresets = {
-  // array: reset, isp, conn, ser, swap, rxpup, uart0_tx_enable
+  // array: reset, isp, conn, ser, swap, rxpup, uart0-tx-enable
   "esp-01":       [  0, -1, 2, -1, 0, 1, -1 ],
   "esp-12":       [ 12, 14, 0,  2, 0, 1, -1 ],
   "esp-12 swap":  [  1,  3, 0,  2, 1, 1, -1 ],
@@ -454,7 +454,7 @@ function displayPins(resp) {
   createSelectForPin("ser", resp["ser"]);
   $("#pin-swap").value = resp["swap"];
   $("#pin-rxpup").checked = !!resp["rxpup"];
-  createSelectForPin("uart0_tx_enable", resp["uart0_tx_enable"]);
+  createSelectForPin("uart0-tx-enable", resp["uart0-tx-enable"]);
   createPresets($("#pin-preset"));
 
   $("#pin-spinner").setAttribute("hidden", "");
@@ -471,7 +471,7 @@ function setPins(ev) {
   ev.preventDefault();
   var url = "/pins";
   var sep = "?";
-  ["reset", "isp", "conn", "ser", "swap", "uart0_tx_enable"].forEach(function(p) {
+  ["reset", "isp", "conn", "ser", "swap", "uart0-tx-enable"].forEach(function(p) {
     url += sep + p + "=" + $("#pin-"+p).value;
     sep = "&";
   });

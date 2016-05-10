@@ -57,7 +57,7 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
   ok |= getInt8Arg(connData, "ser", &ser);
   ok |= getBoolArg(connData, "swap", &swap);
   ok |= getBoolArg(connData, "rxpup", &rxpup);
-  ok |= getInt8Arg(connData, "uart0_tx_enable", &uart0_tx_enable);
+  ok |= getInt8Arg(connData, "uart0-tx-enable", &uart0_tx_enable);
   if (ok < 0) return HTTPD_CGI_DONE;
 
   char *coll;
@@ -96,6 +96,7 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
     flashConfig.ser_led_pin = ser;
     flashConfig.swap_uart = swap;
     flashConfig.rx_pullup = rxpup;
+    flashConfig.uart0_tx_enable_pin = uart0_tx_enable;
     os_printf("Pins changed: reset=%d isp=%d conn=%d ser=%d swap=%d rx-pup=%d uart0_tx_enable=%d\n",
 	reset, isp, conn, ser, swap, rxpup, uart0_tx_enable);
 
