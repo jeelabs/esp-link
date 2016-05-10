@@ -5,6 +5,16 @@
 
 #include "httpd.h"
 
+typedef enum
+{
+  LOAD=0,
+  REFRESH,
+  BUTTON,
+  SUBMIT,
+
+  INVALID=-1,
+} RequestReason;
+
 void   webServerInit();
 
 char * webServerUserPages();

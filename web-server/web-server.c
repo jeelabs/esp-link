@@ -1,8 +1,18 @@
 #include "web-server.h"
 
+#include <espconn.h>
+
 #include "espfs.h"
 #include "config.h"
 #include "cgi.h"
+#include "cmd.h"
+#include "serbridge.h"
+
+#define WEB_CB "webCb"
+
+static char* web_server_reasons[] = {
+  "load", "refresh", "button", "submit"
+};
 
 char * webServerPages = NULL;
 
@@ -76,7 +86,88 @@ void ICACHE_FLASH_ATTR webServerInit()
 
 int ICACHE_FLASH_ATTR webServerProcessJsonQuery(HttpdConnData *connData)
 {
-	os_printf("URL: %s\n", connData->url);
-	errorResponse(connData, 400, "Slip protocol is not enabled!");
+	if( !flashConfig.slip_enable )
+	{
+		errorResponse(connData, 400, "Slip processing is disabled!");
+		return HTTPD_CGI_DONE;
+	}
+	CmdCallback* cb = cmdGetCbByName( WEB_CB );
+	if( cb == NULL )
+	{
+		errorResponse(connData, 500, "No MCU callback is registered!");
+		return HTTPD_CGI_DONE;
+	}
+	if( serbridgeInProgramming() )
+	{
+		errorResponse(connData, 500, "Slip disabled at programming mode!");
+		return HTTPD_CGI_DONE;
+	}
+	
+	char reasonBuf[16];
+	int i;
+	int len = httpdFindArg(connData->getArgs, "reason", reasonBuf, sizeof(reasonBuf));
+	if( len < 0 )
+	{
+		errorResponse(connData, 400, "No reason specified!");
+		return HTTPD_CGI_DONE;
+	}
+	
+	RequestReason reason = INVALID;
+	for(i=0; i < sizeof(web_server_reasons)/sizeof(char *); i++)
+	{
+		if( os_strcmp( web_server_reasons[i], reasonBuf ) == 0 )
+			reason = (RequestReason)i;
+	}
+	
+	if( reason == INVALID )
+	{
+		errorResponse(connData, 400, "Invalid reason!");
+		return HTTPD_CGI_DONE;
+	}
+	
+	char body[1024];
+	int  bodyLen = -1;
+	
+	switch(reason)
+	{
+		case BUTTON:
+			bodyLen = httpdFindArg(connData->getArgs, "id", body, sizeof(body));
+			if( bodyLen <= 0 )
+			{
+				errorResponse(connData, 400, "No button ID specified!");
+				return HTTPD_CGI_DONE;
+			}
+			break;
+		case SUBMIT:
+			{
+				// TODO
+			}
+			break;
+		case LOAD:
+		case REFRESH:
+		default:
+			break;
+	}
+	
+	os_printf("Web callback to MCU: %s\n", reasonBuf);
+	
+	cmdResponseStart(CMD_WEB_REQ_CB, (uint32_t)cb->callback, bodyLen >= 0 ? 5 : 4);
+	uint16_t r = (uint16_t)reason;
+	cmdResponseBody(&r, sizeof(uint16_t));
+	cmdResponseBody(&connData->conn->proto.tcp->remote_ip, 4);
+	cmdResponseBody(&connData->conn->proto.tcp->remote_port, sizeof(uint16_t));
+	cmdResponseBody(connData->url, os_strlen(connData->url));
+	if( bodyLen >= 0 )
+		cmdResponseBody(body, bodyLen);
+	cmdResponseEnd();
+	
+	if( reason == SUBMIT )
+	{
+		httpdStartResponse(connData, 204);
+		httpdEndHeaders(connData);
+		return HTTPD_CGI_DONE;
+	}
+	
+	// TODO
 	return HTTPD_CGI_DONE;
 }
