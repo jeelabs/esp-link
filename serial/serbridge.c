@@ -504,3 +504,8 @@ serbridgeInit(int port1, int port2)
   espconn_tcp_set_max_con_allow(&serbridgeConn2, MAX_CONN);
   espconn_regist_time(&serbridgeConn2, SER_BRIDGE_TIMEOUT, 0);
 }
+
+int  ICACHE_FLASH_ATTR serbridgeInProgramming()
+{
+  return slip_disabled;
+}
