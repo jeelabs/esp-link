@@ -177,10 +177,33 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 		connData->cgiData = (void *)1;
 	}
 	
-	// TODO
 	return HTTPD_CGI_MORE;
 }
 
 void ICACHE_FLASH_ATTR WEB_JsonData(CmdPacket *cmd)
 {
+	CmdRequest req;
+	cmdRequest(&req, cmd);
+	
+	os_printf("JSON data\n"); // TODO
+	
+	if (cmdGetArgc(&req) != 3) return;
+	
+	uint8_t ip[4];
+	cmdPopArg(&req, ip, 4);
+	os_printf("IP:%d.%d.%d.%d\n", ip[0], ip[1], ip[2], ip[3]); // TODO
+	
+	uint16_t port;
+	cmdPopArg(&req, &port, 2);
+	os_printf("Port:%d\n", port); // TODO
+	
+	int16_t len = cmdArgLen(&req);
+	os_printf("Len:%d\n", len); // TODO
+	uint8_t json[len+1];
+	json[len] = 0;
+	cmdPopArg(&req, json, len);
+	
+	os_printf("%s\n", json); // TODO
+	
+	// TODO
 }

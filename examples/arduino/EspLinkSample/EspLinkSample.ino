@@ -52,6 +52,14 @@ void packetReceived(CmdRequest *req)
       }
       break;
   }
+
+  char * json = "{'last_name': 'helloka'}";
+
+  espLink.sendPacketStart(CMD_WEB_JSON_DATA, 100, 3);
+  espLink.sendPacketArg(4, ip);
+  espLink.sendPacketArg(2, (uint8_t *)&port);
+  espLink.sendPacketArg(strlen(json), (uint8_t *)json);
+  espLink.sendPacketEnd();
   
 }
 
