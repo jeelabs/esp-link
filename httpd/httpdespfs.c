@@ -13,7 +13,6 @@ Connector to let httpd use the espfs filesystem to serve the files in it.
  * ----------------------------------------------------------------------------
  */
 #include "httpdespfs.h"
-#include "web-server.h"
 
 // The static files marked with FLAG_GZIP are compressed and will be served with GZIP compression.
 // If the client does not advertise that he accepts GZIP send following warning message (telnet users for e.g.)
@@ -30,14 +29,6 @@ cgiEspFsHook(HttpdConnData *connData) {
 	char acceptEncodingBuffer[64];
 	int isGzip;
 
-	int urlLen = os_strlen(connData->url);
-	if( urlLen > 5 )
-	{
-		if( os_strcmp( connData->url+urlLen-5, ".json" ) == 0 )
-		{
-			return webServerProcessJsonQuery(connData);
-		}
-	}
 	//os_printf("cgiEspFsHook conn=%p conn->conn=%p file=%p\n", connData, connData->conn, file);
 
 	if (connData->conn==NULL) {

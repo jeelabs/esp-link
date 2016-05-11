@@ -84,8 +84,10 @@ void ICACHE_FLASH_ATTR webServerInit()
 	webServerBrowseFiles();
 }
 
-int ICACHE_FLASH_ATTR webServerProcessJsonQuery(HttpdConnData *connData)
+int ICACHE_FLASH_ATTR cgiJsonHook(HttpdConnData *connData)
 {
+	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+	
 	if( !flashConfig.slip_enable )
 	{
 		errorResponse(connData, 400, "Slip processing is disabled!");
