@@ -60,7 +60,7 @@ int ICACHE_FLASH_ATTR webServerMultipartCallback(MultipartCmd cmd, char *data, i
       {
         uint32_t magic = ESPFS_MAGIC;
         spi_flash_write( (int)getUserPageSectionStart(), (uint32_t *)&magic, sizeof(uint32_t) );
-	webServerInit();
+	WEB_Init();
       }
       break;
   }

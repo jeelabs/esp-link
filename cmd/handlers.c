@@ -12,6 +12,7 @@
 #ifdef REST
 #include <rest.h>
 #endif
+#include <web-server.h>
 
 #ifdef CMD_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
@@ -47,6 +48,7 @@ const CmdList commands[] = {
   {CMD_REST_REQUEST,    "REST_REQ",       REST_Request},
   {CMD_REST_SETHEADER,  "REST_SETHDR",    REST_SetHeader},
 #endif
+  {CMD_WEB_JSON_DATA,   "WEB_JSON_DATA",  WEB_JsonData},
 };
 
 //===== List of registered callbacks (to uC)

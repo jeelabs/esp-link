@@ -99,7 +99,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/mqtt", cgiMqtt, NULL },
 #endif
   { "/web-server/upload", cgiWebServerUpload, NULL },
-  { "*.json", cgiJsonHook, NULL }, //Catch-all cgi JSON queries
+  { "*.json", WEB_CgiJsonHook, NULL }, //Catch-all cgi JSON queries
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
 };
@@ -157,7 +157,7 @@ void user_init(void) {
   //os_printf("espFsInit %s\n", res?"ERR":"ok");
   // mount the http handlers
   httpdInit(builtInUrls, 80);
-  webServerInit();
+  WEB_Init();
   
   // init the wifi-serial transparent bridge (port 23)
   serbridgeInit(23, 2323);

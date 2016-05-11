@@ -4,6 +4,7 @@
 #include <esp8266.h>
 
 #include "httpd.h"
+#include "cmd.h"
 
 typedef enum
 {
@@ -15,11 +16,12 @@ typedef enum
   INVALID=-1,
 } RequestReason;
 
-void   webServerInit();
+void   WEB_Init();
 
-char * webServerUserPages();
+char * WEB_UserPages();
 
-int    ICACHE_FLASH_ATTR cgiJsonHook(HttpdConnData *connData);
+int    WEB_CgiJsonHook(HttpdConnData *connData);
+void   WEB_JsonData(CmdPacket *cmd);
 
 #endif /* WEB_SERVER_H */
 
