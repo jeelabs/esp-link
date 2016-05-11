@@ -222,7 +222,7 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
       "\"version\": \"%s\", "
       "\"name\": \"%s\""
     " }",
-  webServerUserPages(), esp_link_version, name);
+  WEB_UserPages(), esp_link_version, name);
 
   httpdSend(connData, buff, -1);
   return HTTPD_CGI_DONE;

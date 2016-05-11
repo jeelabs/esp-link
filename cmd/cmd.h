@@ -49,7 +49,7 @@ typedef enum {
   CMD_REST_REQUEST,
   CMD_REST_SETHEADER,
   
-  CMD_WEB_DATA = 30,
+  CMD_WEB_JSON_DATA = 30,
   CMD_WEB_REQ_CB,
 } CmdName;
 

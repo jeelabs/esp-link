@@ -16,12 +16,12 @@ static char* web_server_reasons[] = {
 
 char * webServerPages = NULL;
 
-char * ICACHE_FLASH_ATTR webServerUserPages()
+char * ICACHE_FLASH_ATTR WEB_UserPages()
 {
 	return webServerPages;
 }
 
-void ICACHE_FLASH_ATTR webServerBrowseFiles()
+void ICACHE_FLASH_ATTR WEB_BrowseFiles()
 {
 	char buffer[1024];
 	buffer[0] = 0;
@@ -74,17 +74,17 @@ void ICACHE_FLASH_ATTR webServerBrowseFiles()
 	os_memcpy( webServerPages, buffer, len );
 }
 
-void ICACHE_FLASH_ATTR webServerInit()
+void ICACHE_FLASH_ATTR WEB_Init()
 {
 	espFsInit(userPageCtx, (void *)getUserPageSectionStart(), ESPFS_FLASH);
 	if( espFsIsValid( userPageCtx ) )
 		os_printf("Valid user file system found!\n");
 	else
 		os_printf("No user file system found!\n");
-	webServerBrowseFiles();
+	WEB_BrowseFiles();
 }
 
-int ICACHE_FLASH_ATTR cgiJsonHook(HttpdConnData *connData)
+int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 {
 	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 	
@@ -179,4 +179,8 @@ int ICACHE_FLASH_ATTR cgiJsonHook(HttpdConnData *connData)
 	
 	// TODO
 	return HTTPD_CGI_MORE;
+}
+
+void ICACHE_FLASH_ATTR WEB_JsonData(CmdPacket *cmd)
+{
 }
