@@ -99,6 +99,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/mqtt", cgiMqtt, NULL },
 #endif
   { "/web-server/upload", cgiWebServerUpload, NULL },
+  { "*.json", cgiJsonHook, NULL }, //Catch-all cgi JSON queries
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
 };

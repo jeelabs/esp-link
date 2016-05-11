@@ -19,7 +19,7 @@ void   webServerInit();
 
 char * webServerUserPages();
 
-int    webServerProcessJsonQuery(HttpdConnData *connData);
+int    ICACHE_FLASH_ATTR cgiJsonHook(HttpdConnData *connData);
 
 #endif /* WEB_SERVER_H */
 
