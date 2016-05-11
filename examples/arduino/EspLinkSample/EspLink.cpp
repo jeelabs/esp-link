@@ -71,7 +71,7 @@ void EspLink::sendPacketArg(uint16_t len, uint8_t * data)
   writeBuf((uint8_t*)&len, 2);
   writeBuf(data, len);
 
-  uint16_t pad = (4-((len+2)&3))&3; // get to multiple of 4
+  uint16_t pad = ((len+3)&~3) - len; // get to multiple of 4
   if (pad > 0) {
     uint32_t temp = 0;
     writeBuf((uint8_t*)&temp, pad);
