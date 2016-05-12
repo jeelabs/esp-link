@@ -626,3 +626,32 @@ void ICACHE_FLASH_ATTR httpdInit(HttpdBuiltInUrl *fixedUrls, int port) {
   espconn_accept(&httpdConn);
   espconn_tcp_set_max_con_allow(&httpdConn, MAX_CONN);
 }
+
+int ICACHE_FLASH_ATTR httpdNotify(uint8_t * ip, int port, const void * cgiArg) {
+  int i;
+
+  for (i = 0; i<MAX_CONN; i++)
+  {
+    HttpdConnData *conn = connData+i;
+    
+    if (conn->conn == NULL)
+      continue;
+    if (conn->cgi == NULL)
+      continue;
+    if (conn->conn->proto.tcp->remote_port != port )
+      continue;
+    if (os_memcmp(conn->conn->proto.tcp->remote_ip, ip, 4) != 0)
+      continue;
+    
+    char sendBuff[MAX_SENDBUFF_LEN];
+    conn->priv->sendBuff = sendBuff;
+    conn->priv->sendBuffLen = 0;
+
+    conn->cgiArg = cgiArg;
+    httpdProcessRequest(conn);
+    conn->cgiArg = NULL;
+    
+    return HTTPD_CGI_DONE;
+  }
+  return HTTPD_CGI_NOTFOUND;
+}

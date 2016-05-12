@@ -66,5 +66,6 @@ void ICACHE_FLASH_ATTR httpdEndHeaders(HttpdConnData *conn);
 int ICACHE_FLASH_ATTR httpdGetHeader(HttpdConnData *conn, char *header, char *ret, int retLen);
 int ICACHE_FLASH_ATTR httpdSend(HttpdConnData *conn, const char *data, int len);
 void ICACHE_FLASH_ATTR httpdFlush(HttpdConnData *conn);
+int ICACHE_FLASH_ATTR httpdNotify(uint8_t * ip, int port, const void * cgiArg);
 
 #endif
