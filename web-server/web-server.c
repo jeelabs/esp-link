@@ -84,6 +84,36 @@ void ICACHE_FLASH_ATTR WEB_Init()
 	WEB_BrowseFiles();
 }
 
+int ICACHE_FLASH_ATTR WEB_addJsonString(char * str, char * buf, int maxLen)
+{
+	char * start = buf;
+	if( maxLen < 10 )
+		return -1;
+	char * endp = start + maxLen - 10;
+	
+	*buf++ = '"';
+	
+	int len = os_strlen(str);
+	char avalbuf[len*2+1];
+	char * valbuf = avalbuf;
+	valbuf[len*2] = 0;
+	
+	httpdUrlDecode(str, len, valbuf, len * 2);
+	
+	while(*valbuf)
+	{
+		if( *valbuf == '"' || *valbuf == '\\' )
+			*buf++ = '\\';
+		*buf++ = *(valbuf++);
+		
+		if( buf > endp )
+			  return -1;
+	}
+	
+	*buf++ = '"';
+	return buf - start;
+}
+
 int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 {
 	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
@@ -146,7 +176,66 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 				break;
 			case SUBMIT:
 				{
-					// TODO
+					if( connData->post->received < connData->post->len )
+					{
+						errorResponse(connData, 400, "Post too large!");
+						return HTTPD_CGI_DONE;
+					}
+					
+					bodyLen = 0;
+					
+					int bptr = 0;
+					
+					body[bodyLen++] = '{';
+					
+					while( bptr < connData->post->len )
+					{
+						char * line = connData->post->buff + bptr;
+						
+						char * eo = os_strchr(line, '&' );
+						if( eo != NULL )
+						{
+							*eo = 0;
+							bptr = eo - connData->post->buff + 1;
+						}
+						else
+						{
+							eo = line + os_strlen( line );
+							bptr = connData->post->len;
+						}
+						
+						int len = os_strlen(line);
+						while( len >= 1 && ( line[len-1] == '\r' || line[len-1] == '\n' ))
+							len--;
+						line[len] = 0;
+						
+						char * val = os_strchr(line, '=');
+						if( val != NULL )
+						{
+							*val = 0;
+							char * name = line;
+							char * value = val+1;
+							
+							int alen = WEB_addJsonString(name, body + bodyLen, sizeof(body) - bodyLen);
+							if( alen == -1 )
+							{
+								errorResponse(connData, 400, "Post too large!");
+								return HTTPD_CGI_DONE;
+							}
+							bodyLen += alen;
+							body[bodyLen++] = ':';
+							alen = WEB_addJsonString(value, body + bodyLen, sizeof(body) - bodyLen);
+							if( alen == -1 )
+							{
+								errorResponse(connData, 400, "Post too large!");
+								return HTTPD_CGI_DONE;
+							}
+							bodyLen += alen;
+							body[bodyLen++] = ',';
+						}
+					}
+					
+					body[bodyLen++] = '}';
 				}
 				break;
 			case LOAD:
