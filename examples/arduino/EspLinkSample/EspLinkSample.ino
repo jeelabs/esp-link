@@ -42,18 +42,22 @@ void packetReceived(CmdRequest *req)
   switch( reason )
   {
     case BUTTON:
+    case SUBMIT:
       {
         uint16_t len = espLink.cmdArgLen(req);
         char bf[len+1];
         bf[len] = 0;
         espLink.cmdPopArg(req, bf, len);
-        Serial.print("Button: ");
+        Serial.print("Arg: ");
         Serial.println(bf);
+
+        if( reason == SUBMIT )
+          return;
       }
       break;
   }
 
-  char * json = "{'last_name': 'helloka'}";
+  char * json = "{\"last_name\": \"helloka\"}";
 
   espLink.sendPacketStart(CMD_WEB_JSON_DATA, 100, 3);
   espLink.sendPacketArg(4, ip);
