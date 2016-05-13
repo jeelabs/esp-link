@@ -42,7 +42,6 @@ void packetReceived(CmdRequest *req)
   switch( reason )
   {
     case BUTTON:
-    case SUBMIT:
       {
         uint16_t len = espLink.cmdArgLen(req);
         char bf[len+1];
@@ -50,19 +49,38 @@ void packetReceived(CmdRequest *req)
         espLink.cmdPopArg(req, bf, len);
         Serial.print("Arg: ");
         Serial.println(bf);
-
-        if( reason == SUBMIT )
-          return;
       }
       break;
-  }
+    case SUBMIT:
+      {
+          int arg = 4;
+          while( espLink.cmdGetArgc(req) > arg )
+          {
+            arg++;
 
-  char * json = "{\"last_name\": \"helloka\"}";
+            uint16_t len = espLink.cmdArgLen(req);
+            char bf[len+1];
+            bf[len] = 0;
+            espLink.cmdPopArg(req, bf, len);
+
+            Serial.print(bf + 1);
+            Serial.print(" -> ");
+            Serial.println(bf + strlen(bf+1) + 2);
+          }
+          return;
+      }
+  }
 
   espLink.sendPacketStart(CMD_WEB_JSON_DATA, 100, 3);
   espLink.sendPacketArg(4, ip);
   espLink.sendPacketArg(2, (uint8_t *)&port);
-  espLink.sendPacketArg(strlen(json), (uint8_t *)json);
+  
+  char outBuf[30];
+  outBuf[0] = 0;
+  strcpy(outBuf+1, "last_name");
+  strcpy(outBuf+11,"helloka");
+  espLink.sendPacketArg(19, (uint8_t *)outBuf);
+  
   espLink.sendPacketEnd();
   
 }

@@ -10,6 +10,8 @@
 
 #define WEB_CB "webCb"
 
+#define MAX_VARS 20
+
 static char* web_server_reasons[] = {
   "load", "refresh", "button", "submit"
 };
@@ -84,36 +86,6 @@ void ICACHE_FLASH_ATTR WEB_Init()
 	WEB_BrowseFiles();
 }
 
-int ICACHE_FLASH_ATTR WEB_addJsonString(char * str, char * buf, int maxLen)
-{
-	char * start = buf;
-	if( maxLen < 10 )
-		return -1;
-	char * endp = start + maxLen - 10;
-	
-	*buf++ = '"';
-	
-	int len = os_strlen(str);
-	char avalbuf[len*2+1];
-	char * valbuf = avalbuf;
-	valbuf[len*2] = 0;
-	
-	httpdUrlDecode(str, len, valbuf, len * 2);
-	
-	while(*valbuf)
-	{
-		if( *valbuf == '"' || *valbuf == '\\' )
-			*buf++ = '\\';
-		*buf++ = *(valbuf++);
-		
-		if( buf > endp )
-			  return -1;
-	}
-	
-	*buf++ = '"';
-	return buf - start;
-}
-
 int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 {
 	if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
@@ -161,18 +133,23 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 			return HTTPD_CGI_DONE;
 		}
 		
-		char body[1024];
-		int  bodyLen = -1;
+		char  body[1024];
+		int   bodyPtr = 0;
+		int   argNum = 0;
+		char *argPos[MAX_VARS];
+		int   argLen[MAX_VARS];
 		
 		switch(reason)
 		{
 			case BUTTON:
-				bodyLen = httpdFindArg(connData->getArgs, "id", body, sizeof(body));
-				if( bodyLen <= 0 )
+				argLen[0] = httpdFindArg(connData->getArgs, "id", body, sizeof(body));
+				if( argLen[0] <= 0 )
 				{
 					errorResponse(connData, 400, "No button ID specified!");
 					return HTTPD_CGI_DONE;
 				}
+				argPos[0] = body;
+				argNum++;
 				break;
 			case SUBMIT:
 				{
@@ -182,14 +159,16 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 						return HTTPD_CGI_DONE;
 					}
 					
-					bodyLen = 0;
-					
 					int bptr = 0;
-					
-					body[bodyLen++] = '{';
 					
 					while( bptr < connData->post->len )
 					{
+						if( argNum >= MAX_VARS )
+						{
+							errorResponse(connData, 400, "Too many variables!");
+							return HTTPD_CGI_DONE;
+						}
+						
 						char * line = connData->post->buff + bptr;
 						
 						char * eo = os_strchr(line, '&' );
@@ -216,26 +195,29 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 							char * name = line;
 							char * value = val+1;
 							
-							int alen = WEB_addJsonString(name, body + bodyLen, sizeof(body) - bodyLen);
-							if( alen == -1 )
+							int namLen = os_strlen(name);
+							int valLen = os_strlen(value);
+							
+							int totallen = namLen + valLen + 2;
+							if( bodyPtr + totallen > sizeof(body) - 10 )
 							{
 								errorResponse(connData, 400, "Post too large!");
 								return HTTPD_CGI_DONE;
 							}
-							bodyLen += alen;
-							body[bodyLen++] = ':';
-							alen = WEB_addJsonString(value, body + bodyLen, sizeof(body) - bodyLen);
-							if( alen == -1 )
-							{
-								errorResponse(connData, 400, "Post too large!");
-								return HTTPD_CGI_DONE;
-							}
-							bodyLen += alen;
-							body[bodyLen++] = ',';
+							
+							argPos[argNum] = body + bodyPtr;
+							
+							body[bodyPtr++] = (char)WEB_STRING;
+							os_strcpy( body + bodyPtr, name );
+							bodyPtr += namLen;
+							body[bodyPtr++] = 0;
+							
+							os_strcpy( body + bodyPtr, value );
+							bodyPtr += valLen;
+							
+							argLen[argNum++] = totallen;
 						}
 					}
-					
-					body[bodyLen++] = '}';
 				}
 				break;
 			case LOAD:
@@ -246,14 +228,17 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 		
 		os_printf("Web callback to MCU: %s\n", reasonBuf);
 		
-		cmdResponseStart(CMD_WEB_REQ_CB, (uint32_t)cb->callback, bodyLen >= 0 ? 5 : 4);
+		cmdResponseStart(CMD_WEB_REQ_CB, (uint32_t)cb->callback, 4 + argNum);
 		uint16_t r = (uint16_t)reason;
 		cmdResponseBody(&r, sizeof(uint16_t));
 		cmdResponseBody(&connData->conn->proto.tcp->remote_ip, 4);
 		cmdResponseBody(&connData->conn->proto.tcp->remote_port, sizeof(uint16_t));
 		cmdResponseBody(connData->url, os_strlen(connData->url));
-		if( bodyLen >= 0 )
-			cmdResponseBody(body, bodyLen);
+		
+		int j;
+		for( j=0; j < argNum; j++ )
+			cmdResponseBody(argPos[j], argLen[j]);
+		
 		cmdResponseEnd();
 	
 		if( reason == SUBMIT )
@@ -268,13 +253,107 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 	
 	if( connData->cgiArg != NULL ) // arrived data from MCU
 	{
+		char jsonBuf[1500];
+		int  jsonPtr = 0;
+		
+		
+		jsonBuf[jsonPtr++] = '{';
+		CmdRequest * req = (CmdRequest *)(connData->cgiArg);
+		
+		int c = 2;
+		while( c++ < cmdGetArgc(req) )
+		{
+			if( c < 3 ) // skip the first argument
+				jsonBuf[jsonPtr++] = ',';
+			
+			int len = cmdArgLen(req);
+			char buf[len+1];
+			buf[len] = 0;
+			
+			cmdPopArg(req, buf, len);
+			
+			if( jsonPtr + 20 + len > sizeof(jsonBuf) )
+			{
+				errorResponse(connData, 500, "Response too large!");
+				return HTTPD_CGI_DONE;
+			}
+			
+			WebValueType type = (WebValueType)buf[0];
+			
+			int nameLen = os_strlen(buf+1);
+			jsonBuf[jsonPtr++] = '"';
+			os_memcpy(jsonBuf + jsonPtr, buf + 1, nameLen);
+			jsonPtr += nameLen;
+			jsonBuf[jsonPtr++] = '"';
+			jsonBuf[jsonPtr++] = ':';
+			
+			char * value = buf + 2 + nameLen;
+			
+			switch(type)
+			{
+				case WEB_NULL:
+					os_memcpy(jsonBuf + jsonPtr, "null", 4);
+					jsonPtr += 4;
+					break;
+				case WEB_INTEGER:
+					{
+						int v;
+						os_memcpy( &v, value, 4);
+						
+						char intbuf[20];
+						os_sprintf(intbuf, "%d", v);
+						os_strcpy(jsonBuf + jsonPtr, intbuf);
+						jsonPtr += os_strlen(intbuf);
+					}
+					break;
+				case WEB_BOOLEAN:
+					if( value ) {
+						os_memcpy(jsonBuf + jsonPtr, "true", 4);
+						jsonPtr += 4;
+					} else {
+						os_memcpy(jsonBuf + jsonPtr, "false", 5);
+						jsonPtr += 5;
+					}
+					break;
+				case WEB_FLOAT:
+					{
+						float f;
+						os_memcpy( &f, value, 4);
+						
+						char intbuf[20];
+						os_sprintf(intbuf, "%f", f);
+						os_strcpy(jsonBuf + jsonPtr, intbuf);
+						jsonPtr += os_strlen(intbuf);
+					}
+					break;
+				case WEB_STRING:
+					jsonBuf[jsonPtr++] = '"';
+					while(*value)
+					{
+						if( *value == '\\' || *value == '"' )
+							jsonBuf[jsonPtr++] = '\\';
+						jsonBuf[jsonPtr++] = *(value++);
+					}
+					jsonBuf[jsonPtr++] = '"';
+					break;
+				case WEB_JSON:
+					os_memcpy(jsonBuf + jsonPtr, value, len - 2 - nameLen);
+					jsonPtr += len - 2 - nameLen;
+					break;
+			}
+		}
+		
+		jsonBuf[jsonPtr++] = '}';
+		
 		noCacheHeaders(connData, 200);
 		httpdHeader(connData, "Content-Type", "application/json");
+		
 		char cl[16];
-		os_sprintf(cl, "%d", os_strlen(connData->cgiArg));
+		os_sprintf(cl, "%d", jsonPtr);
 		httpdHeader(connData, "Content-Length", cl);
 		httpdEndHeaders(connData);
-		httpdSend(connData, connData->cgiArg, os_strlen(connData->cgiArg));
+		
+		httpdSend(connData, jsonBuf, jsonPtr);
 		return HTTPD_CGI_DONE;
 	}
 	
@@ -286,7 +365,7 @@ void ICACHE_FLASH_ATTR WEB_JsonData(CmdPacket *cmd)
 	CmdRequest req;
 	cmdRequest(&req, cmd);
 	
-	if (cmdGetArgc(&req) != 3) return;
+	if (cmdGetArgc(&req) < 3) return;
 	
 	uint8_t ip[4];
 	cmdPopArg(&req, ip, 4);
@@ -294,10 +373,5 @@ void ICACHE_FLASH_ATTR WEB_JsonData(CmdPacket *cmd)
 	uint16_t port;
 	cmdPopArg(&req, &port, 2);
 	
-	int16_t len = cmdArgLen(&req);
-	uint8_t json[len+1];
-	json[len] = 0;
-	cmdPopArg(&req, json, len);
-	
-	httpdNotify(ip, port, json);
+	httpdNotify(ip, port, &req);
 }

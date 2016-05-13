@@ -16,6 +16,16 @@ typedef enum
   INVALID=-1,
 } RequestReason;
 
+typedef enum
+{
+  WEB_STRING=0,
+  WEB_NULL,
+  WEB_INTEGER,
+  WEB_BOOLEAN,
+  WEB_FLOAT,
+  WEB_JSON
+} WebValueType;
+
 void   WEB_Init();
 
 char * WEB_UserPages();
