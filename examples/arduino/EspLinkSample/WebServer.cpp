@@ -46,7 +46,21 @@ void WebServer::invokeMethod(RequestReason reason, WebMethod * method, CmdReques
       break;
     case WS_SUBMIT:
       {
-        /* TODO: iterate through fields */
+        int arg_len = espLink.cmdGetArgc( req );
+        int cnt = 4;
+
+        while( cnt < arg_len )
+        {
+          uint16_t len = espLink.cmdArgLen(req);
+          char bf[len+1];
+          bf[len] = 0;
+          espLink.cmdPopArg(req, bf, len);
+
+          value_ptr = bf + 2 + strlen(bf+1);
+          method->callback(SET_FIELD, bf+1, strlen(bf+1));
+          
+          cnt++;
+        }
       }
       return;
     default:
@@ -146,5 +160,25 @@ void WebServer::setArgStringP(const char * name, const char * value)
   espLink.sendPacketArg(nlen+vlen+2, (uint8_t *)buf);
 
   args_to_send--;
+}
+
+void WebServer::setArgInt(const char * name, int32_t value)
+{
+  if( args_to_send <= 0 )
+    return;
+    
+  uint8_t nlen = strlen(name);
+  char buf[nlen + 7];
+  buf[0] = WEB_INTEGER;
+  strcpy(buf+1, name);
+  memcpy(buf+2+nlen, &value, 4);
+  espLink.sendPacketArg(nlen+6, (uint8_t *)buf);
+  
+  args_to_send--;
+}
+
+int32_t WebServer::getArgInt()
+{
+  return (int32_t)atol(value_ptr);
 }
 
