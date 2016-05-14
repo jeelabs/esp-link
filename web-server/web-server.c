@@ -272,6 +272,9 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 			
 			cmdPopArg(req, buf, len);
 			
+			if(len == 0)
+				continue;
+			
 			if( jsonPtr + 20 + len > sizeof(jsonBuf) )
 			{
 				errorResponse(connData, 500, "Response too large!");
@@ -365,7 +368,7 @@ void ICACHE_FLASH_ATTR WEB_JsonData(CmdPacket *cmd)
 	CmdRequest req;
 	cmdRequest(&req, cmd);
 	
-	if (cmdGetArgc(&req) < 3) return;
+	if (cmdGetArgc(&req) < 2) return;
 	
 	uint8_t ip[4];
 	cmdPopArg(&req, ip, 4);
