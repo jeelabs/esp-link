@@ -263,7 +263,7 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 		int c = 2;
 		while( c++ < cmdGetArgc(req) )
 		{
-			if( c < 3 ) // skip the first argument
+			if( c > 3 ) // skip the first argument
 				jsonBuf[jsonPtr++] = ',';
 			
 			int len = cmdArgLen(req);

@@ -53,6 +53,8 @@ class WebServer
     uint16_t                  remote_port;
 
     int16_t                   args_to_send;
+
+    char *                    value_ptr;
     
   protected:
     EspLink espLink;
@@ -70,8 +72,11 @@ class WebServer
     uint16_t           getRemotePort() { return remote_port; }
 
     void               setArgNum(uint8_t num);
+    void               setArgInt(const char * name, int32_t value);
     void               setArgString(const char * name, const char * value);
     void               setArgStringP(const char * name, const char * value);
+
+    int32_t            getArgInt();
 };
 
 #endif /* WEB_SERVER_H */
