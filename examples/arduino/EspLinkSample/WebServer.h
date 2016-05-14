@@ -77,6 +77,7 @@ class WebServer
     void               setArgStringP(const char * name, const char * value);
 
     int32_t            getArgInt();
+    char *             getArgString();
 };
 
 #endif /* WEB_SERVER_H */

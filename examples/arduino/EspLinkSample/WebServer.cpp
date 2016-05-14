@@ -182,3 +182,8 @@ int32_t WebServer::getArgInt()
   return (int32_t)atol(value_ptr);
 }
 
+char * WebServer::getArgString()
+{
+  return value_ptr;
+}
+
