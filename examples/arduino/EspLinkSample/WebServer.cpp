@@ -162,6 +162,22 @@ void WebServer::setArgStringP(const char * name, const char * value)
   args_to_send--;
 }
 
+void WebServer::setArgJson(const char * name, const char * value)
+{
+  if( args_to_send <= 0 )
+    return;
+    
+  uint8_t nlen = strlen(name);
+  uint8_t vlen = strlen(value);
+  char buf[nlen + vlen + 3];
+  buf[0] = WEB_JSON;
+  strcpy(buf+1, name);
+  strcpy(buf+2+nlen, value);
+  espLink.sendPacketArg(nlen+vlen+2, (uint8_t *)buf);
+  
+  args_to_send--;
+}
+
 void WebServer::setArgInt(const char * name, int32_t value)
 {
   if( args_to_send <= 0 )

@@ -73,6 +73,7 @@ class WebServer
 
     void               setArgNum(uint8_t num);
     void               setArgInt(const char * name, int32_t value);
+    void               setArgJson(const char * name, const char * value);
     void               setArgString(const char * name, const char * value);
     void               setArgStringP(const char * name, const char * value);
 
