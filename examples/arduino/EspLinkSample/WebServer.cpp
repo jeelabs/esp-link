@@ -162,6 +162,21 @@ void WebServer::setArgStringP(const char * name, const char * value)
   args_to_send--;
 }
 
+void WebServer::setArgBoolean(const char * name, uint8_t value)
+{
+  if( args_to_send <= 0 )
+    return;
+    
+  uint8_t nlen = strlen(name);
+  char buf[nlen + 4];
+  buf[0] = WEB_BOOLEAN;
+  strcpy(buf+1, name);
+  buf[2 + nlen] = value;
+  espLink.sendPacketArg(nlen+3, (uint8_t *)buf);
+  
+  args_to_send--;
+}
+
 void WebServer::setArgJson(const char * name, const char * value)
 {
   if( args_to_send <= 0 )
@@ -201,5 +216,18 @@ int32_t WebServer::getArgInt()
 char * WebServer::getArgString()
 {
   return value_ptr;
+}
+
+uint8_t WebServer::getArgBoolean()
+{
+  if( strcmp_P(value_ptr, PSTR("on")) == 0 )
+    return 1;
+  if( strcmp_P(value_ptr, PSTR("true")) == 0 )
+    return 1;
+  if( strcmp_P(value_ptr, PSTR("yes")) == 0 )
+    return 1;
+  if( strcmp_P(value_ptr, PSTR("1")) == 0 )
+    return 1;
+  return 0;
 }
 

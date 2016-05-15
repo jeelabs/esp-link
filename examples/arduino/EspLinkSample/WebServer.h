@@ -76,9 +76,11 @@ class WebServer
     void               setArgJson(const char * name, const char * value);
     void               setArgString(const char * name, const char * value);
     void               setArgStringP(const char * name, const char * value);
+    void               setArgBoolean(const char * name, uint8_t value);
 
     int32_t            getArgInt();
     char *             getArgString();
+    uint8_t            getArgBoolean();
 };
 
 #endif /* WEB_SERVER_H */
