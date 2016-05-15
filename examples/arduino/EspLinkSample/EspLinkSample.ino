@@ -1,11 +1,12 @@
-
 #include "WebServer.h"
 #include "Pages.h"
 
 const char ledURL[] PROGMEM = "/LED.html.json";
+const char userURL[] PROGMEM = "/User.html.json";
 
 const WebMethod PROGMEM methods[] = {
   { ledURL, ledHtmlCallback },
+  { userURL, userHtmlCallback },
   { NULL, NULL },
 };
 
@@ -17,6 +18,7 @@ void setup()
   webServer.init();
 
   ledInit();
+  userInit();
 }
 
 void loop()
