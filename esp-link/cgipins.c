@@ -32,7 +32,7 @@ int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
   int len;
 
   len = os_sprintf(buff,
-      "{ \"reset\":%d, \"isp\":%d, \"conn\":%d, \"ser\":%d, \"swap\":%d, \"rxpup\":%d, \"uart0_tx_enable\":%d }",
+      "{ \"reset\":%d, \"isp\":%d, \"conn\":%d, \"ser\":%d, \"swap\":%d, \"rxpup\":%d, \"uart0-tx-enable\":%d }",
       flashConfig.reset_pin, flashConfig.isp_pin, flashConfig.conn_led_pin,
       flashConfig.ser_led_pin, !!flashConfig.swap_uart, !!flashConfig.rx_pullup,
 	  flashConfig.uart0_tx_enable_pin);
