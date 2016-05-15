@@ -461,20 +461,25 @@ serbridgeInitPins()
     system_uart_de_swap();
   }
 
-  // set both pins to 1 before turning them on so we don't cause a reset
-  if (mcu_isp_pin >= 0)   GPIO_OUTPUT_SET(mcu_isp_pin, 1);
-  if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+  /* set both pins to 1 before turning them on (so we don't cause a reset)
+   * then switch pin mux to make these pins GPIO pins
+   */
+  if (mcu_isp_pin >= 0) {
+	  GPIO_OUTPUT_SET(mcu_isp_pin, 1);
+	  makeGpio(mcu_isp_pin);
+  }
+
+  if (mcu_reset_pin >= 0) {
+	  GPIO_OUTPUT_SET(mcu_reset_pin, 1);
+	  makeGpio(mcu_reset_pin);
+  }
+
   // set TX_ENABLE to 0 so we start up listening
-  if (mcu_reset_pin >= 0) GPIO_OUTPUT_SET(uart0_tx_enable_pin, 0);
-  // switch pin mux to make these pins GPIO pins
-  if (mcu_reset_pin >= 0) makeGpio(mcu_reset_pin);
-  if (mcu_isp_pin >= 0)   makeGpio(mcu_isp_pin);
   if (uart0_tx_enable_pin >= 0) {
+	  GPIO_OUTPUT_SET(uart0_tx_enable_pin, 0);
 	  makeGpio(uart0_tx_enable_pin);
 	  uart0_set_tx_enable_pin(uart0_tx_enable_pin);
   }
-
-
 }
 
 // Start transparent serial bridge TCP server on specified port (typ. 23)
