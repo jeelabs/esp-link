@@ -310,7 +310,7 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 					}
 					break;
 				case WEB_BOOLEAN:
-					if( value ) {
+					if( *value ) {
 						os_memcpy(jsonBuf + jsonPtr, "true", 4);
 						jsonPtr += 4;
 					} else {

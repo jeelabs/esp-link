@@ -21,7 +21,14 @@ function notifyResponse( data )
         }
         else if( el.type == "checkbox" )
         {
-          el.checked = data[v] == "on";
+          if( data[v] == "on" )
+            el.checked = true;
+          else if( data[v] == "off" )
+            el.checked = false;
+          else if( data[v] == true )
+            el.checked = true;
+          else
+            el.checked = false;
         }
         else
         {
