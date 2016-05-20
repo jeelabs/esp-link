@@ -1,4 +1,7 @@
 #include "WebServer.h"
+#include "Arduino.h"
+
+#define RESUBSCRIBE_LIMIT 1000
 
 WebServer * WebServer::instance = NULL;
 
@@ -19,7 +22,10 @@ void WebServer::init()
 
 void WebServer::loop()
 {
-  // TODO: resubscribe periodically
+  // resubscribe periodically
+  uint32_t elapsed = millis() - last_connect_ts;
+  if( elapsed > RESUBSCRIBE_LIMIT )
+    registerCallback();
   espLink.readLoop();
 }
 
@@ -28,6 +34,7 @@ void WebServer::registerCallback()
   espLink.sendPacketStart(CMD_CB_ADD, 100, 1);
   espLink.sendPacketArg(5, (uint8_t *)"webCb");
   espLink.sendPacketEnd();
+  last_connect_ts = millis();
 }
 
 void WebServer::invokeMethod(RequestReason reason, WebMethod * method, CmdRequest *req)
