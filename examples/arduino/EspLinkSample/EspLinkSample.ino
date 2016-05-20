@@ -3,10 +3,12 @@
 
 const char ledURL[] PROGMEM = "/LED.html.json";
 const char userURL[] PROGMEM = "/User.html.json";
+const char voltageURL[] PROGMEM = "/Voltage.html.json";
 
 const WebMethod PROGMEM methods[] = {
   { ledURL, ledHtmlCallback },
   { userURL, userHtmlCallback },
+  { voltageURL, voltageHtmlCallback },
   { NULL, NULL },
 };
 
@@ -19,6 +21,7 @@ void setup()
 
   ledInit();
   userInit();
+  voltageInit();
 }
 
 void loop()
@@ -26,5 +29,6 @@ void loop()
   webServer.loop();
 
   ledLoop();
+  voltageLoop();
 }
 
