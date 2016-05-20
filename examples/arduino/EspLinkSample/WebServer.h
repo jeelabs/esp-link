@@ -55,6 +55,8 @@ class WebServer
     int16_t                   args_to_send;
 
     char *                    value_ptr;
+
+    uint32_t                  last_connect_ts;
     
   protected:
     EspLink espLink;
