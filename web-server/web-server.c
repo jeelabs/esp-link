@@ -193,7 +193,9 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 						{
 							*val = 0;
 							char * name = line;
-							char * value = val+1;
+							int vblen = os_strlen(val+1) * 2;
+							char value[vblen];
+							httpdUrlDecode(val+1, strlen(val+1), value, vblen);
 							
 							int namLen = os_strlen(name);
 							int valLen = os_strlen(value);
