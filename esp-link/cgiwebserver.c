@@ -9,15 +9,57 @@
 #include "config.h"
 #include "web-server.h"
 
+int html_offset = 0;
+int html_header_len = 0;
+const char * HTML_HEADER =   "<!doctype html><html><head><title>esp-link</title>"
+                             "<link rel=stylesheet href=\"/pure.css\"><link rel=stylesheet href=\"/style.css\">"
+                             "<meta name=viewport content=\"width=device-width, initial-scale=1\"><script src=\"/ui.js\">"
+                             "</script><script src=\"/userpage.js\"></script></head><body><div id=layout>    ";
+
 int ICACHE_FLASH_ATTR webServerMultipartCallback(MultipartCmd cmd, char *data, int dataLen, int position)
 {
   switch(cmd)
   {
     case FILE_START:
-      // do nothing
+      html_offset = 0;
+      html_header_len = 0;
+      // simple HTML file
+      if( ( dataLen > 5 ) && ( os_strcmp(data + dataLen - 5, ".html") == 0 ) )
+      {
+        // write the start block on esp-fs
+        int spi_flash_addr = getUserPageSectionStart();
+        spi_flash_erase_sector(spi_flash_addr/SPI_FLASH_SEC_SIZE);
+        EspFsHeader hdr;
+        hdr.magic = 0xFFFFFFFF;
+        hdr.flags = 0;
+        hdr.compression = 0;
+        
+        int len = dataLen + 1;
+        while(( len & 3 ) != 0 )
+          len++;
+        
+        hdr.nameLen = len;
+        hdr.fileLenComp = hdr.fileLenDecomp = 0xFFFFFFFF;
+
+        spi_flash_write( spi_flash_addr + html_offset, (uint32_t *)(&hdr), sizeof(EspFsHeader) );
+        html_offset += sizeof(EspFsHeader);
+
+        char nameBuf[len];
+        os_memset(nameBuf, 0, len);
+        os_memcpy(nameBuf, data, dataLen);
+
+        spi_flash_write( spi_flash_addr + html_offset, (uint32_t *)(nameBuf), len );
+        html_offset += len;
+
+        html_header_len = os_strlen(HTML_HEADER) & ~3; // upload only 4 byte aligned part
+        char buf[html_header_len];
+        os_memcpy(buf, HTML_HEADER, html_header_len);
+        spi_flash_write( spi_flash_addr + html_offset, (uint32_t *)(buf), html_header_len );
+        html_offset += html_header_len;
+      }
       break;
     case FILE_DATA:
-      if( position < 4 )
+      if(( position < 4 ) && (html_offset == 0))
       {
         for(int p = position; p < 4; p++ )
         {
@@ -30,7 +72,7 @@ int ICACHE_FLASH_ATTR webServerMultipartCallback(MultipartCmd cmd, char *data, i
         }
       }
       
-      int spi_flash_addr = getUserPageSectionStart() + position;
+      int spi_flash_addr = getUserPageSectionStart() + html_offset + position;
       int spi_flash_end_addr = spi_flash_addr + dataLen;
       if( spi_flash_end_addr + dataLen >= getUserPageSectionEnd() )
       {
@@ -58,9 +100,39 @@ int ICACHE_FLASH_ATTR webServerMultipartCallback(MultipartCmd cmd, char *data, i
       break;
     case FILE_DONE:
       {
-        uint32_t magic = ESPFS_MAGIC;
-        spi_flash_write( (int)getUserPageSectionStart(), (uint32_t *)&magic, sizeof(uint32_t) );
-	WEB_Init();
+        if( html_offset != 0 )
+        {
+          // write the terminating block on esp-fs
+          int spi_flash_addr = getUserPageSectionStart() + html_offset + position;
+
+          uint32_t pad = 0;
+          uint8_t pad_cnt = (4 - position) & 3;
+          if( pad_cnt )
+            spi_flash_write( spi_flash_addr, &pad, pad_cnt );
+	  
+	  spi_flash_addr += pad_cnt;
+
+          EspFsHeader hdr;
+          hdr.magic = ESPFS_MAGIC;
+          hdr.flags = 1;
+          hdr.compression = 0;
+          hdr.nameLen = 0;
+          hdr.fileLenComp = hdr.fileLenDecomp = 0;
+
+          spi_flash_write( spi_flash_addr, (uint32_t *)(&hdr), sizeof(EspFsHeader) );
+
+          uint32_t totallen = html_header_len + position;
+  
+          spi_flash_write( (int)getUserPageSectionStart(), (uint32_t *)&hdr.magic, sizeof(uint32_t) );
+          spi_flash_write( (int)getUserPageSectionStart() + 8, &totallen, sizeof(uint32_t) );
+          spi_flash_write( (int)getUserPageSectionStart() + 12, &totallen, sizeof(uint32_t) );
+        }
+        else
+        {
+          uint32_t magic = ESPFS_MAGIC;
+          spi_flash_write( (int)getUserPageSectionStart(), (uint32_t *)&magic, sizeof(uint32_t) );
+	}
+        WEB_Init();
       }
       break;
   }
