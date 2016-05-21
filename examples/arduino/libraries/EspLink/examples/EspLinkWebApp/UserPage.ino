@@ -67,7 +67,6 @@ void userHtmlCallback(WebServerCommand command, char * data, int dataLen)
     case LOAD:
       {
         char buf[MAX_STR_LEN];
-        webServer.setArgNum(5);
         userReadStr( buf, POS_FIRST_NAME );
         webServer.setArgString("first_name", buf);
         userReadStr( buf, POS_LAST_NAME );

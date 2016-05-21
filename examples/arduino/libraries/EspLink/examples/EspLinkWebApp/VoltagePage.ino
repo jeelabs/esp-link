@@ -87,8 +87,6 @@ void voltageHtmlCallback(WebServerCommand command, char * data, int dataLen)
     case LOAD:
     case REFRESH:
       {
-        webServer.setArgNum(2);
-
         char buf[20];
         uint8_t int_part = measured_voltage / 256;
         uint8_t float_part = ((measured_voltage & 255) * 100) / 256;

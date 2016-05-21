@@ -52,8 +52,6 @@ class WebServer
     uint8_t                   remote_ip[4];
     uint16_t                  remote_port;
 
-    int16_t                   args_to_send;
-
     char *                    value_ptr;
 
     uint32_t                  last_connect_ts;
@@ -73,7 +71,6 @@ class WebServer
     uint8_t *          getRemoteIp() { return remote_ip; }
     uint16_t           getRemotePort() { return remote_port; }
 
-    void               setArgNum(uint8_t num);
     void               setArgInt(const char * name, int32_t value);
     void               setArgJson(const char * name, const char * value);
     void               setArgString(const char * name, const char * value);
@@ -86,4 +83,3 @@ class WebServer
 };
 
 #endif /* WEB_SERVER_H */
-

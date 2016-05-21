@@ -154,7 +154,6 @@ void ledHtmlCallback(WebServerCommand command, char * data, int dataLen)
       }
       break;
     case LOAD:
-      webServer.setArgNum(4);
       webServer.setArgInt("frequency", frequency);
 
       switch(pattern)
@@ -171,9 +170,6 @@ void ledHtmlCallback(WebServerCommand command, char * data, int dataLen)
       }
     case REFRESH:
       {
-        if( command == REFRESH )
-          webServer.setArgNum(2);
-
         if( blinking )
           webServer.setArgStringP("text", PSTR("LED is blinking"));
         else
