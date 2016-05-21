@@ -70,21 +70,20 @@ void WebServer::invokeMethod(RequestReason reason, WebMethod * method, CmdReques
         }
       }
       return;
-    default:
+    case WS_LOAD:
+    case WS_REFRESH:
       break;
+    default:
+      return;
   }
 
-  args_to_send = -1;
+  espLink.sendPacketStart(CMD_WEB_JSON_DATA, 100, 255);
+  espLink.sendPacketArg(4, remote_ip);
+  espLink.sendPacketArg(2, (uint8_t *)&remote_port);
+
   method->callback( reason == WS_LOAD ? LOAD : REFRESH, NULL, 0);
 
-  if( args_to_send == -1 )
-  {
-    espLink.sendPacketStart(CMD_WEB_JSON_DATA, 100, 2);
-    espLink.sendPacketArg(4, remote_ip);
-    espLink.sendPacketArg(2, (uint8_t *)&remote_port);
-  }
-  while( args_to_send-- > 0 )
-    espLink.sendPacketArg(0, NULL);
+  espLink.sendPacketArg(0, NULL);
   espLink.sendPacketEnd();
 }
 
@@ -130,18 +129,8 @@ void WebServer::handleRequest(CmdRequest *req)
   espLink.sendPacketEnd();
 }
 
-void WebServer::setArgNum(uint8_t num)
-{
-  espLink.sendPacketStart(CMD_WEB_JSON_DATA, 100, 2 + (args_to_send = num));
-  espLink.sendPacketArg(4, remote_ip);
-  espLink.sendPacketArg(2, (uint8_t *)&remote_port);
-}
-
 void WebServer::setArgString(const char * name, const char * value)
 {
-  if( args_to_send <= 0 )
-    return;
-    
   uint8_t nlen = strlen(name);
   uint8_t vlen = strlen(value);
   char buf[nlen + vlen + 3];
@@ -149,15 +138,10 @@ void WebServer::setArgString(const char * name, const char * value)
   strcpy(buf+1, name);
   strcpy(buf+2+nlen, value);
   espLink.sendPacketArg(nlen+vlen+2, (uint8_t *)buf);
-  
-  args_to_send--;
 }
 
 void WebServer::setArgStringP(const char * name, const char * value)
 {
-  if( args_to_send <= 0 )
-    return;
-    
   uint8_t nlen = strlen(name);
   uint8_t vlen = strlen_P(value);
   char buf[nlen + vlen + 3];
@@ -165,30 +149,20 @@ void WebServer::setArgStringP(const char * name, const char * value)
   strcpy(buf+1, name);
   strcpy_P(buf+2+nlen, value);
   espLink.sendPacketArg(nlen+vlen+2, (uint8_t *)buf);
-
-  args_to_send--;
 }
 
 void WebServer::setArgBoolean(const char * name, uint8_t value)
 {
-  if( args_to_send <= 0 )
-    return;
-    
   uint8_t nlen = strlen(name);
   char buf[nlen + 4];
   buf[0] = WEB_BOOLEAN;
   strcpy(buf+1, name);
   buf[2 + nlen] = value;
   espLink.sendPacketArg(nlen+3, (uint8_t *)buf);
-  
-  args_to_send--;
 }
 
 void WebServer::setArgJson(const char * name, const char * value)
 {
-  if( args_to_send <= 0 )
-    return;
-    
   uint8_t nlen = strlen(name);
   uint8_t vlen = strlen(value);
   char buf[nlen + vlen + 3];
@@ -196,23 +170,16 @@ void WebServer::setArgJson(const char * name, const char * value)
   strcpy(buf+1, name);
   strcpy(buf+2+nlen, value);
   espLink.sendPacketArg(nlen+vlen+2, (uint8_t *)buf);
-  
-  args_to_send--;
 }
 
 void WebServer::setArgInt(const char * name, int32_t value)
 {
-  if( args_to_send <= 0 )
-    return;
-    
   uint8_t nlen = strlen(name);
   char buf[nlen + 7];
   buf[0] = WEB_INTEGER;
   strcpy(buf+1, name);
   memcpy(buf+2+nlen, &value, 4);
   espLink.sendPacketArg(nlen+6, (uint8_t *)buf);
-  
-  args_to_send--;
 }
 
 int32_t WebServer::getArgInt()
