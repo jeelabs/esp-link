@@ -836,7 +836,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
 
     // If STA is enabled switch to STA+AP to allow for recovery, it will then switch to STA-only
     // once it gets an IP address
-    if (x == 1) wifi_set_opmode(3);
+    wifi_set_opmode(3);
 
     // Call both STATION and SOFTAP default config
     wifi_station_get_config_default(&stconf);
