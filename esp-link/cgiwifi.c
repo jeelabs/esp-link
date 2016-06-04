@@ -836,7 +836,7 @@ void ICACHE_FLASH_ATTR wifiInit() {
 
     // If STA is enabled switch to STA+AP to allow for recovery, it will then switch to STA-only
     // once it gets an IP address
-    wifi_set_opmode(3);
+    if (x == 1) wifi_set_opmode(3);
 
     // Call both STATION and SOFTAP default config
     wifi_station_get_config_default(&stconf);
@@ -850,6 +850,8 @@ void ICACHE_FLASH_ATTR wifiInit() {
     if (os_strlen((char*)stconf.ssid) == 0 && os_strlen((char*)stconf.password) == 0) {
         os_strncpy((char*)stconf.ssid, VERS_STR(STA_SSID), 32);
         os_strncpy((char*)stconf.password, VERS_STR(STA_PASS), 64);
+
+        wifi_set_opmode(3);
 
         DBG("Wifi pre-config trying to connect to AP %s pw %s\n",(char*)stconf.ssid, (char*)stconf.password);
 
