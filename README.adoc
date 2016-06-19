@@ -171,6 +171,16 @@ to join its network to configure it. The short version is:
     you reconnect your laptop/phone to your normal network and access esp-link via its hostname
     or IP address
 
+#### Notes on using AP (access point) mode
+
+Esp-link does not support STA+AP mode, however it does support STA mode and AP mode. What happens
+is that STA+AP mode is used at boot and when making STA changes to allow for recovery: the AP
+mode stays on for a while so you can connect to it and fix the STA mode. Once STA has connected,
+esp-link switches to STA-only mode. There is no setting to stay in STA+AP mode. So... if you want
+to use AP ensure you set esp-link to AP-only mode. If you want STA+AP mode you're gonna have to
+modify the source for yourself. (This stuff is painful to test and rather tricky, so don't expect
+the way it works to change.)
+
 ### LED indicators
 
 Assuming appropriate hardware attached to GPIO pins, the green "conn" LED will show the wifi

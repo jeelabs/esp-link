@@ -31,7 +31,6 @@
             <div id="AP_Settings-spinner" class="spinner spinner-small"></div>
             
             <form action="#" id="AP_Settings-form" class="pure-form" hidden>
-	           <!-- <input type="text" id="conn_check" name="ap_connex" value="0" hidden>-->
               <legend>Soft-AP main settings, use with care!</legend>
               
               <div class="pure-form-stacked">
@@ -46,34 +45,6 @@
                 <div class="popup">Password must be at least 8 chars long!</div>
               </div>
               
-             <div class="pure-form-stacked">
-             <legend>Soft-AP Advanced Settings</legend> 
-             </div>
-             
-            <div class="form-horizontal">
-              <label for="AP_Settings-ron" style="margin-right:1em">
-                <input type="radio" name="ap" value="on" id="AP_Settings-ron"/>
-                Show </label>
-                <label for="AP_Settings-roff" style="margin-right:1em">
-                <input type="radio" name="ap" value="off" id="AP_Settings-roff"/>
-                Hide </label>
-            </div>
-            
-            <div id="AP_Settings-off" class="pure-form-stacked"></div> 
-            <div id="AP_Settings-on" class="pure-form-stacked">             
-              
-              <div class="pure-form-stacked">
-                <label>Soft-AP Max Connections</label>
-                <input type="text" name="ap_maxconn" />
-                <div class="popup">Max 4 ( default 4 )</div>
-              </div>
-              
-              <div class="pure-form-stacked">
-                <label>Soft-AP Beacon Interval</label>
-                <input type="text" name="ap_beacon" />
-                <div class="popup">Between 100 - 60000 ms ( default 100ms )</div>
-              </div>
-              
               <div class="pure-form-stacked">   
                 <label>Soft-AP Auth Mode</label>
                 <select name="ap_authmode" href="#">
@@ -85,14 +56,24 @@
                 </select>
                 <div class="popup">Default WPA_WPA2_PSK</div>
               </div>
-              
-               <div class="form-horizontal">
-                <label><input type="checkbox" name="ap_hidden" />Soft-AP SSID hidden</label>
-                <div class="popup">Check this box to hide you Soft-AP SSID ( default Not Hidden )</div>
+               
+              <div class="pure-form-stacked">
+                <label>Soft-AP Max Connections</label>
+                <input type="text" name="ap_maxconn" />
+                <div class="popup">Max 4 ( default 4 )</div>
+              </div>
+               
+              <div class="pure-form-stacked">
+                <label>Soft-AP Beacon Interval</label>
+                <input type="text" name="ap_beacon" />
+                <div class="popup">Between 100 - 60000 ms ( default 100ms )</div>
+              </div>
+               
+              <div class="form-horizontal">
+               <label><input type="checkbox" name="ap_hidden" />Soft-AP SSID hidden</label>
+               <div class="popup">Check this box to hide you Soft-AP SSID ( default Not Hidden )</div>
               </div>
               
-            </div>
-            
               <button id="AP_Settings-button" type="submit" class="pure-button button-primary">
                 Change Soft-AP settings!
               </button>
@@ -114,10 +95,7 @@ onLoad(function() {
   getWifiInfo();
   // Fetch actual settings
   fetchApSettings();
-  // Hide advanced settings
-  undoApAdvanced();
-  bnd($("#AP_Settings-ron"), "click", doApAdvanced);
-  bnd($("#AP_Settings-roff"), "click", undoApAdvanced); 
+  // Wire-up form
   bnd($("#AP_Settings-form"), "submit", changeApSettings);
 });
 </script>

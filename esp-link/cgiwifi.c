@@ -551,30 +551,34 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
     if (checkString(buff) && len>7 && len<=64) {
         // String preprocessing done in client side, wifiap.js line 31
         os_memcpy(apconf.password, buff, len);
+        os_printf("Setting AP password len=%d\n", len);
     } else if (len != 0) {
         jsonHeader(connData, 400);
         httpdSend(connData, "PASSWORD not valid or out of range", -1);
         return HTTPD_CGI_DONE;
     }
     // Set auth mode
-    if(len != 0){
+    if (len != 0) {
         // Set authentication mode, before password to check open settings
         len=httpdFindArg(connData->getArgs, "ap_authmode", buff, sizeof(buff));
-        if(len>0){
+        if (len > 0) {
             int value = atoi(buff);
-            if(value >= 0  && value <= 4){
+            if (value > 0  && value <= 4) {
                 apconf.authmode = value;
-            }else{
+            } else {
                 // If out of range set by default
+                os_printf("Forcing AP authmode to WPA_WPA2_PSK\n");
                 apconf.authmode = 4;
             }
-        }else{
+        } else {
             // Valid password but wrong auth mode, default 4
+            os_printf("Forcing AP authmode to WPA_WPA2_PSK\n");
             apconf.authmode = 4;
         }
-    }else{
+    } else {
         apconf.authmode = 0;
     }
+    os_printf("Setting AP authmode=%d\n", apconf.authmode);
     // Set max connection number
     len=httpdFindArg(connData->getArgs, "ap_maxconn", buff, sizeof(buff));
     if(len>0){
