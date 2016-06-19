@@ -44,6 +44,7 @@ struct HttpdPriv {
   char *sendBuff;           // output buffer
   short headPos;            // offset into header
   short sendBuffLen;        // offset into output buffer
+  short sendBuffMax;        // size of output buffer
   short code;               // http response code (only for logging)
 };
 
@@ -226,6 +227,13 @@ int ICACHE_FLASH_ATTR httpdGetHeader(HttpdConnData *conn, char *header, char *re
   return 0;
 }
 
+//Setup an output buffer
+void ICACHE_FLASH_ATTR httpdSetOutputBuffer(HttpdConnData *conn, char *buff, short max) {
+  conn->priv->sendBuff = buff;
+  conn->priv->sendBuffLen = 0;
+  conn->priv->sendBuffMax = max;
+}
+
 //Start the response headers.
 void ICACHE_FLASH_ATTR httpdStartResponse(HttpdConnData *conn, int code) {
   char buff[128];
@@ -277,9 +285,9 @@ int ICACHE_FLASH_ATTR cgiRedirect(HttpdConnData *connData) {
 //Returns 1 for success, 0 for out-of-memory.
 int ICACHE_FLASH_ATTR httpdSend(HttpdConnData *conn, const char *data, int len) {
   if (len<0) len = strlen(data);
-  if (conn->priv->sendBuffLen + len>MAX_SENDBUFF_LEN) {
+  if (conn->priv->sendBuffLen + len>conn->priv->sendBuffMax) {
     DBG("%sERROR! httpdSend full (%d of %d)\n",
-      connStr, conn->priv->sendBuffLen, MAX_SENDBUFF_LEN);
+      connStr, conn->priv->sendBuffLen, conn->priv->sendBuffMax);
     return 0;
   }
   os_memcpy(conn->priv->sendBuff + conn->priv->sendBuffLen, data, len);
@@ -288,7 +296,7 @@ int ICACHE_FLASH_ATTR httpdSend(HttpdConnData *conn, const char *data, int len) 
 }
 
 //Helper function to send any data in conn->priv->sendBuff
-static void ICACHE_FLASH_ATTR xmitSendBuff(HttpdConnData *conn) {
+void ICACHE_FLASH_ATTR httpdFlush(HttpdConnData *conn) {
   if (conn->priv->sendBuffLen != 0) {
     sint8 status = espconn_sent(conn->conn, (uint8_t*)conn->priv->sendBuff, conn->priv->sendBuffLen);
     if (status != 0) {
@@ -307,13 +315,12 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
   if (conn == NULL) return; // aborted connection
 
   char sendBuff[MAX_SENDBUFF_LEN];
-  conn->priv->sendBuff = sendBuff;
-  conn->priv->sendBuffLen = 0;
+  httpdSetOutputBuffer(conn, sendBuff, sizeof(sendBuff));
 
   if (conn->cgi == NULL) { //Marked for destruction?
     //os_printf("Closing 0x%p/0x%p->0x%p\n", arg, conn->conn, conn);
     espconn_disconnect(conn->conn); // we will get a disconnect callback
-    return; //No need to call xmitSendBuff.
+    return; //No need to call httpdFlush.
   }
 
   int r = conn->cgi(conn); //Execute cgi fn.
@@ -324,7 +331,7 @@ static void ICACHE_FLASH_ATTR httpdSentCb(void *arg) {
     DBG("%sERROR! Bad CGI code %d\n", connStr, r);
     conn->cgi = NULL; //mark for destruction.
   }
-  xmitSendBuff(conn);
+  httpdFlush(conn);
 }
 
 static const char *httpNotFoundHeader = "HTTP/1.0 404 Not Found\r\nConnection: close\r\n"
@@ -366,7 +373,7 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
         //generate a built-in 404 to handle this.
         DBG("%s%s not found. 404!\n", connStr, conn->url);
         httpdSend(conn, httpNotFoundHeader, -1);
-        xmitSendBuff(conn);
+        httpdFlush(conn);
         conn->cgi = NULL; //mark for destruction.
         if (conn->post) conn->post->len = 0; // skip any remaining receives
         return;
@@ -378,12 +385,12 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
     r = conn->cgi(conn);
     if (r == HTTPD_CGI_MORE) {
       //Yep, it's happy to do so and has more data to send.
-      xmitSendBuff(conn);
+      httpdFlush(conn);
       return;
     }
     else if (r == HTTPD_CGI_DONE) {
       //Yep, it's happy to do so and already is done sending data.
-      xmitSendBuff(conn);
+      httpdFlush(conn);
       conn->cgi = NULL; //mark for destruction.
       if (conn->post) conn->post->len = 0; // skip any remaining receives
       return;
@@ -485,8 +492,7 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
   if (conn == NULL) return; // aborted connection
 
   char sendBuff[MAX_SENDBUFF_LEN];
-  conn->priv->sendBuff = sendBuff;
-  conn->priv->sendBuffLen = 0;
+  httpdSetOutputBuffer(conn, sendBuff, sizeof(sendBuff));
 
   //This is slightly evil/dirty: we abuse conn->post->len as a state variable for where in the http communications we are:
   //<0 (-1): Post len unknown because we're still receiving headers
