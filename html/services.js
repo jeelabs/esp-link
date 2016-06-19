@@ -54,7 +54,7 @@ function displayServices(data) {
   if (data.syslog_host !== undefined) {
     $("#Syslog-form").removeAttribute("hidden");
   } else {
-    # syslog disabled...
+    // syslog disabled...
     $("#Syslog-form").parentNode.setAttribute("hidden", "");
   }
   $("#SNTP-form").removeAttribute("hidden");
