@@ -629,7 +629,7 @@ void ICACHE_FLASH_ATTR
 MQTT_Init(MQTT_Client* client, char* host, uint32 port, uint8_t security, uint8_t sendTimeout,
     char* client_id, char* client_user, char* client_pass,
     uint8_t keepAliveTime) {
-  DBG_MQTT("MQTT_Init\n");
+  DBG_MQTT("MQTT_Init, host=%s\n", host);
 
   os_memset(client, 0, sizeof(MQTT_Client));
 

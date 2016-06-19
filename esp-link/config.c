@@ -24,8 +24,9 @@ FlashConfig flashDefault = {
   .slip_enable  = 0, .mqtt_enable = 0, .mqtt_status_enable = 0,
   .mqtt_timeout = 2, .mqtt_clean_session = 1,
   .mqtt_port    = 1883, .mqtt_keepalive = 60,
-  .mqtt_host    = "\0", .mqtt_clientid = "\0",
-  .mqtt_username= "\0", .mqtt_password = "\0", .mqtt_status_topic = "\0",
+  .mqtt_old_host  = "\0", .mqtt_clientid = "\0",
+  .mqtt_username  = "\0", .mqtt_password = "\0", .mqtt_status_topic = "\0",
+  .mqtt_host      = "\0",
   .sys_descr 	  = "\0",
   .rx_pullup	  = 1,
   .sntp_server  = "us.pool.ntp.org\0",
@@ -141,8 +142,16 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
     flash_pri = 0;
     return false;
   }
-  // copy good one into global var and return
+  // copy good one into global var
   os_memcpy(&flashConfig, flash_pri == 0 ? &ff0.fc : &ff1.fc, sizeof(FlashConfig));
+  // convert old config
+  if (flashConfig.mqtt_host[0] == 0 && flashConfig.mqtt_old_host[0] != 0) {
+      // the mqtt_host got changed from 32 chars to 64 in a new location
+      os_printf("Converting old mqtt_host\n");
+      os_memcpy(flashConfig.mqtt_host, flashConfig.mqtt_old_host, 32);
+      os_memset(flashConfig.mqtt_old_host, 0, 32);
+  } else os_printf("mqtt_host is '%s'\n", flashConfig.mqtt_host);
+
   return true;
 }
 
