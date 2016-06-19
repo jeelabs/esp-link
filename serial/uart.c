@@ -171,17 +171,15 @@ uart_tx_one_char(uint8 uart, uint8 c)
   while (((READ_PERI_REG(UART_STATUS(uart))>>UART_TXFIFO_CNT_S)&UART_TXFIFO_CNT)>=100) ;
   //Send the character
   if (UART0 == uart && uart0_tx_enable_pin >= 0) {
-	if (uart_tx_enable_timer_inited) {
-      // A tx_completed_interrupt may have already been scheduled, cancel it before it fires during our transmission
-	  os_timer_disarm(&uart_tx_enable_timer);
-	} else {
-	  os_timer_setfn(&uart_tx_enable_timer, tx_completed_interrupt, NULL);
-	  uart_tx_enable_timer_inited = true;
-	}
+    // A tx_completed_interrupt may have already been scheduled, cancel it before it fires during our transmission
+	os_timer_disarm(&uart_tx_enable_timer);
 
     tx_enable(true);
+    WRITE_PERI_REG(UART_FIFO(uart), c);
+    SET_PERI_REG_MASK(UART_INT_ENA(uart), UART_TXFIFO_EMPTY_INT_ENA);
+  } else {
+    WRITE_PERI_REG(UART_FIFO(uart), c);
   }
-  WRITE_PERI_REG(UART_FIFO(uart), c);
   return OK;
 }
 
@@ -280,6 +278,7 @@ uart0_rx_intr_handler(void *para)
     post_usr_task(uart_recvTaskNum, 0);
   } else if (UART_TXFIFO_EMPTY_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_TXFIFO_EMPTY_INT_ST)) {
     // TX Queue is empty, disable the TX_ENABLE line once the transmission is complete
+    CLEAR_PERI_REG_MASK(UART_INT_ENA(UART0), UART_TXFIFO_EMPTY_INT_ENA);
 	if (0 != uart0_baud_rate) {
 	  int tx_char_time = 8 * 1000000 / uart0_baud_rate; // assumes 8 bits per character
 	  os_timer_arm_us(&uart_tx_enable_timer, tx_char_time, false);
@@ -351,6 +350,9 @@ uart_init(UartBautRate uart0_br, int8_t uart0TxEnablePin, UartBautRate uart1_br)
 {
   if (uart0TxEnablePin >= 0) {
 	uart0_set_tx_enable_pin(uart0TxEnablePin);
+	// Set up a timer to disable the TX line after the last byte has been transmitted
+    os_timer_disarm(&uart_tx_enable_timer);
+    os_timer_setfn(&uart_tx_enable_timer, tx_completed_interrupt, NULL);
   }
 
   // rom use 74880 baut_rate, here reinitialize
