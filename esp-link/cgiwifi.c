@@ -851,6 +851,8 @@ void ICACHE_FLASH_ATTR wifiInit() {
         os_strncpy((char*)stconf.ssid, VERS_STR(STA_SSID), 32);
         os_strncpy((char*)stconf.password, VERS_STR(STA_PASS), 64);
 
+        wifi_set_opmode(3);
+
         DBG("Wifi pre-config trying to connect to AP %s pw %s\n",(char*)stconf.ssid, (char*)stconf.password);
 
         // wifi_set_phy_mode(2); // limit to 802.11b/g 'cause n is flaky

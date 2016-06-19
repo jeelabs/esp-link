@@ -10,7 +10,11 @@
 #include "console.h"
 #include "slip.h"
 #include "cmd.h"
+#ifdef SYSLOG
 #include "syslog.h"
+#else
+#define syslog(X1...)
+#endif
 
 #define SKIP_AT_RESET
 

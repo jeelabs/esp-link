@@ -46,7 +46,7 @@
 CHANGE_TO_STA ?= yes
 
 # hostname or IP address for wifi flashing
-ESP_HOSTNAME        ?= esp-link
+ESP_HOSTNAME  ?= esp-link
 
 # --------------- toolchain configuration ---------------
 
@@ -57,7 +57,7 @@ XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 # Firmware version 
 # WARNING: if you change this expect to make code adjustments elsewhere, don't expect
 # that esp-link will magically work with a different version of the SDK!!!
-SDK_VERS ?= esp_iot_sdk_v1.5.2
+SDK_VERS ?= esp_iot_sdk_v1.5.4
 
 # Try to find the firmware manually extracted, e.g. after downloading from Espressif's BBS,
 # http://bbs.espressif.com/viewforum.php?f=46
@@ -101,7 +101,7 @@ LED_SERIAL_PIN      ?= 14
 # --------------- esp-link modules config options ---------------
 
 # Optional Modules mqtt
-MODULES ?= mqtt rest syslog
+MODULES ?= mqtt rest #syslog
 
 # --------------- esphttpd config options ---------------
 

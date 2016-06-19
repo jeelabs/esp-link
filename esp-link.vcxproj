@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|ARM">
@@ -72,6 +72,7 @@
     <ClInclude Include="httpd\base64.h" />
     <ClInclude Include="httpd\httpd.h" />
     <ClInclude Include="httpd\httpdespfs.h" />
+    <ClInclude Include="include\c_types.h" />
     <ClInclude Include="include\esp8266.h" />
     <ClInclude Include="include\espmissingincludes.h" />
     <ClInclude Include="include\uart_hw.h" />
@@ -110,8 +111,14 @@
     <None Include="html\ui.js" />
     <None Include="html\wifi\wifi.html" />
     <None Include="html\wifi\wifi.js" />
+    <None Include="html\wifi\wifiAp.html" />
+    <None Include="html\wifi\wifiAp.js" />
+    <None Include="html\wifi\wifiSta.html" />
+    <None Include="html\wifi\wifiSta.js" />
     <None Include="Makefile" />
+    <None Include="README.adoc" />
     <None Include="README.md" />
+    <None Include="syslog\syslog.md" />
     <None Include="wiflash" />
     <None Include="WINDOWS.md" />
   </ItemGroup>
@@ -121,6 +128,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="html\favicon.ico" />
+    <Image Include="html\wifi\icons.png" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A92F0CAA-F89B-4F78-AD2A-A042429BD87F}</ProjectGuid>
@@ -140,7 +148,7 @@
   <PropertyGroup>
     <NMakeOutput />
     <NMakePreprocessorDefinitions>__ets__;_STDINT_H;ICACHE_FLASH;__MINGW32__;__WIN32__;MQTT;REST;SYSLOG;FIRMWARE_SIZE</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>.\syslog;.\rest;.\esp-link;.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.5.0\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>.\syslog;.\rest;.\esp-link;.\mqtt;.\cmd;.\serial;.\user;.\espfs;.\httpd;.\include;..\esp_iot_sdk_v1.5.2\include;..\xtensa-lx106-elf\xtensa-lx106-elf\include;c:\tools\mingw64\x86_64-w64-mingw32\include;c:\tools\mingw64\lib\gcc\x86_64-w64-mingw32\4.8.3\include</NMakeIncludeSearchPath>
     <ExecutablePath />
     <ReferencePath />
     <LibraryPath />
