@@ -51,7 +51,12 @@ function displayServices(data) {
   $("#sntp-spinner").setAttribute("hidden", "");
   $("#mdns-spinner").setAttribute("hidden", "");
 
-  $("#Syslog-form").removeAttribute("hidden");
+  if (data.syslog_host) {
+    $("#Syslog-form").removeAttribute("hidden");
+  } else {
+    $("#Syslog-form").parentNode.setAttribute("hidden", "");
+  }
+
   $("#SNTP-form").removeAttribute("hidden");
   $("#mDNS-form").removeAttribute("hidden");
 

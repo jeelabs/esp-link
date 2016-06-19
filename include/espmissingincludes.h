@@ -3,9 +3,6 @@
 
 #include <user_interface.h>
 #include <eagle_soc.h>
-#include <stdint.h>
-#include <c_types.h>
-#include <ets_sys.h>
 #include <stdarg.h>
 
 //Missing function prototypes in include folders. Gcc will warn on these if we don't define 'em anywhere.

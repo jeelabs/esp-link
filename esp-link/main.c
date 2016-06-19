@@ -29,13 +29,23 @@
 #include "config.h"
 #include "log.h"
 #include "gpio.h"
+#ifdef SYSLOG
 #include "syslog.h"
+#endif
 #include "cgiservices.h"
 
+
+#ifdef SYSLOG
 #define NOTICE(format, ...) do {	                                          \
 	LOG_NOTICE(format, ## __VA_ARGS__ );                                      \
 	os_printf(format "\n", ## __VA_ARGS__);                                   \
 } while ( 0 )
+#else
+#define NOTICE(format, ...) do {	                                          \
+	os_printf(format "\n", ## __VA_ARGS__);                                   \
+} while ( 0 )
+#endif
+
 
 /*
 This is the main url->function dispatching data struct.
