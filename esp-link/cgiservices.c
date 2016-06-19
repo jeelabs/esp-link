@@ -152,9 +152,9 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   if (syslog < 0) return HTTPD_CGI_DONE;
   syslog |= getUInt8Arg(connData, "syslog_filter", &flashConfig.syslog_filter);
   if (syslog < 0) return HTTPD_CGI_DONE;
-  syslog |= getBoolArg(connData, "syslog_showtick", &flashConfig.syslog_showtick);
+  syslog |= getBoolArg(connData, "syslog_showtick", (bool *)&flashConfig.syslog_showtick);
   if (syslog < 0) return HTTPD_CGI_DONE;
-  syslog |= getBoolArg(connData, "syslog_showdate", &flashConfig.syslog_showdate);
+  syslog |= getBoolArg(connData, "syslog_showdate", (bool *)&flashConfig.syslog_showdate);
   if (syslog < 0) return HTTPD_CGI_DONE;
 
 #ifdef SYSLOG
@@ -174,7 +174,7 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   }
 
   int8_t mdns = 0;
-  mdns |= getBoolArg(connData, "mdns_enable", &flashConfig.mdns_enable);
+  mdns |= getBoolArg(connData, "mdns_enable", (bool *)&flashConfig.mdns_enable);
   if (mdns < 0) return HTTPD_CGI_DONE;
 
   if (mdns > 0) {
