@@ -134,13 +134,16 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
     mqtt_client_init();
 
   // if just enable changed we just need to bounce the client
-  } 
-  else if (mqtt_en_chg > 0) {
+  } else if (mqtt_en_chg > 0) {
     DBG("MQTT server enable=%d changed\n", flashConfig.mqtt_enable);
-    if (flashConfig.mqtt_enable && strlen(flashConfig.mqtt_host) > 0)
+    if (flashConfig.mqtt_enable && strlen(flashConfig.mqtt_host) > 0) {
+      MQTT_Free(&mqttClient); // safe even if not connected
+      mqtt_client_init();
       MQTT_Reconnect(&mqttClient);
-    else
+    } else {
       MQTT_Disconnect(&mqttClient);
+      MQTT_Free(&mqttClient); // safe even if not connected
+    }
   }
 
   // no action required if mqtt status settings change, they just get picked up at the
@@ -154,7 +157,7 @@ int ICACHE_FLASH_ATTR cgiMqttSet(HttpdConnData *connData) {
   // if SLIP-enable is toggled it gets picked-up immediately by the parser
   int slip_update = getBoolArg(connData, "slip-enable", &flashConfig.slip_enable);
   if (slip_update < 0) return HTTPD_CGI_DONE;
-  if (slip_update > 0) 
+  if (slip_update > 0)
     DBG("SLIP-enable changed: %d\n", flashConfig.slip_enable);
 
   DBG("Saving config\n");

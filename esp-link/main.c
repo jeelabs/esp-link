@@ -43,6 +43,14 @@
 } while ( 0 )
 #endif
 
+#ifdef MEMLEAK_DEBUG
+#include "mem.h"
+bool ICACHE_FLASH_ATTR check_memleak_debug_enable(void)
+{
+    return MEMLEAK_DEBUG_ENABLE;
+}
+#endif
+
 /*
 This is the main url->function dispatching data struct.
 In short, it's a struct with various URLs plus their handlers. The handlers can
@@ -133,6 +141,7 @@ void user_init(void) {
   os_delay_us(10000L);
   os_printf("\n\n** %s\n", esp_link_version);
   os_printf("Flash config restore %s\n", restoreOk ? "ok" : "*FAILED*");
+  prHeapTimerCb(0);
   // Status LEDs
   statusInit();
   serledInit();
@@ -166,10 +175,16 @@ void user_init(void) {
   // Init SNTP service
   cgiServicesSNTPInit();
 #ifdef MQTT
-  NOTICE("initializing MQTT");
-  mqtt_client_init();
+  if (flashConfig.mqtt_enable) {
+    NOTICE("initializing MQTT");
+    mqtt_client_init();
+  }
 #endif
   NOTICE("initializing user application");
   app_init();
   NOTICE("Waiting for work to do...");
+#ifdef MEMLEAK_DEBUG
+  system_show_malloc();
+#endif
+  prHeapTimerCb(0);
 }

@@ -185,6 +185,10 @@ MQTTCMD_Setup(CmdPacket *cmd) {
   if (cmdGetArgc(&req) != 4) return;
 
 #if 0
+// This section is commented-out because we're using the same client as esp-link is using itself,
+// i.e. the one set-up in the Web UI. This code was here when we used a separate client for the
+// attached uC, which just makes life more complicated...
+
   if (cmdGetArgc(&req) != 9)
     return 0;
 
@@ -261,6 +265,10 @@ MQTTCMD_Setup(CmdPacket *cmd) {
 }
 
 #if 0
+// This section is commented-out because we're using the same client as esp-link is using itself,
+// i.e. the one set-up in the Web UI. This code was here when we used a separate client for the
+// attached uC, which just makes life more complicated...
+
 uint32_t ICACHE_FLASH_ATTR
 MQTTCMD_Connect(CmdPacket *cmd) {
   CmdRequest req;

@@ -3,6 +3,7 @@
 // Adapted from: github.com/tuanpmt/esp_bridge, Created on: Jan 9, 2015, Author: Minh
 
 #include "esp8266.h"
+#include "sntp.h"
 #include "cmd.h"
 #include <cgiwifi.h>
 #ifdef MQTT
@@ -21,6 +22,7 @@
 static void cmdNull(CmdPacket *cmd);
 static void cmdSync(CmdPacket *cmd);
 static void cmdWifiStatus(CmdPacket *cmd);
+static void cmdGetTime(CmdPacket *cmd);
 static void cmdAddCallback(CmdPacket *cmd);
 
 // keep track of last status sent to uC so we can notify it when it changes
@@ -33,6 +35,7 @@ const CmdList commands[] = {
   {CMD_SYNC,            "SYNC",           cmdSync},        // synchronize
   {CMD_WIFI_STATUS,     "WIFI_STATUS",    cmdWifiStatus},
   {CMD_CB_ADD,          "ADD_CB",         cmdAddCallback},
+  {CMD_GET_TIME,        "GET_TIME",       cmdGetTime},
 #ifdef MQTT
   {CMD_MQTT_SETUP,      "MQTT_SETUP",     MQTTCMD_Setup},
   {CMD_MQTT_PUBLISH,    "MQTT_PUB",       MQTTCMD_Publish},
@@ -149,6 +152,13 @@ cmdWifiStatus(CmdPacket *cmd) {
   return;
 }
 
+// Command handler for time
+static void ICACHE_FLASH_ATTR
+cmdGetTime(CmdPacket *cmd) {
+  cmdResponseStart(CMD_RESP_V, sntp_get_current_timestamp(), 0);
+  cmdResponseEnd();
+  return;
+}
 
 // Command handler to add a callback to the named-callbacks list, this is for a callback to the uC
 static void ICACHE_FLASH_ATTR

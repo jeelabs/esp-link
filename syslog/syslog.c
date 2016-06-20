@@ -46,7 +46,6 @@ static void ICACHE_FLASH_ATTR syslog_udp_recv_cb(void *arg, char *pusrdata, unsi
 
 #define syslog_send_udp() post_usr_task(syslog_task,0)
 
-#ifdef SYSLOG_DBG
 static char ICACHE_FLASH_ATTR *syslog_get_status(void) {
       switch (syslogState)
       {
@@ -77,11 +76,13 @@ static char ICACHE_FLASH_ATTR *syslog_get_status(void) {
       }
       return "UNKNOWN ";
 }
-#endif
 
 static void ICACHE_FLASH_ATTR syslog_set_status(enum syslog_state state) {
   syslogState = state;
   DBG("[%dµs] %s: %s (%d)\n", WDEV_NOW(), __FUNCTION__, syslog_get_status(), state);
+#ifndef SYSLOG_DBG
+  os_printf("Syslog state: %s\n", syslog_get_status());
+#endif
 }
 
 static void ICACHE_FLASH_ATTR syslog_timer_arm(int delay) {
@@ -261,6 +262,7 @@ void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
 {
 
   DBG("[%uµs] %s\n", WDEV_NOW(), __FUNCTION__);
+  os_printf("SYSLOG host=%s *host=0x%x\n", syslog_host, *syslog_host);
   if (!*syslog_host) {
     syslog_set_status(SYSLOG_HALTED);
     return;
@@ -504,8 +506,7 @@ void ICACHE_FLASH_ATTR syslog(uint8_t facility, uint8_t severity, const char *ta
 {
   DBG("[%dµs] %s status: %s\n", WDEV_NOW(), __FUNCTION__, syslog_get_status());
 
-  if (syslogState == SYSLOG_ERROR ||
-    syslogState == SYSLOG_HALTED)
+  if (flashConfig.syslog_host[0] == 0 || syslogState == SYSLOG_ERROR || syslogState == SYSLOG_HALTED)
     return;
 
   if (severity > flashConfig.syslog_filter)
