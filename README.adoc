@@ -36,10 +36,10 @@ toc::[]
 Releases & Downloads
 --------------------
 
-- https://github.com/jeelabs/esp-link/releases/tag/v2.1.7[V2.1.7] is the most recent release.
-  It has the new built-in stk500v1 programmer and works on all modules (esp-01 through esp-12).
-- https://github.com/jeelabs/esp-link/releases/tag/v2.2.beta2[V2.2.beta2] will be coming
-  up shortly with mDNS, sNTP, and syslog support, stay tuned...
+- https://github.com/jeelabs/esp-link/releases/tag/v2.2.3[V2.2.3] is the most recent release.
+  It has a built-in stk500v1 programmer (for AVRs), work on all modules, and supports mDNS,
+  sNTP, and syslog. It is built using the Espressif SDK 1.5.4.
+- https://github.com/jeelabs/esp-link/releases/tag/v2.1.7[V2.1.7] is the previous release.
 - See https://github.com/jeelabs/esp-link/releases[all releases].
 
 For quick support and questions chat at
