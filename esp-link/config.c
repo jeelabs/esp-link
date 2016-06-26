@@ -31,7 +31,10 @@ FlashConfig flashDefault = {
   .rx_pullup	  = 1,
   .sntp_server  = "us.pool.ntp.org\0",
   .syslog_host = "\0", .syslog_minheap = 8192, .syslog_filter = 7, .syslog_showtick = 1, .syslog_showdate = 0,
-  .mdns_enable = 1, .mdns_servername = "http\0", .timezone_offset = 0
+  .mdns_enable = 1, .mdns_servername = "http\0", .timezone_offset = 0,
+  .data_bits	= EIGHT_BITS,
+  .parity	= NONE_BITS,
+  .stop_bits	= ONE_STOP_BIT,
 };
 
 typedef union {
@@ -152,6 +155,12 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
       os_memset(flashConfig.mqtt_old_host, 0, 32);
   } else os_printf("mqtt_host is '%s'\n", flashConfig.mqtt_host);
 
+  if (flashConfig.data_bits == 0) {
+      // restore to default 8N1
+      flashConfig.data_bits = flashDefault.data_bits;
+      flashConfig.parity = flashDefault.parity;
+      flashConfig.stop_bits = flashDefault.stop_bits;
+  }
   return true;
 }
 

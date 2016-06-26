@@ -18,7 +18,17 @@
           <option value="19200">19200</option>
           <option value="9600">9600</option>
         </select>
-        &nbsp; Fmt: 8N1
+        &nbsp; Fmt:
+        <select id="fmt-sel" class="pure-button" href="#">
+          <option value="8N1">8N1</option>
+          <option value="8E1">8E1</option>
+          <option value="8N2">8N2</option>
+          <option value="8E2">8E2</option>
+          <option value="7N1">7N1</option>
+          <option value="7E1">7E1</option>
+          <option value="7N2">7N2</option>
+          <option value="7E2">7E2</option>
+        </select>
       </p>
       <div class="pure-g">
         <div class="pure-u-1-4"><legend><b>Console</b></legend></div>
@@ -90,6 +100,20 @@
       ajaxSpin('POST', "/console/baud?rate="+baud,
         function(resp) { showNotification("" + baud + " baud set"); },
         function(s, st) { showWarning("Error setting baud rate: " + st); }
+      );
+    });
+
+    ajaxJson('GET', "/console/fmt",
+      function(data) { $("#fmt-sel").value = data.fmt; },
+      function(s, st) { showNotification(st); }
+    );
+
+    bnd($("#fmt-sel"), "change", function(ev) {
+      ev.preventDefault();
+      var fmt = $("#fmt-sel").value;
+      ajaxSpin('POST', "/console/fmt?fmt="+fmt,
+        function(resp) { showNotification("" + fmt + " format set"); },
+        function(s, st) { showWarning("Error setting format: " + st); }
       );
     });
 
