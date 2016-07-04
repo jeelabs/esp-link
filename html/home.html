@@ -40,9 +40,9 @@
               /home/arduino/hardware/tools/avrdude&nbsp;\<br>
               &nbsp;&nbsp;-DV -patmega328p \<br>
               &nbsp;&nbsp;-Pnet:esp-link.local:23 \<br>
-              &nbsp;&nbsp;-carduino -b115200 -U -C \<br>
-              &nbsp;&nbsp;/home/arduino/hardware/tools/avrdude.conf&nbsp;\<br>
-              &nbsp;&nbsp;flash:w:my_sketch.hex:i
+              &nbsp;&nbsp;-carduino -b115200 \<br>
+              &nbsp;&nbsp;-U flash:w:my_sketch.hex:i\<br>
+              &nbsp;&nbsp;-C /home/arduino/hardware/tools/avrdude.conf
             </div>
             <p>where <tt>-Pnet:esp-link.local:23</tt> tells avrdude to connect to port 23 of esp-link.
             You can substitute the IP address of your esp-link for esp-link.local if necessary.
