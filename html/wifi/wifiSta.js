@@ -201,3 +201,12 @@ function doStatic() {
   $('#dhcp-off').removeAttribute('hidden');
   $('#dhcp-on').setAttribute('hidden', '');
 }
+
+onLoad(function() {
+  getWifiInfo();
+  bnd($("#wifiform"), "submit", changeWifiAp);
+  bnd($("#specform"), "submit", changeSpecial);
+  bnd($("#dhcp-ron"), "click", doDhcp);
+  bnd($("#dhcp-roff"), "click", doStatic);
+  scanTimeout = window.setTimeout(scanAPs, 500);
+});

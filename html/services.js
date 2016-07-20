@@ -1,3 +1,10 @@
+onLoad(function() {
+  fetchServices();
+  bnd($("#Syslog-form"), "submit", changeServices);
+  bnd($("#SNTP-form"), "submit", changeServices);
+  bnd($("#mDNS-form"), "submit", changeServices);
+});
+
 function changeServices(e) {
   e.preventDefault();
   var url = "services/update?1=1";

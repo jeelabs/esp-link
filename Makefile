@@ -84,7 +84,7 @@ ESPBAUD		?= 460800
 
 # --------------- chipset configuration   ---------------
 
-# Pick your flash size: "512KB", "1MB", or "4MB"
+# Pick your flash size: "512KB", "1MB", "2MB" or "4MB" 
 FLASH_SIZE ?= 4MB
 
 # The pin assignments below are used when the settings in flash are invalid, they
@@ -135,13 +135,12 @@ YUI_COMPRESSOR ?= yuicompressor-2.4.8.jar
 HTML_PATH = $(abspath ./html)/
 WIFI_PATH = $(HTML_PATH)wifi/
 
-ESP_FLASH_MAX       ?= 503808  # max bin file
-
 ifeq ("$(FLASH_SIZE)","512KB")
 # Winbond 25Q40 512KB flash, typ for esp-01 thru esp-11
 ESP_SPI_SIZE        ?= 0       # 0->512KB (256KB+256KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
+ESP_FLASH_MAX       ?= 241664  # max bin file for 512KB flash: 236KB 
 ET_FS               ?= 4m      # 4Mbit flash size in esptool flash command
 ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
@@ -151,6 +150,7 @@ else ifeq ("$(FLASH_SIZE)","1MB")
 ESP_SPI_SIZE        ?= 2       # 2->1MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80MHz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 1MB flash: 492KB 
 ET_FS               ?= 8m      # 8Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0xFE000 # where to flash blank.bin to erase wireless settings
@@ -163,6 +163,7 @@ else ifeq ("$(FLASH_SIZE)","2MB")
 ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 2MB flash: 492KB 
 ET_FS               ?= 16m     # 16Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x1FE000 # where to flash blank.bin to erase wireless settings
@@ -175,6 +176,8 @@ else
 ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
+#ESP_FLASH_MAX       ?= 1028096 # max bin file for 1MB flash partition: 1004KB 
 ET_FS               ?= 32m     # 32Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
@@ -187,12 +190,17 @@ endif
 # Steps to release: create release on github, git pull, git describe --tags to verify you're
 # on the release tag, make release, upload esp-link.tgz into the release files
 #VERSION ?= "esp-link custom version"
-DATE    := $(shell date '+%F %T')
+DATE    := $(shell date '+%F')
+TIME    := $(shell date '+%T') 
 BRANCH  ?= $(shell if git diff --quiet HEAD; then git describe --tags; \
                    else git symbolic-ref --short HEAD; fi)
 SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | cut -d"/" -f 3; \
                    else echo "development"; fi)
-VERSION ?=esp-link $(BRANCH) - $(DATE) - $(SHA)
+VERSION ?=esp-link $(BRANCH) - $(DATE) - $(TIME) - $(SHA)
+
+BUILD_NUMBER_FILE = $(abspath ./build-number.txt)
+BUILD_NUMBER_SRC = $(abspath ./user/buildnum.c)
+BUILD_NUMBER := $(shell if ! test -f $(BUILD_NUMBER_FILE); then echo 1 > $(BUILD_NUMBER_FILE); fi; cat $(BUILD_NUMBER_FILE)) 
 
 # Output directors to store intermediate compiled files
 # relative to the project directory
@@ -227,15 +235,15 @@ MODULES			+= $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
 EXTRA_INCDIR 	= include .
 
 # libraries used in this project, mainly provided by the SDK
-LIBS = c gcc hal phy pp net80211 wpa main lwip crypto
+LIBS = c gcc hal phy pp net80211 wpa main lwip crypto ssl
 
 # compiler flags using during compilation of source files
-CFLAGS	+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
+CFLAGS	+= -Os -ggdb -std=c99 -Werror -Wno-unused-value -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
 		-nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections \
 		-D__ets__ -DICACHE_FLASH -Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX) \
 		-DMCU_RESET_PIN=$(MCU_RESET_PIN) -DMCU_ISP_PIN=$(MCU_ISP_PIN) \
 		-DLED_CONN_PIN=$(LED_CONN_PIN) -DLED_SERIAL_PIN=$(LED_SERIAL_PIN) \
-		-DVERSION="$(VERSION)"
+		-DVERSION="$(VERSION)" -DBUILD_DATE="$(DATE)" -DBUILD_TIME="$(TIME)" -DBUILD_NUM="$(BUILD_NUMBER)" 
 
 # linker flags used to generate the main object file
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--gc-sections
@@ -343,13 +351,23 @@ all: echo_version checkdirs $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
 
 echo_version:
 	@echo VERSION: $(VERSION)
+# Create an auto-incrementing build number.
+	@echo "#define VER_STR2(V) #V" > $(BUILD_NUMBER_SRC)
+	@echo "#define VER_STR(V) VER_STR2(V)" >> $(BUILD_NUMBER_SRC)
+	@echo "char esp_link_version[] = VER_STR(VERSION);" >> $(BUILD_NUMBER_SRC)
+	@echo "char esp_link_date[] = VER_STR(BUILD_DATE);" >> $(BUILD_NUMBER_SRC)
+	@echo "char esp_link_time[] = VER_STR(BUILD_TIME);" >> $(BUILD_NUMBER_SRC)
+	@echo "char esp_link_build[] = VER_STR(BUILD_NUM);" >> $(BUILD_NUMBER_SRC) 
+
+# Build number file.  Increment if firmware file changes
+$(BUILD_NUMBER_FILE): $(USER1_OUT)
+	@if ! test -f $(BUILD_NUMBER_FILE); then echo 0 > $(BUILD_NUMBER_FILE); fi
+	@echo $$(($$(cat $(BUILD_NUMBER_FILE)) + 1)) > $(BUILD_NUMBER_FILE) 
 
 $(USER1_OUT): $(APP_AR) $(LD_SCRIPT1)
 	$(vecho) "LD $@"
 	$(Q) $(LD) -L$(SDK_LIBDIR) -T$(LD_SCRIPT1) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@
-	@echo Dump  : $(OBJDP) -x $(USER1_OUT)
-	@echo Disass: $(OBJDP) -d -l -x $(USER1_OUT)
-#	$(Q) $(OBJDP) -x $(TARGET_OUT) | egrep espfs_img
+	$(Q) $(OBJDP) -S $(USER1_OUT) > $(addprefix $(BUILD_BASE)/,$(TARGET).dump) 
 
 $(USER2_OUT): $(APP_AR) $(LD_SCRIPT2)
 	$(vecho) "LD $@"
@@ -360,16 +378,15 @@ $(FW_BASE):
 	$(vecho) "FW $@"
 	$(Q) mkdir -p $@
 
-$(FW_BASE)/user1.bin: $(USER1_OUT) $(FW_BASE)
+$(FW_BASE)/user1.bin: $(USER1_OUT) $(FW_BASE) $(BUILD_NUMBER_FILE) 
 	$(Q) $(OBJCP) --only-section .text -O binary $(USER1_OUT) eagle.app.v6.text.bin
 	$(Q) $(OBJCP) --only-section .data -O binary $(USER1_OUT) eagle.app.v6.data.bin
 	$(Q) $(OBJCP) --only-section .rodata -O binary $(USER1_OUT) eagle.app.v6.rodata.bin
 	$(Q) $(OBJCP) --only-section .irom0.text -O binary $(USER1_OUT) eagle.app.v6.irom0text.bin
-	ls -ls eagle*bin
 	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER1_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE) 0
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
-	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
+	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available =" $(shell expr $$(stat -c '%s' $@) \* 100 / $(ESP_FLASH_MAX) ) "%" 
 	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
 
 $(FW_BASE)/user2.bin: $(USER2_OUT) $(FW_BASE)
@@ -410,60 +427,55 @@ tools/$(HTML_COMPRESSOR):
 else
 tools/$(HTML_COMPRESSOR):
 	$(Q) mkdir -p tools
-	cd tools; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR)
-	cd tools; wget https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR)
+	$(Q) if ! test -f tools/$(YUI_COMPRESSOR); then wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR) -O tools/$(YUI_COMPRESSOR); fi
+	$(Q) if ! test -f tools/$(HTML_COMPRESSOR); then wget https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/htmlcompressor/$(HTML_COMPRESSOR) -O tools/$(HTML_COMPRESSOR); fi 
 endif
 
 ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 $(BUILD_BASE)/espfs_img.o: tools/$(HTML_COMPRESSOR)
 endif
 
-$(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
-	$(Q) rm -rf html_compressed; mkdir html_compressed; mkdir html_compressed/wifi;
-	$(Q) cp -r html/*.ico html_compressed;
-	$(Q) cp -r html/*.css html_compressed;
-	$(Q) cp -r html/*.js html_compressed;
-	$(Q) cp -r html/wifi/*.png html_compressed/wifi;
-	$(Q) cp -r html/wifi/*.js html_compressed/wifi;
+$(BUILD_BASE)/espfs_img.o: $(shell find html) espfs/mkespfsimage/mkespfsimage
+	$(Q) rm -rf html_compressed; mkdir -p html_compressed; cp -r html/* html_compressed; 
 ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
-	$(Q) echo "Compression assets with htmlcompressor. This may take a while..."
-		$(Q) java -jar tools/$(HTML_COMPRESSOR) \
-		-t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
-		-o $(abspath ./html_compressed)/ \
-		$(HTML_PATH)head- \
-		$(HTML_PATH)*.html
-	$(Q) java -jar tools/$(HTML_COMPRESSOR) \
-		-t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
-		-o $(abspath ./html_compressed)/wifi/ \
-		$(WIFI_PATH)*.html
-	$(Q) echo "Compression assets with yui-compressor. This may take a while..."
+	$(Q) echo "Compression assets with htmlcompressor. This is fast..."
+	$(Q) for file in `find html_compressed -type f -name "*.html"`; do \
+			java -jar yui/$(HTML_COMPRESSOR) \
+			-t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
+			-o $$file $$file; \
+		done
+	$(Q) echo "Compressing JS/CSS with yui-compressor. This may take a while..."
 	$(Q) for file in `find html_compressed -type f -name "*.js"`; do \
-			java -jar tools/$(YUI_COMPRESSOR) $$file --line-break 0 -o $$file; \
+			java -jar yui/$(YUI_COMPRESSOR) $$file --line-break 0 -o $$file; \
 		done
 	$(Q) for file in `find html_compressed -type f -name "*.css"`; do \
-			java -jar tools/$(YUI_COMPRESSOR) $$file -o $$file; \
-		done
-else
-	$(Q) cp -r html/head- html_compressed;
-	$(Q) cp -r html/*.html html_compressed;
-	$(Q) cp -r html/wifi/*.html html_compressed/wifi;	
+			java -jar yui/$(YUI_COMPRESSOR) $$file -o $$file; \
+		done 
 endif
 ifeq (,$(findstring mqtt,$(MODULES)))
 	$(Q) rm -rf html_compressed/mqtt.html
 	$(Q) rm -rf html_compressed/mqtt.js
 endif
-	$(Q) for file in `find html_compressed -type f -name "*.htm*"`; do \
-		cat html_compressed/head- $$file >$${file}-; \
-		mv $$file- $$file; \
-	done
-	$(Q) rm html_compressed/head-
+	$(Q) echo "Now building espFS ..."
 	$(Q) cd html_compressed; find . \! -name \*- | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..;
-	$(Q) ls -sl build/espfs.img
+	@echo "espFS image is $$(stat -c '%s' build/espfs.img) bytes =" $(shell expr $$(stat -c '%s' build/espfs.img) \* 100 / $$(du -sb html_compressed | { read first _ ; echo $$first; })) "% of uncompressed originals"
 	$(Q) cd build; $(OBJCP) -I binary -O elf32-xtensa-le -B xtensa --rename-section .data=.espfs \
-			espfs.img espfs_img.o; cd ..
+			espfs.img espfs_img.o; cd .. 
 
 # edit the loader script to add the espfs section to the end of irom with a 4 byte alignment.
 # we also adjust the sizes of the segments 'cause we need more irom0
+# in the end the only thing that matters wrt size is that the whole shebang fits into the
+# 236KB available (in a 512KB flash) 
+ifeq ("$(FLASH_SIZE)","512KB")
+build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld
+	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
+			-e '/^  irom0_0_seg/ s/2B000/38000/' \
+			$(SDK_LDDIR)/eagle.app.v6.new.512.app1.ld >$@
+build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld
+	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
+			-e '/^  irom0_0_seg/ s/2B000/38000/' \
+			$(SDK_LDDIR)/eagle.app.v6.new.512.app2.ld >$@
+else
 build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/6B000/7C000/' \
@@ -472,8 +484,9 @@ build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 			-e '/^  irom0_0_seg/ s/6B000/7C000/' \
 			$(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld >$@
+endif 
 
-espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
+espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/*.c
 	$(Q) $(MAKE) -C espfs/mkespfsimage GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
 
 release: all

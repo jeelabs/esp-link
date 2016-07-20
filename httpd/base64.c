@@ -39,7 +39,7 @@ static int ICACHE_FLASH_ATTR base64decode(const char in[4], char out[3]) {
 #endif
 
 /* decode a base64 string in one shot */
-int ICACHE_FLASH_ATTR base64_decode(size_t in_len, const char *in, size_t out_len, unsigned char *out) {
+int ICACHE_FLASH_ATTR ubase64_decode(size_t in_len, const char *in, size_t out_len, unsigned char *out) {
 	unsigned int ii, io;
 	uint32_t v;
 	unsigned int rem;

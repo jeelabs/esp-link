@@ -64,6 +64,8 @@ should be placed above the URLs they protect.
 HttpdBuiltInUrl builtInUrls[] = {
   { "/", cgiRedirect, "/home.html" },
   { "/menu", cgiMenu, NULL },
+  {"/flash", cgiRedirect, "/flash/flash.html"},
+  {"/flash/", cgiRedirect, "/flash/flash.html"},
   { "/flash/next", cgiGetFirmwareNext, NULL },
   { "/flash/upload", cgiUploadFirmware, NULL },
   { "/flash/reboot", cgiRebootFirmware, NULL },
@@ -107,10 +109,6 @@ static void ICACHE_FLASH_ATTR prHeapTimerCb(void *arg) {
 }
 #endif
 
-# define VERS_STR_STR(V) #V
-# define VERS_STR(V) VERS_STR_STR(V)
-char* esp_link_version = VERS_STR(VERSION);
-
 // address of espfs binary blob
 extern uint32_t _binary_espfs_img_start;
 
@@ -139,7 +137,7 @@ void user_init(void) {
   logInit(); // must come after init of uart
   // Say hello (leave some time to cause break in TX after boot loader's msg
   os_delay_us(10000L);
-  os_printf("\n\n** %s\n", esp_link_version);
+  os_printf("\n\n** %s, build %s\n", esp_link_version, esp_link_build);
   os_printf("Flash config restore %s\n", restoreOk ? "ok" : "*FAILED*");
   // Status LEDs
   statusInit();
@@ -162,26 +160,26 @@ void user_init(void) {
 #endif
 
   struct rst_info *rst_info = system_get_rst_info();
-  NOTICE("Reset cause: %d=%s", rst_info->reason, rst_codes[rst_info->reason]);
-  NOTICE("exccause=%d epc1=0x%x epc2=0x%x epc3=0x%x excvaddr=0x%x depc=0x%x",
+  NOTICE("Reset cause: %d=%s\n", rst_info->reason, rst_codes[rst_info->reason]);
+  NOTICE("exccause=%d epc1=0x%x epc2=0x%x epc3=0x%x excvaddr=0x%x depc=0x%x\n",
     rst_info->exccause, rst_info->epc1, rst_info->epc2, rst_info->epc3,
     rst_info->excvaddr, rst_info->depc);
   uint32_t fid = spi_flash_get_id();
-  NOTICE("Flash map %s, manuf 0x%02X chip 0x%04X", flash_maps[system_get_flash_size_map()],
+  NOTICE("Flash map %s, manuf 0x%02X chip 0x%04X\n", flash_maps[system_get_flash_size_map()],
       fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
-  NOTICE("** %s: ready, heap=%ld", esp_link_version, (unsigned long)system_get_free_heap_size());
+  NOTICE("** %s: ready, heap=%ld\n", esp_link_version, (unsigned long)system_get_free_heap_size());
 
   // Init SNTP service
   cgiServicesSNTPInit();
 #ifdef MQTT
   if (flashConfig.mqtt_enable) {
-    NOTICE("initializing MQTT");
+    NOTICE("initializing MQTT\n");
     mqtt_client_init();
   }
 #endif
-  NOTICE("initializing user application");
+  NOTICE("initializing user application\n");
   app_init();
-  NOTICE("Waiting for work to do...");
+  NOTICE("Waiting for work to do...\n");
 #ifdef MEMLEAK_DEBUG
   system_show_malloc();
 #endif

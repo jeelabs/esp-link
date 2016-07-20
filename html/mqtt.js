@@ -1,3 +1,9 @@
+onLoad(function() {
+  fetchMqtt();
+  bnd($("#mqtt-form"), "submit", changeMqtt);
+  bnd($("#mqtt-status-form"), "submit", changeMqttStatus);
+});
+
 //===== MQTT cards
 
 function changeMqtt(e) {

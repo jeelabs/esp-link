@@ -57,11 +57,11 @@ int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
         }
 
   uint8 id = system_upgrade_userbin_check();
-  httpdStartResponse(connData, 200);
+	noCacheHeaders(connData, 200); 
   httpdHeader(connData, "Content-Type", "text/plain");
   httpdHeader(connData, "Content-Length", "9");
   httpdEndHeaders(connData);
-  char *next = id == 1 ? "user1.bin" : "user2.bin";
+  char *next = (id == 1 ? "user1.bin" : "user2.bin");
   httpdSend(connData, next, -1);
   DBG("Next firmware: %s (got %d)\n", next, id);
   return HTTPD_CGI_DONE;
@@ -124,7 +124,7 @@ int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
 
   // erase next flash block if necessary
   if (address % SPI_FLASH_SEC_SIZE == 0){
-    DBG("Flashing 0x%05x (id=%d)\n", address, 2 - id);
+    DBG("Flashing 0x%05X (id=%d)\n", address, 2 - id);
     spi_flash_erase_sector(address/SPI_FLASH_SEC_SIZE);
   }
 

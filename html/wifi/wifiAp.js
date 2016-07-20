@@ -7,7 +7,7 @@ specials["ap_beacon"] = "Beacon Interval";
 function changeWifiMode(m) {
   blockScan = 1;
   hideWarning();
-  ajaxSpin("POST", "setmode?mode=" + m, function(resp) {
+  ajaxSpin("POST", "/wifi/setmode?mode=" + m, function(resp) {
     showNotification("Mode changed");
     window.setTimeout(getWifiInfo, 100);
     blockScan = 0;
@@ -83,3 +83,28 @@ function fetchApSettings() {
     window.setTimeout(fetchApSettings, 1000);
   });
 }
+
+function doApAdvanced() {
+  $('#AP_Settings-on').removeAttribute('hidden');
+  $("#AP_Settings-off").setAttribute("hidden", "");
+  $("#AP_Settings-roff").removeAttribute("checked");
+}
+
+function undoApAdvanced(){
+  $("#AP_Settings-on").setAttribute("hidden", "");
+  $("#AP_Settings-off").removeAttribute("hidden");
+  $("#AP_Settings-roff").setAttribute("checked", "");
+}
+
+onLoad(function() {
+  // Show info about AP	
+  getWifiInfo();
+  // Fetch actual settings
+  fetchApSettings();
+  // Hide advanced settings
+  undoApAdvanced();
+  document.ap_form.ap.value='off';
+  bnd($("#AP_Settings-ron"), "click", doApAdvanced);
+  bnd($("#AP_Settings-roff"), "click", undoApAdvanced); 
+  bnd($("#AP_Settings-form"), "submit", changeApSettings);
+});

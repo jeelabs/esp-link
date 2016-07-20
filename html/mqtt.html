@@ -1,3 +1,12 @@
+<!doctype html>
+<html><head>
+  <title>esp-link</title>
+  <link rel="stylesheet" href="pure.css">
+  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div id="layout">
   <div id="main">
     <div class="header">
       <h1>REST &amp; MQTT</h1>
@@ -92,13 +101,6 @@
     </div>
   </div>
 </div>
-
+<script src="ui.js"></script>
 <script src="mqtt.js"></script>
-<script type="text/javascript">
-onLoad(function() {
-  fetchMqtt();
-  bnd($("#mqtt-form"), "submit", changeMqtt);
-  bnd($("#mqtt-status-form"), "submit", changeMqttStatus);
-});
-</script>
 </body></html>
