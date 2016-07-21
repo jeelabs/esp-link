@@ -27,5 +27,6 @@ void uart_add_recv_cb(UartRecv_cb cb);
 uint16_t uart0_rx_poll(char *buff, uint16_t nchars, uint32_t timeout_us);
 
 void uart0_baud(int rate);
+void uart_config(uint8 uart_no);
 
 #endif /* __UART_H__ */
