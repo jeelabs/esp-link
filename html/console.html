@@ -1,25 +1,38 @@
+<!doctype html>
+<html><head>
+  <title>esp-link</title>
+  <link rel="stylesheet" href="pure.css">
+  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div id="layout">
   <div id="main" class="flex-fill flex-vbox" style="max-height:100%">
     <div class="header">
       <h1>Microcontroller Console</h1>
     </div>
 
     <div class="content flex-fill flex-vbox">
-      <p>
+      <p>The Microcontroller console shows the last 1024 characters
+         received from UART0, to which a microcontroller is typically attached.
+         The UART is configured for 8 bits, no parity, 1 stop bit (8N1).
+      </p>
+      <div>
         <a id="reset-button" class="pure-button button-primary" href="#">Reset &#xb5;C</a>
         &nbsp; <a id="clear-button" class="pure-button button-primary" href="#">Clear Log</a>
-        &nbsp; Baud:
+        &nbsp; Baud (8N1):
         <select id="baud-sel" class="pure-button" href="#">
-          <option value="460800">460800</option>
-          <option value="250000">250000</option>
-          <option value="230400">230400</option>
-          <option value="115200">115200</option>
-          <option value="57600">57600</option>
-          <option value="38400">38400</option>
-          <option value="19200">19200</option>
+          <option value="0"> </option>
           <option value="9600">9600</option>
+          <option value="19200">19200</option>
+          <option value="38400">38400</option>
+          <option value="57600">57600</option>
+          <option value="115200">115200</option>
+          <option value="230400">230400</option>
+          <option value="250000">250000</option>
+          <option value="460800">460800</option>
         </select>
-        &nbsp; Fmt: 8N1
-      </p>
+      </div>
       <div class="pure-g">
         <div class="pure-u-1-4"><legend><b>Console</b></legend></div>
         <div class="pure-u-3-4"></div>
@@ -56,49 +69,7 @@
     </div>
   </div>
 </div>
-
-<script type="text/javascript">console_url = "/console/text"</script>
+<script src="ui.js"></script>
 <script src="console.js"></script>
-<script type="text/javascript">
-  onLoad(function() {
-    fetchText(100, true);
-
-    $("#reset-button").addEventListener("click", function(e) {
-      e.preventDefault();
-      var co = $("#console");
-      co.innerHTML = "";
-      ajaxSpin('POST', "/console/reset",
-        function(resp) { showNotification("uC reset"); co.textEnd = 0; },
-        function(s, st) { showWarning("Error resetting uC"); }
-      );
-    });
-
-    $("#clear-button").addEventListener("click", function(e) {
-        e.preventDefault();
-        var co = $("#console");
-        co.innerHTML = "";
-    });
-
-    ajaxJson('GET', "/console/baud",
-      function(data) { $("#baud-sel").value = data.rate; },
-      function(s, st) { showNotification(st); }
-    );
-
-    bnd($("#baud-sel"), "change", function(ev) {
-      ev.preventDefault();
-      var baud = $("#baud-sel").value;
-      ajaxSpin('POST', "/console/baud?rate="+baud,
-        function(resp) { showNotification("" + baud + " baud set"); },
-        function(s, st) { showWarning("Error setting baud rate: " + st); }
-      );
-    });
-
-    consoleSendInit();
-
-    addClass($('html')[0], "height100");
-    addClass($('body')[0], "height100");
-    addClass($('#layout'), "height100");
-    addClass($('#layout'), "flex-vbox");
-  });
-</script>
+<script src="console_main.js"></script>
 </body></html>

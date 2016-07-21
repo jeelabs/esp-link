@@ -26,6 +26,8 @@ a:hover {
   background-color: #eee;
   padding: 1em;
   margin: 0.5em;
+	-moz-border-radius: 0.5em;
+	-webkit-border-radius: 0.5em;
   border-radius: 0.5em;
   border: 0px solid #000000;
 }
@@ -39,7 +41,7 @@ a:hover {
 }
 .click-to-edit input, .click-to-edit textarea {
   color: black;
-  background-color: #eee;
+  background-color: #F0CAA6;
   width: 100%;
 }
 .click-to-edit span, .click-to-edit div {
@@ -49,9 +51,9 @@ a:hover {
   width: 100%;
   color: #444; /* rgba not supported (IE 8) */
   color: rgba(0, 0, 0, 0.80); /* rgba supported */
-  border: 1px solid #999;  /*IE 6/7/8*/
+  border: 1px solid #111;  /*IE 6/7/8*/
   border: none rgba(0, 0, 0, 0);  /*IE9 + everything else*/
-  background-color: #E6E6E6;
+  background-color: #CCCCCC;
   text-decoration: none;
   border-radius: 2px;
 }
@@ -155,6 +157,9 @@ fieldset fields {
 /* Add transition to containers so they can push in and out  */
 #layout, #menu, .menu-link {
   -webkit-transition: all 0.2s ease-out;
+	-moz-transition: all 0.2s ease-out;
+	-ms-transition: all 0.2s ease-out;
+	-o-transition: all 0.2s ease-out;
   transition: all 0.2s ease-out;
 }
 
@@ -186,10 +191,10 @@ div.tt {
 .content {
   margin: 0 auto;
   padding: 0 2em;
-  max-width: 800px;
+  /*max-width: 800px;*/
   margin-bottom: 20px;
   line-height: 1.6em;
-  width: 100%;
+  /*width: 100%;*/
   box-sizing: border-box;
   overflow: auto;
 }
@@ -198,12 +203,12 @@ div.tt {
   margin: 0;
   color: #333;
   text-align: center;
-  padding: 2.5em 2em 0;
+  padding: 0.5em;
   border-bottom: 1px solid #eee;
   background-color: #fc0;
 }
 .header h1 {
-  margin: 0.2em 0;
+  margin: 0;
   font-size: 3em;
   font-weight: 300;
 }
@@ -251,6 +256,8 @@ input.inline {
 /* Text console */
 pre.console {
   background-color: #663300;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
   border-radius: 5px;
   border: 0px solid #000000;
   color: #66ff66;
@@ -495,6 +502,8 @@ pre.console a {
   height: 50px;
   width: 50px;
   -webkit-animation: rotation 1s infinite linear;
+  -moz-animation: rotation 1s infinite linear;
+  -o-animation: rotation 1s infinite linear;
   animation: rotation 1s infinite linear;
   border-left: 10px solid rgba(204, 51, 0, 0.15);
   border-right: 10px solid rgba(204, 51, 0, 0.15);
@@ -518,6 +527,23 @@ pre.console a {
   }
 }
 
+@-moz-keyframes rotation {
+  from {
+    -moz-transform: rotate(0deg);
+  }
+  to {
+    -moz-transform: rotate(359deg);
+  }
+}
+@-o-keyframes rotation {
+  from {
+    -o-transform: rotate(0deg);
+  }
+  to {
+    -o-transform: rotate(359deg);
+  }
+}
+
 @keyframes rotation {
   from {
     -webkit-transform: rotate(0deg);
@@ -527,4 +553,37 @@ pre.console a {
     -webkit-transform: rotate(359deg);
     transform: rotate(359deg);
   }
+}
+
+a
+{
+	color: #5873DD;
+	font-family: Arial;
+	font-size: 10pt;
+	font-weight: bold;
+	text-decoration: none;
+}
+
+a.btn
+{
+	white-space: nowrap;
+	text-align: center;
+	vertical-align: middle;
+	display: inline-block;
+	border-radius: 6px;
+	font-size: 16pt;
+	line-height: 1.33;
+	padding: 10px 10px;
+}
+
+a.btn-yes
+{
+	background-color: #5CB85C;
+	color: white;
+}
+
+a.btn-no
+{
+	background-color: #D9534F;
+	color: white;
 }

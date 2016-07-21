@@ -1,0 +1,73 @@
+<!doctype html>
+<html><head>
+  <title>esp-link</title>
+  <link rel="stylesheet" href="../pure.css">
+  <link rel="stylesheet" href="../style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div id="layout">
+  <div id="main">
+    <div class="header">
+      <h1>Firmware</h1>
+    </div>
+
+    <div class="content">
+      <div style="float:left; padding:2px">
+        <div class="card">
+          <h1>Upgrade firmware
+            <div id="firmware-spinner" class="spinner spinner-small"></div>
+          </h1>
+          <form id="firmware-form" class="pure-form" hidden>
+            <div class="pure-form-stacked">
+              <label>Filename (<span id="firmware-name" style="color:red"></span>)</label>
+              <input type="file" name="firmware_file" id="firmware_file" size="25" style="border:1px solid black;background-color:#F0CAA6;" />
+              <div class="popup">Provide appropriate BIN file with firmware (either user1 or user2)</div>
+            </div>
+            <button id="flash-start" type="button" class="pure-button button-primary">
+              Flash firmware
+            </button>
+            &nbsp;
+            <button id="flash-stop" type="button" class="pure-button button-primary pure-button-disabled" disabled>
+              Stop flashing
+            </button>
+            <div id="progress" hidden>
+              <div align="center" width="100%">
+        				<progress id="progressbar" value="0" style="width:100%"></progress>
+          		</div> 
+              <div id="up-count" align="center"></div>
+            </div> 
+          </form>
+        </div>
+      </div>
+      <div style="float:left; padding:2px">
+        <div class="card">
+          <h1>HTTP authentication
+            <div id="auth-spinner" class="spinner spinner-small"></div>
+          </h1>
+          <form action="#" id="auth-form" class="pure-form" hidden>
+            <div class="pure-form-stacked">
+              <div>
+                <label>Username</label>
+                <input type="text" id="auth_user" name="auth_user" maxlength="30" />
+                <div class="popup">Username for HTTP basic authentication to protect <b>/flash</b> and <b>/wifi</b> pages</div>
+              </div>
+              <div>
+                <label>Password</label>
+                <input type="text" id="auth_pass" name="auth_pass" maxlength="63" />
+                <div class="popup">Password for HTTP basic authentication to protect <b>/flash</b> and <b>/wifi</b> pages</div>
+              </div>
+            </div>
+            <button id="auth-button" type="submit" class="pure-button button-primary">
+              Update settings
+            </button>
+          </form>
+        </div>
+      </div>            
+    </div>
+  </div>
+</div>
+<iframe id='frame_up' name='frame_up' src='' style="width:0;height:0;border:0px solid #fff;" frameborder="0" scrolling="auto"></iframe>
+<script src="../ui.js"></script>
+<script src="flash.js"></script>
+</body></html>

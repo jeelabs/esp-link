@@ -330,6 +330,15 @@ function makeAjaxInput(klass, field) {
       eoff.setAttribute('hidden','');
       domForEach(eon, function(el){ el.removeAttribute('hidden'); });
       eon[0].select();
+      old_hostname = eon[0].value;
+      return false;
+    }
+
+    var just_close = function()
+    {
+      domForEach(eon, function(el){ el.setAttribute('hidden',''); });
+      eoff.removeAttribute('hidden');
+      setEditToClick(klass+"-"+field, old_hostname);
       return false;
     }
 
@@ -347,9 +356,10 @@ function makeAjaxInput(klass, field) {
     }
 
     bnd(eoff, "click", function(){return enableEditToClick();});
-    bnd(eon[0], "blur", function(){return submitEditToClick(eon[0].value);});
+    bnd(eon[0], "blur", function(){return just_close();});
     bnd(eon[0], "keyup", function(ev){
       if ((ev||window.event).keyCode==13) return submitEditToClick(eon[0].value);
+      else if ((ev||window.event).keyCode==27) return just_close();
     });
   });
 }
@@ -369,11 +379,17 @@ function setEditToClick(klass, value) {
 
 //===== Notifications
 
+var notifTimeout = null;
 function showWarning(text) {
   var el = $("#warning");
   el.innerHTML = text;
   el.removeAttribute('hidden');
   window.scrollTo(0, 0);
+  if (notifTimeout != null) clearTimeout(notifTimeout);
+  notifTimout = setTimeout(function() {
+      el.setAttribute('hidden', '');
+      notifTimout = null;
+    }, 6000);
 }
 function hideWarning() {
   el = $("#warning").setAttribute('hidden', '');

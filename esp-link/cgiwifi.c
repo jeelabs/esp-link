@@ -732,8 +732,8 @@ int ICACHE_FLASH_ATTR printWifiInfo(char *buff) {
     if (rssi > 0) rssi = 0;
     uint8 mac_addr[6];
     uint8 apmac_addr[6];
-    wifi_get_macaddr(0, mac_addr);
-    wifi_get_macaddr(1, apmac_addr);
+    wifi_get_macaddr(STATION_IF, mac_addr);
+    wifi_get_macaddr(SOFTAP_IF, apmac_addr);
     uint8_t chan = wifi_get_channel();
 
     len = os_sprintf(buff,

@@ -27,10 +27,11 @@ void ICACHE_FLASH_ATTR noCacheHeaders(HttpdConnData *connData, int code) {
   httpdStartResponse(connData, code);
   httpdHeader(connData, "Cache-Control", "no-cache, no-store, must-revalidate");
   httpdHeader(connData, "Pragma", "no-cache");
-  httpdHeader(connData, "Expires", "0");
+  httpdHeader(connData, "Expires", "Mon, 26 Jul 1997 05:00:00 GMT");
 }
 
 void ICACHE_FLASH_ATTR jsonHeader(HttpdConnData *connData, int code) {
+	httpdStartResponse(connData, code);
   noCacheHeaders(connData, code);
   httpdHeader(connData, "Content-Type", "application/json");
   httpdEndHeaders(connData);
@@ -187,8 +188,6 @@ int ICACHE_FLASH_ATTR printGlobalInfo(char *buff, int buflen, char *token) {
 }
 #endif
 
-extern char *esp_link_version; // in user_main.c
-
 int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
   char buff[1024];
@@ -214,6 +213,7 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
         "\"REST/MQTT\", \"/mqtt.html\", "
 #endif
         "\"Debug log\", \"/log.html\""
+        "\"Firmware\", \"/flash/flash.html\""
       " ], "
       "\"version\": \"%s\", "
       "\"name\": \"%s\""

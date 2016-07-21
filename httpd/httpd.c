@@ -396,7 +396,7 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
       return;
     }
     else {
-      if (!(r == HTTPD_CGI_NOTFOUND || r == HTTPD_CGI_AUTHENTICATED)) {
+      if (r == HTTPD_CGI_NOTFOUND) {
         os_printf("%shandler for %s returned invalid result %d\n", connStr, conn->url, r);
       }
       //URL doesn't want to handle the request: either the data isn't found or there's no
