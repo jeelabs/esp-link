@@ -34,7 +34,3 @@ function fetchFlash() {
     }
   );
 }
-
-function setMqtt(name, v) {
-  
-}
