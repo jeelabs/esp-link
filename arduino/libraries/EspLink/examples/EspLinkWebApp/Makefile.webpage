@@ -1,0 +1,8 @@
+all: user_img
+
+clean:
+	rm -rf web-page.espfs.img
+
+user_img:
+	../../../../../createEspFs.pl web-page web-page.espfs.img
+
