@@ -3,14 +3,14 @@
 
 #define RESUBSCRIBE_LIMIT 1000
 
-WebServer * WebServer::instance = NULL;
+WebServer  * WebServer::instance = NULL;
 
 void webServerCallback(CmdRequest *req)
 {
   WebServer::getInstance()->handleRequest(req);
 }
 
-WebServer::WebServer(Stream &streamIn, const WebMethod * PROGMEM methodsIn):espLink(streamIn, webServerCallback),methods(methodsIn),stream(streamIn)
+WebServer::WebServer(Stream &streamIn, const WebMethod * PROGMEM methodsIn):espLink(streamIn, webServerCallback),methods(methodsIn),stream(streamIn),esplink_cb(NULL)
 {
   instance = this;
 }
@@ -89,6 +89,13 @@ void WebServer::invokeMethod(RequestReason reason, WebMethod * method, CmdReques
 
 void WebServer::handleRequest(CmdRequest *req)
 {
+  if( req->cmd->cmd != CMD_WEB_REQ_CB )
+  {
+    if( esplink_cb != NULL )
+      esplink_cb(req);
+    return;
+  }
+
   uint16_t shrt;
   espLink.cmdPopArg(req, &shrt, 2);
   RequestReason reason = (RequestReason)shrt;
