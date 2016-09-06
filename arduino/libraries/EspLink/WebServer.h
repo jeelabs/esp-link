@@ -56,6 +56,8 @@ class WebServer
 
     uint32_t                  last_connect_ts;
     
+    CmdRequestCB              esplink_cb;
+    
   protected:
     EspLink espLink;
     
@@ -66,6 +68,8 @@ class WebServer
     void loop();
 
     void registerCallback();
+    
+    void setEspLinkCallback(CmdRequestCB cb) { esplink_cb = cb; }
 
     static WebServer * getInstance() { return instance; }
     uint8_t *          getRemoteIp() { return remote_ip; }
@@ -80,6 +84,8 @@ class WebServer
     int32_t            getArgInt();
     char *             getArgString();
     uint8_t            getArgBoolean();
+    
+    EspLink *          getEspLink() { return &espLink; }
 };
 
 #endif /* WEB_SERVER_H */
