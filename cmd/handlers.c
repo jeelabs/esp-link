@@ -12,6 +12,12 @@
 #ifdef REST
 #include <rest.h>
 #endif
+#ifdef TCP
+#include <tcp.h>
+#endif
+#ifdef UDP
+#include <udp.h>
+#endif
 
 #ifdef CMD_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
@@ -46,6 +52,14 @@ const CmdList commands[] = {
   {CMD_REST_SETUP,      "REST_SETUP",     REST_Setup},
   {CMD_REST_REQUEST,    "REST_REQ",       REST_Request},
   {CMD_REST_SETHEADER,  "REST_SETHDR",    REST_SetHeader},
+#endif
+#ifdef TCP
+  {CMD_TCP_SETUP,      "TCP_SETUP",     TCP_Setup},
+  {CMD_TCP_SEND,       "TCP_SEND",      TCP_Send},
+#endif
+#ifdef UDP
+  {CMD_UDP_SETUP,      "UDP_SETUP",     UDP_Setup},
+  {CMD_UDP_SEND,       "UDP_SEND",      UDP_Send},
 #endif
 };
 

@@ -45,9 +45,15 @@ typedef enum {
   CMD_MQTT_SUBSCRIBE,   // subscribe to a topic
   CMD_MQTT_LWT,         // set the last-will-topic and messge
 
-  CMD_REST_SETUP = 20,
-  CMD_REST_REQUEST,
-  CMD_REST_SETHEADER,
+  CMD_REST_SETUP = 20,  // set-up callbacks
+  CMD_REST_REQUEST,     // do REST request
+  CMD_REST_SETHEADER,	// define header
+
+  CMD_TCP_SETUP = 30,	// set-up callbacks
+  CMD_TCP_SEND,			// send data over TCP socket
+
+  CMD_UDP_SETUP = 40,	// set-up callbacks
+  CMD_UDP_SEND,			// send data over UDP socket
 } CmdName;
 
 typedef void (*cmdfunc_t)(CmdPacket *cmd);

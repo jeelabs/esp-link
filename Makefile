@@ -58,6 +58,7 @@ XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 # WARNING: if you change this expect to make code adjustments elsewhere, don't expect
 # that esp-link will magically work with a different version of the SDK!!!
 SDK_VERS ?= esp_iot_sdk_v1.5.4
+#SDK_VERS ?= esp_iot_sdk_v2.0.0
 
 # Try to find the firmware manually extracted, e.g. after downloading from Espressif's BBS,
 # http://bbs.espressif.com/viewforum.php?f=46
@@ -101,7 +102,7 @@ LED_SERIAL_PIN      ?= 14
 # --------------- esp-link modules config options ---------------
 
 # Optional Modules mqtt
-MODULES ?= mqtt rest syslog
+MODULES ?= mqtt rest tcp udp syslog
 
 # --------------- esphttpd config options ---------------
 
@@ -214,6 +215,14 @@ endif
 
 ifneq (,$(findstring rest,$(MODULES)))
 	CFLAGS		+= -DREST
+endif
+
+ifneq (,$(findstring tcp,$(MODULES)))
+	CFLAGS		+= -DTCP
+endif
+
+ifneq (,$(findstring udp,$(MODULES)))
+        CFLAGS          += -DUDP
 endif
 
 ifneq (,$(findstring syslog,$(MODULES)))
@@ -409,9 +418,9 @@ tools/$(HTML_COMPRESSOR):
 	cd tools; wget --no-check-certificate https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR) -O $(HTML_COMPRESSOR)
 else
 tools/$(HTML_COMPRESSOR):
-	$(Q) mkdir -p tools
-	cd tools; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR)
-	cd tools; wget https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR)
+#	$(Q) mkdir -p tools
+#	cd tools; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR)
+#	cd tools; wget https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR)
 endif
 
 ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
