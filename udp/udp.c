@@ -143,7 +143,7 @@ UDP_Setup(CmdPacket *cmd) {
 		os_free(client->pCon);
 	}
 	os_memset(client, 0, sizeof(UdpClient));
-	DBG_UDP("UDP #%d: Setup #%d udp_host=%s port=%d \n", clientNum, udp_host, port);
+	DBG_UDP("UDP #%d: Setup udp_host=%s port=%d \n", clientNum, udp_host, port);
 
 	client->resp_cb = cmd->value;
 	client->conn_num = clientNum;
