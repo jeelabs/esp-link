@@ -102,7 +102,7 @@ LED_SERIAL_PIN      ?= 14
 # --------------- esp-link modules config options ---------------
 
 # Optional Modules mqtt
-MODULES ?= mqtt rest tcp udp syslog
+MODULES ?= mqtt rest socket syslog
 
 # --------------- esphttpd config options ---------------
 
@@ -217,12 +217,8 @@ ifneq (,$(findstring rest,$(MODULES)))
 	CFLAGS		+= -DREST
 endif
 
-ifneq (,$(findstring tcp,$(MODULES)))
-	CFLAGS		+= -DTCP
-endif
-
-ifneq (,$(findstring udp,$(MODULES)))
-        CFLAGS          += -DUDP
+ifneq (,$(findstring socket,$(MODULES)))
+	CFLAGS		+= -DSOCKET
 endif
 
 ifneq (,$(findstring syslog,$(MODULES)))

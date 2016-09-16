@@ -12,11 +12,8 @@
 #ifdef REST
 #include <rest.h>
 #endif
-#ifdef TCP
-#include <tcp.h>
-#endif
-#ifdef UDP
-#include <udp.h>
+#ifdef SOCKET
+#include <socket.h>
 #endif
 
 #ifdef CMD_DBG
@@ -53,13 +50,9 @@ const CmdList commands[] = {
   {CMD_REST_REQUEST,    "REST_REQ",       REST_Request},
   {CMD_REST_SETHEADER,  "REST_SETHDR",    REST_SetHeader},
 #endif
-#ifdef TCP
-  {CMD_TCP_SETUP,      "TCP_SETUP",     TCP_Setup},
-  {CMD_TCP_SEND,       "TCP_SEND",      TCP_Send},
-#endif
-#ifdef UDP
-  {CMD_UDP_SETUP,      "UDP_SETUP",     UDP_Setup},
-  {CMD_UDP_SEND,       "UDP_SEND",      UDP_Send},
+#ifdef SOCKET
+  {CMD_SOCKET_SETUP,    "SOCKET_SETUP",   SOCKET_Setup},
+  {CMD_SOCKET_SEND,     "SOCKET_SEND",    SOCKET_Send},
 #endif
 };
 

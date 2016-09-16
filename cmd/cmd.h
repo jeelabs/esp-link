@@ -49,11 +49,8 @@ typedef enum {
   CMD_REST_REQUEST,     // do REST request
   CMD_REST_SETHEADER,	// define header
 
-  CMD_TCP_SETUP = 30,	// set-up callbacks
-  CMD_TCP_SEND,			// send data over TCP socket
-
-  CMD_UDP_SETUP = 40,	// set-up callbacks
-  CMD_UDP_SEND,			// send data over UDP socket
+  CMD_SOCKET_SETUP = 30, // set-up callbacks
+  CMD_SOCKET_SEND,       // send data over UDP socket
 } CmdName;
 
 typedef void (*cmdfunc_t)(CmdPacket *cmd);
