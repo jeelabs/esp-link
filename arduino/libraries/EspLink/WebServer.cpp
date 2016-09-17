@@ -77,7 +77,7 @@ void WebServer::invokeMethod(RequestReason reason, WebMethod * method, CmdReques
       return;
   }
 
-  espLink.sendPacketStart(CMD_WEB_JSON_DATA, 100, 255);
+  espLink.sendPacketStart(CMD_WEB_DATA, 100, 255);
   espLink.sendPacketArg(4, remote_ip);
   espLink.sendPacketArg(2, (uint8_t *)&remote_port);
 
@@ -130,7 +130,7 @@ void WebServer::handleRequest(CmdRequest *req)
     return;
 
   // empty response
-  espLink.sendPacketStart(CMD_WEB_JSON_DATA, 100, 2);
+  espLink.sendPacketStart(CMD_WEB_DATA, 100, 2);
   espLink.sendPacketArg(4, remote_ip);
   espLink.sendPacketArg(2, (uint8_t *)&remote_port);
   espLink.sendPacketEnd();

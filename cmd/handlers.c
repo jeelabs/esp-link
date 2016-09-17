@@ -48,7 +48,7 @@ const CmdList commands[] = {
   {CMD_REST_REQUEST,    "REST_REQ",       REST_Request},
   {CMD_REST_SETHEADER,  "REST_SETHDR",    REST_SetHeader},
 #endif
-  {CMD_WEB_JSON_DATA,   "WEB_JSON_DATA",  WEB_JsonData},
+  {CMD_WEB_DATA,        "WEB_DATA",       WEB_Data},
 };
 
 //===== List of registered callbacks (to uC)
