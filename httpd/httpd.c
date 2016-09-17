@@ -366,6 +366,7 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
         if (match) {
           //os_printf("Is url index %d\n", i);
           conn->cgiData = NULL;
+	  conn->cgiResponse = NULL;
           conn->cgi = builtInUrls[i].cgiCb;
           conn->cgiArg = builtInUrls[i].cgiArg;
           break;
@@ -627,7 +628,8 @@ void ICACHE_FLASH_ATTR httpdInit(HttpdBuiltInUrl *fixedUrls, int port) {
   espconn_tcp_set_max_con_allow(&httpdConn, MAX_CONN);
 }
 
-int ICACHE_FLASH_ATTR httpdNotify(uint8_t * ip, int port, const void * cgiArg) {
+// looks up connection handle based on ip / port
+HttpdConnData * ICACHE_FLASH_ATTR  httpdLookUpConn(uint8_t * ip, int port) {
   int i;
 
   for (i = 0; i<MAX_CONN; i++)
@@ -643,15 +645,25 @@ int ICACHE_FLASH_ATTR httpdNotify(uint8_t * ip, int port, const void * cgiArg) {
     if (os_memcmp(conn->conn->proto.tcp->remote_ip, ip, 4) != 0)
       continue;
     
-    char sendBuff[MAX_SENDBUFF_LEN];
-    conn->priv->sendBuff = sendBuff;
-    conn->priv->sendBuffLen = 0;
-
-    conn->cgiArg = cgiArg;
-    httpdProcessRequest(conn);
-    conn->cgiArg = NULL;
-    
-    return HTTPD_CGI_DONE;
+    return conn;
   }
-  return HTTPD_CGI_NOTFOUND;
+  return NULL;
+}
+
+// this method is used for setting the response of a CGI handler outside of the HTTP callback
+// this method useful at the following scenario:
+//   Browser -> CGI handler -> MCU request
+//   MCU response -> CGI handler -> browser
+// when MCU response arrives, the handler looks up connection based on ip/port and call httpdSetCGIResponse with the data to transmit
+
+int ICACHE_FLASH_ATTR httpdSetCGIResponse(HttpdConnData * conn, void * response) {
+  char sendBuff[MAX_SENDBUFF_LEN];
+  conn->priv->sendBuff = sendBuff;
+  conn->priv->sendBuffLen = 0;
+
+  conn->cgiResponse = response;
+  httpdProcessRequest(conn);
+  conn->cgiResponse = NULL;
+    
+  return HTTPD_CGI_DONE;
 }
