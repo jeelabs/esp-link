@@ -14,6 +14,8 @@ Connector to let httpd use the espfs filesystem to serve the files in it.
  */
 #include "httpdespfs.h"
 
+#define MAX_URL_LEN 255
+
 // The static files marked with FLAG_GZIP are compressed and will be served with GZIP compression.
 // If the client does not advertise that he accepts GZIP send following warning message (telnet users for e.g.)
 static const char *gzipNonSupportedMessage = "HTTP/1.0 501 Not implemented\r\nServer: esp8266-httpd/"HTTPDVER"\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 52\r\n\r\nYour browser does not accept gzip-compressed data.\r\n";
@@ -43,7 +45,12 @@ cgiEspFsHook(HttpdConnData *connData) {
 		if (file==NULL) {
 			if( espFsIsValid(userPageCtx) )
 			{
-				file = espFsOpen(userPageCtx, connData->url );
+				int maxLen = strlen(connData->url) * 2 + 1;
+				if( maxLen > MAX_URL_LEN )
+					maxLen = MAX_URL_LEN;
+				char decodedURL[maxLen];
+				httpdUrlDecode(connData->url, strlen(connData->url), decodedURL, maxLen);
+				file = espFsOpen(userPageCtx, decodedURL );
 				if( file == NULL )
 					return HTTPD_CGI_NOTFOUND;
 			}
