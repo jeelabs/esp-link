@@ -80,37 +80,6 @@ Accessing the flash through the mem emulation at 0x40200000 is a bit hairy: All 
 a memory exception, crashing the program.
 */
 
-void espfs_memcpy( EspFsContext * ctx, void * dest, const void * src, int count )
-{
-	if( ctx->source == ESPFS_MEMORY )
-		os_memcpy( dest, src, count );
-	else
-	{
-		if( spi_flash_read( (int)src, dest, count ) != SPI_FLASH_RESULT_OK )
-			os_memset( dest, 0, count ); // if read was not successful, reply with zeroes
-	}
-}
-
-EspFsInitResult ICACHE_FLASH_ATTR espFsInit(EspFsContext *ctx, void *flashAddress, EspFsSource source) {
-	ctx->valid = 0;
-	ctx->source = source;
-	// base address must be aligned to 4 bytes
-	if (((int)flashAddress & 3) != 0) {
-		return ESPFS_INIT_RESULT_BAD_ALIGN;
-	}
-
-	// check if there is valid header at address
-	EspFsHeader testHeader;
-	espfs_memcpy(ctx, &testHeader, flashAddress, sizeof(EspFsHeader));
-	if (testHeader.magic != ESPFS_MAGIC) {
-		return ESPFS_INIT_RESULT_NO_IMAGE;
-	}
-
-	ctx->data = (char *)flashAddress;
-	ctx->valid = 1;
-	return ESPFS_INIT_RESULT_OK;
-}
-
 //Copies len bytes over from dst to src, but does it using *only*
 //aligned 32-bit reads. Yes, it's no too optimized but it's short and sweet and it works.
 
@@ -133,12 +102,49 @@ void ICACHE_FLASH_ATTR memcpyAligned(char *dst, const char *src, int len) {
 #define memcpyAligned memcpy
 #endif
 
+void ICACHE_FLASH_ATTR memcpyFromFlash(char *dst, const char *src, int len)
+{
+	if( spi_flash_read( (int)src, (void *)dst, len ) != SPI_FLASH_RESULT_OK )
+		os_memset( dst, 0, len ); // if read was not successful, reply with zeroes
+}
+
+// memcpy on MEMORY/FLASH file systems
+void espfs_memcpy( EspFsContext * ctx, void * dest, const void * src, int count )
+{
+	if( ctx->source == ESPFS_MEMORY )
+		os_memcpy( dest, src, count );
+	else
+		memcpyFromFlash(dest, src, count);
+}
+
+// aligned memcpy on MEMORY/FLASH file systems
 void espfs_memcpyAligned( EspFsContext * ctx, void * dest, const void * src, int count )
 {
 	if( ctx->source == ESPFS_MEMORY )
 		memcpyAligned(dest, src, count);
 	else
-		espfs_memcpy(ctx, dest, src, count);
+		memcpyFromFlash(dest, src, count);
+}
+
+// initializes an EspFs context
+EspFsInitResult ICACHE_FLASH_ATTR espFsInit(EspFsContext *ctx, void *flashAddress, EspFsSource source) {
+	ctx->valid = 0;
+	ctx->source = source;
+	// base address must be aligned to 4 bytes
+	if (((int)flashAddress & 3) != 0) {
+		return ESPFS_INIT_RESULT_BAD_ALIGN;
+	}
+
+	// check if there is valid header at address
+	EspFsHeader testHeader;
+	espfs_memcpy(ctx, &testHeader, flashAddress, sizeof(EspFsHeader));
+	if (testHeader.magic != ESPFS_MAGIC) {
+		return ESPFS_INIT_RESULT_NO_IMAGE;
+	}
+
+	ctx->data = (char *)flashAddress;
+	ctx->valid = 1;
+	return ESPFS_INIT_RESULT_OK;
 }
 
 // Returns flags of opened file.
@@ -155,6 +161,7 @@ int ICACHE_FLASH_ATTR espFsFlags(EspFsFile *fh) {
 	return (int)flags;
 }
 
+// creates and initializes an iterator over the espfs file system
 void ICACHE_FLASH_ATTR espFsIteratorInit(EspFsContext *ctx, EspFsIterator *iterator)
 {
 	if( ctx->data == NULL )
@@ -163,19 +170,31 @@ void ICACHE_FLASH_ATTR espFsIteratorInit(EspFsContext *ctx, EspFsIterator *itera
 		return;
 	}
 	iterator->ctx = ctx;
-	iterator->p = ctx->data;
+	iterator->position = NULL;
 }
 
+// moves iterator to the next file on espfs
+// returns 1 if iterator move was successful, otherwise 0 (last file)
+// iterator->header and iterator->name will contain file information
 int ICACHE_FLASH_ATTR espFsIteratorNext(EspFsIterator *iterator)
 {
 	if( iterator->ctx == NULL )
 		return 0;
 	
-	char * p = iterator->p;
+	char * position = iterator->position;
+	if( position == NULL )
+		position = iterator->ctx->data; // first node
+	else
+	{
+		// jump the iterator to the next file
+		
+		position+=sizeof(EspFsHeader) + iterator->header.nameLen+iterator->header.fileLenComp;
+		if ((int)position&3) position+=4-((int)position&3); //align to next 32bit val
+	}
 	
-	iterator->node = p;
+	iterator->position = position;
 	EspFsHeader * hdr = &iterator->header;
-	espfs_memcpy(iterator->ctx, hdr, p, sizeof(EspFsHeader));
+	espfs_memcpy(iterator->ctx, hdr, position, sizeof(EspFsHeader));
 	
 	if (hdr->magic!=ESPFS_MAGIC) {
 #ifdef ESPFS_DBG
@@ -185,17 +204,15 @@ int ICACHE_FLASH_ATTR espFsIteratorNext(EspFsIterator *iterator)
 	}
 	if (hdr->flags&FLAG_LASTFILE) {
 		//os_printf("End of image.\n");
+		iterator->ctx = NULL; // invalidate the iterator
 		return 0;
 	}
 	
-	p += sizeof(EspFsHeader);
+	position += sizeof(EspFsHeader);
 	
 	//Grab the name of the file.
-	espfs_memcpy(iterator->ctx, iterator->name, p, sizeof(iterator->name));
+	espfs_memcpy(iterator->ctx, iterator->name, position, sizeof(iterator->name));
 	
-	p+=hdr->nameLen+hdr->fileLenComp;
-	if ((int)p&3) p+=4-((int)p&3); //align to next 32bit val
-	iterator->p = p;
 	return 1;
 }
 
@@ -221,10 +238,10 @@ EspFsFile ICACHE_FLASH_ATTR *espFsOpen(EspFsContext *ctx, char *fileName) {
 			//os_printf("Alloc %p[%d]\n", r, sizeof(EspFsFile));
 			if (r==NULL) return NULL;
 			r->ctx = ctx;
-			r->header=(EspFsHeader *)it.node;
+			r->header=(EspFsHeader *)it.position;
 			r->decompressor=it.header.compression;
-			r->posComp=it.node + it.header.nameLen  + sizeof(EspFsHeader);
-			r->posStart=it.node + it.header.nameLen  + sizeof(EspFsHeader);
+			r->posComp=it.position + it.header.nameLen  + sizeof(EspFsHeader);
+			r->posStart=it.position + it.header.nameLen  + sizeof(EspFsHeader);
 			r->posDecomp=0;
 			if (it.header.compression==COMPRESS_NONE) {
 				r->decompData=NULL;
@@ -269,6 +286,7 @@ void ICACHE_FLASH_ATTR espFsClose(EspFsFile *fh) {
 	os_free(fh);
 }
 
+// checks if the file system is valid (detect if the content is an espfs image or random data)
 int ICACHE_FLASH_ATTR espFsIsValid(EspFsContext *ctx) {
 	return ctx->valid;
 }
