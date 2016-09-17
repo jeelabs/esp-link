@@ -30,6 +30,7 @@ struct HttpdConnData {
 	const void *cgiArg;
 	void *cgiData;
 	void *cgiPrivData; // Used for streaming handlers storing state between requests
+	void *cgiResponse; // used for forwarding response to the CGI handler
 	HttpdPriv *priv;
 	cgiSendCallback cgi;
 	HttpdPostData *post;
@@ -66,6 +67,7 @@ void ICACHE_FLASH_ATTR httpdEndHeaders(HttpdConnData *conn);
 int ICACHE_FLASH_ATTR httpdGetHeader(HttpdConnData *conn, char *header, char *ret, int retLen);
 int ICACHE_FLASH_ATTR httpdSend(HttpdConnData *conn, const char *data, int len);
 void ICACHE_FLASH_ATTR httpdFlush(HttpdConnData *conn);
-int ICACHE_FLASH_ATTR httpdNotify(uint8_t * ip, int port, const void * cgiArg);
+HttpdConnData * ICACHE_FLASH_ATTR  httpdLookUpConn(uint8_t * ip, int port);
+int ICACHE_FLASH_ATTR  httpdSetCGIResponse(HttpdConnData * conn, void *response);
 
 #endif

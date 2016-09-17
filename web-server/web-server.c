@@ -253,14 +253,14 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 		connData->cgiData = (void *)1;
 	}
 	
-	if( connData->cgiArg != NULL ) // arrived data from MCU
+	if( connData->cgiResponse != NULL ) // data from MCU
 	{
 		char jsonBuf[1500];
 		int  jsonPtr = 0;
 		
 		
 		jsonBuf[jsonPtr++] = '{';
-		CmdRequest * req = (CmdRequest *)(connData->cgiArg);
+		CmdRequest * req = (CmdRequest *)(connData->cgiResponse);
 		
 		int c = 2;
 		while( c++ < cmdGetArgc(req) )
@@ -378,5 +378,9 @@ void ICACHE_FLASH_ATTR WEB_Data(CmdPacket *cmd)
 	uint16_t port;
 	cmdPopArg(&req, &port, 2);
 	
-	httpdNotify(ip, port, &req);
+	HttpdConnData * conn = httpdLookUpConn(ip, port);
+	if( conn != NULL && conn->cgi == WEB_CgiJsonHook ) // make sure that the right CGI handler will be called
+		httpdSetCGIResponse( conn, &req );
+	else
+		os_printf("WEB response ignored as no valid http connection found for the request!\n");
 }
