@@ -218,7 +218,7 @@ const uint32_t getUserPageSectionStart()
     case FLASH_SIZE_16M_MAP_1024_1024:
     case FLASH_SIZE_32M_MAP_512_512:
     case FLASH_SIZE_32M_MAP_1024_1024:
-      return 0x0FC000;
+      return 0x100000;
     default:
       return 0xFFFFFFFF;
   }
