@@ -365,7 +365,7 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 	return HTTPD_CGI_MORE;
 }
 
-void ICACHE_FLASH_ATTR WEB_JsonData(CmdPacket *cmd)
+void ICACHE_FLASH_ATTR WEB_Data(CmdPacket *cmd)
 {
 	CmdRequest req;
 	cmdRequest(&req, cmd);
