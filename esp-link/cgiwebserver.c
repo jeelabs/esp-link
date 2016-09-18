@@ -139,9 +139,12 @@ int ICACHE_FLASH_ATTR webServerMultipartCallback(MultipartCmd cmd, char *data, i
   return 0;
 }
 
-MultipartCtx webServerContext = {.callBack = webServerMultipartCallback, .position = 0, .recvPosition = 0, .startTime = 0, .boundaryBuffer = NULL};
+MultipartCtx * webServerContext = NULL;
 
 int ICACHE_FLASH_ATTR cgiWebServerUpload(HttpdConnData *connData)
 {
-  return multipartProcess(&webServerContext, connData);
+  if( webServerContext == NULL )
+    webServerContext = multipartCreateContext( webServerMultipartCallback );
+  
+  return multipartProcess(webServerContext, connData);
 }
