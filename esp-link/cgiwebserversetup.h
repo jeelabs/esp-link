@@ -3,6 +3,6 @@
 
 #include <httpd.h>
 
-int ICACHE_FLASH_ATTR cgiWebServerUpload(HttpdConnData *connData);
+int ICACHE_FLASH_ATTR cgiWebServerSetupUpload(HttpdConnData *connData);
 
 #endif /* CGIWEBSERVER_H */
