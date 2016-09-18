@@ -8,22 +8,22 @@
 
 typedef enum
 {
-  LOAD=0,
-  REFRESH,
-  BUTTON,
-  SUBMIT,
+  LOAD=0,        // loading web-page content at the first time
+  REFRESH,       // loading web-page subsequently
+  BUTTON,        // HTML button pressed
+  SUBMIT,        // HTML form is submitted
 
   INVALID=-1,
 } RequestReason;
 
 typedef enum
 {
-  WEB_STRING=0,
-  WEB_NULL,
-  WEB_INTEGER,
-  WEB_BOOLEAN,
-  WEB_FLOAT,
-  WEB_JSON
+  WEB_STRING=0,  // the value is string
+  WEB_NULL,      // the value is NULL
+  WEB_INTEGER,   // the value is integer
+  WEB_BOOLEAN,   // the value is boolean
+  WEB_FLOAT,     // the value is float
+  WEB_JSON       // the value is JSON data
 } WebValueType;
 
 void   WEB_Init();
