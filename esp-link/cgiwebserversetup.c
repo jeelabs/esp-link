@@ -16,7 +16,7 @@ const char * HTML_HEADER =   "<!doctype html><html><head><title>esp-link</title>
                              "<meta name=viewport content=\"width=device-width, initial-scale=1\"><script src=\"/ui.js\">"
                              "</script><script src=\"/userpage.js\"></script></head><body><div id=layout>    ";
 
-int ICACHE_FLASH_ATTR webServerMultipartCallback(MultipartCmd cmd, char *data, int dataLen, int position)
+int ICACHE_FLASH_ATTR webServerSetupMultipartCallback(MultipartCmd cmd, char *data, int dataLen, int position)
 {
   switch(cmd)
   {
@@ -141,10 +141,10 @@ int ICACHE_FLASH_ATTR webServerMultipartCallback(MultipartCmd cmd, char *data, i
 
 MultipartCtx * webServerContext = NULL;
 
-int ICACHE_FLASH_ATTR cgiWebServerUpload(HttpdConnData *connData)
+int ICACHE_FLASH_ATTR cgiWebServerSetupUpload(HttpdConnData *connData)
 {
   if( webServerContext == NULL )
-    webServerContext = multipartCreateContext( webServerMultipartCallback );
+    webServerContext = multipartCreateContext( webServerSetupMultipartCallback );
   
   return multipartProcess(webServerContext, connData);
 }

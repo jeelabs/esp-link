@@ -19,7 +19,7 @@
 #include "cgimqtt.h"
 #include "cgiflash.h"
 #include "cgioptiboot.h"
-#include "cgiwebserver.h"
+#include "cgiwebserversetup.h"
 #include "auth.h"
 #include "espfs.h"
 #include "uart.h"
@@ -98,7 +98,7 @@ HttpdBuiltInUrl builtInUrls[] = {
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
 #endif
-  { "/web-server/upload", cgiWebServerUpload, NULL },
+  { "/web-server/upload", cgiWebServerSetupUpload, NULL },
   { "*.json", WEB_CgiJsonHook, NULL }, //Catch-all cgi JSON queries
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
