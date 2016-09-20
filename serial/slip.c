@@ -13,8 +13,6 @@
 #define DBG(format, ...) do { } while(0)
 #endif
 
-uint8_t slip_disabled;   // temporarily disable slip to allow flashing of attached MCU
-
 extern void ICACHE_FLASH_ATTR console_process(char *buf, short len);
 
 // This SLIP parser tries to conform to RFC 1055 https://tools.ietf.org/html/rfc1055.
