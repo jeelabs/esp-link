@@ -167,7 +167,7 @@ static int ICACHE_FLASH_ATTR WEB_handleJSONRequest(HttpdConnData *connData)
 		errorResponse(connData, 500, "No MCU callback is registered!");
 		return HTTPD_CGI_DONE;
 	}
-	if( serbridgeInProgramming() )
+	if( serbridgeInMCUFlashing() )
 	{
 		errorResponse(connData, 500, "Slip disabled at uploading program onto the MCU!");
 		return HTTPD_CGI_DONE;
