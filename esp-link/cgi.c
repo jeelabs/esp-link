@@ -194,8 +194,7 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
   char buff[1024];
   // don't use jsonHeader so the response does get cached
-  httpdStartResponse(connData, 200);
-  httpdHeader(connData, "Cache-Control", "max-age=3600, must-revalidate");
+  noCacheHeaders(connData, 200);
   httpdHeader(connData, "Content-Type", "application/json");
   httpdEndHeaders(connData);
   // limit hostname to 12 chars
