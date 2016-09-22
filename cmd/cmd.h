@@ -48,6 +48,9 @@ typedef enum {
   CMD_REST_SETUP = 20,
   CMD_REST_REQUEST,
   CMD_REST_SETHEADER,
+  
+  CMD_WEB_DATA = 30,  // MCU pushes data using this command
+  CMD_WEB_REQ_CB,     // esp-link WEB callback
 } CmdName;
 
 typedef void (*cmdfunc_t)(CmdPacket *cmd);

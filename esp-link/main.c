@@ -19,6 +19,7 @@
 #include "cgimqtt.h"
 #include "cgiflash.h"
 #include "cgioptiboot.h"
+#include "cgiwebserversetup.h"
 #include "auth.h"
 #include "espfs.h"
 #include "uart.h"
@@ -30,6 +31,7 @@
 #include "log.h"
 #include "gpio.h"
 #include "cgiservices.h"
+#include "web-server.h"
 
 #ifdef SYSLOG
 #include "syslog.h"
@@ -96,6 +98,8 @@ HttpdBuiltInUrl builtInUrls[] = {
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
 #endif
+  { "/web-server/upload", cgiWebServerSetupUpload, NULL },
+  { "*.json", WEB_CgiJsonHook, NULL }, //Catch-all cgi JSON queries
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
 };
@@ -147,11 +151,14 @@ void user_init(void) {
   // Wifi
   wifiInit();
   // init the flash filesystem with the html stuff
-  espFsInit(&_binary_espfs_img_start);
+  espFsInit(espLinkCtx, &_binary_espfs_img_start, ESPFS_MEMORY);
+  
   //EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
   //os_printf("espFsInit %s\n", res?"ERR":"ok");
   // mount the http handlers
   httpdInit(builtInUrls, 80);
+  WEB_Init();
+  
   // init the wifi-serial transparent bridge (port 23)
   serbridgeInit(23, 2323);
   uart_add_recv_cb(&serbridgeUartCb);
