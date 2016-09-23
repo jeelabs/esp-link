@@ -4,7 +4,7 @@ language: c
 
 before_install:
   - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
-  - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar Jxf -
+  - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar -C .. Jxf -
 
 after_script:
  # upload to an S3 bucket, requires S3_BUCKET, AWS_ACCESS_KEY_ID and AWS_SECRET_KEY to be set
@@ -23,7 +23,11 @@ env:
 
 script:
   - export XTENSA_TOOLS_ROOT=$PWD/xtensa-lx106-elf/bin/
-  - export SDK_BASE=$PWD/esp_iot_sdk_v2.0.0.p1
+  - export BRANCH=$TRAVIS_BRANCH
+    #- export SDK_BASE=$PWD/esp_iot_sdk_v2.0.0.p1
+  - ls
+  - ls ..
+  - echo $PWD
   - make release
 
 notifications:
