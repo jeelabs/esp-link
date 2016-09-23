@@ -485,8 +485,8 @@ release: all
 	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
 	       "$(SDK_BASE)/bin/boot_v1.6.bin" "$(SDK_BASE)/bin/esp_init_data_default.bin" \
 	       wiflash avrflash release/esp-link-$(BRANCH)
-	$(Q) tar zcf esp-link-$(BRANCH).tgz -C release esp-link-$(BRANCH)
-	$(Q) echo "Release file: esp-link-$(BRANCH).tgz"
+	$(Q) tar zcf esp-link-$(BRANCH)-$(SHA).tgz -C release esp-link-$(BRANCH)
+	$(Q) echo "Release file: esp-link-$(BRANCH)-$(SHA).tgz"
 	$(Q) rm -rf release
 
 clean:

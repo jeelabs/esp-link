@@ -214,7 +214,7 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
         "\"REST/MQTT\", \"/mqtt.html\", "
 #endif
         "\"Debug log\", \"/log.html\","
-        "\"Upgrade Firmware\", \"/flash.html\""
+        "\"Upgrade Firmware\", \"/flash.html\","
         "\"Web Server\", \"/web-server.html\""
 	"%s"
       " ], "

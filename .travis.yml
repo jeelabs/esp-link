@@ -13,8 +13,8 @@ after_script:
      echo Uploading *.tgz to $S3_BUCKET;
      curl -Ls https://github.com/rlmcpherson/s3gof3r/releases/download/v0.5.0/gof3r_0.5.0_linux_amd64.tar.gz | tar zxf - gof3r_0.5.0_linux_amd64/gof3r;
      mv gof3r*/gof3r .;
-     ls *.tgz | xargs -I {} ./gof3r put -b $S3_BUCKET -k espruino/{} --acl public-read -p {};
-     ls *.tgz | xargs -I {} echo \"URL: http://$S3_BUCKET/espruino/{}\";
+     ls *.tgz | xargs -I {} ./gof3r put -b $S3_BUCKET -k esp-link/{} --acl public-read -p {};
+     ls *.tgz | xargs -I {} echo \"URL: http://$S3_BUCKET/esp-link/{}\";
      fi"
 
 compiler: gcc
@@ -25,9 +25,6 @@ script:
   - export XTENSA_TOOLS_ROOT=$PWD/xtensa-lx106-elf/bin/
   - export BRANCH=$TRAVIS_BRANCH
     #- export SDK_BASE=$PWD/esp_iot_sdk_v2.0.0.p1
-  - ls
-  - ls ..
-  - echo $PWD
   - make release
 
 notifications:
