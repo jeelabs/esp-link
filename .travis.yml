@@ -20,8 +20,8 @@ after_script:
 compiler: gcc
 
 env:
-  - XTENSA_TOOLS_ROOT=./esp-open-sdk/xtensa-lx106-elf/bin/
-  - SDK_BASE=./esp_iot_sdk_v2.0.0.p1
+- XTENSA_TOOLS_ROOT=./esp-open-sdk/xtensa-lx106-elf/bin/
+- SDK_BASE=./esp_iot_sdk_v2.0.0.p1
 
 script: make release
 
