@@ -4,9 +4,11 @@
 #include <httpd.h>
 
 typedef enum {
-  FILE_START,   // multipart: the start of a new file 
-  FILE_DATA,    // multipart: file data
-  FILE_DONE,    // multipart: file end
+  FILE_UPLOAD_START, // multipart: uploading files started
+  FILE_START,        // multipart: the start of a new file (can be more)
+  FILE_DATA,         // multipart: file data
+  FILE_DONE,         // multipart: file end
+  FILE_UPLOAD_DONE,  // multipart: finished for all files
 } MultipartCmd;
 
 // multipart callback
