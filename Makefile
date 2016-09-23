@@ -186,12 +186,15 @@ endif
 # Steps to release: create release on github, git pull, git describe --tags to verify you're
 # on the release tag, make release, upload esp-link.tgz into the release files
 #VERSION ?= "esp-link custom version"
+$(warning Hello 1)
 DATE    := $(shell date '+%F %T')
 BRANCH  ?= $(shell if git diff --quiet HEAD; then git describe --tags; \
                    else git symbolic-ref --short HEAD; fi)
+$(warning Hello 2)
 SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | cut -d"/" -f 3; \
                    else echo "development"; fi)
 VERSION ?=esp-link $(BRANCH) - $(DATE) - $(SHA)
+$(warning Hello 3)
 
 # Output directors to store intermediate compiled files
 # relative to the project directory

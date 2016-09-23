@@ -22,7 +22,7 @@ compiler: gcc
 env:
 
 script:
-  - export XTENSA_TOOLS_ROOT=./esp-open-sdk/xtensa-lx106-elf/bin/
+  - export XTENSA_TOOLS_ROOT=./xtensa-lx106-elf/bin/
   - export SDK_BASE=./esp_iot_sdk_v2.0.0.p1
   - make release
 
