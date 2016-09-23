@@ -22,8 +22,8 @@ compiler: gcc
 env:
 
 script:
-  - export XTENSA_TOOLS_ROOT=./xtensa-lx106-elf/bin/
-  - export SDK_BASE=./esp_iot_sdk_v2.0.0.p1
+  - export XTENSA_TOOLS_ROOT=$PWD/xtensa-lx106-elf/bin/
+  - export SDK_BASE=$PWD/esp_iot_sdk_v2.0.0.p1
   - make release
 
 notifications:
