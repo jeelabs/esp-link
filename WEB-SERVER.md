@@ -38,7 +38,7 @@ Installation steps:
  - 1: open EspLinkWebApp sample from Arduino
  - 2: upload the code onto an Arduino Nano/Uno
  - 3: jump to the Web Server page on esp-link UI
- - 4: upload web-page.espfs.img (  arduino/libraries/EspLink/examples/EspLinkWebApp/web-page.espfs.img )
+ - 4: upload the 3 HTML files in the samples ( multiple select from  arduino/libraries/EspLink/examples/EspLinkWebApp/ )
  - 5: jump to LED/User/Voltage pages
  - 6: try out different settings
  

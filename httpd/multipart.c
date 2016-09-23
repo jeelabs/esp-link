@@ -4,7 +4,7 @@
 #include "multipart.h"
 #include "cgi.h"
 
-#define BOUNDARY_SIZE 100
+#define BOUNDARY_SIZE 128
 
 typedef enum {
   STATE_SEARCH_BOUNDARY = 0, // state: searching multipart boundary
@@ -227,6 +227,7 @@ int ICACHE_FLASH_ATTR multipartProcessData(MultipartCtx * context, char * bounda
     context->boundaryBufferPtr -= dataSize;
     os_memcpy(context->boundaryBuffer, context->boundaryBuffer + dataSize, context->boundaryBufferPtr);
   }
+  
   return 0;
 }
 
@@ -253,6 +254,9 @@ int ICACHE_FLASH_ATTR multipartProcess(MultipartCtx * context, HttpdConnData * c
       context->state = STATE_SEARCH_BOUNDARY;
  
       multipartAllocBoundaryBuffer(context);
+      
+      if( context->callBack( FILE_UPLOAD_START, NULL, 0, context->position ) ) // start uploading files
+        context->state = STATE_ERROR;
     }
 
     if( context->state != STATE_ERROR )
@@ -280,6 +284,8 @@ int ICACHE_FLASH_ATTR multipartProcess(MultipartCtx * context, HttpdConnData * c
     {
       // this is the last package, process the remaining data
       if( multipartProcessData(context, post->multipartBoundary, NULL, 0, 1) )
+        context->state = STATE_ERROR;
+      else if( context->callBack( FILE_UPLOAD_DONE, NULL, 0, context->position ) ) // done with files
         context->state = STATE_ERROR;
     }
     
