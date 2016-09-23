@@ -80,6 +80,38 @@ ajaxConsoleBaud(HttpdConnData *connData) {
   httpdSend(connData, buff, -1);
   return HTTPD_CGI_DONE;
 }
+int ICACHE_FLASH_ATTR
+ajaxConsoleFormat(HttpdConnData *connData) {
+  if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+  char buff[16];
+  int len, status = 400;
+  uint32 conf0;
+
+  len = httpdFindArg(connData->getArgs, "fmt", buff, sizeof(buff));
+  if (len >= 3) {
+    int c = buff[0];
+    if (c >= '5' && c <= '8')
+       flashConfig.data_bits = c - '5' + FIVE_BITS;
+    if (buff[1] == 'N' || buff[1] == 'E')
+       flashConfig.parity = buff[1] == 'E' ? EVEN_BITS : NONE_BITS;
+    if (buff[2] == '1' || buff[2] == '2')
+       flashConfig.stop_bits = buff[2] == '2' ? TWO_STOP_BIT : ONE_STOP_BIT;
+    conf0 = CALC_UARTMODE(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits);
+    uart_config(0, flashConfig.baud_rate, conf0);
+    status = configSave() ? 200 : 400;
+  } else if (connData->requestType == HTTPD_METHOD_GET) {
+    status = 200;
+  }
+
+  jsonHeader(connData, status);
+  os_sprintf(buff, "{\"fmt\": \"%c%c%c\"}",
+		  flashConfig.data_bits + '5',
+		  flashConfig.parity ? 'E' : 'N',
+		  flashConfig.stop_bits ? '2': '1');
+  httpdSend(connData, buff, -1);
+  return HTTPD_CGI_DONE;
+}
+
 
 int ICACHE_FLASH_ATTR
 ajaxConsoleSend(HttpdConnData *connData) {

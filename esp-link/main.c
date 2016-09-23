@@ -74,6 +74,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/log/reset", cgiReset, NULL },
   { "/console/reset", ajaxConsoleReset, NULL },
   { "/console/baud", ajaxConsoleBaud, NULL },
+  { "/console/fmt", ajaxConsoleFormat, NULL },
   { "/console/text", ajaxConsole, NULL },
   { "/console/send", ajaxConsoleSend, NULL },
   //Enable the line below to protect the WiFi configuration with an username/password combo.
@@ -135,7 +136,8 @@ void user_init(void) {
   gpio_init();
   gpio_output_set(0, 0, 0, (1<<15)); // some people tie it to GND, gotta ensure it's disabled
   // init UART
-  uart_init(flashConfig.baud_rate, 115200);
+  uart_init(CALC_UARTMODE(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits),
+            flashConfig.baud_rate, 115200);
   logInit(); // must come after init of uart
   // Say hello (leave some time to cause break in TX after boot loader's msg
   os_delay_us(10000L);
