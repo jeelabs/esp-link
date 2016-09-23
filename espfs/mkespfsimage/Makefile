@@ -34,9 +34,10 @@ clean:
 
 else
 
+CC=gcc
 CFLAGS=-I.. -std=gnu99
 ifeq ("$(GZIP_COMPRESSION)","yes")
-CFLAGS		+= -DESPFS_GZIP
+CFLAGS+= -DESPFS_GZIP
 endif
 
 OBJS=main.o
