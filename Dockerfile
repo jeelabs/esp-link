@@ -14,6 +14,8 @@ RUN apt-get update \
 RUN curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
 RUN curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar -Jxf -
 
+RUN apt-get install zlib1g-dev openjdk-8-jre-headless
+
 ENV XTENSA_TOOLS_ROOT /xtensa-lx106-elf/bin/
 
 # This could be used to create an image with esp-link in it from github:
