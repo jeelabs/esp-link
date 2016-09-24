@@ -489,6 +489,8 @@ release: all
 	$(Q) echo "Release file: esp-link-$(BRANCH)-$(SHA).tgz"
 	$(Q) rm -rf release
 
+docker:
+	$(Q) docker build -t jeelabs/esp-link .
 clean:
 	$(Q) rm -f $(APP_AR)
 	$(Q) rm -f $(TARGET_OUT)
