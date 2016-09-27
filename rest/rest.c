@@ -116,7 +116,6 @@ tcpclient_recv(void *arg, char *pdata, unsigned short len) {
     espconn_disconnect(client->pCon);
 }
 
-// Data is sent
 static void ICACHE_FLASH_ATTR
 tcpclient_sent_cb(void *arg) {
   struct espconn *pCon = (struct espconn *)arg;

@@ -49,8 +49,12 @@ typedef enum {
   CMD_REST_REQUEST,     // do REST request
   CMD_REST_SETHEADER,	// define header
 
-  CMD_SOCKET_SETUP = 30, // set-up callbacks
+  CMD_WEB_DATA = 30,  // MCU pushes data using this command
+  CMD_WEB_REQ_CB,     // esp-link WEB callback
+
+  CMD_SOCKET_SETUP = 40, // set-up callbacks
   CMD_SOCKET_SEND,       // send data over UDP socket
+
 } CmdName;
 
 typedef void (*cmdfunc_t)(CmdPacket *cmd);

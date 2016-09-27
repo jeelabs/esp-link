@@ -23,7 +23,7 @@ static struct espconn serbridgeConn2; // programming port
 static esp_tcp serbridgeTcp1, serbridgeTcp2;
 static int8_t mcu_reset_pin, mcu_isp_pin;
 
-extern uint8_t slip_disabled;   // disable slip to allow flashing of attached MCU
+uint8_t in_mcu_flashing;   // for disabling slip during MCU flashing
 
 void (*programmingCB)(char *buffer, short length) = NULL;
 
@@ -124,14 +124,14 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
 #ifdef SERBR_DBG
         else { os_printf("MCU isp: no pin\n"); }
 #endif
-        slip_disabled++;
+        in_mcu_flashing++;
         break;
       case RTS_OFF:
         if (mcu_isp_pin >= 0) {
           GPIO_OUTPUT_SET(mcu_isp_pin, 1);
           os_delay_us(100L);
         }
-        if (slip_disabled > 0) slip_disabled--;
+        if (in_mcu_flashing > 0) in_mcu_flashing--;
         break;
       }
       state = TN_end;
@@ -222,7 +222,7 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
     //if (mcu_isp_pin >= 0) GPIO_OUTPUT_SET(mcu_isp_pin, 1);
     os_delay_us(1000L); // wait a millisecond before writing to the UART below
     conn->conn_mode = cmPGM;
-    slip_disabled++; // disable SLIP so it doesn't interfere with flashing
+    in_mcu_flashing++; // disable SLIP so it doesn't interfere with flashing
 #ifdef SKIP_AT_RESET
     serledFlash(50); // short blink on serial LED
     return;
@@ -355,7 +355,7 @@ serbridgeUartCb(char *buf, short length)
 {
   if (programmingCB) {
     programmingCB(buf, length);
-  } else if (!flashConfig.slip_enable || slip_disabled > 0) {
+  } else if (!flashConfig.slip_enable || in_mcu_flashing > 0) {
     //os_printf("SLIP: disabled got %d\n", length);
     console_process(buf, length);
   } else {
@@ -503,4 +503,9 @@ serbridgeInit(int port1, int port2)
   espconn_accept(&serbridgeConn2);
   espconn_tcp_set_max_con_allow(&serbridgeConn2, MAX_CONN);
   espconn_regist_time(&serbridgeConn2, SER_BRIDGE_TIMEOUT, 0);
+}
+
+int  ICACHE_FLASH_ATTR serbridgeInMCUFlashing()
+{
+  return in_mcu_flashing;
 }

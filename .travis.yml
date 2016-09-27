@@ -1,0 +1,31 @@
+# Travis-CI file for Esp-Link
+
+language: c
+
+before_install:
+  - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
+  - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar -C .. -Jxf -
+
+after_script:
+ # upload to an S3 bucket, requires S3_BUCKET, AWS_ACCESS_KEY_ID and AWS_SECRET_KEY to be set
+ # in environment using travis' repository settings
+  - "if [[ -n \"$S3_BUCKET\" && -n \"$AWS_ACCESS_KEY_ID\" ]]; then
+     echo Uploading *.tgz to $S3_BUCKET;
+     curl -Ls https://github.com/rlmcpherson/s3gof3r/releases/download/v0.5.0/gof3r_0.5.0_linux_amd64.tar.gz | tar zxf - gof3r_0.5.0_linux_amd64/gof3r;
+     mv gof3r*/gof3r .;
+     ls *.tgz | xargs -I {} ./gof3r put -b $S3_BUCKET -k esp-link/{} --acl public-read -p {};
+     ls *.tgz | xargs -I {} echo \"URL: http://$S3_BUCKET/esp-link/{}\";
+     fi"
+
+compiler: gcc
+
+env:
+
+script:
+  - export XTENSA_TOOLS_ROOT=$PWD/xtensa-lx106-elf/bin/
+  - export BRANCH=$TRAVIS_BRANCH
+    #- export SDK_BASE=$PWD/esp_iot_sdk_v2.0.0.p1
+  - make release
+
+notifications:
+  email: false

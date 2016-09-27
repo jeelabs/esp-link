@@ -31,7 +31,10 @@ FlashConfig flashDefault = {
   .rx_pullup	  = 1,
   .sntp_server  = "us.pool.ntp.org\0",
   .syslog_host = "\0", .syslog_minheap = 8192, .syslog_filter = 7, .syslog_showtick = 1, .syslog_showdate = 0,
-  .mdns_enable = 1, .mdns_servername = "http\0", .timezone_offset = 0
+  .mdns_enable = 1, .mdns_servername = "http\0", .timezone_offset = 0,
+  .data_bits	= EIGHT_BITS,
+  .parity	= NONE_BITS,
+  .stop_bits	= ONE_STOP_BIT,
 };
 
 typedef union {
@@ -152,6 +155,12 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
       os_memset(flashConfig.mqtt_old_host, 0, 32);
   } else os_printf("mqtt_host is '%s'\n", flashConfig.mqtt_host);
 
+  if (flashConfig.data_bits == 0) {
+      // restore to default 8N1
+      flashConfig.data_bits = flashDefault.data_bits;
+      flashConfig.parity = flashDefault.parity;
+      flashConfig.stop_bits = flashDefault.stop_bits;
+  }
   return true;
 }
 
@@ -195,3 +204,43 @@ getFlashSize() {
     return 0;
   return 1 << size_id;
 }
+
+const uint32_t getUserPageSectionStart()
+{
+  enum flash_size_map map = system_get_flash_size_map();
+  switch(map)
+  {
+    case FLASH_SIZE_4M_MAP_256_256:
+      return FLASH_SECT + FIRMWARE_SIZE - 3*FLASH_SECT;// bootloader + firmware - 12KB (highly risky...)
+    case FLASH_SIZE_8M_MAP_512_512:
+      return FLASH_SECT + FIRMWARE_SIZE;
+    case FLASH_SIZE_16M_MAP_512_512:
+    case FLASH_SIZE_16M_MAP_1024_1024:
+    case FLASH_SIZE_32M_MAP_512_512:
+    case FLASH_SIZE_32M_MAP_1024_1024:
+      return 0x100000;
+    default:
+      return 0xFFFFFFFF;
+  }
+}
+
+const uint32_t getUserPageSectionEnd()
+{
+  enum flash_size_map map = system_get_flash_size_map();
+  switch(map)
+  {
+    case FLASH_SIZE_4M_MAP_256_256:
+      return FLASH_SECT + FIRMWARE_SIZE - 2*FLASH_SECT;
+    case FLASH_SIZE_8M_MAP_512_512:
+      return FLASH_SECT + FIRMWARE_SIZE + 2*FLASH_SECT;
+    case FLASH_SIZE_16M_MAP_512_512:
+    case FLASH_SIZE_16M_MAP_1024_1024:
+      return 0x1FC000;
+    case FLASH_SIZE_32M_MAP_512_512:
+    case FLASH_SIZE_32M_MAP_1024_1024:
+      return 0x3FC000;
+    default:
+      return 0xFFFFFFFF;
+  }
+}
+

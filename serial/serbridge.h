@@ -36,6 +36,8 @@ void ICACHE_FLASH_ATTR serbridgeInitPins(void);
 void ICACHE_FLASH_ATTR serbridgeUartCb(char *buf, short len);
 void ICACHE_FLASH_ATTR serbridgeReset();
 
+int  ICACHE_FLASH_ATTR serbridgeInMCUFlashing();
+
 // callback when receiving UART chars when in programming mode
 extern void (*programmingCB)(char *buffer, short length);
 

@@ -4,7 +4,6 @@
 # Makefile heavily adapted to esp-link and wireless flashing by Thorsten von Eicken
 # Lots of work, in particular to support windows, by brunnels
 # Original from esphttpd and others...
-# VERBOSE=1
 #
 # Start by setting the directories for the toolchain a few lines down
 # the default target will build the firmware images
@@ -52,36 +51,37 @@ ESP_HOSTNAME  ?= esp-link
 
 # Base directory for the compiler. Needs a / at the end.
 # Typically you'll install https://github.com/pfalcon/esp-open-sdk
+# IMPORTANT: use esp-open-sdk `make STANDALONE=n`: the SDK bundled with esp-open-sdk will *not* work!
 XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
 
 # Firmware version 
 # WARNING: if you change this expect to make code adjustments elsewhere, don't expect
 # that esp-link will magically work with a different version of the SDK!!!
-SDK_VERS ?= esp_iot_sdk_v1.5.4
-#SDK_VERS ?= esp_iot_sdk_v2.0.0
+SDK_VERS ?= esp_iot_sdk_v2.0.0.p1
 
 # Try to find the firmware manually extracted, e.g. after downloading from Espressif's BBS,
 # http://bbs.espressif.com/viewforum.php?f=46
 SDK_BASE ?= $(wildcard ../$(SDK_VERS))
 
 # If the firmware isn't there, see whether it got downloaded as part of esp-open-sdk
-ifeq ($(SDK_BASE),)
-SDK_BASE := $(wildcard $(XTENSA_TOOLS_ROOT)/../../$(SDK_VERS))
-endif
+# This used to work at some point, but is not supported, uncomment if you feel lucky ;-)
+#ifeq ($(SDK_BASE),)
+#SDK_BASE := $(wildcard $(XTENSA_TOOLS_ROOT)/../../$(SDK_VERS))
+#endif
 
 # Clean up SDK path
 SDK_BASE := $(abspath $(SDK_BASE))
 $(warning Using SDK from $(SDK_BASE))
 
 # Path to bootloader file
-BOOTFILE	?= $(SDK_BASE/bin/boot_v1.5.bin)
+BOOTFILE	?= $(SDK_BASE/bin/boot_v1.6.bin)
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
 # Windows users use the com port i.e: ESPPORT ?= com3
 ESPTOOL		?= $(abspath ../esp-open-sdk/esptool/esptool.py)
 ESPPORT		?= /dev/ttyUSB0
-ESPBAUD		?= 460800
+ESPBAUD		?= 230400
 
 # --------------- chipset configuration   ---------------
 
@@ -101,8 +101,8 @@ LED_SERIAL_PIN      ?= 14
 
 # --------------- esp-link modules config options ---------------
 
-# Optional Modules mqtt
-MODULES ?= mqtt rest socket syslog
+# Optional Modules mqtt rest socket webserver syslog
+MODULES ?= mqtt rest socket webserver syslog
 
 # --------------- esphttpd config options ---------------
 
@@ -118,8 +118,6 @@ MODULES ?= mqtt rest socket syslog
 #
 # Adding JPG or PNG files (and any other compressed formats) is not recommended, because GZIP
 # compression does not work effectively on compressed files.
-
-#Static gzipping is disabled by default.
 GZIP_COMPRESSION ?= yes
 
 # If COMPRESS_W_HTMLCOMPRESSOR is set to "yes" then the static css and js files will be compressed with
@@ -217,18 +215,22 @@ ifneq (,$(findstring rest,$(MODULES)))
 	CFLAGS		+= -DREST
 endif
 
-ifneq (,$(findstring socket,$(MODULES)))
-	CFLAGS		+= -DSOCKET
-endif
-
 ifneq (,$(findstring syslog,$(MODULES)))
 	CFLAGS		+= -DSYSLOG
 endif
 
+ifneq (,$(findstring web-server,$(MODULES)))
+	CFLAGS		+= -DWEBSERVER
+endif
+
+ifneq (,$(findstring socket,$(MODULES)))
+	CFLAGS		+= -DSOCKET
+endif
+
 # which modules (subdirectories) of the project to include in compiling
 LIBRARIES_DIR 	= libraries
-MODULES		  	+= espfs httpd user serial cmd esp-link
-MODULES			+= $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
+MODULES		+= espfs httpd user serial cmd esp-link
+MODULES		+= $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
 EXTRA_INCDIR 	= include .
 
 # libraries used in this project, mainly provided by the SDK
@@ -236,11 +238,11 @@ LIBS = c gcc hal phy pp net80211 wpa main lwip crypto
 
 # compiler flags using during compilation of source files
 CFLAGS	+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
-		-nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections \
-		-D__ets__ -DICACHE_FLASH -Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX) \
-		-DMCU_RESET_PIN=$(MCU_RESET_PIN) -DMCU_ISP_PIN=$(MCU_ISP_PIN) \
-		-DLED_CONN_PIN=$(LED_CONN_PIN) -DLED_SERIAL_PIN=$(LED_SERIAL_PIN) \
-		-DVERSION="$(VERSION)"
+	-nostdlib -mlongcalls -mtext-section-literals -ffunction-sections -fdata-sections \
+	-D__ets__ -DICACHE_FLASH -Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX) \
+	-DMCU_RESET_PIN=$(MCU_RESET_PIN) -DMCU_ISP_PIN=$(MCU_ISP_PIN) \
+	-DLED_CONN_PIN=$(LED_CONN_PIN) -DLED_SERIAL_PIN=$(LED_SERIAL_PIN) \
+	-DVERSION="$(VERSION)"
 
 # linker flags used to generate the main object file
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--gc-sections
@@ -251,18 +253,17 @@ LD_SCRIPT1	:= build/eagle.esphttpd1.v6.ld
 LD_SCRIPT2	:= build/eagle.esphttpd2.v6.ld
 
 # various paths from the SDK used in this project
-SDK_LIBDIR		= lib
-SDK_LDDIR		= ld
-SDK_INCDIR		= include include/json
+SDK_LIBDIR	= lib
+SDK_LDDIR	= ld
+SDK_INCDIR	= include include/json
 SDK_TOOLSDIR	= tools
 
 # select which tools to use as compiler, librarian and linker
 CC		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
 AR		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-ar
 LD		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-gcc
-OBJCP	:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objcopy
-OBJDP	:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objdump
-
+OBJCP		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objcopy
+OBJDP		:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-objdump
 
 ####
 SRC_DIR		:= $(MODULES)
@@ -274,14 +275,14 @@ SDK_INCDIR	:= $(addprefix -I$(SDK_BASE)/,$(SDK_INCDIR))
 SDK_TOOLS	:= $(addprefix $(SDK_BASE)/,$(SDK_TOOLSDIR))
 APPGEN_TOOL	:= $(addprefix $(SDK_TOOLS)/,$(APPGEN_TOOL))
 
-SRC			:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.c))
-OBJ			:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC)) $(BUILD_BASE)/espfs_img.o
+SRC		:= $(foreach sdir,$(SRC_DIR),$(wildcard $(sdir)/*.c))
+OBJ		:= $(patsubst %.c,$(BUILD_BASE)/%.o,$(SRC)) $(BUILD_BASE)/espfs_img.o
 LIBS		:= $(addprefix -l,$(LIBS))
 APP_AR		:= $(addprefix $(BUILD_BASE)/,$(TARGET)_app.a)
 USER1_OUT 	:= $(addprefix $(BUILD_BASE)/,$(TARGET).user1.out)
 USER2_OUT 	:= $(addprefix $(BUILD_BASE)/,$(TARGET).user2.out)
 
-INCDIR			:= $(addprefix -I,$(SRC_DIR))
+INCDIR		:= $(addprefix -I,$(SRC_DIR))
 EXTRA_INCDIR	:= $(addprefix -I,$(EXTRA_INCDIR))
 MODULE_INCDIR	:= $(addsuffix /include,$(INCDIR))
 
@@ -371,7 +372,7 @@ $(FW_BASE)/user1.bin: $(USER1_OUT) $(FW_BASE)
 	$(Q) $(OBJCP) --only-section .rodata -O binary $(USER1_OUT) eagle.app.v6.rodata.bin
 	$(Q) $(OBJCP) --only-section .irom0.text -O binary $(USER1_OUT) eagle.app.v6.irom0text.bin
 	ls -ls eagle*bin
-	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER1_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE) 0
+	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER1_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE) 0 >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
@@ -382,7 +383,7 @@ $(FW_BASE)/user2.bin: $(USER2_OUT) $(FW_BASE)
 	$(Q) $(OBJCP) --only-section .data -O binary $(USER2_OUT) eagle.app.v6.data.bin
 	$(Q) $(OBJCP) --only-section .rodata -O binary $(USER2_OUT) eagle.app.v6.rodata.bin
 	$(Q) $(OBJCP) --only-section .irom0.text -O binary $(USER2_OUT) eagle.app.v6.irom0text.bin
-	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER2_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE) 0
+	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER2_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE) 1 >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
@@ -431,23 +432,23 @@ $(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
 	$(Q) cp -r html/wifi/*.png html_compressed/wifi;
 	$(Q) cp -r html/wifi/*.js html_compressed/wifi;
 ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
-	$(Q) echo "Compression assets with htmlcompressor. This may take a while..."
-		$(Q) java -jar tools/$(HTML_COMPRESSOR) \
-		-t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
-		-o $(abspath ./html_compressed)/ \
-		$(HTML_PATH)head- \
-		$(HTML_PATH)*.html
+	$(Q) echo "Compressing assets with htmlcompressor. This may take a while..."
 	$(Q) java -jar tools/$(HTML_COMPRESSOR) \
-		-t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
-		-o $(abspath ./html_compressed)/wifi/ \
-		$(WIFI_PATH)*.html
-	$(Q) echo "Compression assets with yui-compressor. This may take a while..."
+	  -t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
+	  -o $(abspath ./html_compressed)/ \
+	  $(HTML_PATH)head- \
+	  $(HTML_PATH)*.html
+	$(Q) java -jar tools/$(HTML_COMPRESSOR) \
+	  -t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
+	  -o $(abspath ./html_compressed)/wifi/ \
+	  $(WIFI_PATH)*.html
+	$(Q) echo "Compressing assets with yui-compressor. This may take a while..."
 	$(Q) for file in `find html_compressed -type f -name "*.js"`; do \
-			java -jar tools/$(YUI_COMPRESSOR) $$file --line-break 0 -o $$file; \
-		done
+	    java -jar tools/$(YUI_COMPRESSOR) $$file --line-break 0 -o $$file; \
+	  done
 	$(Q) for file in `find html_compressed -type f -name "*.css"`; do \
-			java -jar tools/$(YUI_COMPRESSOR) $$file -o $$file; \
-		done
+	    java -jar tools/$(YUI_COMPRESSOR) $$file -o $$file; \
+	  done
 else
 	$(Q) cp -r html/head- html_compressed;
 	$(Q) cp -r html/*.html html_compressed;
@@ -458,25 +459,25 @@ ifeq (,$(findstring mqtt,$(MODULES)))
 	$(Q) rm -rf html_compressed/mqtt.js
 endif
 	$(Q) for file in `find html_compressed -type f -name "*.htm*"`; do \
-		cat html_compressed/head- $$file >$${file}-; \
-		mv $$file- $$file; \
-	done
+	    cat html_compressed/head- $$file >$${file}-; \
+	    mv $$file- $$file; \
+	  done
 	$(Q) rm html_compressed/head-
 	$(Q) cd html_compressed; find . \! -name \*- | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..;
 	$(Q) ls -sl build/espfs.img
 	$(Q) cd build; $(OBJCP) -I binary -O elf32-xtensa-le -B xtensa --rename-section .data=.espfs \
-			espfs.img espfs_img.o; cd ..
+	  espfs.img espfs_img.o; cd ..
 
 # edit the loader script to add the espfs section to the end of irom with a 4 byte alignment.
 # we also adjust the sizes of the segments 'cause we need more irom0
 build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
-			-e '/^  irom0_0_seg/ s/6B000/7C000/' \
-			$(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld >$@
+		-e '/^  irom0_0_seg/ s/6B000/7C000/' \
+		$(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld >$@
 build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
-			-e '/^  irom0_0_seg/ s/6B000/7C000/' \
-			$(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld >$@
+		-e '/^  irom0_0_seg/ s/6B000/7C000/' \
+		$(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld >$@
 
 espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 	$(Q) $(MAKE) -C espfs/mkespfsimage GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
@@ -486,11 +487,14 @@ release: all
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user1.bin | cut -b 1-80
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user2.bin | cut -b 1-80
 	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
-		   "$(SDK_BASE)/bin/boot_v1.5.bin" wiflash avrflash release/esp-link-$(BRANCH)
-	$(Q) tar zcf esp-link-$(BRANCH).tgz -C release esp-link-$(BRANCH)
-	$(Q) echo "Release file: esp-link-$(BRANCH).tgz"
+	       "$(SDK_BASE)/bin/boot_v1.6.bin" "$(SDK_BASE)/bin/esp_init_data_default.bin" \
+	       wiflash avrflash release/esp-link-$(BRANCH)
+	$(Q) tar zcf esp-link-$(BRANCH)-$(SHA).tgz -C release esp-link-$(BRANCH)
+	$(Q) echo "Release file: esp-link-$(BRANCH)-$(SHA).tgz"
 	$(Q) rm -rf release
 
+docker:
+	$(Q) docker build -t jeelabs/esp-link .
 clean:
 	$(Q) rm -f $(APP_AR)
 	$(Q) rm -f $(TARGET_OUT)
