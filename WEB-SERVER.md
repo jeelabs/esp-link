@@ -1,12 +1,19 @@
 ESP-LINK web-server tutorial
 ============================
 
+Video
+--------------------
+
+https://www.youtube.com/watch?v=vBESCO0UhYI
+
+
 Installing el-client Arduino library
 --------------------
 
 Download and install ELClient library.
 
 https://github.com/jeelabs/el-client
+
 
 LED flashing sample
 --------------------
@@ -27,6 +34,7 @@ Installation steps:
  - 5: choose LED page on esp-link UI
  - 6: turn on/off the LED
 
+ 
 HTML controls sample
 --------------------------
 
@@ -46,6 +54,7 @@ Installation steps:
  - 5: jump to LED/User/Voltage pages
  - 6: try out different settings
 
+ 
 Supported HTML controls
 --------------------
 
