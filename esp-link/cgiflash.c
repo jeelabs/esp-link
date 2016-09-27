@@ -71,10 +71,10 @@ int ICACHE_FLASH_ATTR cgiGetFirmwareNext(HttpdConnData *connData) {
 int ICACHE_FLASH_ATTR cgiUploadFirmware(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
 
-        if (!canOTA()) {
-          errorResponse(connData, 400, flash_too_small);
-          return HTTPD_CGI_DONE;
-        }
+  if (!canOTA()) {
+    errorResponse(connData, 400, flash_too_small);
+    return HTTPD_CGI_DONE;
+  }
 
   int offset = connData->post->received - connData->post->buffLen;
   if (offset == 0) {

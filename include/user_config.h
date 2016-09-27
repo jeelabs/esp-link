@@ -22,6 +22,7 @@
 #define HTTPD_DBG
 #define MQTT_DBG
 #define MQTTCMD_DBG
+#define MQTTCLIENT_DBG
 #undef PKTBUF_DBG
 #define REST_DBG
 #define RESTCMD_DBG
@@ -32,7 +33,7 @@
 #define MDNS_DBG
 #define OPTIBOOT_DBG
 #undef SYSLOG_DBG
-#undef CGISERVICES_DBG
+#define CGISERVICES_DBG
 
 // If defined, the default hostname for DHCP will include the chip ID to make it unique
 #undef CHIP_IN_HOSTNAME
