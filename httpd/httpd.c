@@ -17,6 +17,7 @@ Esp8266 http server - core routines
 #include <esp8266.h>
 #include "httpd.h"
 
+//#define HTTPD_DBG
 #ifdef HTTPD_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
@@ -635,7 +636,7 @@ HttpdConnData * ICACHE_FLASH_ATTR  httpdLookUpConn(uint8_t * ip, int port) {
   for (i = 0; i<MAX_CONN; i++)
   {
     HttpdConnData *conn = connData+i;
-    
+
     if (conn->conn == NULL)
       continue;
     if (conn->cgi == NULL)
@@ -644,7 +645,7 @@ HttpdConnData * ICACHE_FLASH_ATTR  httpdLookUpConn(uint8_t * ip, int port) {
       continue;
     if (os_memcmp(conn->conn->proto.tcp->remote_ip, ip, 4) != 0)
       continue;
-    
+
     return conn;
   }
   return NULL;
@@ -664,6 +665,6 @@ int ICACHE_FLASH_ATTR httpdSetCGIResponse(HttpdConnData * conn, void * response)
   conn->cgiResponse = response;
   httpdProcessRequest(conn);
   conn->cgiResponse = NULL;
-    
+
   return HTTPD_CGI_DONE;
 }

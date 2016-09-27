@@ -5,7 +5,7 @@
 #include "mqtt.h"
 
 #ifdef MQTTCLIENT_DBG
-#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__) } while(0)
+#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
 #define DBG(format, ...) do { } while(0)
 #endif
@@ -66,7 +66,7 @@ void ICACHE_FLASH_ATTR
 wifiStateChangeCb(uint8_t status)
 {
   if (flashConfig.mqtt_enable) {
-    if (status == wifiGotIP && mqttClient.connState != TCP_CONNECTING) {
+    if (status == wifiGotIP && mqttClient.connState < TCP_CONNECTING) {
       MQTT_Connect(&mqttClient);
     }
     else if (status == wifiIsDisconnected && mqttClient.connState == TCP_CONNECTING) {
@@ -87,8 +87,9 @@ mqtt_client_init()
   MQTT_OnPublished(&mqttClient, mqttPublishedCb);
   MQTT_OnData(&mqttClient, mqttDataCb);
 
-  if (flashConfig.mqtt_enable && strlen(flashConfig.mqtt_host) > 0)
-    MQTT_Connect(&mqttClient);
+  // Don't connect now, wait for a wifi status change callback
+  //if (flashConfig.mqtt_enable && strlen(flashConfig.mqtt_host) > 0)
+  //  MQTT_Connect(&mqttClient);
 
   wifiAddStateChangeCb(wifiStateChangeCb);
 }
