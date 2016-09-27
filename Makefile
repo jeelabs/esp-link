@@ -101,8 +101,8 @@ LED_SERIAL_PIN      ?= 14
 
 # --------------- esp-link modules config options ---------------
 
-# Optional Modules mqtt rest socket webserver syslog
-MODULES ?= mqtt rest socket webserver syslog
+# Optional Modules mqtt rest socket web-server syslog
+MODULES ?= mqtt rest socket web-server syslog
 
 # --------------- esphttpd config options ---------------
 

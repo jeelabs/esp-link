@@ -13,6 +13,7 @@
 #include "syslog.h"
 #include "time.h"
 #include "task.h"
+#include "sntp.h"
 
 extern void * mem_trim(void *m, size_t s);	// not well documented...
 
@@ -401,6 +402,7 @@ syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *
 
     // create timestamp: FULL-DATE "T" PARTIAL-TIME "Z": 'YYYY-mm-ddTHH:MM:SSZ '
     // as long as realtime_stamp is 0 we use tick div 10⁶ as date
+    uint32_t realtime_stamp = sntp_get_current_timestamp();
     now = (realtime_stamp == 0) ? (se->tick / 1000000) : realtime_stamp;
     tp = gmtime(&now);
 

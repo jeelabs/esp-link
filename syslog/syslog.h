@@ -71,7 +71,7 @@ enum syslog_facility {
 #define WDEV_NOW()   REG_READ(0x3ff20c00)
 
 // This variable disappeared from lwip in SDK 2.0...
-extern uint32_t	realtime_stamp;     // 1sec NTP ticker
+// extern uint32_t	realtime_stamp;     // 1sec NTP ticker
 
 typedef struct syslog_host_t syslog_host_t;
 struct syslog_host_t {
