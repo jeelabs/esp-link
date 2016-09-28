@@ -5,6 +5,7 @@
 #include "esp8266.h"
 #include "sntp.h"
 #include "cmd.h"
+#include "uart.h"
 #include <cgiwifi.h>
 #ifdef MQTT
 #include <mqtt_cmd.h>
@@ -28,7 +29,10 @@ static void cmdAddCallback(CmdPacket *cmd);
 
 // keep track of last status sent to uC so we can notify it when it changes
 static uint8_t lastWifiStatus = wifiIsDisconnected;
+// keep track of whether we have registered our cb handler with the wifi subsystem
 static bool wifiCbAdded = false;
+// keep track of whether we received a sync command from uC
+bool cmdInSync = false;
 
 // Command dispatch table for serial -> ESP commands
 const CmdList commands[] = {
@@ -53,7 +57,7 @@ const CmdList commands[] = {
 
 //===== List of registered callbacks (to uC)
 
-// WifiCb plus 10 for sensors
+// WifiCb plus 10 for other stuff
 #define MAX_CALLBACKS 12
 CmdCallback callbacks[MAX_CALLBACKS]; // cleared in cmdSync
 
@@ -118,6 +122,7 @@ cmdNull(CmdPacket *cmd) {
 static void ICACHE_FLASH_ATTR
 cmdSync(CmdPacket *cmd) {
   CmdRequest req;
+  uart0_write_char(SLIP_END); // prefix with a SLIP END to ensure we get a clean start
   cmdRequest(&req, cmd);
   if(cmd->argc != 0 || cmd->value == 0) {
     cmdResponseStart(CMD_RESP_V, 0, 0);
@@ -128,6 +133,8 @@ cmdSync(CmdPacket *cmd) {
   // clear callbacks table
   os_memset(callbacks, 0, sizeof(callbacks));
 
+  // TODO: call other protocols back to tell them to reset
+
   // register our callback with wifi subsystem
   if (!wifiCbAdded) {
     wifiAddStateChangeCb(cmdWifiCb);
@@ -137,6 +144,7 @@ cmdSync(CmdPacket *cmd) {
   // send OK response
   cmdResponseStart(CMD_RESP_V, cmd->value, 0);
   cmdResponseEnd();
+  cmdInSync = true;
 
   // save the MCU's callback and trigger an initial callback
   cmdAddCb("wifiCb", cmd->value);

@@ -6,6 +6,9 @@
 #define CMD_H
 #include <esp8266.h>
 
+// keep track of whether we received a sync command from uC
+extern bool cmdInSync;
+
 // Standard SLIP escape chars from RFC
 #define SLIP_END      0300    // indicates end of packet
 #define SLIP_ESC      0333    // indicates byte stuffing
@@ -48,7 +51,7 @@ typedef enum {
   CMD_REST_SETUP = 20,
   CMD_REST_REQUEST,
   CMD_REST_SETHEADER,
-  
+
   CMD_WEB_DATA = 30,  // MCU pushes data using this command
   CMD_WEB_REQ_CB,     // esp-link WEB callback
 } CmdName;
@@ -60,6 +63,9 @@ typedef struct {
   char      *sc_text;    // name as string
   cmdfunc_t sc_function; // pointer to function
 } CmdList;
+
+// command dispatch table
+extern const CmdList commands[];
 
 #define CMD_CBNLEN 16
 typedef struct {

@@ -13,8 +13,6 @@
 #define DBG(format, ...) do { } while(0)
 #endif
 
-extern const CmdList commands[];
-
 //===== ESP -> Serial responses
 
 static void ICACHE_FLASH_ATTR
@@ -128,7 +126,11 @@ cmdParsePacket(uint8_t *buf, short len) {
   }
 #endif
 
-  if (data_ptr <= data_limit) {
+  if (!cmdInSync && packet->cmd != CMD_SYNC) {
+    // we have not received a sync, perhaps we reset? Tell MCU to do a sync
+    cmdResponseStart(CMD_SYNC, 0, 0);
+    cmdResponseEnd();
+  } else if (data_ptr <= data_limit) {
     cmdExec(commands, packet);
   } else {
     DBG("cmdParsePacket: packet length overrun, parsing arg %d\n", packet->argc);
