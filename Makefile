@@ -409,16 +409,11 @@ flash: all
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 
 ifeq ($(OS),Windows_NT)
-tools/$(HTML_COMPRESSOR):
-	$(Q) mkdir -p tools
-	cd tools; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR) -O $(YUI_COMPRESSOR)
-	cd tools; wget --no-check-certificate https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR) -O $(HTML_COMPRESSOR)
-else
-tools/$(HTML_COMPRESSOR):
-#	$(Q) mkdir -p tools
-#	cd tools; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR)
-#	cd tools; wget https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR)
-endif
+	$(Q) echo "The jar files in the tools dir are missing, they should be in the source repo"
+	$(Q) echo "The following commands can be used to fetch them, but the URLs have changed..."
+	$(Q) echo mkdir -p tools
+	$(Q) echo "cd tools; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR) -O $(YUI_COMPRESSOR)"
+	$(Q) echo "cd tools; wget --no-check-certificate https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR) -O $(HTML_COMPRESSOR)"
 
 ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 $(BUILD_BASE)/espfs_img.o: tools/$(HTML_COMPRESSOR)
