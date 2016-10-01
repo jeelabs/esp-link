@@ -1,0 +1,133 @@
+#! /bin/bash
+#
+# Flash an esp8266 over wifi. This communicates with the esphttpd's /flash handlers
+# and POSTS the correct binary depending on the parittion that needs to be flashed
+# next.
+#
+# ----------------------------------------------------------------------------
+# "THE BEER-WARE LICENSE" (Revision 42):
+# Thorsten von Eicken wrote this file. As long as you retain 
+# this notice you can do whatever you want with this stuff. If we meet some day, 
+# and you think this stuff is worth it, you can buy me a beer in return. 
+# ----------------------------------------------------------------------------
+
+show_help() {
+  cat <<EOT
+Usage: ${0##*/} [-options...] hostname user1.bin user2.bin
+Flash the esp8266 running esphttpd at <hostname> with either <user1.bin> or <user2.bin>
+depending on its current state. Reboot the esp8266 after flashing and wait for it to come
+up again.
+  -v                    Be verbose
+  -h                    show this help
+
+Example: ${0##*/} -v esp8266 firmware/user1.bin firmware/user2.bin
+         ${0##*/} 192.168.4.1 firmware/user1.bin firmware/user2.bin
+EOT
+}
+
+if ! which curl >/dev/null; then
+  echo "ERROR: Cannot find curl: it is required for this script." >&2
+  exit 1
+fi
+
+start=`date +%s`
+
+# ===== Parse arguments
+
+verbose=
+
+while getopts "hvx:" opt; do
+  case "$opt" in
+    h) show_help; exit 0 ;;
+    v) verbose=1 ;;
+    x) foo="$OPTARG" ;;
+    '?') show_help >&2; exit 1 ;;
+  esac
+done
+
+# Shift off the options and optional --.
+shift "$((OPTIND-1))"
+
+# Get the fixed arguments
+if [[ $# != 3 ]]; then
+	show_help >&2
+	exit 1
+fi
+hostname=$1
+user1=$2
+user2=$3
+
+re='[-A-Za-z0-9.]+'
+if [[ ! "$hostname" =~ $re ]]; then
+	echo "ERROR: hostname ${hostname} is not a valid hostname or ip address" >&2
+	exit 1
+fi
+
+if [[ ! -r "$user1" ]]; then
+	echo "ERROR: cannot read user1 firmware file ($user1)" >&2
+	exit 1
+fi
+
+if [[ ! -r "$user2" ]]; then
+	echo "ERROR: cannot read user2 firmware file ($user2)" >&2
+	exit 1
+fi
+
+# ===== Retrieve the 'next' firmware required
+
+fw=
+while true; do
+	[[ -n "$verbose" ]] && echo "Fetching http://$hostname/flash/next" >&2
+	v=; [[ -n "$verbose" ]] && v=-v
+	next=`curl -m 10 $v -s "http://$hostname/flash/next"`
+	if [[ $? != 0 ]]; then
+		echo "Error retrieving http://$hostname/flash/next" >&2
+		exit 1
+	fi
+	case "$next" in
+	user1.bin)
+	  echo "Flashing user1.bin"  >&2
+		fw="$user1"
+		break;;
+	user2.bin)
+	  echo "Flashing user2.bin"  >&2
+		fw="$user2"
+		break;;
+	*)
+	  echo "Error retrieving or parsing http://$hostname/flash/next" >&2
+		exit 1
+		;;
+	esac
+done
+
+#silent=-s
+[[ -n "$verbose" ]] && silent=
+res=`curl $silent -XPOST --data-binary "@$fw" "http://$hostname/flash/upload"`
+if [[ $? != 0 ]]; then
+	echo "Error flashing $fw" >&2
+	exit 1
+fi
+
+sleep 2
+echo "Rebooting into new firmware" >&2
+curl -m 10 -s "http://$hostname/flash/reboot"
+
+sleep 2
+echo "Waiting for ESP8266 to come back"
+while true; do
+	[[ -n "$verbose" ]] && echo "Fetching http://$hostname/flash/next" >&2
+	next2=`curl -m 10 $v -s "http://$hostname/flash/next"`
+	[[ -n "$verbose" ]] && echo "got: $next2"
+	re='user[12]\.bin'
+	if [[ "$next2" =~ $re ]]; then
+		if [[ "$next2" != "$next" ]]; then
+			sec=$(( `date +%s` - $start ))
+			echo "Success, took $sec seconds" >&2
+			exit 0
+		else
+			echo "Flashing seems to have failed and it reverted to the old firmware?" >&2
+			exit 1
+		fi
+	fi
+	sleep 1
+done

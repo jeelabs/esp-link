@@ -101,8 +101,8 @@ LED_SERIAL_PIN      ?= 14
 
 # --------------- esp-link modules config options ---------------
 
-# Optional Modules mqtt rest syslog web-server
-MODULES ?= mqtt rest web-server
+# Optional Modules: mqtt rest socket web-server syslog
+MODULES ?= mqtt rest socket web-server syslog
 
 # --------------- esphttpd config options ---------------
 
@@ -221,6 +221,10 @@ endif
 
 ifneq (,$(findstring web-server,$(MODULES)))
 	CFLAGS		+= -DWEBSERVER
+endif
+
+ifneq (,$(findstring socket,$(MODULES)))
+	CFLAGS		+= -DSOCKET
 endif
 
 # which modules (subdirectories) of the project to include in compiling
@@ -411,9 +415,9 @@ tools/$(HTML_COMPRESSOR):
 	cd tools; wget --no-check-certificate https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR) -O $(HTML_COMPRESSOR)
 else
 tools/$(HTML_COMPRESSOR):
-	$(Q) mkdir -p tools
-	cd tools; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR)
-	cd tools; wget https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR)
+#	$(Q) mkdir -p tools
+#	cd tools; wget https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR)
+#	cd tools; wget https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR)
 endif
 
 ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")

@@ -14,6 +14,9 @@
 #include <rest.h>
 #endif
 #include <web-server.h>
+#ifdef SOCKET
+#include <socket.h>
+#endif
 
 #ifdef CMD_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
@@ -53,6 +56,10 @@ const CmdList commands[] = {
   {CMD_REST_SETHEADER,  "REST_SETHDR",    REST_SetHeader},
 #endif
   {CMD_WEB_DATA,        "WEB_DATA",       WEB_Data},
+#ifdef SOCKET
+  {CMD_SOCKET_SETUP,    "SOCKET_SETUP",   SOCKET_Setup},
+  {CMD_SOCKET_SEND,     "SOCKET_SEND",    SOCKET_Send},
+#endif
 };
 
 //===== List of registered callbacks (to uC)
