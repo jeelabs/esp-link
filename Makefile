@@ -408,7 +408,7 @@ flash: all
 	  0x00000 "$(SDK_BASE)/bin/boot_v1.5.bin" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 
-ifeq ($(OS),Windows_NT)
+tools/$(HTML_COMPRESSOR):
 	$(Q) echo "The jar files in the tools dir are missing, they should be in the source repo"
 	$(Q) echo "The following commands can be used to fetch them, but the URLs have changed..."
 	$(Q) echo mkdir -p tools
