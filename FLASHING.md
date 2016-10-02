@@ -15,6 +15,8 @@ It implements a number of features:
 - built-in stk500v1 programmer for AVR uC's: program using HTTP upload of hex file
 - outbound REST HTTP requests from the attached micro-controller to the internet
 - MQTT client pub/sub from the attached micro-controller to the internet
+- serve custom web pages containing data that is dynamically pulled from the attached uC and
+  that contain buttons and fields that are transmitted to the attached uC
 
 The firmware includes a tiny HTTP server based on
 http://www.esp8266.com/viewforum.php?f=34[esphttpd]
@@ -23,9 +25,18 @@ The REST and MQTT functionality are loosely based on https://github.com/tuanpmt/
 but significantly rewritten and no longer protocol compatible, thanks to tuanpmt for the
 inspiration!
 
-Many thanks to https://github.com/brunnels for contributions in particular around the espduino
-functionality. Thank you also to https://github.com/susisstrolch, https://github.com/bc547,
-and https://github.com/katast for additional contributions!
+Many thanks to https://github.com/brunnels[brunnels] for contributions in particular around
+the espduino functionality.
+Thanks to https://github.com/cskarai[cskarai] for the custom dynamic web page functionality
+and to https://github.com/beegee-tokyo[beegee-tokyo] for lots of code documentation.
+Thank you also to https://github.com/susisstrolch[susisstrolch] for the syslog feature,
+https://github.com/bc547[bc547], and https://github.com/katast[katast] for
+additional contributions. Esp-link is the work of many contributors!
+
+Note that http://github.com/jeelabs/esp-link is the original esp-link software which has
+notably been forked by arduino.org as https://github.com/arduino-org/Esp-Link[Esp-Link] and shipped
+with the initial Arduino Uno Wifi. The JeeLabs esp-link has evolved significantly since the
+fork and added cool new features as well as bug fixes.
 
 [float]
 Table of Contents
@@ -36,6 +47,9 @@ toc::[]
 Releases & Downloads
 --------------------
 
+- The master branch is currently unstable as we integrate a number of new features. Please use
+  v2.2.3 unless you want to hack up the latest code! This being said, the older functionality
+  seems to work fine on master, YMMV...
 - https://github.com/jeelabs/esp-link/releases/tag/v2.2.3[V2.2.3] is the most recent release.
   It has a built-in stk500v1 programmer (for AVRs), work on all modules, and supports mDNS,
   sNTP, and syslog. It is built using the Espressif SDK 1.5.4.
@@ -52,15 +66,18 @@ Intro
 
 The goal of the esp-link project is to create an advanced Wifi co-processor. Esp-link assumes that
 there is a "main processor" (also referred to as "attached uController") and that esp-link's role
-is to facilitate communication over Wifi. Where esp-link is a bit unusual is that it's not really
+is to facilitate communication over Wifi. This means that esp-link does not just connect TCP/UDP
+sockets through to the attached uC, rather it implements mostly higher-level functionality to
+offload the attached uC, which often has much less flash and memory than esp-link.
+
+Where esp-link is a bit unusual is that it's not really
 just a Wifi interface or a slave co-processor. In some sense it's the master, because the main
 processor can be reset, controlled and reprogrammed through esp-link. The three main areas of
 functionality in esp-link are:
 
 - reprogramming and debugging the attached uC
 - letting the attached uC make outbound communication and offloading the protocol processing
-- forwarding inbound communication and offloading the protocol processing (this part is the
-least developed)
+- forwarding inbound communication and offloading the protocol processing
 
 The goal of the project is also to remain focused on the above mission. In particular, esp-link
 is not a platform for stand-alone applications and it does not support connecting sensors or
