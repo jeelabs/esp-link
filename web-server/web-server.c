@@ -13,8 +13,10 @@
 // - handles JSON data coming from the browser
 // - handles SLIP messages coming from MCU
 
-#define WEB_CB "webCb"
-#define MAX_ARGUMENT_BUFFER_SIZE 1024
+#define MAX_ARGUMENT_BUFFER_SIZE 128
+#define HEADER_SIZE 32
+
+uint32_t web_server_cb = 0;
 
 struct ArgumentBuffer
 {
@@ -104,14 +106,14 @@ void ICACHE_FLASH_ATTR WEB_Init()
 }
 
 // initializes the argument buffer
-static void WEB_argInit(struct ArgumentBuffer * argBuffer)
+static void ICACHE_FLASH_ATTR WEB_argInit(struct ArgumentBuffer * argBuffer)
 {
 	argBuffer->numberOfArgs = 0;
 	argBuffer->argBufferPtr = 0;
 }
 
 // adds an argument to the argument buffer (returns 0 if successful)
-static int  WEB_addArg(struct ArgumentBuffer * argBuffer, char * arg, int argLen )
+static int ICACHE_FLASH_ATTR WEB_addArg(struct ArgumentBuffer * argBuffer, char * arg, int argLen )
 {
 	if( argBuffer->argBufferPtr + argLen + sizeof(int) >= MAX_ARGUMENT_BUFFER_SIZE )
 		return -1; // buffer overflow
@@ -129,9 +131,9 @@ static int  WEB_addArg(struct ArgumentBuffer * argBuffer, char * arg, int argLen
 }
 
 // creates and sends a SLIP message from the argument buffer
-static void WEB_sendArgBuffer(struct ArgumentBuffer * argBuffer, HttpdConnData *connData, int id, RequestReason reason)
+static void ICACHE_FLASH_ATTR WEB_sendArgBuffer(struct ArgumentBuffer * argBuffer, HttpdConnData *connData, RequestReason reason)
 {
-	cmdResponseStart(CMD_WEB_REQ_CB, id, 4 + argBuffer->numberOfArgs);
+	cmdResponseStart(CMD_RESP_CB, web_server_cb, 4 + argBuffer->numberOfArgs);
 	uint16_t r = (uint16_t)reason;
 	cmdResponseBody(&r, sizeof(uint16_t));                                      // 1st argument: reason
 	cmdResponseBody(&connData->conn->proto.tcp->remote_ip, 4);                  // 2nd argument: IP
@@ -161,8 +163,8 @@ static int ICACHE_FLASH_ATTR WEB_handleJSONRequest(HttpdConnData *connData)
 		errorResponse(connData, 400, "Slip processing is disabled!");
 		return HTTPD_CGI_DONE;
 	}
-	CmdCallback* cb = cmdGetCbByName( WEB_CB );
-	if( cb == NULL )
+	
+	if( web_server_cb == 0 )
 	{
 		errorResponse(connData, 500, "No MCU callback is registered!");
 		return HTTPD_CGI_DONE;
@@ -226,6 +228,8 @@ static int ICACHE_FLASH_ATTR WEB_handleJSONRequest(HttpdConnData *connData)
 				}
 				
 				int bptr = 0;
+				int sent_args = 0;
+				int max_buf_size = MAX_ARGUMENT_BUFFER_SIZE - HEADER_SIZE - os_strlen(connData->url);
 				
 				while( bptr < connData->post->len )
 				{
@@ -269,11 +273,23 @@ static int ICACHE_FLASH_ATTR WEB_handleJSONRequest(HttpdConnData *connData)
 						os_strcpy( arg + argPtr, value );
 						argPtr += valLen;
 						
+						if( sent_args != 0 )
+						{
+							if( argBuffer.argBufferPtr + argPtr >= max_buf_size )
+							{
+								WEB_addArg(&argBuffer, NULL, 0); // there's enough room in the buffer for termination block
+								WEB_sendArgBuffer(&argBuffer, connData, reason );
+								WEB_argInit( &argBuffer );
+								sent_args = 0;
+							}
+						}
+						
 						if( WEB_addArg(&argBuffer, arg, argPtr) )
 						{
 							errorResponse(connData, 400, "Post too large!");
 							return HTTPD_CGI_DONE;
 						}
+						sent_args++;
 					}
 				}
 			}
@@ -292,7 +308,7 @@ static int ICACHE_FLASH_ATTR WEB_handleJSONRequest(HttpdConnData *connData)
 	
 	os_printf("Web callback to MCU: %s\n", reasonBuf);
 	
-	WEB_sendArgBuffer(&argBuffer, connData, (uint32_t)cb->callback, reason );
+	WEB_sendArgBuffer(&argBuffer, connData, reason );
 	
 	if( reason == SUBMIT )
 	{
@@ -430,6 +446,19 @@ int ICACHE_FLASH_ATTR WEB_CgiJsonHook(HttpdConnData *connData)
 		return WEB_handleMCUResponse(connData, (CmdRequest *)(connData->cgiResponse));
 	
 	return HTTPD_CGI_MORE;
+}
+
+// configuring the callback
+void ICACHE_FLASH_ATTR WEB_Setup(CmdPacket *cmd)
+{
+	CmdRequest req;
+	cmdRequest(&req, cmd);
+	
+	if (cmdGetArgc(&req) < 1) return;
+	
+	cmdPopArg(&req, &web_server_cb, 4); // pop the callback
+	
+	os_printf("Web-server connected, cb=0x%x\n", web_server_cb);
 }
 
 // this method is called when MCU transmits WEB_DATA command
