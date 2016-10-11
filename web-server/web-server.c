@@ -392,10 +392,16 @@ static int ICACHE_FLASH_ATTR WEB_handleMCUResponse(HttpdConnData *connData, CmdR
 					float f;
 					os_memcpy( &f, value, 4);
 					
-					char intbuf[20];
-					os_sprintf(intbuf, "%f", f);
-					os_strcpy(jsonBuf + jsonPtr, intbuf);
-					jsonPtr += os_strlen(intbuf);
+					// os_sprintf doesn't support %f
+					int intPart = f;
+					int fracPart = (f - intPart) * 1000; // use 3 digit precision
+					if( fracPart < 0 ) // for negative numbers
+						fracPart = -fracPart;
+					
+					char floatBuf[20];
+					os_sprintf(floatBuf, "%d.%03d", intPart, fracPart);
+					os_strcpy(jsonBuf + jsonPtr, floatBuf);
+					jsonPtr += os_strlen(floatBuf);
 				}
 				break;
 			case WEB_STRING:
