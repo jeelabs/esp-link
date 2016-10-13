@@ -70,10 +70,7 @@ and 3.x will be the addition of custom web pages (this is not ready yet).
 - [V2.1.7](https://github.com/jeelabs/esp-link/releases/tag/v2.1.7) is the previous release.
 - See [all releases](https://github.com/jeelabs/esp-link/releases).
 
-Intro
------
-
-### Esp-link goals
+## Esp-link goals
 
 The goal of the esp-link project is to create an advanced Wifi co-processor. Esp-link assumes that
 there is a "main processor" (also referred to as "attached uController") and that esp-link's role
@@ -96,7 +93,7 @@ actuators directly to it. A few users have taken esp-link as a starting point fo
 things and that's great, but there's also value in keeping the mainline esp-link project
 focused on a clear mission.
 
-### Esp-link uses
+## Esp-link uses
 
 The simplest use of esp-link is as a transparent serial to wifi bridge. You can flash an attached
 uC over wifi and you can watch the uC's serial debug output by connecting to port 23 or looking
@@ -118,7 +115,7 @@ the attached uC registers callbacks at start-up such that the code in the esp do
 know which exact sensors/actuators the attached uC has, it learns that through the initial
 callback registration.
 
-### Eye Candy
+## Eye Candy
 
 These screen shots show the Home page, the Wifi configuration page, the console for the
 attached microcontroller, and the pin assignments card:
@@ -150,8 +147,7 @@ From there, more advanced steps are:
   and forms
 - make changes or enhancements to esp-link and build your own firmware
 
-Serial bridge
--------------
+### Serial bridge
 
 In order to connect through the esp-link to a microcontroller use port 23. For example,
 on linux you can use `nc esp-hostname 23` or `telnet esp-hostname 23`.

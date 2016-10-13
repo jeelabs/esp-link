@@ -108,42 +108,5 @@ Please consider installing docker and using the docker image to save yourself gr
 the tools installed and working.
 If you do want to compile "natively" on Windows it certainly is possible.
 
-It is possible to build esp-link on Windows, but it requires a gaggle of software to be installed:
-
-- Install the unofficial sdk, mingw, SourceTree (gui git client), python 2.7, git cli, Java
-- Use SourceTree to checkout under C:\espressif or wherever you installed the unofficial sdk,
-  (see this thread for the unofficial sdk http://www.esp8266.com/viewtopic.php?t=820)
-- Create a symbolic link under c:/espressif for the git bin directory under program files and
-  the java bin directory under program files.
-- ...
-
-## Updating the firmware over-the-air
-
-This firmware supports over-the-air (OTA) flashing, so you do not have to deal with serial
-flashing again after the initial one! The recommended way to flash is to use `make wiflash`
-if you are also building the firmware.
-If you are downloading firmware binaries use `./wiflash`.
-`make wiflash` assumes that you set `ESP_HOSTNAME` to the hostname or IP address of your esp-link.
-You can easily do that using something like `ESP_HOSTNAME=192.168.1.5 make wiflash` or
-`ESP_HOSTNAME=es-link.local make wiflash`.
-
-The flashing, restart, and re-associating with your wireless network takes about 15 seconds
-and is fully automatic. The first 1MB of flash are divided into two 512KB partitions allowing for new
-code to be uploaded into one partition while running from the other. This is the official
-OTA upgrade method supported by the SDK, except that the firmware is POSTed to the module
-using curl as opposed to having the module download it from a cloud server. On a module with
-512KB flash there is only space for one partition and thus no way to do an OTA update.
-
-If you are downloading the prebuilt firmware image you will have both
-`user1.bin` and `user2.bin` and run `wiflash.sh <esp-hostname> user1.bin user2.bin`.
-This will query esp-link for which file it needs, upload the file, and then reconnect to
-ensure all is well.
-
-Note that when you flash the firmware the wifi settings are all preserved so esp-link should
-reconnect to your network within a few seconds and the whole flashing process should take 15-30
-from beginning to end. If you need to clear the wifi settings you need to reflash the `blank.bin`
-using the serial port.
-
-The flash configuration and the OTA upgrade process is described in more detail
-in [FLASH.md](FLASH.md). If OTA flashing doesn't work for you the serial flashing is described
-in [FLASHING.md](FLASHING.md).
+It is possible to build esp-link on Windows, but it requires a 
+[gaggle of software to be installed](WINDOWS.md)
