@@ -15,22 +15,22 @@ It implements a number of features:
   fully ready yet)
 
 The firmware includes a tiny HTTP server based on
-http://www.esp8266.com/viewforum.php?f=34[esphttpd]
+[esphttpd](http://www.esp8266.com/viewforum.php?f=34)
 with a simple web interface, many thanks to Jeroen Domburg for making it available!
-The REST and MQTT functionality are loosely based on https://github.com/tuanpmt/espduino
+The REST and MQTT functionality are loosely based on [espduino](https://github.com/tuanpmt/espduino)
 but significantly rewritten and no longer protocol compatible, thanks to tuanpmt for the
 inspiration!
 
-Many thanks to https://github.com/brunnels[brunnels] for contributions in particular around
-the espduino functionality.
-Thanks to https://github.com/cskarai[cskarai] for the custom dynamic web page functionality
-and to https://github.com/beegee-tokyo[beegee-tokyo] for lots of code documentation.
-Thank you also to https://github.com/susisstrolch[susisstrolch] for the syslog feature,
-https://github.com/bc547[bc547], and https://github.com/katast[katast] for
-additional contributions. Esp-link is the work of many contributors!
+The following people contributed significant functionality to esp-link:
+[brunnels](https://github.com/brunnels) (espduino integration),
+[cskarai](https://github.com/cskarai) (custom dynamic web pages),
+[beegee-tokyo](https://github.com/beegee-tokyo) (lots of code documentation),
+[susisstrolch](https://github.com/susisstrolch) (syslog feature),
+[bc547](https://github.com/bc547) and https://github.com/katast[katast] (misc contributions).
+Esp-link is the work of many contributors!
 
 Note that http://github.com/jeelabs/esp-link is the original esp-link software which has
-notably been forked by arduino.org as https://github.com/arduino-org/Esp-Link[Esp-Link] and shipped
+notably been forked by arduino.org as [Esp-Link](https://github.com/arduino-org/Esp-Link) and shipped
 with the initial Arduino Uno Wifi. The JeeLabs esp-link has evolved significantly since the
 fork and added cool new features as well as bug fixes.
 
@@ -38,12 +38,13 @@ fork and added cool new features as well as bug fixes.
 
 In this document: [goals](#esp-link-goals), [uses](#esp-link-uses), [eye candy](#eye-candy),
 [getting-started](#getting-started), [contact](#contact).
+
 Separate documents: [hardware configuration](), [serial flashing](), [troubleshooting](),
 [over-the-air flashing](), [building esp-link](), [flash layout](), [serial bridge](),
 [flashing an attached uC](), [MQTT and outbound REST requests](), [service web pages]()
 
 For quick support and questions chat at
-image:https://badges.gitter.im/Join%20Chat.svg[link="https://gitter.im/jeelabs/esp-link"]
+[![Chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/esp-link.svg)](https://gitter.im/jeelabs/esp-link)
 or (a little slower) open a github issue.
 
 Releases & Downloads
@@ -55,11 +56,11 @@ and 3.x will be the addition of custom web pages (this is not ready yet).
 - The master branch is currently unstable as we integrate a number of new features to get
   to version 3.0. Please use v2.2.3 unless you want to hack up the latest code!
   This being said, the older functionality seems to work fine on master, YMMV...
-- https://github.com/jeelabs/esp-link/releases/tag/v2.2.3[V2.2.3] is the most recent release.
+- [V2.2.3](https://github.com/jeelabs/esp-link/releases/tag/v2.2.3) is the most recent release.
   It has a built-in stk500v1 programmer (for AVRs), work on all modules, and supports mDNS,
   sNTP, and syslog. It is built using the Espressif SDK 1.5.4.
-- https://github.com/jeelabs/esp-link/releases/tag/v2.1.7[V2.1.7] is the previous release.
-- See https://github.com/jeelabs/esp-link/releases[all releases].
+- [V2.1.7](https://github.com/jeelabs/esp-link/releases/tag/v2.1.7) is the previous release.
+- See [all releases](https://github.com/jeelabs/esp-link/releases).
 
 Intro
 -----
@@ -114,10 +115,10 @@ callback registration.
 These screen shots show the Home page, the Wifi configuration page, the console for the
 attached microcontroller, and the pin assignments card:
 
-image:https://cloud.githubusercontent.com/assets/39480/8261425/6ca395a6-167f-11e5-8e92-77150371135a.png[width="45%"]
-image:https://cloud.githubusercontent.com/assets/39480/8261427/6caf7326-167f-11e5-8085-bc8b20159b2b.png[width="45%"]
-image:https://cloud.githubusercontent.com/assets/39480/8261426/6ca7f75e-167f-11e5-827d-9a1c582ad05d.png[width="45%"]
-image:https://cloud.githubusercontent.com/assets/39480/8261658/11e6c64a-1681-11e5-82d0-ea5ec90a6ddb.png[width="45%"]
+<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261425/6ca395a6-167f-11e5-8e92-77150371135a.png">
+<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261427/6caf7326-167f-11e5-8085-bc8b20159b2b.png">
+<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261426/6ca7f75e-167f-11e5-827d-9a1c582ad05d.png">
+<img width="30%" src="https://cloud.githubusercontent.com/assets/39480/8261658/11e6c64a-1681-11e5-82d0-ea5ec90a6ddb.png">
 
 Getting Started
 ---------------
@@ -191,11 +192,11 @@ sequence and not issue a reset if you use port 23.
 
 If you are having trouble with the built-in programmer and see something like this:
 
---------------------
+```
 # ./avrflash 192.168.3.104 blink.hex
 Error checking sync: FAILED to SYNC: abandoned after timeout, got:
 :\xF/\x00\xCj\xCz\xCJ\xCZ\xC\xAÜ\xC\xAä\xC\xAÜ\xC\xAä\xC\xBì\xC\xBô\xC\xBì\xC\xBô\xC\xAÜ\xC\xAä\xC
---------------------
+```
 
 the most likely cause is a baud rate mismatch and/or a bad connection from the esp8266 to the
 AVRs reset line.
@@ -209,9 +210,9 @@ baud rate may be incorrect.
 
 The output of a successful flash using the built-in programmer looks like this:
 
---------------------
+```
 Success. 3098 bytes at 57600 baud in 0.8s, 3674B/s 63% efficient
---------------------
+```
 
 This says that the sketch comprises 3098 bytes of flash, was written in 0.8 seconds
 (excludes the initial sync time) at 57600 baud,
@@ -280,7 +281,7 @@ baud rate to 115200 is recommended.)
 
 Another option is to use a serial-to-tcp port forwarding driver and point that to port 2323
 of esp-link. On windows users have reported success with
-http://www.hw-group.com/products/hw_vsp/hw_vsp2_en.html[HW Virtual Serial Port]
+[HW Virtual Serial Port](http://www.hw-group.com/products/hw_vsp/hw_vsp2_en.html)
 
 Now to the interference problem: once the attached esp8266 is reset it
 starts outputting its 26Mhz clock on gpio0, which needs to be attached to
@@ -326,7 +327,7 @@ with that callback address. This enables asynchronous communication where esp-li
 uC when requests complete or when other actions happen, such as wifi connectivity status changes.
 
 You can find REST and MQTT libraries as well as demo sketches in the
-https://github.com/jeelabs/el-client[el-client] repository.
+[el-client](https://github.com/jeelabs/el-client) repository.
 
 Contact
 -------
