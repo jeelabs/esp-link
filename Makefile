@@ -61,6 +61,7 @@ SDK_VERS ?= esp_iot_sdk_v2.0.0.p1
 
 # Try to find the firmware manually extracted, e.g. after downloading from Espressif's BBS,
 # http://bbs.espressif.com/viewforum.php?f=46
+# USING THE SDK BUNDLED WITH ESP-OPEN-SDK WILL NOT WORK!!!
 SDK_BASE ?= $(wildcard ../$(SDK_VERS))
 
 # If the firmware isn't there, see whether it got downloaded as part of esp-open-sdk
