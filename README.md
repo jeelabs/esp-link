@@ -1,7 +1,8 @@
 ESP-LINK: Wifi-Serial Bridge w/REST&MQTT
 ========================================
 
-<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261425/6ca395a6-167f-11e5-8e92-77150371135a.png" style="float: right">
+<img src="https://cloud.githubusercontent.com/assets/39480/19333951/73fcdcbe-90ad-11e6-8572-5e654377275a.png">
+
 The esp-link firmware connects a micro-controller to the internet using an ESP8266 Wifi module.
 It implements a number of features:
 
@@ -122,10 +123,12 @@ callback registration.
 These screen shots show the Home page, the Wifi configuration page, the console for the
 attached microcontroller, and the pin assignments card:
 
-<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261425/6ca395a6-167f-11e5-8e92-77150371135a.png">
+<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/19334029/f8128c92-90ad-11e6-804e-9a4796035e9a.png">
 <img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261427/6caf7326-167f-11e5-8085-bc8b20159b2b.png">
 <img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261426/6ca7f75e-167f-11e5-827d-9a1c582ad05d.png">
 <img width="30%" src="https://cloud.githubusercontent.com/assets/39480/8261658/11e6c64a-1681-11e5-82d0-ea5ec90a6ddb.png">
+<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/19334011/e0c3fe40-90ad-11e6-9893-847e805e7b89.png">
+<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/19333988/c1858cec-90ad-11e6-8b1c-ffed516e1b7f.png">
 
 Getting Started
 ---------------
