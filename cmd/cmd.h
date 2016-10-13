@@ -52,8 +52,8 @@ typedef enum {
   CMD_REST_REQUEST,     // do REST request
   CMD_REST_SETHEADER,	// define header
 
-  CMD_WEB_DATA = 30,  // MCU pushes data using this command
-  CMD_WEB_REQ_CB,     // esp-link WEB callback
+  CMD_WEB_SETUP = 30,   // set-up WEB callback
+  CMD_WEB_DATA,         // WEB data from MCU
 
   CMD_SOCKET_SETUP = 40, // set-up callbacks
   CMD_SOCKET_SEND,       // send data over UDP socket

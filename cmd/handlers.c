@@ -55,6 +55,7 @@ const CmdList commands[] = {
   {CMD_REST_REQUEST,    "REST_REQ",       REST_Request},
   {CMD_REST_SETHEADER,  "REST_SETHDR",    REST_SetHeader},
 #endif
+  {CMD_WEB_SETUP,       "WEB_SETUP",      WEB_Setup},
   {CMD_WEB_DATA,        "WEB_DATA",       WEB_Data},
 #ifdef SOCKET
   {CMD_SOCKET_SETUP,    "SOCKET_SETUP",   SOCKET_Setup},
