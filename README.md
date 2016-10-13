@@ -26,7 +26,7 @@ The following people contributed significant functionality to esp-link:
 [cskarai](https://github.com/cskarai) (custom dynamic web pages),
 [beegee-tokyo](https://github.com/beegee-tokyo) (lots of code documentation),
 [susisstrolch](https://github.com/susisstrolch) (syslog feature),
-[bc547](https://github.com/bc547) and https://github.com/katast[katast] (misc contributions).
+[bc547](https://github.com/bc547) and [katast](https://github.com/katast) (misc contributions).
 Esp-link is the work of many contributors!
 
 Note that http://github.com/jeelabs/esp-link is the original esp-link software which has
@@ -39,9 +39,10 @@ fork and added cool new features as well as bug fixes.
 In this document: [goals](#esp-link-goals), [uses](#esp-link-uses), [eye candy](#eye-candy),
 [getting-started](#getting-started), [contact](#contact).
 
-Separate documents: [hardware configuration](), [serial flashing](), [troubleshooting](),
-[over-the-air flashing](), [building esp-link](), [flash layout](), [serial bridge](),
-[flashing an attached uC](), [MQTT and outbound REST requests](), [service web pages]()
+Separate documents: [hardware configuration](FLASHING.md), [serial flashing](FLASHING.md), [troubleshooting](TROUBLESHOOTING.md),
+[over-the-air flashing](BUILDING.md#updating-the-firmware-over-the-air), [building esp-link](BUILDING.md),
+[flash layout](FLASH.md), [serial bridge](),
+[flashing an attached uC](UCFLASHING.md), [MQTT and outbound REST requests](RESTMQTT.md), [service web pages](WEB-SERVER.md)
 
 For quick support and questions chat at
 [![Chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/esp-link.svg)](https://gitter.im/jeelabs/esp-link)
