@@ -1,6 +1,7 @@
 ESP-LINK: Wifi-Serial Bridge w/REST&MQTT
 ========================================
 
+<img width="45%" src="https://cloud.githubusercontent.com/assets/39480/8261425/6ca395a6-167f-11e5-8e92-77150371135a.png" style="float: right">
 The esp-link firmware connects a micro-controller to the internet using an ESP8266 Wifi module.
 It implements a number of features:
 
@@ -39,10 +40,16 @@ fork and added cool new features as well as bug fixes.
 In this document: [goals](#esp-link-goals), [uses](#esp-link-uses), [eye candy](#eye-candy),
 [getting-started](#getting-started), [contact](#contact).
 
-Separate documents: [hardware configuration](FLASHING.md), [serial flashing](FLASHING.md), [troubleshooting](TROUBLESHOOTING.md),
-[over-the-air flashing](BUILDING.md#updating-the-firmware-over-the-air), [building esp-link](BUILDING.md),
-[flash layout](FLASH.md), [serial bridge](),
-[flashing an attached uC](UCFLASHING.md), [MQTT and outbound REST requests](RESTMQTT.md), [service web pages](WEB-SERVER.md)
+Separate documents:
+- [hardware configuration](FLASHING.md), [serial flashing](FLASHING.md#initial-serial-flashing)
+- [wifi configuration](WIFI-CONFIG.md)
+- [troubleshooting](TROUBLESHOOTING.md), [LED indicators](TROUBLESHOOTING.md#led-indicators)
+- [serial bridge]()
+- [flashing an attached uC](UC-FLASHING.md)
+- [MQTT and outbound REST requests](RESTMQTT.md)
+- [service web pages](WEB-SERVER.md)
+- [building esp-link](BUILDING.md), [over-the-air flashing](BUILDING.md#updating-the-firmware-over-the-air)
+- [flash layout](FLASH.md)
 
 For quick support and questions chat at
 [![Chat at https://gitter.im/jeelabs/esp-link](https://badges.gitter.im/esp-link.svg)](https://gitter.im/jeelabs/esp-link)

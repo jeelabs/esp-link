@@ -1,4 +1,4 @@
-Outbound HTTP REST requests and MQTT client
+Esp-link: Outbound HTTP REST requests and MQTT client
 -------------------------------------------
 
 The V2 versions of esp-link use the SLIP protocol over the serial link to support simple outbound
@@ -11,4 +11,4 @@ with that callback address. This enables asynchronous communication where esp-li
 uC when requests complete or when other actions happen, such as wifi connectivity status changes.
 
 You can find REST and MQTT libraries as well as demo sketches in the
-https://github.com/jeelabs/el-client[el-client] repository.
+[el-client](https://github.com/jeelabs/el-client) repository.

@@ -50,11 +50,11 @@ sequence and not issue a reset if you use port 23.
 
 If you are having trouble with the built-in programmer and see something like this:
 
---------------------
+```
 # ./avrflash 192.168.3.104 blink.hex
 Error checking sync: FAILED to SYNC: abandoned after timeout, got:
 :\xF/\x00\xCj\xCz\xCJ\xCZ\xC\xAÜ\xC\xAä\xC\xAÜ\xC\xAä\xC\xBì\xC\xBô\xC\xBì\xC\xBô\xC\xAÜ\xC\xAä\xC
---------------------
+```
 
 the most likely cause is a baud rate mismatch and/or a bad connection from the esp8266 to the
 AVRs reset line.
@@ -68,9 +68,9 @@ baud rate may be incorrect.
 
 The output of a successful flash using the built-in programmer looks like this:
 
---------------------
+```
 Success. 3098 bytes at 57600 baud in 0.8s, 3674B/s 63% efficient
---------------------
+```
 
 This says that the sketch comprises 3098 bytes of flash, was written in 0.8 seconds
 (excludes the initial sync time) at 57600 baud,
