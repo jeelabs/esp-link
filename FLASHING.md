@@ -1,7 +1,7 @@
 Flashing esp-link
 =================
 
-### Hardware configuration
+### Hardware configuration for normal operation
 
 This firmware is designed for any esp8266 module.
 The recommended connections for an esp-01 module are:
@@ -16,27 +16,35 @@ The recommended connections for an esp-12 module are:
 - URXD: connect to TX of microcontroller
 - UTXD: connect to RX of microcontroller
 - GPIO12: connect to RESET of microcontroller
-- GPIO13: connect to ISP of LPC/ARM microcontroller or to GPIO0 of esp8266 being programmed
-  (not used with Arduino/AVR)
-- GPIO0: optionally connect green "conn" LED to 3.3V (indicates wifi status)
-- GPIO2: optionally connect yellow "ser" LED to 3.3V (indicates serial activity)
+- GPIO13: connect to ISP of LPC/ARM microcontroller (not used with Arduino/AVR)
+- GPIO0: either a 1k-10k pull-up resistor to 3.3v or a green "conn" LED via a 1k-2.2k
+  resistor to 3.3V (indicates wifi status)
+- GPIO2: either a 1k-10k pull-up resistor to 3.3v or a yellow "ser" LED via a 1k-2.2k
+  resistor to 3.3V (indicates serial activity)
 
-If your application has problems with the boot message that is output at ~74600 baud by the ROM
-at boot time you can connect an esp-12 module as follows and choose the "swap_uart" pin assignment
+At boot time the esp8266 ROM outputs a boot message on UTXD, this can cause problems to the attached
+microcontroller. If you need to avoid this, you can configure esp-link to swap the uart pins.
+You should then connect the esp-12 module as follows and choose the "swap_uart" pin assignment
 in the esp-link web interface:
 
 - GPIO13: connect to TX of microcontroller
-- GPIO15: connect to RX of microcontroller
-- GPIO1/UTXD: connect to RESET of microcontroller
-- GPIO3/URXD: connect to ISP of LPC/ARM microcontroller or to GPIO0 of esp8266 being programmed
-  (not used with Arduino/AVR)
-- GPIO0: optionally connect green "conn" LED to 3.3V (indicates wifi status)
-- GPIO2: optionally connect yellow "ser" LED to 3.3V (indicates serial activity)
-
-If you are using an FTDI connector, GPIO12 goes to DTR and GPIO13 goes to CTS (or vice-versa, I've
-seen both used, sigh).
+- GPIO15: connect to RX of microcontroller and use a pull-down to ensure proper booting
+- GPIO12: connect to RESET of microcontroller
+- GPIO14: connect to ISP of LPC/ARM microcontroller (not used with Arduino/AVR)
+- GPIO0: either a 1k-10k pull-up resistor to 3.3v or a green "conn" LED via a 1k-2.2k
+  resistor to 3.3V (indicates wifi status)
+- GPIO2: either a 1k-10k pull-up resistor to 3.3v or a yellow "ser" LED via a 1k-2.2k
+  resistor to 3.3V (indicates serial activity)
 
 The GPIO pin assignments can be changed dynamically in the web UI and are saved in flash.
+
+### Hardware configuration for flashing
+
+To flash firmware onto the esp8266 via the serial port the following must be observed:
+- GPIO0 must be low when reset ends to put the esp8266 into flash programming mode, it must be high
+  to enter normal run mode
+- GPIO2 must be high (pull-up resistor)
+- GPIO15 must be low (pull-down resistor)
 
 ### Initial serial flashing
 
