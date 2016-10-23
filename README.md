@@ -152,6 +152,12 @@ From there, more advanced steps are:
 In order to connect through the esp-link to a microcontroller use port 23. For example,
 on linux you can use `nc esp-hostname 23` or `telnet esp-hostname 23`.
 
+The connections on port 23 and 2323 have a 5 minute inactivity timeout. This is standard with
+Espressif's SDK and esp-link does not change it. The reason is that due to memory limitations only a
+few connections can be open (4 per port) and it's easy for connections to get "lost" staying open
+forever, for example, due to wifi disconnects. That could easily make it impossible to connect to
+esp-link due to connection exhaustion. Something smarter is most likely possible...
+
 Note that multiple connections to port 23 and 2323 can be made simultaneously. Esp-link will
 intermix characters received on all these connections onto the serial TX and it will
 broadcast incoming characters from the serial RX to all connections. Use with caution!
