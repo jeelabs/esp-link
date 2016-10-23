@@ -5,6 +5,7 @@
 #include "cgi.h"
 #include "uart.h"
 #include "serbridge.h"
+#include "serled.h"
 #include "config.h"
 #include "console.h"
 
@@ -80,6 +81,7 @@ ajaxConsoleBaud(HttpdConnData *connData) {
   httpdSend(connData, buff, -1);
   return HTTPD_CGI_DONE;
 }
+
 int ICACHE_FLASH_ATTR
 ajaxConsoleFormat(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
@@ -104,10 +106,8 @@ ajaxConsoleFormat(HttpdConnData *connData) {
   }
 
   jsonHeader(connData, status);
-  os_sprintf(buff, "{\"fmt\": \"%c%c%c\"}",
-		  flashConfig.data_bits + '5',
-		  flashConfig.parity ? 'E' : 'N',
-		  flashConfig.stop_bits ? '2': '1');
+  os_sprintf(buff, "{\"fmt\": \"%c%c%c\"}", flashConfig.data_bits + '5',
+      flashConfig.parity ? 'E' : 'N', flashConfig.stop_bits ? '2': '1');
   httpdSend(connData, buff, -1);
   return HTTPD_CGI_DONE;
 }
@@ -122,6 +122,7 @@ ajaxConsoleSend(HttpdConnData *connData) {
   // figure out where to start in buffer based on URI param
   len = httpdFindArg(connData->getArgs, "text", buff, sizeof(buff));
   if (len > 0) {
+    serledFlash(50); // short blink on serial LED
     uart0_tx_buffer(buff, len);
     status = 200;
   }
