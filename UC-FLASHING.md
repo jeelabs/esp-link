@@ -26,6 +26,10 @@ This is instead of specifying a serial port of the form /dev/ttyUSB0.
 Esp-link detects that avrdude starts its connection with a flash synchronization sequence
 and sends a reset to the AVR microcontroller so it can switch into flash programming mode.
 
+Note for Windows users: very recent avrdude versions on Windows support the -P option, while older
+ones don't. See the second-to-last bullet in the
+[avrdude 6.3 release notes]http://savannah.nongnu.org/forum/forum.php?forum_id=8461).
+
 To reprogram using the HTTP POST method you need to first issue a POST to put optiboot into
 programming mode: POST to `http://esp-link/pgm/sync`, this starts the process. Then check that
 synchronization with optiboot has been achieved by issuing a GET to the same URL
