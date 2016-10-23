@@ -121,18 +121,28 @@ void ICACHE_FLASH_ATTR wifiAddStateChangeCb(WifiStateChangeCb cb) {
   DBG("WIFI: max state change cb count exceeded\n");
 }
 
+static struct mdns_info *mdns_info;
+static char* mdns_txt = "upload_ssh=no";
+
 void ICACHE_FLASH_ATTR wifiStartMDNS(struct ip_addr ip) {
   if (flashConfig.mdns_enable) {
-    struct mdns_info *mdns_info = (struct mdns_info *)os_zalloc(sizeof(struct mdns_info));
+    if (mdns_info == NULL)
+      mdns_info = (struct mdns_info *)os_zalloc(sizeof(struct mdns_info));
+
     mdns_info->host_name = flashConfig.hostname;
     mdns_info->server_name = flashConfig.mdns_servername;
     mdns_info->server_port = 80;
     mdns_info->ipAddr = ip.addr;
+    mdns_info->txt_data[0] = mdns_txt;
     espconn_mdns_init(mdns_info);
   }
   else {
     espconn_mdns_server_unregister();
     espconn_mdns_close();
+    if (mdns_info != NULL) {
+      os_free(mdns_info);
+      mdns_info = NULL;
+    }
   }
   mdns_started = true;
 }
