@@ -27,8 +27,8 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
 
   int8_t ok = 0;
   uint8_t port1, port2;
-  ok |= getUInt8Arg(connData, "port1", &port1);
-  ok |= getUInt8Arg(connData, "port2", &port2);
+  ok |= getUInt16Arg(connData, "port1", &port1);
+  ok |= getUInt16Arg(connData, "port2", &port2);
   if (ok < 0) return HTTPD_CGI_DONE;
 
   char *coll;
