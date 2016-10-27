@@ -13,8 +13,10 @@ typedef struct {
   char     hostname[32];               // if using DHCP
   uint32_t staticip, netmask, gateway; // using DHCP if staticip==0
   uint8_t  log_mode;                   // UART log debug mode
-  uint8_t   swap_uart;                  // swap uart0 to gpio 13&15
+  uint8_t  swap_uart;                  // swap uart0 to gpio 13&15
   uint8_t  tcp_enable, rssi_enable;    // TCP client settings
+  uint8_t  telnet_port1,               // Telnet port settings
+           telnet_port2;
   char     api_key[48];                // RSSI submission API key (Grovestreams for now)
   uint8_t  slip_enable, mqtt_enable,   // SLIP protocol, MQTT client
            mqtt_status_enable,         // MQTT status reporting
