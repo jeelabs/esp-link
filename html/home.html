@@ -50,6 +50,28 @@
             <a href="https://github.com/jeelabs/esp-link/blob/master/README.md">the online README</a>
             for up-to-date help.</p>
           </div>
+<div class="card">
+            <h1>Telnet Serial-Bridge</h1>
+            <p style="margin-bottom:0;">There are two ports available for telnet to use by default: 23 &nbsp; 2323</p>
+            <div id="telnet-spinner" class="spinner spinner-small"></div>
+            <table id="telnet-table" class="pure-table pure-table-horizontal" hidden><tbody>
+            <tr><td>Current Telnet ports</td><td class="telnet-info"></td></tr>
+            <tr><td colspan=2 class="popup-target">Telnet port 1:<br>
+                <div class="click-to-edit telnet-port1">
+                  <span class="edit-off" style="display:block; width:auto;"></span>
+                  <textarea class="edit-on" rows=1 maxlength=5 hidden> </textarea>
+                  <div class="popup">Click to edit!<br>Default port: 23</div>
+                </div>
+            </td></tr>
+            <tr><td colspan=2 class="popup-target">Telnet port 2:<br>
+                <div class="click-to-edit telnet-port2">
+                  <span class="edit-off" style="display:block; width:auto;"></span>
+                  <textarea class="edit-on" rows=1 maxlength=5 hidden> </textarea>
+                  <div class="popup">Click to edit!<br>Default port: 2323</div>
+                </div>
+            </td></tr>
+            </tbody></table>
+          </div>
         </div>
         <!-- RIGHT COLUMN -->
         <div class="pure-u-1 pure-u-md-1-2">
@@ -152,9 +174,12 @@
 onLoad(function() {
   makeAjaxInput("system", "description");
   makeAjaxInput("system", "name");
+  makeAjaxInput("telnet", "port1");
+  makeAjaxInput("telnet", "port2");
   fetchPins();
   getWifiInfo();
   getSystemInfo();
+  getTelnetInfo();
   bnd($("#pinform"), "submit", setPins);
 });
 </script>
