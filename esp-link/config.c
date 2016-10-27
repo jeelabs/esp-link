@@ -35,6 +35,8 @@ FlashConfig flashDefault = {
   .data_bits	= EIGHT_BITS,
   .parity	= NONE_BITS,
   .stop_bits	= ONE_STOP_BIT,
+  .telnet_port1 = 23,
+  .telnet_port2 = 2323,
 };
 
 typedef union {
