@@ -43,7 +43,8 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
 	port1, port2);
 
     // apply the changes
-    serbridgeReinit();
+    //serbridgeReinit();
+    serbridgeInit(flashConfig.telnet_port1, flashConfig.telnet_port2);
 
     // save to flash
     if (configSave()) {
