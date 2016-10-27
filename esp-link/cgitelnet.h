@@ -3,7 +3,7 @@
 
 #include "httpd.h"
 
-int cgiTelnetSet(HttpdConnData *connData);
-int cgiTelnetInfo(HttpdConnData *connData);
+int cgiTelnet(HttpdConnData *connData);
+// int8_t telnet_port1, telnet_port2;
 
 #endif // CGITELNET_H
