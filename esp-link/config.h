@@ -15,8 +15,6 @@ typedef struct {
   uint8_t  log_mode;                   // UART log debug mode
   uint8_t  swap_uart;                  // swap uart0 to gpio 13&15
   uint8_t  tcp_enable, rssi_enable;    // TCP client settings
-  uint8_t  telnet_port1,               // Telnet port settings
-           telnet_port2;
   char     api_key[48];                // RSSI submission API key (Grovestreams for now)
   uint8_t  slip_enable, mqtt_enable,   // SLIP protocol, MQTT client
            mqtt_status_enable,         // MQTT status reporting
@@ -43,6 +41,8 @@ typedef struct {
   int8_t   data_bits;
   int8_t   parity;
   int8_t   stop_bits;
+  uint8_t  telnet_port1,               // Telnet port settings
+           telnet_port2;
 } FlashConfig;
 extern FlashConfig flashConfig;
 
