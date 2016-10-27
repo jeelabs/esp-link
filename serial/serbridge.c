@@ -503,13 +503,6 @@ serbridgeInit(int port1, int port2)
   espconn_regist_time(&serbridgeConn2, SER_BRIDGE_TIMEOUT, 0);
 }
 
-//Reinit serial bridge after changing telnet ports
-void ICACHE_FLASH_ATTR
-serbridgeReinit()
-{
-  serbridgeInit(flashConfig.telnet_port1, flashConfig.telnet_port2);
-}
-
 int  ICACHE_FLASH_ATTR serbridgeInMCUFlashing()
 {
   return in_mcu_flashing;
