@@ -302,6 +302,22 @@ function getWifiInfo() {
       function(s, st) { window.setTimeout(getWifiInfo, 1000); });
 }
 
+//===== Telnet info
+
+function showTelnetInfo(data) {
+  Object.keys(data).forEach(function(v) {
+    setEditToClick("telnet-"+v, data[v]);
+  });
+  $("#telnet-spinner").setAttribute("hidden", "");
+  $("#telnet-table").removeAttribute("hidden");
+  currAp = data.ssid;
+}
+
+function getTelnetInfo() {
+  ajaxJson('GET', "/telnet/info", showTelnetInfo,
+      function(s, st) { window.setTimeout(getTelnetInfo, 1000); });
+}
+
 //===== System info
 
 function showSystemInfo(data) {
