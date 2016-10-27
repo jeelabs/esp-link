@@ -4,7 +4,7 @@
 #include "serbridge.h"
 
 // Cgi to return choice of Telnet ports
-int ICACHE_FLASH_ATTR cigTelnetGet(HttpdConnData *connData) {
+int ICACHE_FLASH_ATTR cgiTelnetGet(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted
 
   char buff[1024];
