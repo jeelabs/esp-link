@@ -504,6 +504,7 @@ serbridgeInit(int port1, int port2)
 }
 
 //Reinit serial bridge after changing telnet ports
+void ICACHE_FLASH_ATTR
 serbridgeReinit()
 {
   serbridgeInit(flashConfig.telnet_port1, flashConfig.telnet_port2);
