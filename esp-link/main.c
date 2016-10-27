@@ -32,6 +32,7 @@
 #include "gpio.h"
 #include "cgiservices.h"
 #include "web-server.h"
+#include "cgitelnet.h"
 
 #ifdef SYSLOG
 #include "syslog.h"
@@ -96,6 +97,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/services/info", cgiServicesInfo, NULL },
   { "/services/update", cgiServicesSet, NULL },
   { "/pins", cgiPins, NULL },
+  { "/telnet", cigTelnet, NULL},
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
 #endif
