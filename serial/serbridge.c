@@ -469,6 +469,8 @@ serbridgeInitPins()
 }
 
 // Start transparent serial bridge TCP server on specified port (typ. 23)
+// Here is where we need to change the ports. But how do we do this from the Ajax call?
+
 void ICACHE_FLASH_ATTR
 serbridgeInit(int port1, int port2)
 {
@@ -499,6 +501,12 @@ serbridgeInit(int port1, int port2)
   espconn_accept(&serbridgeConn2);
   espconn_tcp_set_max_con_allow(&serbridgeConn2, MAX_CONN);
   espconn_regist_time(&serbridgeConn2, SER_BRIDGE_TIMEOUT, 0);
+}
+
+//Reinit serial bridge after changing telnet ports
+serbridgeReinit()
+{
+  serbridgeInit(flashConfig.telnet_port1, flashConfig.telnet_port2);
 }
 
 int  ICACHE_FLASH_ATTR serbridgeInMCUFlashing()
