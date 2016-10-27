@@ -97,7 +97,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/services/info", cgiServicesInfo, NULL },
   { "/services/update", cgiServicesSet, NULL },
   { "/pins", cgiPins, NULL },
-  { "/telnet", cgiTelnet, NULL},
+  { "/telnet/info", cgiTelnet, NULL},
   { "/telnet/update", cgiTelnet, NULL},
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
