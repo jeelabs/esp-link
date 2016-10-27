@@ -34,7 +34,6 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
   char *coll;
   if (ok > 0) {
     // check whether ports are different
-    uint16_t pins = 0;
     if (port1 == port2) { coll = "Ports cannot be the same!"; goto collision; }
   
     // we're good, set flashconfig
@@ -44,7 +43,7 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
 	port1, port2);
 
     // apply the changes
-    serbridgeInitPins();
+    serbridgeReinit();
 
     // save to flash
     if (configSave()) {
