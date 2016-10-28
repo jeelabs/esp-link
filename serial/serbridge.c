@@ -469,8 +469,6 @@ serbridgeInitPins()
 }
 
 // Start transparent serial bridge TCP server on specified port (typ. 23)
-// Here is where we need to change the ports. But how do we do this from the Ajax call?
-
 void ICACHE_FLASH_ATTR
 serbridgeInit(int port1, int port2)
 {
