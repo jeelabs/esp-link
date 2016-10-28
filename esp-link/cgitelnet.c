@@ -24,12 +24,13 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
   if (connData->conn==NULL) {
     return HTTPD_CGI_DONE; // Connection aborted
   }
+	
   char *coll;
   int8_t ok = 0;
   uint16_t port1, port2;
   ok |= getUInt16Arg(connData, "port1", &port1);
   ok |= getUInt16Arg(connData, "port2", &port2);
-  if (ok < 0) { coll = "Failed to set ports. Ports appear to be invalid"; goto collision; }
+  if (ok < 0) { coll = "Failed to fetch ports. Are they valid?"; goto collision; }
 
   if (ok > 0) {
     // fill both port variables from flash or ajax provided value
