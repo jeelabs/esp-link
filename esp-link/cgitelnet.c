@@ -14,7 +14,7 @@ int ICACHE_FLASH_ATTR cgiTelnetGet(HttpdConnData *connData) {
 	flashConfig.telnet_port1, flashConfig.telnet_port2);
 	
   len = os_sprintf(buff,
-      "{ \"telnet-port1\": \"%d\", \"telnet-port2\": \"%d\" }",
+      "{ \"port1\": \"%d\", \"port2\": \"%d\" }",
       flashConfig.telnet_port1, flashConfig.telnet_port2);
 
   jsonHeader(connData, 200);
