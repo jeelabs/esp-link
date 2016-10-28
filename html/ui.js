@@ -314,7 +314,7 @@ function showTelnetInfo(data) {
 }
 
 function getTelnetInfo() {
-  ajaxJson('GET', "/telnet/info", showTelnetInfo,
+  ajaxJson('GET', "/telnet", showTelnetInfo,
       function(s, st) { window.setTimeout(getTelnetInfo, 1000); });
 }
 
@@ -339,6 +339,8 @@ function makeAjaxInput(klass, field) {
     var eon = $(".edit-on", div);
     var eoff = $(".edit-off", div)[0];
     var url = "/"+klass+"/update?"+field;
+    //Dirty fix to avoid to seperate name spaces to GET or PUT telnet ports
+    if (klass == "telnet") { var url = "/"+klass+"?"+field; }
 
     if (eoff === undefined || eon == undefined) return;
 
