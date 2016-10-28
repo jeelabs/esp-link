@@ -1,31 +1,27 @@
-# Travis-CI file for Esp-Link
-
 language: c
-
 before_install:
-  - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
-  - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar -C .. -Jxf -
-
+- curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
+- curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar -C .. -Jxf -
 after_script:
- # upload to an S3 bucket, requires S3_BUCKET, AWS_ACCESS_KEY_ID and AWS_SECRET_KEY to be set
- # in environment using travis' repository settings
-  - "if [[ -n \"$S3_BUCKET\" && -n \"$AWS_ACCESS_KEY_ID\" ]]; then
-     echo Uploading *.tgz to $S3_BUCKET;
-     curl -Ls https://github.com/rlmcpherson/s3gof3r/releases/download/v0.5.0/gof3r_0.5.0_linux_amd64.tar.gz | tar zxf - gof3r_0.5.0_linux_amd64/gof3r;
-     mv gof3r*/gof3r .;
-     ls *.tgz | xargs -I {} ./gof3r put -b $S3_BUCKET -k esp-link/{} --acl public-read -p {};
-     ls *.tgz | xargs -I {} echo \"URL: http://$S3_BUCKET/esp-link/{}\";
-     fi"
-
+- 'if [[ -n "$S3_BUCKET" && -n "$AWS_ACCESS_KEY_ID" ]]; then echo Uploading *.tgz
+  to $S3_BUCKET; curl -Ls https://github.com/rlmcpherson/s3gof3r/releases/download/v0.5.0/gof3r_0.5.0_linux_amd64.tar.gz
+  | tar zxf - gof3r_0.5.0_linux_amd64/gof3r; mv gof3r*/gof3r .; ls *.tgz | xargs -I
+  {} ./gof3r put -b $S3_BUCKET -k esp-link/{} --acl public-read -p {}; ls *.tgz |
+  xargs -I {} echo "URL: http://$S3_BUCKET/esp-link/{}"; fi'
 compiler: gcc
-
-env:
-
+env: 
 script:
-  - export XTENSA_TOOLS_ROOT=$PWD/xtensa-lx106-elf/bin/
-  - export BRANCH=$TRAVIS_BRANCH
-    #- export SDK_BASE=$PWD/esp_iot_sdk_v2.0.0.p1
-  - make release
-
+- export XTENSA_TOOLS_ROOT=$PWD/xtensa-lx106-elf/bin/
+- export BRANCH=$TRAVIS_BRANCH
+- make release
 notifications:
   email: false
+deploy:
+  provider: s3
+  access_key_id: AKIAJMURU2SAG7X3FHEQ
+  secret_access_key:
+    secure: ppGD7SLjj1VAVDQQi7gAHCSbpJjJPHCdUS1DXMzNRaCHMnYibMbU2qlKW8aOiMtYQJ2/VkXWUWmu20iebN4Y2qN315v7D2eQLacUvkuAxTKXsZbqvHJ/q+z3Kjdb6RagymQ5gNvEjkPqddrp2FSTtWLE6l0ddh+/kSbY0Ia6Jju1rL0ayNrRvy9gzkeY8U5d/1qjfC8PIrvXY+/2NNqvTM11igVcaFnFFKXDXpwkDU/nVvrBcZK5HstiI98IlJz7okmPoMf5SbXPsCUCPumDHxexaAyOtdrnhvnixEzDTeVUjhwOgtMqkf+NV5PddmiQ1OOEOci4QmdIt6895F4zS9s+WU770Mek9pKW5FmTAzPauwevARGXv8kD2FZp53Vinei5haESBTkLer40WGpbh+DDuDoKIflgJICbSXCr78bojrTW507sg5QqSrXclPI5nRQs3n+vUNE2yniWuxfNiCe5kc9+bsGQDWNQqwvaPeZF4FDTyi+2u52WS5vabhjnxnl7iK9NQzlYagXRQUOb5QOBtxZkyy46azLXdqMx9ihlkdbLNFkNou0wqXPKQIFj3RgcjQx3Wx18kuypqn13C2v4w0L9aL2WtDfEQFEwX/8bUcYwzJNtFmq+2pRXmJG+kkoSzhxHRwN54gdlBiIOjJnJTFCoH0GWp6uG6pN+7BA=
+  bucket: http://s3.amazonaws.com/esp-link
+  acl: public_read
+  on:
+    repo: fuzzball03/esp-link
