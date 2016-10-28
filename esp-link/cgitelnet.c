@@ -26,13 +26,17 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
   }
 
   int8_t ok = 0;
-  uint8_t port1, port2;
+  uint16_t port1, port2;
   ok |= getUInt16Arg(connData, "port1", &port1);
   ok |= getUInt16Arg(connData, "port2", &port2);
-  if (ok < 0) return HTTPD_CGI_DONE;
+  if (ok < 0) { coll = "Failed to set ports. Ports appear to be invalid"; goto collision; }
 
   char *coll;
   if (ok > 0) {
+    // fill both port variables from flash or ajax provided value
+    if (!port1) port1 = flashConfig.telnet_port1;
+    if (!port2) port2 = flashConfig.telnet_port2;
+  
     // check whether ports are different
     if (port1 == port2) { coll = "Ports cannot be the same!"; goto collision; }
   
@@ -40,11 +44,7 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
     flashConfig.telnet_port1 = port1;
     flashConfig.telnet_port2 = port2;
     os_printf("Ports changed: port1=%d port2=%d\n",
-	port1, port2);
-
-    // apply the changes
-    //serbridgeReinit();
-    serbridgeInit(flashConfig.telnet_port1, flashConfig.telnet_port2);
+	flashConfig.telnet_port1, flashConfig.telnet_port2);
 
     // save to flash
     if (configSave()) {
@@ -55,10 +55,13 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
       httpdEndHeaders(connData);
       httpdSend(connData, "Failed to save config", -1);
     }
+    
+    // apply the changes
+    serbridgeInit(flashConfig.telnet_port1, flashConfig.telnet_port2);
   }
   return HTTPD_CGI_DONE;
 
-collision: {
+ collision: {
     char buff[128];
     os_sprintf(buff, "Ports assignment for %s collides with another assignment", coll);
     errorResponse(connData, 400, buff);
