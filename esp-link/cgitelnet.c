@@ -25,7 +25,7 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
     return HTTPD_CGI_DONE; // Connection aborted
   }
 	
-  char coll[64];
+  char *coll;
   int8_t ok = 0;
   uint16_t port1, port2;
   ok |= getUInt16Arg(connData, "port1", &port1);
