@@ -9,9 +9,12 @@ int ICACHE_FLASH_ATTR cgiTelnetGet(HttpdConnData *connData) {
 
   char buff[1024];
   int len;
-
+  
+  os_printf("Current telnet ports: port1=%d port2=%d\n",
+	flashConfig.telnet_port1, flashConfig.telnet_port2);
+	
   len = os_sprintf(buff,
-      "{ \"telnet-port1\":%d, \"telnet-port2\":%d }",
+      "{ \"telnet-port1\" \":%d\", \"telnet-port2\": \"%d\" }",
       flashConfig.telnet_port1, flashConfig.telnet_port2);
 
   jsonHeader(connData, 200);
@@ -43,7 +46,7 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
     // we're good, set flashconfig
     flashConfig.telnet_port1 = port1;
     flashConfig.telnet_port2 = port2;
-    os_printf("Ports changed: port1=%d port2=%d\n",
+    os_printf("Telnet ports changed: port1=%d port2=%d\n",
 	flashConfig.telnet_port1, flashConfig.telnet_port2);
 
     // save to flash
