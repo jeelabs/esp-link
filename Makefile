@@ -99,6 +99,15 @@ MCU_ISP_PIN         ?= 13
 LED_CONN_PIN        ?= 0
 # GPIO pin used for "serial activity" LED, active low
 LED_SERIAL_PIN      ?= 14
+#
+# Default settings for access over TCP/IP connections
+#
+# Modes are 0 (unsecure), 1 (disabled), 2 (secure)
+#
+PORT1_MODE		?=	0
+PORT1_PORTNUMBER	?=	23
+PORT2_MODE		?=	0
+PORT2_PORTNUMBER	?=	2323
 
 # --------------- esp-link modules config options ---------------
 
@@ -243,6 +252,8 @@ CFLAGS	+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-
 	-D__ets__ -DICACHE_FLASH -Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX) \
 	-DMCU_RESET_PIN=$(MCU_RESET_PIN) -DMCU_ISP_PIN=$(MCU_ISP_PIN) \
 	-DLED_CONN_PIN=$(LED_CONN_PIN) -DLED_SERIAL_PIN=$(LED_SERIAL_PIN) \
+	-DPORT1_PORTNUMBER=$(PORT1_PORTNUMBER) -DPORT1_MODE=$(PORT1_MODE) \
+	-DPORT2_PORTNUMBER=$(PORT2_PORTNUMBER) -DPORT2_MODE=$(PORT2_MODE) \
 	-DVERSION="$(VERSION)"
 
 # linker flags used to generate the main object file

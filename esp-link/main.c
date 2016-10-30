@@ -89,6 +89,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/wifi/connstatus", cgiWiFiConnStatus, NULL },
   { "/wifi/setmode", cgiWiFiSetMode, NULL },
   { "/wifi/special", cgiWiFiSpecial, NULL },
+  { "/wifi/security", jsonWiFiSecurity, NULL },
   { "/wifi/apinfo", cgiApSettingsInfo, NULL },
   { "/wifi/apchange", cgiApSettingsChange, NULL },
   { "/system/info", cgiSystemInfo, NULL },
@@ -179,7 +180,15 @@ user_init(void) {
   WEB_Init();
 
   // init the wifi-serial transparent bridge (port 23)
-  serbridgeInit(23, 2323);
+  flashConfig.port1_portnumber = 23;
+  flashConfig.port2_portnumber = 2323;
+  flashConfig.port1_mode = 0;
+  flashConfig.port2_mode = 0;
+
+  serbridgeInit();
+  serbridgeStart(0, flashConfig.port1_portnumber, flashConfig.port1_mode);
+  serbridgeStart(1, flashConfig.port2_portnumber, flashConfig.port2_mode);
+
   uart_add_recv_cb(&serbridgeUartCb);
 #ifdef SHOW_HEAP_USE
   os_timer_disarm(&prHeapTimer);
