@@ -58,6 +58,8 @@ typedef enum {
   CMD_SOCKET_SETUP = 40, // set-up callbacks
   CMD_SOCKET_SEND,       // send data over UDP socket
 
+  CMD_GET_WIFI_INFO = 50,// Query IP address info
+
 } CmdName;
 
 typedef void (*cmdfunc_t)(CmdPacket *cmd);
