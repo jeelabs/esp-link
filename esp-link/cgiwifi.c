@@ -34,7 +34,7 @@ bool mdns_started = false;
 // ===== wifi status change callbacks
 static WifiStateChangeCb wifi_state_change_cb[4];
 
-// Temp store for new staion config
+// Temp store for new station config
 struct station_config stconf;
 
 // Temp store for new ap config
@@ -53,6 +53,8 @@ static char *wifiReasons[] = {
 
 static char *wifiMode[] = { 0, "STA", "AP", "AP+STA" };
 static char *wifiPhy[]  = { 0, "11b", "11g", "11n" };
+
+static char *portMode[] = { "unsecure", "disabled", "secure" };
 
 void (*wifiStatusCb)(uint8_t); // callback when wifi status changes
 
@@ -821,6 +823,99 @@ int ICACHE_FLASH_ATTR cgiWifiInfo(HttpdConnData *connData) {
 
   jsonHeader(connData, 200);
   httpdSend(connData, buff, -1);
+  return HTTPD_CGI_DONE;
+}
+
+static char *portMode2string(int8_t m) {
+  if (m < 0 || m > 2) return "?";
+  return portMode[m];
+}
+
+// print various Wifi information into json buffer
+int ICACHE_FLASH_ATTR printWiFiSecurity(char *buff) {
+  int len;
+
+  len = os_sprintf(buff,
+    "\"port1mode\" : \"%s\", \"port1portnumber\" : \"%d\", \"port1pwd\" : \"%s\", "
+    "\"port2mode\" : \"%s\", \"port2portnumber\" : \"%d\", \"port2pwd\" : \"%s\" ",
+    portMode2string(flashConfig.port1_mode), flashConfig.port1_portnumber, "",
+    portMode2string(flashConfig.port2_mode), flashConfig.port2_portnumber, ""
+  );
+
+  return len;
+}
+
+// Cgi to return various Wifi information
+int ICACHE_FLASH_ATTR jsonWiFiSecurity(HttpdConnData *connData) {
+  char buff[1024];
+
+  if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+
+  os_strcpy(buff, "{");
+  printWiFiSecurity(buff+1);
+  os_strcat(buff, "}");
+
+  jsonHeader(connData, 200);
+  httpdSend(connData, buff, -1);
+  return HTTPD_CGI_DONE;
+}
+
+// Change security settings
+int ICACHE_FLASH_ATTR cgiWiFiSecurity(HttpdConnData *connData) {
+  char dhcp[8];
+  char staticip[20];
+  char netmask[20];
+  char gateway[20];
+
+  if (connData->conn==NULL) return HTTPD_CGI_DONE;
+
+  // get args and their string lengths
+  int dl = httpdFindArg(connData->getArgs, "dhcp", dhcp, sizeof(dhcp));
+  int sl = httpdFindArg(connData->getArgs, "staticip", staticip, sizeof(staticip));
+  int nl = httpdFindArg(connData->getArgs, "netmask", netmask, sizeof(netmask));
+  int gl = httpdFindArg(connData->getArgs, "gateway", gateway, sizeof(gateway));
+
+  if (!(dl > 0 && sl >= 0 && nl >= 0 && gl >= 0)) {
+    jsonHeader(connData, 400);
+    httpdSend(connData, "Request is missing fields", -1);
+    return HTTPD_CGI_DONE;
+  }
+
+  char url[64]; // redirect URL
+  if (os_strcmp(dhcp, "off") == 0) {
+    // parse static IP params
+    struct ip_info ipi;
+    bool ok = parse_ip(staticip, &ipi.ip);
+    if (nl > 0) ok = ok && parse_ip(netmask, &ipi.netmask);
+    else IP4_ADDR(&ipi.netmask, 255, 255, 255, 0);
+    if (gl > 0) ok = ok && parse_ip(gateway, &ipi.gw);
+    else ipi.gw.addr = 0;
+    if (!ok) {
+      jsonHeader(connData, 400);
+      httpdSend(connData, "Cannot parse static IP config", -1);
+      return HTTPD_CGI_DONE;
+    }
+    // save the params in flash
+    flashConfig.staticip = ipi.ip.addr;
+    flashConfig.netmask = ipi.netmask.addr;
+    flashConfig.gateway = ipi.gw.addr;
+    // construct redirect URL
+    os_sprintf(url, "{\"url\": \"http://%d.%d.%d.%d\"}", IP2STR(&ipi.ip));
+
+  } else {
+    // dynamic IP
+    flashConfig.staticip = 0;
+    os_sprintf(url, "{\"url\": \"http://%s\"}", flashConfig.hostname);
+  }
+
+  configSave(); // ignore error...
+  // schedule change-over
+  os_timer_disarm(&reassTimer);
+  os_timer_setfn(&reassTimer, configWifiIP, NULL);
+  os_timer_arm(&reassTimer, 1000, 0); // 1 second for the response of this request to make it
+  // return redirect info
+  jsonHeader(connData, 200);
+  httpdSend(connData, url, -1);
   return HTTPD_CGI_DONE;
 }
 

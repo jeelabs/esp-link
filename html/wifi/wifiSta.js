@@ -192,6 +192,68 @@ function changeSpecial(e) {
     });
 }
 
+function changeSecurity(e) {
+  e.preventDefault();
+  var url = "security";
+
+  url += "?port1=" + document.querySelector('input[name="port1"]:checked').value;
+  url += "&portnumber=" + encodeURIComponent($("#port1-portnumber").value);
+  url += "&password=" + encodeURIComponent($("#port1-password").value);
+
+  url += "?port2=" + document.querySelector('input[name="port2"]:checked').value;
+  url += "&portnumber=" + encodeURIComponent($("#port2-portnumber").value);
+  url += "&password=" + encodeURIComponent($("#port2-password").value);
+
+  hideWarning();
+  var cb = $("#secure-button");
+  addClass(cb, 'pure-button-disabled');
+  ajaxSpin("POST", url, function(resp) {
+      removeClass(cb, 'pure-button-disabled');
+      getSecurityInfo();
+      //getWifiInfo(); // it takes 1 second for new settings to be applied
+    }, function(s, st) {
+      showWarning("Error: "+st);
+      removeClass(cb, 'pure-button-disabled');
+      getSecurityInfo();
+    });
+}
+
+function doPort1Secure() {
+  $('#port1-off').setAttribute('hidden', '');
+  $('#port1-pn').removeAttribute('hidden');
+  $('#port1-pwd').removeAttribute('hidden');
+}
+
+function doPort1Off() {
+  $('#port1-off').removeAttribute('hidden');
+  $('#port1-pn').setAttribute('hidden', '');
+  $('#port1-pwd').setAttribute('hidden', '');
+}
+
+function doPort1Unsecure() {
+  $('#port1-off').setAttribute('hidden', '');
+  $('#port1-pn').removeAttribute('hidden');
+  $('#port1-pwd').setAttribute('hidden', '');
+}
+
+function doPort2Secure() {
+  $('#port2-off').setAttribute('hidden', '');
+  $('#port2-pn').removeAttribute('hidden');
+  $('#port2-pwd').removeAttribute('hidden');
+}
+
+function doPort2Off() {
+  $('#port2-off').removeAttribute('hidden');
+  $('#port2-pn').setAttribute('hidden', '');
+  $('#port2-pwd').setAttribute('hidden', '');
+}
+
+function doPort2Unsecure() {
+  $('#port2-off').setAttribute('hidden', '');
+  $('#port2-pn').removeAttribute('hidden');
+  $('#port2-pwd').setAttribute('hidden', '');
+}
+
 function doDhcp() {
   $('#dhcp-on').removeAttribute('hidden');
   $('#dhcp-off').setAttribute('hidden', '');
