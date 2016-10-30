@@ -35,6 +35,10 @@ FlashConfig flashDefault = {
   .data_bits	= EIGHT_BITS,
   .parity	= NONE_BITS,
   .stop_bits	= ONE_STOP_BIT,
+  .port1_mode = PORT1_MODE,
+  .port2_mode = PORT2_MODE,
+  .port1_portnumber = PORT1_PORTNUMBER,
+  .port2_portnumber = PORT2_PORTNUMBER,
 };
 
 typedef union {
