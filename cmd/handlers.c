@@ -17,6 +17,7 @@
 #ifdef SOCKET
 #include <socket.h>
 #endif
+#include <ip_addr.h>
 
 #ifdef CMD_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
@@ -44,6 +45,7 @@ const CmdList commands[] = {
   {CMD_WIFI_STATUS,     "WIFI_STATUS",    cmdWifiStatus},
   {CMD_CB_ADD,          "ADD_CB",         cmdAddCallback},
   {CMD_GET_TIME,        "GET_TIME",       cmdGetTime},
+  {CMD_GET_WIFI_INFO,   "GET_WIFI_INFO",  cmdGetWifiInfo},
 #ifdef MQTT
   {CMD_MQTT_SETUP,      "MQTT_SETUP",     MQTTCMD_Setup},
   {CMD_MQTT_PUBLISH,    "MQTT_PUB",       MQTTCMD_Publish},
@@ -176,6 +178,30 @@ cmdGetTime(CmdPacket *cmd) {
   cmdResponseStart(CMD_RESP_V, sntp_get_current_timestamp(), 0);
   cmdResponseEnd();
   return;
+}
+
+// Command handler for IP information
+static void ICACHE_FLASH_ATTR
+cmdGetWifiInfo(CmdPacket *cmd) {
+  CmdRequest req;
+
+  cmdRequest(&req, cmd);
+  if(cmd->argc != 0 || cmd->value == 0) {
+    cmdResponseStart(CMD_RESP_V, 0, 0);
+    cmdResponseEnd();
+    return;
+  }
+
+  uint32_t callback = req.cmd->value;
+
+  struct ip_info info;
+  wifi_get_ip_info(0, &info);
+
+  cmdResponseStart(CMD_RESP_CB, callback, 3);
+  cmdResponseBody(&info.ip.addr, sizeof(info.ip.addr));
+  cmdResponseBody(&info.netmask.addr, sizeof(info.netmask.addr));
+  cmdResponseBody(&info.gw.addr, sizeof(info.gw.addr));
+  cmdResponseEnd();
 }
 
 // Command handler to add a callback to the named-callbacks list, this is for a callback to the uC
