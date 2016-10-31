@@ -500,7 +500,7 @@ serbridgeStart(int ix, int port, int mode)
   }
 }
 
-static void ICACHE_FLASH_ATTR
+void ICACHE_FLASH_ATTR
 serbridgeCleanup(int ix)
 {
   if (serbridgeConn[ix] == NULL) return;
