@@ -29,6 +29,7 @@ static void cmdNull(CmdPacket *cmd);
 static void cmdSync(CmdPacket *cmd);
 static void cmdWifiStatus(CmdPacket *cmd);
 static void cmdGetTime(CmdPacket *cmd);
+static void cmdGetWifiInfo(CmdPacket *cmd);
 static void cmdAddCallback(CmdPacket *cmd);
 
 // keep track of last status sent to uC so we can notify it when it changes
