@@ -181,7 +181,10 @@ user_init(void) {
   WEB_Init();
 
   // init the wifi-serial transparent bridge (port 23)
-  serbridgeInit(flashConfig.telnet_port1, flashConfig.telnet_port1);
+  serbridgeInit();
+  serbridgeStart(1, flashConfig.telnet_port1, flashDefault.telnet_port1mode);
+  serbridgeStart(2, flashConfig.telnet_port2, flashDefault.telnet_port2mode);
+  
   uart_add_recv_cb(&serbridgeUartCb);
 #ifdef SHOW_HEAP_USE
   os_timer_disarm(&prHeapTimer);

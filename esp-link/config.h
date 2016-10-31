@@ -41,8 +41,10 @@ typedef struct {
   int8_t   data_bits;
   int8_t   parity;
   int8_t   stop_bits;
-  uint16_t  telnet_port1,               // Telnet port settings
+  uint16_t telnet_port1,               // Telnet port settings
            telnet_port2;
+  int8_t   telnet_port1mode,
+           telnet_port2mode;
 } FlashConfig;
 extern FlashConfig flashConfig;
 

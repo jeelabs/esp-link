@@ -28,12 +28,16 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
     return HTTPD_CGI_DONE; // Connection aborted
   }
 	
-  char *coll;
   int8_t ok = 0;
   uint16_t port1, port2;
   ok |= getUInt16Arg(connData, "port1", &port1);
   ok |= getUInt16Arg(connData, "port2", &port2);
-  if (ok < 0) { coll = "Failed to fetch ports. Are they valid?"; goto collision; }
+  if (ok <= 0) { //If we get at least one good value, this should be >= 1
+    os_printf("Unable to fetch telnet ports.\n Received: port1=%d port2=%d\n",
+	  flashConfig.telnet_port1, flashConfig.telnet_port2);
+    errorResponse(connData, 400, buff);
+    return HTTPD_CGI_DONE;
+  }
 
   if (ok > 0) {
     // fill both port variables from flash or ajax provided value
@@ -41,13 +45,18 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
     if (!port2) port2 = flashConfig.telnet_port2;
   
     // check whether ports are different
-    if (port1 == port2) { coll = "Ports cannot be the same!"; goto collision; }
+    if (port1 == port2) {
+      os_printf("Ports cannot be the same.\n Tried to set: port1=%d port2=%d\n",
+      flashConfig.telnet_port1, flashConfig.telnet_port2);
+      errorResponse(connData, 400, buff);
+      return HTTPD_CGI_DONE;
+    }
   
     // we're good, set flashconfig
     flashConfig.telnet_port1 = port1;
     flashConfig.telnet_port2 = port2;
     os_printf("Telnet ports changed: port1=%d port2=%d\n",
-	flashConfig.telnet_port1, flashConfig.telnet_port2);
+	  flashConfig.telnet_port1, flashConfig.telnet_port2);
 
     // save to flash
     if (configSave()) {
@@ -60,16 +69,13 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
     }
     
     // apply the changes
-    serbridgeInit(flashConfig.telnet_port1, flashConfig.telnet_port2);
+    serbridgeInit();
+    serbridgeStart(1, flashConfig.telnet_port1, flashDefault.telnet_port1mode);
+    serbridgeStart(2, flashConfig.telnet_port2, flashDefault.telnet_port2mode);
+  
   }
   return HTTPD_CGI_DONE;
 
- collision: {
-    char buff[128];
-    os_sprintf(buff, "Ports assignment for %s collides with another assignment", coll);
-    errorResponse(connData, 400, buff);
-    return HTTPD_CGI_DONE;
-  }
 }
 
 int ICACHE_FLASH_ATTR cgiTelnet(HttpdConnData *connData) {
