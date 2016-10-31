@@ -149,6 +149,8 @@ From there, more advanced steps are:
 
 ### Serial bridge
 
+Note that the default ports of 23 & 2323 may be changed via the webinterface.
+
 In order to connect through the esp-link to a microcontroller use port 23. For example,
 on linux you can use `nc esp-hostname 23` or `telnet esp-hostname 23`.
 
