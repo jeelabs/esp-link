@@ -19,7 +19,6 @@
 static struct espconn serbridgeConn[1]; // plain bridging port
 static struct espconn serbridgeConn[2]; // programming port
 static esp_tcp serbridgeTcp[1], serbridgeTcp[2];
-static esp_tcp serbridgeTcp1, serbridgeTcp2;
 static int8_t mcu_reset_pin, mcu_isp_pin;
 
 uint8_t in_mcu_flashing;   // for disabling slip during MCU flashing
@@ -487,7 +486,7 @@ serbridgeStart(int ix, int port, int mode)
 
   if (ix < 0 || ix > 2)			// FIXME hardcoded limit
     return;
-  if (serbridgeConn[ix] != NULL) { serbridgeCleanup(serbridgeConn[ix]); } //If we are already initialized, let's clean it up.
+  if (serbridgeConn[ix] != NULL) { serbridgeCleanup(ix); } //If we are already initialized, let's clean it up.
   if (0 < port && port < 65536 && port != 80) {
     serbridgeConn[ix].type = ESPCONN_TCP;
     serbridgeConn[ix].state = ESPCONN_NONE;
@@ -502,13 +501,12 @@ serbridgeStart(int ix, int port, int mode)
 }
 
 static void ICACHE_FLASH_ATTR
-serbridgeCleanup(void *arg)
+serbridgeCleanup(int ix)
 {
-  serbridgeConnData *conn = ((struct espconn*)arg)->reverse;
-  if (conn == NULL) return;
+  if (serbridgeConn[ix] == NULL) return;
   // Free memory & set to NULL
-  os_free(conn);
-  conn = NULL;
+  os_free(serbridgeConn[ix]);
+  serbridgeConn[ix] = NULL;
 }
 
 int  ICACHE_FLASH_ATTR serbridgeInMCUFlashing()
