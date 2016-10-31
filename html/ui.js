@@ -302,25 +302,6 @@ function getWifiInfo() {
       function(s, st) { window.setTimeout(getWifiInfo, 1000); });
 }
 
-function showWifiSecurity(data) {
-  Object.keys(data).forEach(function(v) {
-    el = $("#secure-" + v);
-    if (el != null) {
-      if (el.nodeName === "INPUT") el.value = data[v];
-      else el.innerHTML = data[v];
-    }
-  });
-  var p1 = $('#secure-port1-r'+data.port1mode);
-  if (p1) p1.click();
-  var p2 = $('#secure-port2-r'+data.port1mode);
-  if (p2) p2.click();
-}
-
-function getSecurityInfo() {
-  ajaxJson('GET', "/wifi/security", showWifiSecurity,
-      function(s, st) { window.setTimeout(getSecurityInfo, 1000); });
-}
-
 //===== System info
 
 function showSystemInfo(data) {

@@ -13,8 +13,6 @@ int cgiWiFiConnect(HttpdConnData *connData);
 int cgiWiFiSetMode(HttpdConnData *connData);
 int cgiWiFiConnStatus(HttpdConnData *connData);
 int cgiWiFiSpecial(HttpdConnData *connData);
-int cgiWiFiSecurity(HttpdConnData *connData);
-int jsonWiFiSecurity(HttpdConnData *connData);
 int cgiApSettingsChange(HttpdConnData *connData);
 int cgiApSettingsInfo(HttpdConnData *connData);
 void configWifiIP();

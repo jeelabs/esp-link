@@ -65,60 +65,7 @@
             <button id="special-button" type="submit" class="pure-button button-primary">Change!</button>
           </form>
         </div></div>
-
-        <div class="pure-u-1 pure-u-md-1-2"><div class="card">
-          <h1>Security Settings</h1>
-          <form action="#" id="securform" class="pure-form">
-            <legend>Disable or protect station access</legend>
-            <div class="form-horizontal">
-	      Port 1
-              <label for="port1-ron" style="margin-right:1em">
-                <input type="radio" name="port1" value="on" id="secure-port1-ron"/>
-                Unsecure</label>
-              <label for="port1-roff" style="margin-right:1em">
-                <input type="radio" name="port1" value="off" id="secure-port1-roff"/>
-                Disabled</label>
-              <label for="port1-rpwd">
-                <input type="radio" name="port1" value="pwd" id="secure-port1-rpwd"/>
-                Secure</label>
-            </div>
-            <div id="port1-off" class="pure-form-stacked"></div>
-            <div id="port1-pn" class="pure-form-stacked">
-              <label>TCP port number</label>
-              <input id="secure-port1portnumber" type="text" name="port1number"/>
-            </div>
-            <div id="port1-pwd" class="pure-form-stacked">
-              <label>Password</label>
-              <input id="secure-port1password" type="password" name="port1password"/>
-            </div>
-
-            <div class="form-horizontal">
-	      Port 2
-              <label for="port2-ron" style="margin-right:1em">
-                <input type="radio" name="port2" value="on" id="secure-port2-ron"/>
-                Unsecure</label>
-              <label for="port2-roff" style="margin-right:1em">
-                <input type="radio" name="port2" value="off" id="secure-port2-roff"/>
-                Disabled</label>
-              <label for="port2-rpwd">
-                <input type="radio" name="port2" value="pwd" id="secure-port2-rpwd"/>
-                Secured</label>
-            </div>
-            <div id="port2-off" class="pure-form-stacked"></div>
-            <div id="port2-pn" class="pure-form-stacked">
-              <label>TCP port number</label>
-              <input id="secure-port2portnumber" type="text" name="port2number"/>
-            </div>
-            <div id="port2-pwd" class="pure-form-stacked">
-              <label>Password</label>
-              <input id="secure-port2password" type="password" name="port2password"/>
-            </div>
-
-            <button id="secure-button" type="submit" class="pure-button button-primary">Change!</button>
-          </form>
-        </div></div>
       </div>
-
     </div>
   </div>
 </div>
@@ -131,17 +78,6 @@ onLoad(function() {
   getWifiInfo();
   bnd($("#wifiform"), "submit", changeWifiAp);
   bnd($("#specform"), "submit", changeSpecial);
-
-  getSecurityInfo();
-  bnd($("#securform"), "submit", changeSecurity);
-  bnd($("#secure-port1-roff"), "click", doPort1Off);
-  bnd($("#secure-port1-ron"), "click", doPort1Unsecure);
-  bnd($("#secure-port1-rpwd"), "click", doPort1Secure);
-
-  bnd($("#secure-port2-roff"), "click", doPort2Off);
-  bnd($("#secure-port2-ron"), "click", doPort2Unsecure);
-  bnd($("#secure-port2-rpwd"), "click", doPort2Secure);
-
   bnd($("#dhcp-ron"), "click", doDhcp);
   bnd($("#dhcp-roff"), "click", doStatic);
   scanTimeout = window.setTimeout(scanAPs, 500);
