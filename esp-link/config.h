@@ -41,10 +41,6 @@ typedef struct {
   int8_t   data_bits;
   int8_t   parity;
   int8_t   stop_bits;
-  int8_t   port1_mode,			// Security
-           port2_mode;
-  uint16_t port1_portnumber,
-           port2_portnumber;
 } FlashConfig;
 extern FlashConfig flashConfig;
 
