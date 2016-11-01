@@ -509,7 +509,7 @@ void ICACHE_FLASH_ATTR
 serbridgeCleanup(int ix)
 {
   os_memset(&serbridgeTcp[ix], 0, sizeof(serbridgeTcp[ix]));
-  // FIX ME need to clean up the actions in serbridgeStart() ? (e.g. espconn_regist_connectcb)
+  // Looks like none of the espconn_..() calls in serbridgeStart() needs cleanup here.
 }
 
 int  ICACHE_FLASH_ATTR serbridgeInMCUFlashing()
