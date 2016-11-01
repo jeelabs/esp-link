@@ -49,9 +49,9 @@ To flash firmware onto the esp8266 via the serial port the following must be obs
 ### Initial serial flashing
 
 Download the latest [release](https://github.com/jeelabs/esp-link/releases) or use the
-`user1.bin` and `user2.bin` files that are produced by the build process.
-You will need to flash the bootloader, the firmware, blank wifi settings, and init data.
-Detailed instructions are provided in the release notes.
+`user1.bin` file that is produced by the build process.
+You will need to flash the bootloader, the `user1.bin` firmware, blank wifi settings, and init data
+as described below.
 
 _Important_: the firmware adapts to the size of the flash chip using information
 stored in the boot sector (address 0). This is the standard way that the esp8266 SDK detects
@@ -64,7 +64,7 @@ The short version for the serial flashing is:
 - flash `blank.bin` from the official SDK or from the tgz to `0x3FE000`
 - flash `esp_init_data_default.bin` from the official SDK or from the tgz to `0x3FC000`
 - flash `user1.bin` to `0x01000`
-- be sure to use the commandline flags when flashing the bootloader to set the correct flash size
+- be sure to use the commandline flags to set the correct flash size when flashing the bootloader
 - some of the addresses vary with flash chip size
 
 After the initial flashing if you want to update the firmware it is recommended to use the
