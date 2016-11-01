@@ -16,14 +16,14 @@
 #define syslog(X1...)
 #endif
 
-static struct espconn serbridgeConn[1]; // plain bridging port
-static struct espconn serbridgeConn[2]; // programming port
-static esp_tcp serbridgeTcp[1], serbridgeTcp[2];
+static struct espconn serbridgeConn[2]; // 0 = plain bridging port, 1 = programming port
+static esp_tcp serbridgeTcp[2];
 static int8_t mcu_reset_pin, mcu_isp_pin;
 
 uint8_t in_mcu_flashing;   // for disabling slip during MCU flashing
 
 void (*programmingCB)(char *buffer, short length) = NULL;
+void ICACHE_FLASH_ATTR serbridgeCleanup(int ix);
 
 // Connection pool
 serbridgeConnData connData[MAX_CONN];
@@ -421,7 +421,7 @@ serbridgeConnectCb(void *arg)
   connData[i].readytosend = true;
   connData[i].conn_mode = cmInit;
   // if it's the second port we start out in programming mode
-  if (conn->proto.tcp->local_port == serbridgeConn[2].proto.tcp->local_port)
+  if (conn->proto.tcp->local_port == serbridgeConn[1].proto.tcp->local_port)
     connData[i].conn_mode = cmPGMInit;
 
   espconn_regist_recvcb(conn, serbridgeRecvCb);
@@ -475,8 +475,8 @@ serbridgeInit()
   serbridgeInitPins();
 
   os_memset(connData, 0, sizeof(connData));
+  os_memset(&serbridgeTcp[0], 0, sizeof(serbridgeTcp[0]));
   os_memset(&serbridgeTcp[1], 0, sizeof(serbridgeTcp[1]));
-  os_memset(&serbridgeTcp[2], 0, sizeof(serbridgeTcp[2]));
 }
 
 // Start transparent serial bridge TCP server on specified port (typ. 23)
@@ -486,7 +486,12 @@ serbridgeStart(int ix, int port, int mode)
 
   if (ix < 0 || ix > 2)			// FIXME hardcoded limit
     return;
-  if (serbridgeConn[ix] != NULL) { serbridgeCleanup(ix); } //If we are already initialized, let's clean it up.
+
+  // If we are already initialized, let's clean it up.
+  if (serbridgeConn[ix].type != 0) {
+    serbridgeCleanup(ix);
+  }
+
   if (0 < port && port < 65536 && port != 80) {
     serbridgeConn[ix].type = ESPCONN_TCP;
     serbridgeConn[ix].state = ESPCONN_NONE;
@@ -503,10 +508,8 @@ serbridgeStart(int ix, int port, int mode)
 void ICACHE_FLASH_ATTR
 serbridgeCleanup(int ix)
 {
-  if (serbridgeConn[ix] == NULL) return;
-  // Free memory & set to NULL
-  os_free(serbridgeConn[ix]);
-  serbridgeConn[ix] = NULL;
+  os_memset(&serbridgeTcp[ix], 0, sizeof(serbridgeTcp[ix]));
+  // FIX ME need to clean up the actions in serbridgeStart() ? (e.g. espconn_regist_connectcb)
 }
 
 int  ICACHE_FLASH_ATTR serbridgeInMCUFlashing()
