@@ -47,6 +47,7 @@ typedef struct {
            telnet_port2mode;
 } FlashConfig;
 extern FlashConfig flashConfig;
+extern FlashConfig flashDefault;
 
 bool configSave(void);
 bool configRestore(void);
