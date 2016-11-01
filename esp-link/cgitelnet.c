@@ -5,9 +5,10 @@
 
 // Cgi to return choice of Telnet ports
 int ICACHE_FLASH_ATTR cgiTelnetGet(HttpdConnData *connData) {
+  char buff[80];
+
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted
 
-  char buff[80];
   int len;
   
   os_printf("Current telnet ports: port1=%d port2=%d\n",
@@ -19,6 +20,7 @@ int ICACHE_FLASH_ATTR cgiTelnetGet(HttpdConnData *connData) {
 
   jsonHeader(connData, 200);
   httpdSend(connData, buff, len);
+
   return HTTPD_CGI_DONE;
 }
 
@@ -32,12 +34,11 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
   uint16_t port1, port2;
   ok |= getUInt16Arg(connData, "port1", &port1);
   ok |= getUInt16Arg(connData, "port2", &port2);
+
   if (ok <= 0) { //If we get at least one good value, this should be >= 1
-    char buf[80];
-    sprintf(buf, "Unable to fetch telnet ports.\n Received: port1=%d port2=%d\n",
+    os_printf("Unable to fetch telnet ports.\n Received: port1=%d port2=%d\n",
 	  flashConfig.telnet_port1, flashConfig.telnet_port2);
-    os_printf(buf);
-    errorResponse(connData, 400, buf);
+    errorResponse(connData, 400, "Unable to fetch telnet ports.");
     return HTTPD_CGI_DONE;
   }
 
@@ -48,14 +49,12 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
   
     // check whether ports are different
     if (port1 == port2) {
-      char buf[80];
-      sprintf(buf, "Ports cannot be the same.\n Tried to set: port1=%d port2=%d\n",
+      os_printf("Ports cannot be the same.\n Tried to set: port1=%d port2=%d\n",
         flashConfig.telnet_port1, flashConfig.telnet_port2);
-      os_printf(buf);
-      errorResponse(connData, 400, buf);
+      errorResponse(connData, 400, "Ports cannot be the same.");
       return HTTPD_CGI_DONE;
     }
-  
+
     // we're good, set flashconfig
     flashConfig.telnet_port1 = port1;
     flashConfig.telnet_port2 = port2;
@@ -74,13 +73,12 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
     
     // apply the changes
     serbridgeInit();
-    serbridgeStart(1, flashConfig.telnet_port1, flashDefault.telnet_port1mode);
-    serbridgeStart(2, flashConfig.telnet_port2, flashDefault.telnet_port2mode);
+    serbridgeStart(0, flashConfig.telnet_port1, flashDefault.telnet_port1mode);
+    serbridgeStart(1, flashConfig.telnet_port2, flashDefault.telnet_port2mode);
   
   }
 
   return HTTPD_CGI_DONE;
-
 }
 
 int ICACHE_FLASH_ATTR cgiTelnet(HttpdConnData *connData) {
