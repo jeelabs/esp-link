@@ -26,6 +26,8 @@ int ICACHE_FLASH_ATTR cgiTelnetGet(HttpdConnData *connData) {
 
 // Cgi to change choice of Telnet ports
 int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
+  char buf[80];
+
   if (connData->conn==NULL) {
     return HTTPD_CGI_DONE; // Connection aborted
   }
@@ -36,9 +38,10 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
   ok |= getUInt16Arg(connData, "port2", &port2);
 
   if (ok <= 0) { //If we get at least one good value, this should be >= 1
-    os_printf("Unable to fetch telnet ports.\n Received: port1=%d port2=%d\n",
+    ets_sprintf(buf, "Unable to fetch telnet ports.\n Received: port1=%d port2=%d\n",
 	  flashConfig.telnet_port1, flashConfig.telnet_port2);
-    errorResponse(connData, 400, "Unable to fetch telnet ports.");
+    os_printf(buf);
+    errorResponse(connData, 400, buf);
     return HTTPD_CGI_DONE;
   }
 
@@ -49,9 +52,10 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
   
     // check whether ports are different
     if (port1 == port2) {
-      os_printf("Ports cannot be the same.\n Tried to set: port1=%d port2=%d\n",
+      os_sprintf(buf, "Ports cannot be the same.\n Tried to set: port1=%d port2=%d\n",
         flashConfig.telnet_port1, flashConfig.telnet_port2);
-      errorResponse(connData, 400, "Ports cannot be the same.");
+      os_printf(buf);
+      errorResponse(connData, 400, buf);
       return HTTPD_CGI_DONE;
     }
 
