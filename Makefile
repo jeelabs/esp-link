@@ -99,15 +99,6 @@ MCU_ISP_PIN         ?= 13
 LED_CONN_PIN        ?= 0
 # GPIO pin used for "serial activity" LED, active low
 LED_SERIAL_PIN      ?= 14
-#
-# Default settings for access over TCP/IP connections
-#
-# Modes are 0 (unsecure), 1 (disabled), 2 (secure)
-#
-PORT1_MODE		?=	0
-PORT1_PORTNUMBER	?=	23
-PORT2_MODE		?=	0
-PORT2_PORTNUMBER	?=	2323
 
 # --------------- esp-link modules config options ---------------
 
