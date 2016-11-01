@@ -197,11 +197,14 @@ cmdGetWifiInfo(CmdPacket *cmd) {
 
   struct ip_info info;
   wifi_get_ip_info(0, &info);
+  uint8_t mac[6];
+  wifi_get_macaddr(0, mac);
 
-  cmdResponseStart(CMD_RESP_CB, callback, 3);
+  cmdResponseStart(CMD_RESP_CB, callback, 4);
   cmdResponseBody(&info.ip.addr, sizeof(info.ip.addr));
   cmdResponseBody(&info.netmask.addr, sizeof(info.netmask.addr));
   cmdResponseBody(&info.gw.addr, sizeof(info.gw.addr));
+  cmdResponseBody(mac, sizeof(mac));
   cmdResponseEnd();
 }
 
