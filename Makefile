@@ -461,8 +461,8 @@ else
 endif
 
 ifeq (,$(findstring mqtt,$(MODULES)))
-	$(Q) rm -rf html_compressed/mqtt.html;
-	$(Q) rm -rf html_compressed/mqtt.js;
+	$(Q) rm -rf html_compressed/mqtt.html
+	$(Q) rm -rf html_compressed/mqtt.js
 endif
 
 	$(Q) for file in `$(FIND) html_compressed -type f -name "*.htm*"`; do \
