@@ -52,12 +52,13 @@ ESP_HOSTNAME  ?= esp-link
 # Base directory for the compiler. Needs a / at the end.
 # Typically you'll install https://github.com/pfalcon/esp-open-sdk
 # IMPORTANT: use esp-open-sdk `make STANDALONE=n`: the SDK bundled with esp-open-sdk will *not* work!
-XTENSA_TOOLS_ROOT ?= $(abspath ../esp-open-sdk/xtensa-lx106-elf/bin)/
+XTENSA_TOOLS_ROOT ?= $(abspath ../espressif/xtensa-lx106-elf/bin)/
+$(warning Using XTENSA TOOLS from $(XTENSA_TOOLS_ROOT))
 
 # Firmware version 
 # WARNING: if you change this expect to make code adjustments elsewhere, don't expect
 # that esp-link will magically work with a different version of the SDK!!!
-SDK_VERS ?= esp_iot_sdk_v2.0.0.p1
+SDK_VERS ?= ESP8266_SDK
 
 # Try to find the firmware manually extracted, e.g. after downloading from Espressif's BBS,
 # http://bbs.espressif.com/viewforum.php?f=46
@@ -66,16 +67,17 @@ SDK_BASE ?= $(wildcard ../$(SDK_VERS))
 
 # If the firmware isn't there, see whether it got downloaded as part of esp-open-sdk
 # This used to work at some point, but is not supported, uncomment if you feel lucky ;-)
-#ifeq ($(SDK_BASE),)
-#SDK_BASE := $(wildcard $(XTENSA_TOOLS_ROOT)/../../$(SDK_VERS))
-#endif
+ifeq ($(SDK_BASE),)
+SDK_BASE := $(wildcard $(XTENSA_TOOLS_ROOT)/../../$(SDK_VERS))
+endif
 
 # Clean up SDK path
 SDK_BASE := $(abspath $(SDK_BASE))
 $(warning Using SDK from $(SDK_BASE))
 
 # Path to bootloader file
-BOOTFILE	?= $(SDK_BASE/bin/boot_v1.6.bin)
+BOOTFILE	?= $(SDK_BASE)/bin/boot_v1.6.bin
+$(warning Using boot file-> $(BOOTFILE))
 
 # Esptool.py path and port, only used for 1-time serial flashing
 # Typically you'll use https://github.com/themadinventor/esptool
@@ -127,8 +129,10 @@ GZIP_COMPRESSION ?= yes
 # http://yui.github.io/yuicompressor/
 # enabled by default.
 COMPRESS_W_HTMLCOMPRESSOR ?= yes
-HTML_COMPRESSOR ?= htmlcompressor-1.5.3.jar
-YUI_COMPRESSOR ?= yuicompressor-2.4.8.jar
+HTML_COMPRESSOR_VER ?= htmlcompressor-1.5.3.jar
+HTML_COMPRESSOR = tools/$(HTML_COMPRESSOR_VER)
+YUI_COMPRESSOR_VER ?= yuicompressor-2.4.8.jar
+YUI_COMPRESSOR = tools/$(YUI_COMPRESSOR_VER)
 
 # -------------- End of config options -------------
 
@@ -296,6 +300,13 @@ Q := @
 vecho := @echo
 endif
 
+#Fix for issues on some windows systems that call non GNU FIND
+FIND ?= $(which FIND)
+ifeq (,$(findstring system32,$(FIND)))
+  $(warning Non GNU 'find' called. Trying alternate path /usr/bin/find)
+  FIND = /usr/bin/find
+endif
+
 ifneq ($(strip $(STA_SSID)),)
 CFLAGS		+= -DSTA_SSID="$(STA_SSID)"
 endif
@@ -387,6 +398,7 @@ $(FW_BASE)/user2.bin: $(USER2_OUT) $(FW_BASE)
 	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER2_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE) 1 >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
+	@echo "** user2.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
 	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
 
 $(APP_AR): $(OBJ)
@@ -406,18 +418,18 @@ baseflash: all
 
 flash: all
 	$(Q) $(ESPTOOL) --port $(ESPPORT) --baud $(ESPBAUD) write_flash -fs $(ET_FS) -ff $(ET_FF) \
-	  0x00000 "$(SDK_BASE)/bin/boot_v1.5.bin" 0x01000 $(FW_BASE)/user1.bin \
+	  0x00000 "$(BOOTFILE)" 0x01000 $(FW_BASE)/user1.bin \
 	  $(ET_BLANK) $(SDK_BASE)/bin/blank.bin
 
 tools/$(HTML_COMPRESSOR):
 	$(Q) echo "The jar files in the tools dir are missing, they should be in the source repo"
 	$(Q) echo "The following commands can be used to fetch them, but the URLs have changed..."
 	$(Q) echo mkdir -p tools
-	$(Q) echo "cd tools; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR) -O $(YUI_COMPRESSOR)"
-	$(Q) echo "cd tools; wget --no-check-certificate https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR) -O $(HTML_COMPRESSOR)"
+	$(Q) echo "cd tools; wget --no-check-certificate https://github.com/yui/yuicompressor/releases/download/v2.4.8/$(YUI_COMPRESSOR_VER) -O $(YUI_COMPRESSOR_VER)"
+	$(Q) echo "cd tools; wget --no-check-certificate https://htmlcompressor.googlecode.com/files/$(HTML_COMPRESSOR_VER) -O $(HTML_COMPRESSOR_VER)"
 
 ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
-$(BUILD_BASE)/espfs_img.o: tools/$(HTML_COMPRESSOR)
+$(BUILD_BASE)/espfs_img.o: $(HTML_COMPRESSOR)
 endif
 
 $(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
@@ -428,38 +440,38 @@ $(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
 	$(Q) cp -r html/wifi/*.png html_compressed/wifi;
 	$(Q) cp -r html/wifi/*.js html_compressed/wifi;
 ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
-	$(Q) echo "Compressing assets with htmlcompressor. This may take a while..."
-	$(Q) java -jar tools/$(HTML_COMPRESSOR) \
+	$(Q) echo "Compressing assets with htmlcompressor. This may take a while...";
+	$(Q) java -jar $(HTML_COMPRESSOR) \
 	  -t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
 	  -o $(abspath ./html_compressed)/ \
 	  $(HTML_PATH)head- \
 	  $(HTML_PATH)*.html
-	$(Q) java -jar tools/$(HTML_COMPRESSOR) \
+	$(Q) java -jar $(HTML_COMPRESSOR) \
 	  -t html --remove-surrounding-spaces max --remove-quotes --remove-intertag-spaces \
 	  -o $(abspath ./html_compressed)/wifi/ \
 	  $(WIFI_PATH)*.html
 	$(Q) echo "Compressing assets with yui-compressor. This may take a while..."
-	$(Q) for file in `find html_compressed -type f -name "*.js"`; do \
-	    java -jar tools/$(YUI_COMPRESSOR) $$file --line-break 0 -o $$file; \
-	  done
-	$(Q) for file in `find html_compressed -type f -name "*.css"`; do \
-	    java -jar tools/$(YUI_COMPRESSOR) $$file -o $$file; \
-	  done
+	$(Q) java -jar $(YUI_COMPRESSOR) ./html_compressed/*.css -o '.css$:.css'
+	$(Q) java -jar $(YUI_COMPRESSOR) ./html_compressed/*.js -o '.js$:.js'
+	$(Q) java -jar $(YUI_COMPRESSOR) ./html_compressed/wifi/*.js -o '.js$:.js'
 else
 	$(Q) cp -r html/head- html_compressed;
 	$(Q) cp -r html/*.html html_compressed;
 	$(Q) cp -r html/wifi/*.html html_compressed/wifi;	
 endif
+
 ifeq (,$(findstring mqtt,$(MODULES)))
-	$(Q) rm -rf html_compressed/mqtt.html
-	$(Q) rm -rf html_compressed/mqtt.js
+	$(Q) rm -rf html_compressed/mqtt.html;
+	$(Q) rm -rf html_compressed/mqtt.js;
 endif
-	$(Q) for file in `find html_compressed -type f -name "*.htm*"`; do \
+
+	$(Q) for file in `$(FIND) html_compressed -type f -name "*.htm*"`; do \
 	    cat html_compressed/head- $$file >$${file}-; \
 	    mv $$file- $$file; \
 	  done
 	$(Q) rm html_compressed/head-
-	$(Q) cd html_compressed; find . \! -name \*- | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..;
+	$(Q) echo "Compressing assets into espfs.img with Gzip. This may take a while..."
+	$(Q) cd html_compressed; $(FIND) . \! -name \*- | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..;
 	$(Q) ls -sl build/espfs.img
 	$(Q) cd build; $(OBJCP) -I binary -O elf32-xtensa-le -B xtensa --rename-section .data=.espfs \
 	  espfs.img espfs_img.o; cd ..
@@ -483,7 +495,7 @@ release: all
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user1.bin | cut -b 1-80
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user2.bin | cut -b 1-80
 	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
-	       "$(SDK_BASE)/bin/boot_v1.6.bin" "$(SDK_BASE)/bin/esp_init_data_default.bin" \
+	       "$(BOOTFILE)" "$(SDK_BASE)/bin/esp_init_data_default.bin" \
 	       wiflash avrflash release/esp-link-$(BRANCH)
 	$(Q) tar zcf esp-link-$(BRANCH)-$(SHA).tgz -C release esp-link-$(BRANCH)
 	$(Q) echo "Release file: esp-link-$(BRANCH)-$(SHA).tgz"
@@ -494,7 +506,7 @@ docker:
 clean:
 	$(Q) rm -f $(APP_AR)
 	$(Q) rm -f $(TARGET_OUT)
-	$(Q) find $(BUILD_BASE) -type f | xargs rm -f
+	$(Q) $(FIND) $(BUILD_BASE) -type f | xargs rm -f
 	$(Q) make -C espfs/mkespfsimage/ clean
 	$(Q) rm -rf $(FW_BASE)
 	$(Q) rm -f webpages.espfs
