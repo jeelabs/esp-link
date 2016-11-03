@@ -58,7 +58,9 @@ $(warning Using XTENSA TOOLS from $(XTENSA_TOOLS_ROOT))
 # Firmware version 
 # WARNING: if you change this expect to make code adjustments elsewhere, don't expect
 # that esp-link will magically work with a different version of the SDK!!!
-SDK_VERS ?= ESP8266_SDK
+SDK_VERS ?= esp_iot_sdk_v2.0.0.p1
+# Uncomment this line if you're using windows to build with the C:\espressif structure
+# SDK_VERS ?= ESP8266_SDK 
 
 # Try to find the firmware manually extracted, e.g. after downloading from Espressif's BBS,
 # http://bbs.espressif.com/viewforum.php?f=46
