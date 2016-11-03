@@ -401,6 +401,7 @@ function showNotification(text) {
   var el = $("#notification");
   el.innerHTML = text;
   el.removeAttribute('hidden');
+  // window.scrollTo(0, 0); //Uncomment this line so window will scroll up on regular notifications
   if (notifTimeout != null) clearTimeout(notifTimeout);
   notifTimout = setTimeout(function() {
       el.setAttribute('hidden', '');

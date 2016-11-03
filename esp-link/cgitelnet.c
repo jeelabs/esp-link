@@ -11,12 +11,12 @@ int ICACHE_FLASH_ATTR cgiTelnetGet(HttpdConnData *connData) {
 
   int len;
   
-  os_printf("Current telnet ports: port1=%d port2=%d\n",
-	flashConfig.telnet_port1, flashConfig.telnet_port2);
+  os_printf("Current telnet ports: port0=%d port1=%d\n",
+	flashConfig.telnet_port0, flashConfig.telnet_port1);
 	
   len = os_sprintf(buff,
-      "{ \"port1\": \"%d\", \"port2\": \"%d\" }",
-      flashConfig.telnet_port1, flashConfig.telnet_port2);
+      "{ \"port0\": \"%d\", \"port1\": \"%d\" }",
+      flashConfig.telnet_port0, flashConfig.telnet_port1);
 
   jsonHeader(connData, 200);
   httpdSend(connData, buff, len);
@@ -33,13 +33,13 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
   }
 
   int8_t ok = 0;
-  uint16_t port1, port2;
+  uint16_t port0, port1;
+  ok |= getUInt16Arg(connData, "port0", &port0);
   ok |= getUInt16Arg(connData, "port1", &port1);
-  ok |= getUInt16Arg(connData, "port2", &port2);
 
   if (ok <= 0) { //If we get at least one good value, this should be >= 1
-    ets_sprintf(buf, "Unable to fetch telnet ports.\n Received: port1=%d port2=%d\n",
-	  flashConfig.telnet_port1, flashConfig.telnet_port2);
+    ets_sprintf(buf, "Unable to fetch telnet ports.\n Received: port0=%d port1=%d\n",
+	  flashConfig.telnet_port0, flashConfig.telnet_port1);
     os_printf(buf);
     errorResponse(connData, 400, buf);
     return HTTPD_CGI_DONE;
@@ -47,23 +47,23 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
 
   if (ok > 0) {
     // fill both port variables from flash or ajax provided value
+    if (!port0) port0 = flashConfig.telnet_port0;
     if (!port1) port1 = flashConfig.telnet_port1;
-    if (!port2) port2 = flashConfig.telnet_port2;
   
     // check whether ports are different
-    if (port1 == port2) {
-      os_sprintf(buf, "Ports cannot be the same.\n Tried to set: port1=%d port2=%d\n",
-        flashConfig.telnet_port1, flashConfig.telnet_port2);
+    if (port0 == port1) {
+      os_sprintf(buf, "Ports cannot be the same.\n Tried to set: port0=%d port1=%d\n",
+        flashConfig.telnet_port0, flashConfig.telnet_port1);
       os_printf(buf);
       errorResponse(connData, 400, buf);
       return HTTPD_CGI_DONE;
     }
 
     // we're good, set flashconfig
+    flashConfig.telnet_port0 = port0;
     flashConfig.telnet_port1 = port1;
-    flashConfig.telnet_port2 = port2;
-    os_printf("Telnet ports changed: port1=%d port2=%d\n",
-	  flashConfig.telnet_port1, flashConfig.telnet_port2);
+    os_printf("Telnet ports changed: port0=%d port1=%d\n",
+	  flashConfig.telnet_port0, flashConfig.telnet_port1);
 
     // save to flash
     if (configSave()) {
@@ -77,8 +77,8 @@ int ICACHE_FLASH_ATTR cgiTelnetSet(HttpdConnData *connData) {
     
     // apply the changes
     serbridgeInit();
-    serbridgeStart(0, flashConfig.telnet_port1, flashDefault.telnet_port1mode);
-    serbridgeStart(1, flashConfig.telnet_port2, flashDefault.telnet_port2mode);
+    serbridgeStart(0, flashConfig.telnet_port0, flashDefault.telnet_port0mode);
+    serbridgeStart(1, flashConfig.telnet_port1, flashDefault.telnet_port1mode);
   
   }
 

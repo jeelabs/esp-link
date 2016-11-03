@@ -53,19 +53,19 @@
           <div class="card">
             <h1>Telnet Serial-Bridge</h1>
             <p style="margin-bottom:0;">There are two ports available for telnet to use by default: 23 &amp; 2323 <br>
-            Note - this time, only port1 may be changed &amp; used sucessfully.</p>
+            Note - this time, only port0 may be changed &amp; used sucessfully.</p>
             <div id="telnet-spinner" class="spinner spinner-small"></div>
             <table id="telnet-table" class="pure-table pure-table-horizontal" hidden><tbody>
             <tr><td>Current Telnet ports</td><td class="telnet-info"></td></tr>
             <tr><td colspan=2 class="popup-target">Telnet port 1:<br>
-                <div class="click-to-edit telnet-port1">
+                <div class="click-to-edit telnet-port0">
                   <span class="edit-off" style="display:block; width:auto;"></span>
                   <input class="edit-on" maxlength=5 hidden> </input>
                   <div class="popup">Click to edit!<br>Default port: 23</div>
                 </div>
             </td></tr>
             <tr><td colspan=2 class="popup-target">Telnet port 2:<br>
-                <div class="click-to-edit telnet-port2">
+                <div class="click-to-edit telnet-port1">
                   <span class="edit-off" style="display:block; width:auto;"></span>
                   <input class="edit-on" maxlength=5 hidden> </input>
                   <div class="popup">Click to edit!<br>Default port: 2323</div>
@@ -175,8 +175,8 @@
 onLoad(function() {
   makeAjaxInput("system", "description");
   makeAjaxInput("system", "name");
+  makeAjaxInput("telnet", "port0");
   makeAjaxInput("telnet", "port1");
-  makeAjaxInput("telnet", "port2");
   fetchPins();
   getWifiInfo();
   getSystemInfo();

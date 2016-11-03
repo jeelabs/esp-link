@@ -190,7 +190,7 @@ int ICACHE_FLASH_ATTR printGlobalInfo(char *buff, int buflen, char *token) {
 
 extern char *esp_link_version; // in user_main.c
 
-int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
+int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) { //This is where we can modify the navigation that is auto generated
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
   char buff[1024];
   // don't use jsonHeader so the response does get cached

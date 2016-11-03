@@ -35,10 +35,10 @@ FlashConfig flashDefault = {
   .data_bits	= EIGHT_BITS,
   .parity	= NONE_BITS,
   .stop_bits	= ONE_STOP_BIT,
-  .telnet_port1 = 23,
-  .telnet_port2 = 2323,
+  .telnet_port0 = 23,
+  .telnet_port1 = 2323,
+  .telnet_port0mode = 0,
   .telnet_port1mode = 0,
-  .telnet_port2mode = 0,
 };
 
 typedef union {
@@ -166,8 +166,8 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
       flashConfig.stop_bits = flashDefault.stop_bits;
   }
   
+  if (flashConfig.telnet_port0 == 0) { flashConfig.telnet_port0 = flashDefault.telnet_port0; }
   if (flashConfig.telnet_port1 == 0) { flashConfig.telnet_port1 = flashDefault.telnet_port1; }
-  if (flashConfig.telnet_port2 == 0) { flashConfig.telnet_port2 = flashDefault.telnet_port2; }
   return true;
 }
 
