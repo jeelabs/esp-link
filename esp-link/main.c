@@ -180,7 +180,7 @@ user_init(void) {
   httpdInit(builtInUrls, 80);
   WEB_Init();
 
-  // init the wifi-serial transparent bridge (port 23)
+  // init the wifi-serial configurable transparent bridge (port defaults 23&2323)
   serbridgeInit();
   serbridgeStart(0, flashConfig.telnet_port0, flashDefault.telnet_port0mode);
   serbridgeStart(1, flashConfig.telnet_port1, flashDefault.telnet_port1mode);

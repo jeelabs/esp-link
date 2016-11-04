@@ -45,6 +45,8 @@ typedef struct {
            telnet_port1;
   int8_t   telnet_port0mode,
            telnet_port1mode;
+  char     telnet_port0pass[32],
+           telnet_port1pass[32];
 } FlashConfig;
 extern FlashConfig flashConfig;
 extern FlashConfig flashDefault;

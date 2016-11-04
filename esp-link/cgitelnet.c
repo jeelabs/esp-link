@@ -3,6 +3,8 @@
 #include "config.h"
 #include "serbridge.h"
 
+static char *portMode[] = { "open", "disabled", "secure" };
+
 // Cgi to return choice of Telnet ports
 int ICACHE_FLASH_ATTR cgiTelnetGet(HttpdConnData *connData) {
   char buff[80];
@@ -96,3 +98,23 @@ int ICACHE_FLASH_ATTR cgiTelnet(HttpdConnData *connData) {
     return HTTPD_CGI_DONE;
   }
 }
+
+static char *portMode2string(int8_t m) { //Should we put this into flash?
+   if (m < 0 || m > 2) return "?";
+   return portMode[m];
+ }
+ 
+ // print various Telnet information into json buffer
+ int ICACHE_FLASH_ATTR printTelnetSecurity(char *buff) {
+   int len;
+ 
+   len = os_sprintf(buff,
+     "{ \"port0mode\": \"%s\", \"port0portnumber\": \"%d\", \"port0pwd\": \"%s\", "
+     "\"port1mode\": \"%s\", \"port1portnumber\": \"%d\", \"port1pwd\": \"%s\" }",
+     portMode2string(flashConfig.telnet_port0mode), flashConfig.telnet_port0, flashConfig.telnet_port0pass,
+     portMode2string(flashConfig.telnet_port1mode), flashConfig.telnet_port1, flashConfig.telnet_port1pass
+   );
+ 
+   return len;
+ }
+ 
