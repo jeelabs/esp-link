@@ -171,12 +171,12 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
   if (flashConfig.telnet_port0 == 0) { 
     flashConfig.telnet_port0 = flashDefault.telnet_port0;
     flashConfig.telnet_port0mode = flashDefault.telnet_port0mode;
-    flashConfig.telnet_port0pass = flashDefault.telnet_port0pass;
+    os_memcpy(flashConfig.telnet_port0pass, flashDefault.telnet_port0pass, 32);
   }
   if (flashConfig.telnet_port1 == 0) { 
     flashConfig.telnet_port1 = flashDefault.telnet_port1;
     flashConfig.telnet_port1mode = flashDefault.telnet_port1mode;
-    flashConfig.telnet_port1pass = flashDefault.telnet_port1pass;
+    os_memcpy(flashConfig.telnet_port1pass, flashDefault.telnet_port1pass, 32);
   }
   return true;
 }
