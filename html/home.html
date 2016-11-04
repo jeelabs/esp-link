@@ -71,6 +71,15 @@
                   <div class="popup">Click to edit!<br>Default port: 2323</div>
                 </div>
             </td></tr>
+            <tr><td colspan=2>Port0 Mode<br>
+              <div class="click-to-edit telnet-port0mode">
+                <span class="edit-off" style="display:block; width:auto;"></span>
+                <select class="edit-on" hidden>
+                  <option value="0">open</option>
+                  <option value="1">password</option>
+                </select>
+              </div>
+            </td></tr>
             </tbody></table>
           </div>
         </div>
@@ -177,6 +186,7 @@ onLoad(function() {
   makeAjaxInput("system", "name");
   makeAjaxInput("telnet", "port0");
   makeAjaxInput("telnet", "port1");
+  makeAjaxInput("telnet", "port0mode");
   fetchPins();
   getWifiInfo();
   getSystemInfo();
