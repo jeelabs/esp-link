@@ -37,6 +37,8 @@ typedef struct {
 // Instead, we allocate a fixed pool of connections an round-robin. What this means is that the
 // attached MCU should really use at most as many SOCKET connections as there are slots in the pool.
 #define MAX_SOCKET 4
+#define MAX_RECEIVE_PACKET_LENGTH 100
+
 static SocketClient socketClient[MAX_SOCKET];
 static uint8_t socketNum = 0xff; // index into socketClient for next slot to allocate
 
@@ -49,12 +51,23 @@ socketclient_recv_cb(void *arg, char *pusrdata, unsigned short length) {
 	uint8_t clientNum = client->conn_num;
 	uint8_t cb_type = USERCB_RECV;
 	DBG_SOCK("SOCKET #%d: Received %d bytes: %s\n", client-socketClient, length, pusrdata);
-	cmdResponseStart(CMD_RESP_CB, client->resp_cb, 4);
-	cmdResponseBody(&cb_type, 1);	
-	cmdResponseBody(&clientNum, 1);
-	cmdResponseBody(&length, 2);
-	cmdResponseBody(pusrdata, length);
-	cmdResponseEnd();
+	
+	unsigned short position = 0;
+	do
+	{
+		unsigned short msgLen = length - position;
+		if( msgLen > MAX_RECEIVE_PACKET_LENGTH )
+			msgLen = MAX_RECEIVE_PACKET_LENGTH;
+		
+		cmdResponseStart(CMD_RESP_CB, client->resp_cb, 4);
+		cmdResponseBody(&cb_type, 1);	
+		cmdResponseBody(&clientNum, 1);
+		cmdResponseBody(&msgLen, 2);
+		cmdResponseBody(pusrdata + position, msgLen);
+		cmdResponseEnd();
+		
+		position += msgLen;
+	}while(position < length );
 	
 	if (client->sock_mode != SOCKET_TCP_SERVER) { // We don't wait for a response
 		DBG_SOCK("SOCKET #%d: disconnect after receiving\n", client-socketClient);
