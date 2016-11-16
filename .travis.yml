@@ -25,3 +25,4 @@ deploy:
   file: esp-link-master-*.t*gz
   on:
     repo: fuzzball03/esp-link
+    all_branches: true
