@@ -3,6 +3,7 @@ before_install:
 - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
 - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar -C .. -Jxf -
 script:
+- printenv
 - export XTENSA_TOOLS_ROOT=$PWD/xtensa-lx106-elf/bin/
 - export BRANCH=$TRAVIS_BRANCH
 - echo "Travis Branch is $TRAVIS_BRANCH"
