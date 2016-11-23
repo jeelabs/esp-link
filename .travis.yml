@@ -24,5 +24,6 @@ deploy:
   file_glob: true
   file: esp-link-master-*.t*gz
   on:
+    tags: true
     repo: fuzzball03/esp-link
     branch: master
