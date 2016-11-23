@@ -22,6 +22,6 @@ deploy:
   file_glob: true
   file: esp-link-master-*.t*gz
   on:
-    tags: true
     branch: master
     repo: fuzzball03/esp-link
+    condition: "$TRAVIS_BRANCH = master"
