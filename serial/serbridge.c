@@ -16,14 +16,14 @@
 #define syslog(X1...)
 #endif
 
-static struct espconn serbridgeConn1; // plain bridging port
-static struct espconn serbridgeConn2; // programming port
-static esp_tcp serbridgeTcp1, serbridgeTcp2;
+static struct espconn serbridgeConn[2]; // 0 = plain bridging port, 1 = programming port
+static esp_tcp serbridgeTcp[2];
 static int8_t mcu_reset_pin, mcu_isp_pin;
 
 uint8_t in_mcu_flashing;   // for disabling slip during MCU flashing
 
 void (*programmingCB)(char *buffer, short length) = NULL;
+void ICACHE_FLASH_ATTR serbridgeCleanup(int ix);
 
 // Connection pool
 serbridgeConnData connData[MAX_CONN];
@@ -421,7 +421,7 @@ serbridgeConnectCb(void *arg)
   connData[i].readytosend = true;
   connData[i].conn_mode = cmInit;
   // if it's the second port we start out in programming mode
-  if (conn->proto.tcp->local_port == serbridgeConn2.proto.tcp->local_port)
+  if (conn->proto.tcp->local_port == serbridgeConn[1].proto.tcp->local_port)
     connData[i].conn_mode = cmPGMInit;
 
   espconn_regist_recvcb(conn, serbridgeRecvCb);
@@ -470,35 +470,46 @@ serbridgeInitPins()
 
 // Start transparent serial bridge TCP server on specified port (typ. 23)
 void ICACHE_FLASH_ATTR
-serbridgeInit(int port1, int port2)
+serbridgeInit()
 {
   serbridgeInitPins();
 
   os_memset(connData, 0, sizeof(connData));
-  os_memset(&serbridgeTcp1, 0, sizeof(serbridgeTcp1));
-  os_memset(&serbridgeTcp2, 0, sizeof(serbridgeTcp2));
+  os_memset(&serbridgeTcp[0], 0, sizeof(serbridgeTcp[0]));
+  os_memset(&serbridgeTcp[1], 0, sizeof(serbridgeTcp[1]));
+}
 
-  // set-up the primary port for plain bridging
-  serbridgeConn1.type = ESPCONN_TCP;
-  serbridgeConn1.state = ESPCONN_NONE;
-  serbridgeTcp1.local_port = port1;
-  serbridgeConn1.proto.tcp = &serbridgeTcp1;
+// Start transparent serial bridge TCP server on specified port (typ. 23)
+void ICACHE_FLASH_ATTR
+serbridgeStart(int ix, int port, int mode)
+{
 
-  espconn_regist_connectcb(&serbridgeConn1, serbridgeConnectCb);
-  espconn_accept(&serbridgeConn1);
-  espconn_tcp_set_max_con_allow(&serbridgeConn1, MAX_CONN);
-  espconn_regist_time(&serbridgeConn1, SER_BRIDGE_TIMEOUT, 0);
+  if (ix < 0 || ix > 2)			// FIXME hardcoded limit
+    return;
 
-  // set-up the secondary port for programming
-  serbridgeConn2.type = ESPCONN_TCP;
-  serbridgeConn2.state = ESPCONN_NONE;
-  serbridgeTcp2.local_port = port2;
-  serbridgeConn2.proto.tcp = &serbridgeTcp2;
+  // If we are already initialized, let's clean it up.
+  if (serbridgeConn[ix].type != 0) {
+    serbridgeCleanup(ix);
+  }
 
-  espconn_regist_connectcb(&serbridgeConn2, serbridgeConnectCb);
-  espconn_accept(&serbridgeConn2);
-  espconn_tcp_set_max_con_allow(&serbridgeConn2, MAX_CONN);
-  espconn_regist_time(&serbridgeConn2, SER_BRIDGE_TIMEOUT, 0);
+  if (0 < port && port < 65536 && port != 80) {
+    serbridgeConn[ix].type = ESPCONN_TCP;
+    serbridgeConn[ix].state = ESPCONN_NONE;
+    serbridgeTcp[ix].local_port = port;
+    serbridgeConn[ix].proto.tcp = &serbridgeTcp[ix];
+
+    espconn_regist_connectcb(&serbridgeConn[ix], serbridgeConnectCb);
+    espconn_accept(&serbridgeConn[ix]);
+    espconn_tcp_set_max_con_allow(&serbridgeConn[ix], MAX_CONN);
+    espconn_regist_time(&serbridgeConn[ix], SER_BRIDGE_TIMEOUT, 0);
+  }
+}
+
+void ICACHE_FLASH_ATTR
+serbridgeCleanup(int ix)
+{
+  os_memset(&serbridgeTcp[ix], 0, sizeof(serbridgeTcp[ix]));
+  // Looks like none of the espconn_..() calls in serbridgeStart() needs cleanup here.
 }
 
 int  ICACHE_FLASH_ATTR serbridgeInMCUFlashing()

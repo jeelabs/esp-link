@@ -1,31 +1,28 @@
-# Travis-CI file for Esp-Link
-
 language: c
-
 before_install:
-  - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
-  - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar -C .. -Jxf -
-
-after_script:
- # upload to an S3 bucket, requires S3_BUCKET, AWS_ACCESS_KEY_ID and AWS_SECRET_KEY to be set
- # in environment using travis' repository settings
-  - "if [[ -n \"$S3_BUCKET\" && -n \"$AWS_ACCESS_KEY_ID\" ]]; then
-     echo Uploading *.tgz to $S3_BUCKET;
-     curl -Ls https://github.com/rlmcpherson/s3gof3r/releases/download/v0.5.0/gof3r_0.5.0_linux_amd64.tar.gz | tar zxf - gof3r_0.5.0_linux_amd64/gof3r;
-     mv gof3r*/gof3r .;
-     ls *.tgz | xargs -I {} ./gof3r put -b $S3_BUCKET -k esp-link/{} --acl public-read -p {};
-     ls *.tgz | xargs -I {} echo \"URL: http://$S3_BUCKET/esp-link/{}\";
-     fi"
-
-compiler: gcc
-
-env:
-
+- curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
+- curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar -C .. -Jxf -
 script:
-  - export XTENSA_TOOLS_ROOT=$PWD/xtensa-lx106-elf/bin/
-  - export BRANCH=$TRAVIS_BRANCH
-    #- export SDK_BASE=$PWD/esp_iot_sdk_v2.0.0.p1
-  - make release
-
+- printenv
+- export XTENSA_TOOLS_ROOT=$PWD/xtensa-lx106-elf/bin/
+- export BRANCH=$TRAVIS_BRANCH
+- echo "Travis Branch is $TRAVIS_BRANCH"
+- echo "Travis Tag is    $TRAVIS_TAG"
+- echo "Travis COMMIT is $TRAVIS_COMMIT"
+- echo "Travis COMMIT is $TRAVIS_COMMIT_RANGE"
+- echo "Dont forget to set VARIABLES for S3 to function. SEE gof3r README"
+- make release
 notifications:
   email: false
+deploy:
+  overwrite: true
+  skip_cleanup: true
+  provider: releases
+  api_key:
+    secure: unYyTCLpk1ixcNOyoUwroBqqx0yBhii56IXm57kjo5kl3umf1GRb3FUIE6la+B0njsNwAUNR/uLn6wF4FqYTUJzNQZskJDJfZjb53vwuoHaoa5j4K/bWB9zRlQ1XZBTkV48cxz8Ef2KyNduK2IciOHwsw3LQS0em3dpK7oG/20VzELt23Gx8uhBYa+OUzlr3Y+PYPynkwM30YwVQXpCy/GMgEbrcKheGbLTAIp7tms0KDAvbb98U0BI3tWBckE5GzAYYAmrXgyDXtEsU/poCMqUj/lpPl1s/5uxGVevTO7XuL4AYtF//AixsM20bPKtIZDHZS9b7JHtVhU655bY2aAfpMgf7xzkKbJkRzeAzT9HucFDjLY48yW4vztdJxBgkAL9d064gTHhThtn4hylZAYpHnqUiM0j4DKil5A0VG2F8EVEqZ7Q2tNzy6aqq37wzTuYXsYpz3mglpazaXXp/LoSurDHy1gz6aB/mdaeBoL3MX1q09LBE8lFGYBILQ8KUkrLyJathxAVvDBnl7nXFv2NWoZ2i7CfXdpCwmOVUN2WhudNfgbbaMung+voTFB+yLq9PBQP5gdP0MKU3zDTB/msmZo1pp/SbnNETCrKAdRtxNI+bxTQ98njAIkxI+7ZiVV8SMNEPyNcWq/6ViYDcIHJMR4Gq0DZunre1voEs1F4=
+  file_glob: true
+  file: esp-link-master-*.t*gz
+  on:
+    branch: master
+    repo: fuzzball03/esp-link
+    condition: "$TRAVIS_BRANCH = master"

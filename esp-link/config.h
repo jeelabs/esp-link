@@ -13,7 +13,7 @@ typedef struct {
   char     hostname[32];               // if using DHCP
   uint32_t staticip, netmask, gateway; // using DHCP if staticip==0
   uint8_t  log_mode;                   // UART log debug mode
-  uint8_t   swap_uart;                  // swap uart0 to gpio 13&15
+  uint8_t  swap_uart;                  // swap uart0 to gpio 13&15
   uint8_t  tcp_enable, rssi_enable;    // TCP client settings
   char     api_key[48];                // RSSI submission API key (Grovestreams for now)
   uint8_t  slip_enable, mqtt_enable,   // SLIP protocol, MQTT client
@@ -41,8 +41,15 @@ typedef struct {
   int8_t   data_bits;
   int8_t   parity;
   int8_t   stop_bits;
+  uint16_t telnet_port0,               // Telnet port settings
+           telnet_port1;
+  int8_t   telnet_port0mode,
+           telnet_port1mode;
+  char     telnet_port0pass[32],
+           telnet_port1pass[32];
 } FlashConfig;
 extern FlashConfig flashConfig;
+extern FlashConfig flashDefault;
 
 bool configSave(void);
 bool configRestore(void);

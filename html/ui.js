@@ -302,6 +302,22 @@ function getWifiInfo() {
       function(s, st) { window.setTimeout(getWifiInfo, 1000); });
 }
 
+//===== Telnet info
+
+function showTelnetInfo(data) {
+  Object.keys(data).forEach(function(v) {
+    setEditToClick("telnet-"+v, data[v]);
+  });
+  $("#telnet-spinner").setAttribute("hidden", "");
+  $("#telnet-table").removeAttribute("hidden");
+  currAp = data.ssid;
+}
+
+function getTelnetInfo() {
+  ajaxJson('GET', "/telnet", showTelnetInfo,
+      function(s, st) { window.setTimeout(getTelnetInfo, 1000); });
+}
+
 //===== System info
 
 function showSystemInfo(data) {
@@ -323,6 +339,8 @@ function makeAjaxInput(klass, field) {
     var eon = $(".edit-on", div);
     var eoff = $(".edit-off", div)[0];
     var url = "/"+klass+"/update?"+field;
+    //Dirty fix to avoid to seperate name spaces to GET or PUT telnet ports
+    if (klass == "telnet") { var url = "/"+klass+"?"+field; }
 
     if (eoff === undefined || eon == undefined) return;
 
@@ -383,6 +401,7 @@ function showNotification(text) {
   var el = $("#notification");
   el.innerHTML = text;
   el.removeAttribute('hidden');
+  window.scrollTo(0, 0); //Uncomment this line so window will scroll up on regular notifications
   if (notifTimeout != null) clearTimeout(notifTimeout);
   notifTimout = setTimeout(function() {
       el.setAttribute('hidden', '');

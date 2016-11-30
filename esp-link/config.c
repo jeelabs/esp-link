@@ -35,6 +35,12 @@ FlashConfig flashDefault = {
   .data_bits	= EIGHT_BITS,
   .parity	= NONE_BITS,
   .stop_bits	= ONE_STOP_BIT,
+  .telnet_port0 = 23,
+  .telnet_port1 = 2323,
+  .telnet_port0mode = 0,
+  .telnet_port1mode = 0,
+  .telnet_port0pass = "\0",
+  .telnet_port1pass = "\0",
 };
 
 typedef union {
@@ -160,6 +166,17 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
       flashConfig.data_bits = flashDefault.data_bits;
       flashConfig.parity = flashDefault.parity;
       flashConfig.stop_bits = flashDefault.stop_bits;
+  }
+  
+  if (flashConfig.telnet_port0 == 0) { 
+    flashConfig.telnet_port0 = flashDefault.telnet_port0;
+    flashConfig.telnet_port0mode = flashDefault.telnet_port0mode;
+    os_memcpy(flashConfig.telnet_port0pass, flashDefault.telnet_port0pass, 32);
+  }
+  if (flashConfig.telnet_port1 == 0) { 
+    flashConfig.telnet_port1 = flashDefault.telnet_port1;
+    flashConfig.telnet_port1mode = flashDefault.telnet_port1mode;
+    os_memcpy(flashConfig.telnet_port1pass, flashDefault.telnet_port1pass, 32);
   }
   return true;
 }

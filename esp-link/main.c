@@ -32,6 +32,7 @@
 #include "gpio.h"
 #include "cgiservices.h"
 #include "web-server.h"
+#include "cgitelnet.h"
 
 #ifdef SYSLOG
 #include "syslog.h"
@@ -96,6 +97,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/services/info", cgiServicesInfo, NULL },
   { "/services/update", cgiServicesSet, NULL },
   { "/pins", cgiPins, NULL },
+  { "/telnet", cgiTelnet, NULL},
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
 #endif
@@ -178,8 +180,11 @@ user_init(void) {
   httpdInit(builtInUrls, 80);
   WEB_Init();
 
-  // init the wifi-serial transparent bridge (port 23)
-  serbridgeInit(23, 2323);
+  // init the wifi-serial configurable transparent bridge (port defaults 23&2323)
+  serbridgeInit();
+  serbridgeStart(0, flashConfig.telnet_port0, flashDefault.telnet_port0mode);
+  serbridgeStart(1, flashConfig.telnet_port1, flashDefault.telnet_port1mode);
+  
   uart_add_recv_cb(&serbridgeUartCb);
 #ifdef SHOW_HEAP_USE
   os_timer_disarm(&prHeapTimer);

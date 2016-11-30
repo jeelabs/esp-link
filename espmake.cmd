@@ -1,5 +1,6 @@
 @echo off
-
+SETLOCAL
+REM LOCAL IS NEEDED ELSE WE KEEP ADDING TO WINDOW PATH EACH TIME SCRIPT IS CALLED.
 REM remove automatic created obj folder
 rd obj /S /Q >nul 2>&1
 
