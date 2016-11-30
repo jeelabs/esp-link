@@ -67,7 +67,7 @@ ajaxConsoleBaud(HttpdConnData *connData) {
   len = httpdFindArg(connData->getArgs, "rate", buff, sizeof(buff));
   if (len > 0) {
     int rate = atoi(buff);
-    if (rate >= 9600 && rate <= 1000000) {
+    if (rate >= 300 && rate <= 1000000) {
       uart0_baud(rate);
       flashConfig.baud_rate = rate;
       status = configSave() ? 200 : 400;
