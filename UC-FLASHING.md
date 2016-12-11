@@ -10,7 +10,7 @@ broadcast incoming characters from the serial RX to all connections. Use with ca
 
 ### Flashing an attached AVR/Arduino
 
-There are three options for reprogramming an attached AVR/Arduino microcontroller:
+There are multiple options for reprogramming an attached AVR/Arduino microcontroller:
 
 - Use avrdude and point it at port 23 of esp-link. Esp-link automatically detects the programming
   sequence and issues a reset to the AVR.
@@ -18,6 +18,8 @@ There are three options for reprogramming an attached AVR/Arduino microcontrolle
   autodectection is not used and the reset happens because port 2323 is used
 - Use curl or a similar tool to HTTP POST the firmware to esp-link. This uses the built-in
   programmer, which only works for AVRs/Arduinos with the optiboot bootloader (which is std).
+- Use some serial port forwarding software, such as com2com, or hwvsp (you have to uncheck
+  nvt in the settings when using the latter).
 
 To reprogram an Arduino / AVR microcontroller by pointing avrdude at port 23 or 2323 you
 specify a serial port of the form `net:esp-link:23` in avrdude's -P option, where
@@ -127,7 +129,7 @@ it starts the connection with the `?\r\n` synchronization sequence.
 
 ### Flashing an attached esp8266
 
-__Flashing another esp8266 module is possible in theory but real-world attempts haveso far been
+__Flashing another esp8266 module is possible in theory but real-world attempts have so far been
 rather unsuccessful due to Wifi interference. This section is left here in case someone else
 wants to dig in and find a solution.__
 

@@ -162,6 +162,12 @@ Note that multiple connections to port 23 and 2323 can be made simultaneously. E
 intermix characters received on all these connections onto the serial TX and it will
 broadcast incoming characters from the serial RX to all connections. Use with caution!
 
+If you are using esp-link to connect to the console of a linux system, such as an rPi, you
+will most likely see what you typed being echoed twice. If you are on a linux system use
+telnet and issue a `mode char` command (in telnet, hit the escape char `^]` and type `mode
+char` at the prompt). If you are using putty on Windows, open the connection settings and
+in the terminal settings set both `local echo` and `local line editing` to `off`.
+
 Contact
 -------
 
