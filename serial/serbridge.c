@@ -70,6 +70,7 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
       else uart0_write_char(c);     // regular char
       break;
     case TN_iac:
+      os_printf("Telnet: IAC + %d\n", c);
       switch (c) {
       case IAC:                     // second escape -> write one to outbuf and go normal again
         state = TN_normal;
@@ -92,6 +93,7 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
     case TN_will: {                 // client announcing it will send telnet cmds, try to respond
       char respBuf[3] = {IAC, DONT, c};
       if (c == ComPortOpt) respBuf[1] = DO;
+      else os_printf("Telnet: rejecting WILL %d\n", c);
       espbuffsend(conn, respBuf, 3);
       state = TN_normal;            // go back to normal
       break; }
@@ -237,9 +239,10 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
 
   bool startPGM = false;
 
-  // at the start of a connection we're in cmInit mode and we wait for the first few characters
-  // to arrive in order to decide what type of connection this is.. The following if statements
-  // do this dispatch. An issue here is that we assume that the first few characters all arrive
+  // At the start of a connection on the primary port we're in cmInit mode and we wait
+  // for the first few characters to arrive in order to decide what type of connection this is..
+  // The following if statements do this dispatch.
+  // An issue here is that we assume that the first few characters all arrive
   // in the same TCP packet, which is true if the sender is a program, but not necessarily
   // if the sender is a person typing (although in that case the line-oriented TTY input seems
   // to make it work too). If this becomes a problem we need to buffer the first few chars...
@@ -253,8 +256,7 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
       conn->conn_mode = cmPGM;
 
     // If the connection starts with a telnet negotiation we will do telnet
-    }
-    else if (len >= 2 && strncmp(data, (char[]){IAC, WILL}, 2) == 0) {
+    } else if (len >= 2 && data[0] == IAC && (data[1]==WILL||data[1]==DO)) {
       conn->conn_mode = cmTelnet;
       conn->telnet_state = TN_normal;
       // note that the three negotiation chars will be gobbled-up by telnetUnwrap
@@ -262,9 +264,8 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
       os_printf("telnet mode\n");
 #endif
 
-    // looks like a plain-vanilla connection!
-    }
-    else {
+    // Looks like a plain-vanilla connection!
+    } else {
       conn->conn_mode = cmTransparent;
     }
 
