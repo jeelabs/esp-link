@@ -25,6 +25,8 @@ uint8_t in_mcu_flashing;   // for disabling slip during MCU flashing
 
 void (*programmingCB)(char *buffer, short length) = NULL;
 
+static sint8 espbuffsend(serbridgeConnData *conn, const char *data, uint16 len);
+
 // Connection pool
 serbridgeConnData connData[MAX_CONN];
 
@@ -32,10 +34,15 @@ serbridgeConnData connData[MAX_CONN];
 
 // Telnet protocol characters
 #define IAC        255  // escape
+#define DONT       254  // negotiation
+#define DO         253  // negotiation
 #define WILL       251  // negotiation
 #define SB         250  // subnegotiation begin
 #define SE         240  // subnegotiation end
 #define ComPortOpt  44  // COM port options
+#define SetBaud      1  // Set baud rate
+#define SetDataSize  2  // Set data size
+#define SetParity    3  // Set parity
 #define SetControl   5  // Set control lines
 #define DTR_ON       8  // used here to reset microcontroller
 #define DTR_OFF      9
@@ -43,12 +50,17 @@ serbridgeConnData connData[MAX_CONN];
 #define RTS_OFF     12
 
 // telnet state machine states
-enum { TN_normal, TN_iac, TN_will, TN_start, TN_end, TN_comPort, TN_setControl };
+enum { TN_normal, TN_iac, TN_will, TN_start, TN_end, TN_comPort, TN_setControl, TN_setBaud,
+    TN_setDataSize, TN_setParity };
+static char tn_baudCnt;
+static uint32_t tn_baud; // shared across all sockets, thus possible race condition
 
-// process a buffer-full on a telnet connection and return the ending telnet state
-static uint8_t ICACHE_FLASH_ATTR
-telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
+// process a buffer-full on a telnet connection
+static void ICACHE_FLASH_ATTR
+telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
 {
+  uint8_t state = conn->telnet_state;
+
   for (int i=0; i<len; i++) {
     uint8_t c = inBuf[i];
     switch (state) {
@@ -77,9 +89,12 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
         uart0_write_char(c);
       }
       break;
-    case TN_will:
-      state = TN_normal;            // yes, we do COM port options, let's go back to normal
-      break;
+    case TN_will: {                 // client announcing it will send telnet cmds, try to respond
+      char respBuf[3] = {IAC, DONT, c};
+      if (c == ComPortOpt) respBuf[1] = DO;
+      espbuffsend(conn, respBuf, 3);
+      state = TN_normal;            // go back to normal
+      break; }
     case TN_start:                  // in command seq, now comes the type of cmd
       if (c == ComPortOpt) state = TN_comPort;
       else state = TN_end;          // an option we don't know, skip 'til the end seq
@@ -88,8 +103,13 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
       if (c == IAC) state = TN_iac; // simple wait to accept end or next escape seq
       break;
     case TN_comPort:
-      if (c == SetControl) state = TN_setControl;
-      else state = TN_end;
+      switch (c) {
+      case SetControl: state = TN_setControl; break;
+      case SetDataSize: state = TN_setDataSize; break;
+      case SetParity: state = TN_setParity; break;
+      case SetBaud: state = TN_setBaud; tn_baudCnt = 0; break;
+      default: state = TN_end; break;
+      }
       break;
     case TN_setControl:             // switch control line and delay a tad
       switch (c) {
@@ -134,9 +154,60 @@ telnetUnwrap(uint8_t *inBuf, int len, uint8_t state)
       }
       state = TN_end;
       break;
+    case TN_setDataSize:
+      if (c >= 5 && c <= 8) {
+        flashConfig.data_bits = c - 5 + FIVE_BITS;
+        uint32_t conf0 = CALC_UARTMODE(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits);
+        uart_config(0, flashConfig.baud_rate, conf0);
+        configSave();
+      } else if (c == 0) {
+        // data size of zero means we need to send the current data size
+        char respBuf[7] = { IAC, SB, ComPortOpt, SetDataSize,
+          flashConfig.data_bits-FIVE_BITS+5, IAC, SE };
+        espbuffsend(conn, respBuf, 7);
+      }
+      state = TN_end;
+      break;
+    case TN_setBaud:
+      tn_baud |= ((uint32_t)c) << (24-8*tn_baudCnt);
+      tn_baudCnt++;
+      if (tn_baudCnt == 4) {
+        // we got all four baud rate bytes (big endian)
+        if (tn_baud >= 300 && tn_baud <= 1000000) {
+          uart0_baud(tn_baud);
+          flashConfig.baud_rate = tn_baud;
+          configSave();
+        } else if (tn_baud == 0) {
+          // baud rate of zero means we need to send the baud rate
+          uint32_t b = flashConfig.baud_rate;
+          char respBuf[10] = { IAC, SB, ComPortOpt, SetDataSize, b>>24, b>>16, b>>8, b, IAC, SE };
+          espbuffsend(conn, respBuf, 10);
+        }
+        state = TN_end;
+      }
+      break;
+    case TN_setParity:
+      if (c == 0) {
+        // parity of zero means we need to send the parity info
+        char respBuf[7] = { IAC, SB, ComPortOpt, SetDataSize, 1/*none*/, IAC, SE };
+        if (flashConfig.parity == ODD_BITS) respBuf[4] = 2;
+        if (flashConfig.parity == EVEN_BITS) respBuf[4] = 3;
+        espbuffsend(conn, respBuf, 7);
+        state = TN_end;
+        break;
+      }
+      uint8_t parity = NONE_BITS;
+      if (c == 2) parity = ODD_BITS;
+      if (c == 3) parity = EVEN_BITS;
+      flashConfig.parity = parity;
+      uint32_t conf0 = CALC_UARTMODE(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits);
+      uart_config(0, flashConfig.baud_rate, conf0);
+      configSave();
+      state = TN_end;
+      break;
     }
   }
-  return state;
+  conn->telnet_state = state;
 }
 
 // Generate a reset pulse for the attached microcontroller
@@ -183,7 +254,7 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
 
     // If the connection starts with a telnet negotiation we will do telnet
     }
-    else if (len >= 3 && strncmp(data, (char[]){IAC, WILL, ComPortOpt}, 3) == 0) {
+    else if (len >= 2 && strncmp(data, (char[]){IAC, WILL}, 2) == 0) {
       conn->conn_mode = cmTelnet;
       conn->telnet_state = TN_normal;
       // note that the three negotiation chars will be gobbled-up by telnetUnwrap
@@ -228,7 +299,7 @@ serbridgeRecvCb(void *arg, char *data, unsigned short len)
 
   // write the buffer to the uart
   if (conn->conn_mode == cmTelnet) {
-    conn->telnet_state = telnetUnwrap((uint8_t *)data, len, conn->telnet_state);
+    telnetUnwrap(conn, (uint8_t *)data, len);
   } else {
     uart0_tx_buffer(data, len);
   }
@@ -405,12 +476,13 @@ serbridgeConnectCb(void *arg)
 #ifdef SERBR_DBG
   os_printf("Accept port %d, conn=%p, pool slot %d\n", conn->proto.tcp->local_port, conn, i);
 #endif
-  syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "esp-link", "Accept port %d, conn=%p, pool slot %d\n", conn->proto.tcp->local_port, conn, i);
+  syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_NOTICE, "esp-link", "Accept port %d, conn=%p, pool slot %d\n",
+      conn->proto.tcp->local_port, conn, i);
   if (i==MAX_CONN) {
 #ifdef SERBR_DBG
     os_printf("Aiee, conn pool overflow!\n");
 #endif
-	syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_WARNING, "esp-link", "Aiee, conn pool overflow!\n");
+    syslog(SYSLOG_FAC_USER, SYSLOG_PRIO_WARNING, "esp-link", "Aiee, conn pool overflow!\n");
     espconn_disconnect(conn);
     return;
   }
