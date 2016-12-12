@@ -123,7 +123,7 @@ void ICACHE_FLASH_ATTR wifiAddStateChangeCb(WifiStateChangeCb cb) {
 
 static struct mdns_info *mdns_info;
 // See https://github.com/arduino/Arduino/blob/master/arduino-core/src/cc/arduino/packages/discoverers/NetworkDiscovery.java#L155-L168
-static char* mdns_txt0 = "ssh_upload=no";
+static char* mdns_txt = "ssh_upload=no";
 
 void ICACHE_FLASH_ATTR wifiStartMDNS(struct ip_addr ip) {
   if (flashConfig.mdns_enable) {
