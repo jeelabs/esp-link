@@ -72,7 +72,7 @@ SDK_BASE ?= $(wildcard ../$(SDK_VERS))
 
 # Clean up SDK path
 SDK_BASE := $(abspath $(SDK_BASE))
-$(warning Using SDK from $(SDK_BASE))
+$(info SDK     is $(SDK_BASE))
 
 # Path to bootloader file
 BOOTFILE	?= $(SDK_BASE/bin/boot_v1.6.bin)
@@ -182,17 +182,33 @@ endif
 
 # --------------- esp-link version        ---------------
 
+# Version-fu :-) This code assumes that a new maj.minor is started using a "vN.M.0" tag on master
+# and that thereafter the desired patchlevel number is just the number of commits since the tag.
+#
+# Get the current branch name if not using travis
+TRAVIS_BRANCH?=$(shell git symbolic-ref --short HEAD --quiet)
+# Use git describe to get the latest version tag, commits since then, sha and dirty flag, this
+# results is something like "v1.2.0-13-ab6cedf-dirty"
+VERSION := $(shell (git describe --tags --match 'v*' --long --dirty || echo "no-tag") | sed -re 's/(\.0)?-/./')
+# If not on master then insert the branch name
+ifneq ($(TRAVIS_BRANCH),master)
+VERSION := $(shell echo $(VERSION) | sed -e 's/-/-$(TRAVIS_BRANCH)-/')
+endif
+VERSION :=esp-link $(VERSION)
+$(info VERSION is $(VERSION))
+
+# OLD - DEPRECATED
 # This queries git to produce a version string like "esp-link v0.9.0 2015-06-01 34bc76"
 # If you don't have a proper git checkout or are on windows, then simply swap for the constant
 # Steps to release: create release on github, git pull, git describe --tags to verify you're
 # on the release tag, make release, upload esp-link.tgz into the release files
 #VERSION ?= "esp-link custom version"
-DATE    := $(shell date '+%F %T')
-BRANCH  ?= $(shell if git diff --quiet HEAD; then git describe --tags; \
-                   else git symbolic-ref --short HEAD; fi)
-SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | cut -d"/" -f 3; \
-                   else echo "development"; fi)
-VERSION ?=esp-link $(BRANCH) - $(DATE) - $(SHA)
+#DATE    := $(shell date '+%F %T')
+#BRANCH  ?= $(shell if git diff --quiet HEAD; then git describe --tags; \
+#                   else git symbolic-ref --short HEAD; fi)
+#SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | cut -d"/" -f 3; \
+#                   else echo "development"; fi)
+#VERSION ?=esp-link $(BRANCH) - $(DATE) - $(SHA)
 
 # Output directors to store intermediate compiled files
 # relative to the project directory
@@ -346,10 +362,7 @@ endef
 
 .PHONY: all checkdirs clean webpages.espfs wiflash
 
-all: echo_version checkdirs $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
-
-echo_version:
-	@echo VERSION: $(VERSION)
+all: checkdirs $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin
 
 $(USER1_OUT): $(APP_AR) $(LD_SCRIPT1)
 	$(vecho) "LD $@"
