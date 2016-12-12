@@ -194,7 +194,7 @@ VERSION := $(shell (git describe --tags --match 'v*' --long --dirty || echo "no-
 ifneq ($(TRAVIS_BRANCH),master)
 VERSION := $(shell echo $(VERSION) | sed -e 's/-/-$(TRAVIS_BRANCH)-/')
 endif
-VERSION :=esp-link $(VERSION)
+VERSION :=$(VERSION)
 $(info VERSION is $(VERSION))
 
 # OLD - DEPRECATED
@@ -259,7 +259,7 @@ CFLAGS	+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-
 	-D__ets__ -DICACHE_FLASH -Wno-address -DFIRMWARE_SIZE=$(ESP_FLASH_MAX) \
 	-DMCU_RESET_PIN=$(MCU_RESET_PIN) -DMCU_ISP_PIN=$(MCU_ISP_PIN) \
 	-DLED_CONN_PIN=$(LED_CONN_PIN) -DLED_SERIAL_PIN=$(LED_SERIAL_PIN) \
-	-DVERSION="$(VERSION)"
+	-DVERSION="esp-link $(VERSION)"
 
 # linker flags used to generate the main object file
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--gc-sections
@@ -492,14 +492,14 @@ espfs/mkespfsimage/mkespfsimage: espfs/mkespfsimage/
 	$(Q) $(MAKE) -C espfs/mkespfsimage GZIP_COMPRESSION="$(GZIP_COMPRESSION)"
 
 release: all
-	$(Q) rm -rf release; mkdir -p release/esp-link-$(BRANCH)
+	$(Q) rm -rf release; mkdir -p release/esp-link-$(VERSION)
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user1.bin | cut -b 1-80
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user2.bin | cut -b 1-80
 	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
 	       "$(SDK_BASE)/bin/boot_v1.6.bin" "$(SDK_BASE)/bin/esp_init_data_default.bin" \
-	       wiflash avrflash release/esp-link-$(BRANCH)
-	$(Q) tar zcf esp-link-$(BRANCH)-$(SHA).tgz -C release esp-link-$(BRANCH)
-	$(Q) echo "Release file: esp-link-$(BRANCH)-$(SHA).tgz"
+	       wiflash avrflash release/esp-link-$(VERSION)
+	$(Q) tar zcf esp-link-$(VERSION).tgz -C release esp-link-$(VERSION)
+	$(Q) echo "Release file: esp-link-$(VERSION).tgz"
 	$(Q) rm -rf release
 
 docker:
