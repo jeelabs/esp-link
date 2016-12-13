@@ -70,7 +70,7 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
       else uart0_write_char(c);     // regular char
       break;
     case TN_iac:
-      os_printf("Telnet: IAC + %d\n", c);
+      //os_printf("Telnet: IAC + %d\n", c);
       switch (c) {
       case IAC:                     // second escape -> write one to outbuf and go normal again
         state = TN_normal;
@@ -118,13 +118,13 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
       case DTR_ON:
         if (mcu_reset_pin >= 0) {
 #ifdef SERBR_DBG
-          os_printf("MCU reset gpio%d\n", mcu_reset_pin);
+          os_printf("Telnet: reset gpio%d\n", mcu_reset_pin);
 #endif
           GPIO_OUTPUT_SET(mcu_reset_pin, 0);
           os_delay_us(100L);
         }
 #ifdef SERBR_DBG
-        else { os_printf("MCU reset: no pin\n"); }
+        else { os_printf("Telnet: reset: no pin\n"); }
 #endif
         break;
       case DTR_OFF:
@@ -136,18 +136,21 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
       case RTS_ON:
         if (mcu_isp_pin >= 0) {
 #ifdef SERBR_DBG
-          os_printf("MCU ISP gpio%d\n", mcu_isp_pin);
+          os_printf("Telnet: ISP gpio%d LOW\n", mcu_isp_pin);
 #endif
           GPIO_OUTPUT_SET(mcu_isp_pin, 0);
           os_delay_us(100L);
         }
 #ifdef SERBR_DBG
-        else { os_printf("MCU isp: no pin\n"); }
+        else { os_printf("Telnet: isp: no pin\n"); }
 #endif
         in_mcu_flashing++;
         break;
       case RTS_OFF:
         if (mcu_isp_pin >= 0) {
+#ifdef SERBR_DBG
+          os_printf("Telnet: ISP gpio%d HIGH\n", mcu_isp_pin);
+#endif
           GPIO_OUTPUT_SET(mcu_isp_pin, 1);
           os_delay_us(100L);
         }
@@ -159,9 +162,9 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
     case TN_setDataSize:
       if (c >= 5 && c <= 8) {
         flashConfig.data_bits = c - 5 + FIVE_BITS;
-        uint32_t conf0 = CALC_UARTMODE(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits);
-        uart_config(0, flashConfig.baud_rate, conf0);
+        uart0_config(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits);
         configSave();
+        os_printf("Telnet: %d bits/char\n", c);
       } else if (c == 0) {
         // data size of zero means we need to send the current data size
         char respBuf[7] = { IAC, SB, ComPortOpt, SetDataSize,
@@ -179,6 +182,7 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
           uart0_baud(tn_baud);
           flashConfig.baud_rate = tn_baud;
           configSave();
+          os_printf("Telnet: %d baud\n", tn_baud);
         } else if (tn_baud == 0) {
           // baud rate of zero means we need to send the baud rate
           uint32_t b = flashConfig.baud_rate;
@@ -202,9 +206,9 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
       if (c == 2) parity = ODD_BITS;
       if (c == 3) parity = EVEN_BITS;
       flashConfig.parity = parity;
-      uint32_t conf0 = CALC_UARTMODE(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits);
-      uart_config(0, flashConfig.baud_rate, conf0);
+      //uart0_config(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits);
       configSave();
+      os_printf("Telnet: parity %s\n", c==2?"odd":c==3?"even":"none");
       state = TN_end;
       break;
     }

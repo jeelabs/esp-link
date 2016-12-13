@@ -256,6 +256,12 @@ uart0_baud(int rate) {
   uart_div_modify(UART0, UART_CLK_FREQ / rate);
 }
 
+void ICACHE_FLASH_ATTR
+uart0_config(uint8_t data_bits, uint8_t parity, uint8_t stop_bits) {
+  uint32_t conf0 = CALC_UARTMODE(data_bits, parity, stop_bits);
+  WRITE_PERI_REG(UART_CONF0(0), conf0);
+}
+
 /******************************************************************************
  * FunctionName : uart_init
  * Description  : user interface for init uart
