@@ -13,8 +13,16 @@
 #define DBG(format, ...) do { } while(0)
 #endif
 
+static bool blocked; // flag to prevent MQTT from sending on serial while trying to PGM uC
+
+void ICACHE_FLASH_ATTR
+mqtt_block() { blocked = true; }
+void ICACHE_FLASH_ATTR
+mqtt_unblock() { blocked = false; }
+
 void ICACHE_FLASH_ATTR
 cmdMqttConnectedCb(MQTT_Client* client) {
+  if (blocked) return;
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
   DBG("MQTT: Connected Cb=%p\n", (void*)cb->connectedCb);
   cmdResponseStart(CMD_RESP_CB, cb->connectedCb, 0);
@@ -23,6 +31,7 @@ cmdMqttConnectedCb(MQTT_Client* client) {
 
 void ICACHE_FLASH_ATTR
 cmdMqttDisconnectedCb(MQTT_Client* client) {
+  if (blocked) return;
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
   DBG("MQTT: Disconnected cb=%p\n", (void*)cb->disconnectedCb);
   cmdResponseStart(CMD_RESP_CB, cb->disconnectedCb, 0);
@@ -31,6 +40,7 @@ cmdMqttDisconnectedCb(MQTT_Client* client) {
 
 void ICACHE_FLASH_ATTR
 cmdMqttPublishedCb(MQTT_Client* client) {
+  if (blocked) return;
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
   DBG("MQTT: Published cb=%p\n", (void*)cb->publishedCb);
   cmdResponseStart(CMD_RESP_CB, cb->publishedCb, 0);
@@ -41,6 +51,7 @@ void ICACHE_FLASH_ATTR
 cmdMqttDataCb(MQTT_Client* client, const char* topic, uint32_t topic_len,
     const char* data, uint32_t data_len)
 {
+  if (blocked) return;
   MqttCmdCb* cb = (MqttCmdCb*)client->user_data;
   DBG("MQTT: Data cb=%p topic=%s len=%u\n", (void*)cb->dataCb, topic, data_len);
 

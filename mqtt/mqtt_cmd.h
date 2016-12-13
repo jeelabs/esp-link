@@ -17,4 +17,7 @@ void MQTTCMD_Publish(CmdPacket *cmd);
 void MQTTCMD_Subscribe(CmdPacket *cmd);
 void MQTTCMD_Lwt(CmdPacket *cmd);
 
+void mqtt_block();
+void mqtt_unblock();
+
 #endif /* MODULES_MQTT_CMD_H_ */
