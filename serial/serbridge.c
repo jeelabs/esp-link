@@ -109,7 +109,7 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
       case SetControl: state = TN_setControl; break;
       case SetDataSize: state = TN_setDataSize; break;
       case SetParity: state = TN_setParity; break;
-      case SetBaud: state = TN_setBaud; tn_baudCnt = 0; break;
+      case SetBaud: state = TN_setBaud; tn_baudCnt = 0; tn_baud = 0; break;
       default: state = TN_end; break;
       }
       break;
