@@ -137,6 +137,7 @@ user_rf_cal_sector_set(void) {
   switch (system_get_flash_size_map()) {
   case FLASH_SIZE_4M_MAP_256_256: // 512KB
     sect = 128 - 10; // 0x76000
+    break;
   default:
     sect = 128; // 0x80000
   }

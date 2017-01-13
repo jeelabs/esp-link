@@ -648,6 +648,7 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
       responseLen -= 2;
     }
     armTimer(PGM_INTERVAL); // reset timer
+    break;
   default:
     break;
   }
