@@ -44,6 +44,9 @@ serbridgeConnData connData[MAX_CONN];
 #define SetDataSize  2  // Set data size
 #define SetParity    3  // Set parity
 #define SetControl   5  // Set control lines
+#define BRK_REQ      4  // request current BREAK state
+#define BRK_ON       5  // set BREAK (TX-line to LOW)
+#define BRK_OFF      6  // reset BREAK
 #define DTR_ON       8  // used here to reset microcontroller
 #define DTR_OFF      9
 #define RTS_ON      11  // used here to signal ISP (in-system-programming) to uC
@@ -156,6 +159,28 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
         }
         if (in_mcu_flashing > 0) in_mcu_flashing--;
         break;
+	  case BRK_REQ:
+	    char respBuf[7] = { IAC, SB, ComPortOpt, SetControl, GPIO_INPUT_GET(1), IAC, SE };
+        espbuffsend(conn, respBuf, 7);
+#ifdef SERBR_DBG
+          os_printf("Telnet: BREAK state requested: state = %d)\n", GPIO_INPUT_GET(1));
+#endif
+        break;
+	  case BRK_ON:
+	    while (((READ_PERI_REG(UART_STATUS(UART0))>>UART_TXFIFO_CNT_S)&UART_TXFIFO_CNT)>0);  // wait until TX-FIFO of UART0 is empty
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_GPIO1);  // set TX pint to IO
+		GPIO_OUTPUT_SET(1, 0);
+#ifdef SERBR_DBG
+        os_printf("Telnet: BREAK ON: set TX to LOW\n");
+#endif
+	    break;
+	  case BRK_OFF:
+	    GPIO_OUTPUT_SET(1, 1);
+		PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_U0TXD);
+#ifdef SERBR_DBG
+        os_printf("Telnet: BREAK OFF: set TX to HIGH\n");
+#endif
+		break;
       }
       state = TN_end;
       break;
