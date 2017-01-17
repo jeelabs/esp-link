@@ -57,6 +57,7 @@ enum { TN_normal, TN_iac, TN_will, TN_start, TN_end, TN_comPort, TN_setControl, 
     TN_setDataSize, TN_setParity };
 static char tn_baudCnt;
 static uint32_t tn_baud; // shared across all sockets, thus possible race condition
+static uint8_t tn_break = 0;  // 0=BREAK-OFF, 1=BREAK-ON
 
 // process a buffer-full on a telnet connection
 static void ICACHE_FLASH_ATTR
@@ -159,28 +160,33 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
         }
         if (in_mcu_flashing > 0) in_mcu_flashing--;
         break;
-	  case BRK_REQ:
-	    char respBuf[7] = { IAC, SB, ComPortOpt, SetControl, GPIO_INPUT_GET(1), IAC, SE };
+      case BRK_REQ:
+        char respBuf[7] = { IAC, SB, ComPortOpt, SetControl, tn_break, IAC, SE };
         espbuffsend(conn, respBuf, 7);
 #ifdef SERBR_DBG
-          os_printf("Telnet: BREAK state requested: state = %d)\n", GPIO_INPUT_GET(1));
+        os_printf("Telnet: BREAK state requested: state = %d)\n", tn_break);
 #endif
         break;
-	  case BRK_ON:
-	    while (((READ_PERI_REG(UART_STATUS(UART0))>>UART_TXFIFO_CNT_S)&UART_TXFIFO_CNT)>0);  // wait until TX-FIFO of UART0 is empty
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_GPIO1);  // set TX pint to IO
-		GPIO_OUTPUT_SET(1, 0);
+      case BRK_ON:
+	if (((READ_PERI_REG(UART_STATUS(UART0))>>UART_TXFIFO_CNT_S)&UART_TXFIFO_CNT) == 0) {  // TX-FIFO of UART0 must be empty
+          PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_GPIO1);
+          GPIO_OUTPUT_SET(1, 0);
+          tn_break = 1;
 #ifdef SERBR_DBG
-        os_printf("Telnet: BREAK ON: set TX to LOW\n");
+          os_printf("Telnet: BREAK ON: set TX to LOW\n");
 #endif
-	    break;
-	  case BRK_OFF:
-	    GPIO_OUTPUT_SET(1, 1);
-		PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_U0TXD);
+	}
+        break;
+      case BRK_OFF:
+        if (tn_break == 1) {
+          GPIO_OUTPUT_SET(1, 1);
+          PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_U0TXD);
+          tn_break = 0;
 #ifdef SERBR_DBG
-        os_printf("Telnet: BREAK OFF: set TX to HIGH\n");
+          os_printf("Telnet: BREAK OFF: set TX to HIGH\n");
 #endif
-		break;
+	}
+        break;
       }
       state = TN_end;
       break;
