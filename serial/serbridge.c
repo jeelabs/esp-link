@@ -160,13 +160,13 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
         }
         if (in_mcu_flashing > 0) in_mcu_flashing--;
         break;
-      case BRK_REQ:
+      case BRK_REQ: {
         char respBuf[7] = { IAC, SB, ComPortOpt, SetControl, tn_break, IAC, SE };
         espbuffsend(conn, respBuf, 7);
 #ifdef SERBR_DBG
         os_printf("Telnet: BREAK state requested: state = %d)\n", tn_break);
 #endif
-        break;
+        break; }
       case BRK_ON:
 	if (((READ_PERI_REG(UART_STATUS(UART0))>>UART_TXFIFO_CNT_S)&UART_TXFIFO_CNT) == 0) {  // TX-FIFO of UART0 must be empty
           PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_GPIO1);
