@@ -1,5 +1,7 @@
 // Copyright (c) 2015 by Thorsten von Eicken, see LICENSE.txt in the esp-link repo
 
+// Protocol used : https://github.com/Optiboot/optiboot/wiki/HowOptibootWorks
+
 #include <esp8266.h>
 #include <osapi.h>
 #include "cgi.h"
