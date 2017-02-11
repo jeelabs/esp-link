@@ -99,7 +99,7 @@ done
 # ===== Send HEX file
 
 [[ -n "$verbose" ]] && echo "Sending HEX file for programming" >&2
-sync=`curl -m 10 $v -s -g -d "@$hex" "http://$hostname/pgmmega/upload"`
+sync=`curl -m 20 $v -s -g -d "@$hex" "http://$hostname/pgmmega/upload"`
 echo $sync
 if [[ $? != 0 || ! "$sync" =~ ^Success ]]; then
   echo "Error programming AVR" >&2
