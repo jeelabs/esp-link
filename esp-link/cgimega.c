@@ -9,6 +9,24 @@
  *
  * Documentation about the protocol used : see http://www.atmel.com/Images/doc2591.pdf
  *
+ * Note the Intel HEX format is read by this code.
+ * Format description is e.g. in http://www.keil.com/support/docs/1584/
+ * Summary : each line (HEX file record) is formatted as ":llaaaatt[dd...]cc"
+ *   : is the colon that starts every Intel HEX record.
+ *   ll is the record-length field that represents the number of data bytes (dd) in the record.
+ *   aaaa is the address field that represents the starting address for subsequent data.
+ *   tt is the field that represents the HEX record type, which may be one of the following:
+ *      00 - data record
+ *      01 - end-of-file record
+ *      02 - extended segment address record
+ *      04 - extended linear address record
+ *      05 - start linear address record (MDK-ARM only)
+ *   dd is a data field that represents one byte of data. A record may have multiple data bytes.
+ *     The number of data bytes in the record must match the number specified by the ll field.
+ *   cc is the checksum field that represents the checksum of the record. The checksum is
+ *     calculated by summing the values of all hexadecimal digit pairs in the record modulo
+ *     256 and taking the two's complement. 
+ *
  */
 
 #include <esp8266.h>
@@ -77,6 +95,7 @@ static struct optibootData {
   uint16_t pgmSz;            // size of flash page to be programmed at a time
   uint16_t pgmDone;          // number of bytes programmed
   uint32_t address;          // address to write next page to
+  uint32_t segment;          // for extended segment addressing, added to the address field
   uint32_t startTime;        // time of program POST request
   HttpdConnData *conn;       // request doing the programming, so we can cancel it
   bool eof;                  // got EOF record
@@ -660,7 +679,10 @@ int ICACHE_FLASH_ATTR cgiMegaData(HttpdConnData *connData) {
     optibootData->pgmSz = 128; // hard coded for 328p for now, should be query string param
 #endif
     DBG("OB data alloc\n");
-    optibootData->address = 0x80000000;		// HACK FIX ME
+
+//    optibootData->address = 0x80000000;		// HACK FIX ME
+    // optibootData->segment = 0x0;			// Not necessary, os_zalloc() does this
+    optibootData->address = optibootData->segment;
   }
 
   // iterate through the data received and program the AVR one block at a time
@@ -790,7 +812,7 @@ static bool ICACHE_FLASH_ATTR processRecord(char *buf, short len) {
   // dispatch based on record type
   uint8_t type = getHexValue(buf+6, 2);
   switch (type) {
-  case 0x00: { // data
+  case 0x00: { // Intel HEX data record
     //DBG("OB REC data %ld pglen=%d\n", getHexValue(buf, 2), optibootData->pageLen);
     uint32_t addr = getHexValue(buf+2, 4);
     // check whether we need to program previous record(s)
@@ -812,16 +834,16 @@ static bool ICACHE_FLASH_ATTR processRecord(char *buf, short len) {
     // program page, if we have a full page
     if (optibootData->pageLen >= optibootData->pgmSz) {
       //DBG("OB full\n");
-      os_printf("processRecord %d, call programPage() %08x\n", optibootData->pgmSz, optibootData->address);
+      // os_printf("processRecord %d, call programPage() %08x\n", optibootData->pgmSz, optibootData->address + optibootData->segment);
       if (!programPage()) return false;
     }
     break; }
-  case 0x01: // EOF
+  case 0x01: // Intel HEX EOF record
     DBG("OB EOF\n");
     // program any remaining partial page
 #if 1
     if (optibootData->pageLen > 0) {
-      os_printf("processRecord remaining partial page, len %d, addr 0x%04x\n", optibootData->pageLen, optibootData->address);
+      // os_printf("processRecord remaining partial page, len %d, addr 0x%04x\n", optibootData->pageLen, optibootData->address + optibootData->segment);
       if (!programPage()) return false;
     }
     optibootData->eof = true;
@@ -836,21 +858,31 @@ static bool ICACHE_FLASH_ATTR processRecord(char *buf, short len) {
     optibootData->eof = true;
 #endif
     break;
-  case 0x04: // address
+  case 0x04: // Intel HEX address record
     DBG("OB address 0x%x\n", getHexValue(buf+8, 4) << 16);
     // program any remaining partial page
     if (optibootData->pageLen > 0) {
-      os_printf("processRecord 0x04 remaining partial page, len %d, addr 0x%04x\n", optibootData->pageLen, optibootData->address);
+      os_printf("processRecord 0x04 remaining partial page, len %d, addr 0x%04x\n",
+        optibootData->pageLen, optibootData->address + optibootData->segment);
       if (!programPage()) return false;
     }
     optibootData->address = getHexValue(buf+8, 4) << 16;
     break;
-  case 0x05: // start address
+  case 0x05: // Intel HEX start address (MDK-ARM only)
     // ignore, there's no way to tell optiboot that...
     break;
+  case 0x02: // Intel HEX extended segment address record
+    // Depending on the case, just ignoring this record could solve the problem
+    // optibootData->segment = getHexValue(buf+8, 4) << 4;
+    DBG("OB segment 0x%08X\n", optibootData->segment);
+    return true;
   default:
     DBG("OB bad record type\n");
+#if 0
     os_sprintf(errMessage, "Invalid/unknown record type: 0x%02x", type);
+#else
+    os_sprintf(errMessage, "Invalid/unknown record type: 0x%02x, packet %s", type, buf);
+#endif
     return false;
   }
   return true;
@@ -859,7 +891,7 @@ static bool ICACHE_FLASH_ATTR processRecord(char *buf, short len) {
 // Program a flash page
 static bool ICACHE_FLASH_ATTR programPage(void) {
   if (debug())
-    os_printf("programPage len %d addr 0x%04x\n", optibootData->pageLen, optibootData->address);
+    os_printf("programPage len %d addr 0x%04x\n", optibootData->pageLen, optibootData->address + optibootData->segment);
 
   if (optibootData->pageLen == 0)
     return true;
@@ -868,7 +900,7 @@ static bool ICACHE_FLASH_ATTR programPage(void) {
   uint16_t pgmLen = optibootData->pageLen;
   if (pgmLen > optibootData->pgmSz)
     pgmLen = optibootData->pgmSz;
-  // DBG("OB pgm %d@0x%x\n", pgmLen, optibootData->address);
+  // DBG("OB pgm %d@0x%x\n", pgmLen, optibootData->address + optibootData->segment);
 
   // send address to optiboot (little endian format)
 #ifdef DBG_GPIO5
@@ -876,7 +908,7 @@ static bool ICACHE_FLASH_ATTR programPage(void) {
 #endif
   ackWait++;
 
-  uint32_t addr = optibootData->address;
+  uint32_t addr = optibootData->address + optibootData->segment;
   sendLoadAddressQuery(addr);
   readLoadAddressReply();
 
@@ -902,12 +934,12 @@ static bool ICACHE_FLASH_ATTR programPage(void) {
   // shift data out of buffer
   os_memmove(optibootData->pageBuf, optibootData->pageBuf+pgmLen, optibootData->pageLen-pgmLen);
   optibootData->pageLen -= pgmLen;
-#if 0
+#if 1
   optibootData->address += pgmLen;
 #else
-  os_printf("Address old %08x ", optibootData->address);
+  os_printf("Address old %08x ", optibootData->address + optibootData->segment);
   optibootData->address += pgmLen;
-  os_printf(" new %08x\n", optibootData->address);
+  os_printf(" new %08x\n", optibootData->address + optibootData->segment);
 #endif
   optibootData->pgmDone += pgmLen;
 
