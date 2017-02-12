@@ -76,7 +76,8 @@ if [[ $? != 0 || "$sync" != 204 ]]; then
 fi
 
 while true; do
-  sync=`curl -m 10 $v -s "http://$hostname/pgmmega/sync"`
+  # sync=`curl -m 10 $v -s "http://$hostname/pgmmega/sync"`
+  sync=`curl $v -s "http://$hostname/pgmmega/sync"`
   if [[ $? != 0 ]]; then
     echo "Error checking sync" >&2
     exit 1

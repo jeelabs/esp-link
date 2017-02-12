@@ -93,7 +93,7 @@ static struct optibootData {
   char *pageBuf;             // buffer for received data to be sent to AVR
   uint16_t pageLen;          // number of bytes in pageBuf
   uint16_t pgmSz;            // size of flash page to be programmed at a time
-  uint16_t pgmDone;          // number of bytes programmed
+  uint32_t pgmDone;          // number of bytes programmed
   uint32_t address;          // address to write next page to
   uint32_t segment;          // for extended segment addressing, added to the address field
   uint32_t startTime;        // time of program POST request
@@ -680,7 +680,6 @@ int ICACHE_FLASH_ATTR cgiMegaData(HttpdConnData *connData) {
 #endif
     DBG("OB data alloc\n");
 
-//    optibootData->address = 0x80000000;		// HACK FIX ME
     // optibootData->segment = 0x0;			// Not necessary, os_zalloc() does this
     optibootData->address = optibootData->segment;
   }
@@ -767,7 +766,7 @@ int ICACHE_FLASH_ATTR cgiMegaData(HttpdConnData *connData) {
     code = 200;
     // calculate some stats
     float dt = ((system_get_time() - optibootData->startTime)/1000)/1000.0; // in seconds
-    uint16_t pgmDone = optibootData->pgmDone;
+    uint32_t pgmDone = optibootData->pgmDone;
     optibootInit();
     os_sprintf(errMessage, "Success. %d bytes at %d baud in %d.%ds, %dB/s %d%% efficient",
         pgmDone, baudRate, (int)dt, (int)(dt*10)%10, (int)(pgmDone/dt),
@@ -834,7 +833,7 @@ static bool ICACHE_FLASH_ATTR processRecord(char *buf, short len) {
     // program page, if we have a full page
     if (optibootData->pageLen >= optibootData->pgmSz) {
       //DBG("OB full\n");
-      // os_printf("processRecord %d, call programPage() %08x\n", optibootData->pgmSz, optibootData->address + optibootData->segment);
+      if (debug()) os_printf("processRecord %d, call programPage() %08x\n", optibootData->pgmSz, optibootData->address + optibootData->segment);
       if (!programPage()) return false;
     }
     break; }
@@ -1369,10 +1368,10 @@ static bool ICACHE_FLASH_ATTR debug() {
   return false;
 #endif
 
-#if 0
+#if 1
   if (optibootData == 0)
     return false;
-  if ((0x80000080 <= optibootData->address) && (optibootData->address <= 0x80000100))
+  if ((0x0000F000 <= optibootData->address) && (optibootData->address <= 0x00010200))
     return true;
   return false;
 #endif
