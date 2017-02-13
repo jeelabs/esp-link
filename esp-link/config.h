@@ -37,11 +37,11 @@ typedef struct {
   uint8_t  mdns_enable;
   char     mdns_servername[32];
   int8_t   timezone_offset;
-  int8_t   uart0_tx_enable_pin;
   char     mqtt_host[64];              // MQTT host we connect to, was 32-char mqtt_old_host
   int8_t   data_bits;
   int8_t   parity;
   int8_t   stop_bits;
+  int8_t   uart0_tx_enable_pin;
 } FlashConfig;
 extern FlashConfig flashConfig;
 
