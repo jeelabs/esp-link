@@ -83,15 +83,3 @@ function fetchApSettings() {
     window.setTimeout(fetchApSettings, 1000);
   });
 }
-
-function doApAdvanced() {
-  $('#AP_Settings-on').removeAttribute('hidden');
-  $("#AP_Settings-off").setAttribute("hidden", "");
-  $("#AP_Settings-roff").removeAttribute("checked");
-}
-
-function undoApAdvanced(){
-  $("#AP_Settings-on").setAttribute("hidden", "");
-  $("#AP_Settings-off").removeAttribute("hidden");
-  $("#AP_Settings-roff").setAttribute("checked", "");
-}

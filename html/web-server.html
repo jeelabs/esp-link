@@ -1,0 +1,29 @@
+  <div id="main">
+    <div class="header">
+      <h1>Web Server</h1>
+    </div>
+
+    <div class="content">
+      <p>User defined web pages can be uploaded to esp-link. This is useful if esp-link acts as a web server while MCU provides
+        the measurement data.</p>
+
+      <form method="post" action="web-server/upload" name="submit" enctype="multipart/form-data" onSubmit="return onSubmit()">
+        The custom web page to upload: <input type="file" name="webpage" multiple>
+        <input type="submit" name="submit" value="Submit">
+      </form>
+      
+    </div>
+    
+  </div>
+  
+  <script>
+   var allowSubmit = true;
+
+   function onSubmit() {
+      setTimeout(function() {
+                    window.location.reload();
+                 }, 1000);
+      return true;
+   }
+</script>
+</body></html>

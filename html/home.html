@@ -40,9 +40,9 @@
               /home/arduino/hardware/tools/avrdude&nbsp;\<br>
               &nbsp;&nbsp;-DV -patmega328p \<br>
               &nbsp;&nbsp;-Pnet:esp-link.local:23 \<br>
-              &nbsp;&nbsp;-carduino -b115200 -U -C \<br>
-              &nbsp;&nbsp;/home/arduino/hardware/tools/avrdude.conf&nbsp;\<br>
-              &nbsp;&nbsp;flash:w:my_sketch.hex:i
+              &nbsp;&nbsp;-carduino -b115200 \<br>
+              &nbsp;&nbsp;-U flash:w:my_sketch.hex:i\<br>
+              &nbsp;&nbsp;-C /home/arduino/hardware/tools/avrdude.conf
             </div>
             <p>where <tt>-Pnet:esp-link.local:23</tt> tells avrdude to connect to port 23 of esp-link.
             You can substitute the IP address of your esp-link for esp-link.local if necessary.
@@ -126,6 +126,12 @@
               <div>
                 <span class="system-size"></span>
                 <div class="popup pop-left">Size configured into bootloader, must match chip size</div>
+              </div>
+            </td></tr>
+            <tr><td>Webpage size</td><td>
+              <div>
+                <span class="system-upload-size"></span>
+                <div class="popup pop-left">The maximal size of the custom web page a user can upload.</div>
               </div>
             </td></tr>
             <tr><td>Current partition</td><td class="system-partition"></td></tr>

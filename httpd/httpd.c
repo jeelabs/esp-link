@@ -17,6 +17,7 @@ Esp8266 http server - core routines
 #include <esp8266.h>
 #include "httpd.h"
 
+//#define HTTPD_DBG
 #ifdef HTTPD_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
@@ -132,6 +133,7 @@ static void ICACHE_FLASH_ATTR httpdRetireConn(HttpdConnData *conn) {
   if (conn->post->buff != NULL) os_free(conn->post->buff);
   conn->cgi = NULL;
   conn->post->buff = NULL;
+  conn->post->multipartBoundary = NULL;
 }
 
 //Stupid li'l helper function that returns the value of a hex char.
@@ -354,14 +356,18 @@ static void ICACHE_FLASH_ATTR httpdProcessRequest(HttpdConnData *conn) {
     if (conn->cgi == NULL) {
       while (builtInUrls[i].url != NULL) {
         int match = 0;
+        int urlLen = os_strlen(builtInUrls[i].url);
         //See if there's a literal match
         if (os_strcmp(builtInUrls[i].url, conn->url) == 0) match = 1;
         //See if there's a wildcard match
-        if (builtInUrls[i].url[os_strlen(builtInUrls[i].url) - 1] == '*' &&
-          os_strncmp(builtInUrls[i].url, conn->url, os_strlen(builtInUrls[i].url) - 1) == 0) match = 1;
+        if (builtInUrls[i].url[urlLen - 1] == '*' &&
+          os_strncmp(builtInUrls[i].url, conn->url, urlLen - 1) == 0) match = 1;
+        else if (builtInUrls[i].url[0] == '*' && ( strlen(conn->url) >= urlLen -1 )  &&
+          os_strncmp(builtInUrls[i].url + 1, conn->url + strlen(conn->url) - urlLen + 1, urlLen - 1) == 0) match = 1;
         if (match) {
           //os_printf("Is url index %d\n", i);
           conn->cgiData = NULL;
+	  conn->cgiResponse = NULL;
           conn->cgi = builtInUrls[i].cgiCb;
           conn->cgiArg = builtInUrls[i].cgiArg;
           break;
@@ -509,6 +515,7 @@ static void ICACHE_FLASH_ATTR httpdRecvCb(void *arg, char *data, unsigned short 
       if (data[x] == '\n' && (char *)os_strstr(conn->priv->head, "\r\n\r\n") != NULL) {
         //Indicate we're done with the headers.
         conn->post->len = 0;
+	conn->post->multipartBoundary = NULL;
         //Reset url data
         conn->url = NULL;
         //Iterate over all received headers and parse them.
@@ -620,4 +627,44 @@ void ICACHE_FLASH_ATTR httpdInit(HttpdBuiltInUrl *fixedUrls, int port) {
   espconn_regist_connectcb(&httpdConn, httpdConnectCb);
   espconn_accept(&httpdConn);
   espconn_tcp_set_max_con_allow(&httpdConn, MAX_CONN);
+}
+
+// looks up connection handle based on ip / port
+HttpdConnData * ICACHE_FLASH_ATTR  httpdLookUpConn(uint8_t * ip, int port) {
+  int i;
+
+  for (i = 0; i<MAX_CONN; i++)
+  {
+    HttpdConnData *conn = connData+i;
+
+    if (conn->conn == NULL)
+      continue;
+    if (conn->cgi == NULL)
+      continue;
+    if (conn->conn->proto.tcp->remote_port != port )
+      continue;
+    if (os_memcmp(conn->conn->proto.tcp->remote_ip, ip, 4) != 0)
+      continue;
+
+    return conn;
+  }
+  return NULL;
+}
+
+// this method is used for setting the response of a CGI handler outside of the HTTP callback
+// this method useful at the following scenario:
+//   Browser -> CGI handler -> MCU request
+//   MCU response -> CGI handler -> browser
+// when MCU response arrives, the handler looks up connection based on ip/port and call httpdSetCGIResponse with the data to transmit
+
+int ICACHE_FLASH_ATTR httpdSetCGIResponse(HttpdConnData * conn, void * response) {
+  char sendBuff[MAX_SENDBUFF_LEN];
+  conn->priv->sendBuff = sendBuff;
+  conn->priv->sendBuffLen = 0;
+
+  conn->cgiResponse = response;
+  httpdProcessRequest(conn);
+  conn->cgiResponse = NULL;
+
+  return HTTPD_CGI_DONE;
 }

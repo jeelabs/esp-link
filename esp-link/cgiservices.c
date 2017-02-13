@@ -69,6 +69,7 @@ int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
       "\"name\": \"%s\", "
       "\"reset cause\": \"%d=%s\", "
       "\"size\": \"%s\", "
+      "\"upload-size\": \"%d\", "
       "\"id\": \"0x%02X 0x%04X\", "
       "\"partition\": \"%s\", "
       "\"slip\": \"%s\", "
@@ -80,6 +81,7 @@ int ICACHE_FLASH_ATTR cgiSystemInfo(HttpdConnData *connData) {
     rst_info->reason,
     rst_codes[rst_info->reason],
     flash_maps[system_get_flash_size_map()],
+    getUserPageSectionEnd()-getUserPageSectionStart(),
     fid & 0xff, (fid & 0xff00) | ((fid >> 16) & 0xff),
     part_id ? "user2.bin" : "user1.bin",
     flashConfig.slip_enable ? "enabled" : "disabled",
@@ -153,9 +155,9 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   if (syslog < 0) return HTTPD_CGI_DONE;
   syslog |= getUInt8Arg(connData, "syslog_filter", &flashConfig.syslog_filter);
   if (syslog < 0) return HTTPD_CGI_DONE;
-  syslog |= getBoolArg(connData, "syslog_showtick", (bool *)&flashConfig.syslog_showtick);
+  syslog |= getBoolArg(connData, "syslog_showtick", &flashConfig.syslog_showtick);
   if (syslog < 0) return HTTPD_CGI_DONE;
-  syslog |= getBoolArg(connData, "syslog_showdate", (bool *)&flashConfig.syslog_showdate);
+  syslog |= getBoolArg(connData, "syslog_showdate", &flashConfig.syslog_showdate);
   if (syslog < 0) return HTTPD_CGI_DONE;
 
 #ifdef SYSLOG
@@ -175,7 +177,7 @@ int ICACHE_FLASH_ATTR cgiServicesSet(HttpdConnData *connData) {
   }
 
   int8_t mdns = 0;
-  mdns |= getBoolArg(connData, "mdns_enable", (bool *)&flashConfig.mdns_enable);
+  mdns |= getBoolArg(connData, "mdns_enable", &flashConfig.mdns_enable);
   if (mdns < 0) return HTTPD_CGI_DONE;
 
   if (mdns > 0) {

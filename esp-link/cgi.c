@@ -16,6 +16,7 @@ Some random cgi routines.
 #include <esp8266.h>
 #include "cgi.h"
 #include "config.h"
+#include "web-server.h"
 
 #ifdef CGI_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
@@ -193,8 +194,7 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
   char buff[1024];
   // don't use jsonHeader so the response does get cached
-  httpdStartResponse(connData, 200);
-  httpdHeader(connData, "Cache-Control", "max-age=3600, must-revalidate");
+  noCacheHeaders(connData, 200);
   httpdHeader(connData, "Content-Type", "application/json");
   httpdEndHeaders(connData);
   // limit hostname to 12 chars
@@ -213,12 +213,15 @@ int ICACHE_FLASH_ATTR cgiMenu(HttpdConnData *connData) {
 #ifdef MQTT
         "\"REST/MQTT\", \"/mqtt.html\", "
 #endif
-        "\"Debug log\", \"/log.html\""
+        "\"Debug log\", \"/log.html\","
+        "\"Upgrade Firmware\", \"/flash.html\","
+        "\"Web Server\", \"/web-server.html\""
+	"%s"
       " ], "
       "\"version\": \"%s\", "
       "\"name\": \"%s\""
     " }",
-  esp_link_version, name);
+  WEB_UserPages(), esp_link_version, name);
 
   httpdSend(connData, buff, -1);
   return HTTPD_CGI_DONE;

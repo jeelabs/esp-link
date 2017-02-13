@@ -19,6 +19,7 @@
 #include "cgimqtt.h"
 #include "cgiflash.h"
 #include "cgioptiboot.h"
+#include "cgiwebserversetup.h"
 #include "auth.h"
 #include "espfs.h"
 #include "uart.h"
@@ -30,6 +31,7 @@
 #include "log.h"
 #include "gpio.h"
 #include "cgiservices.h"
+#include "web-server.h"
 
 #ifdef SYSLOG
 #include "syslog.h"
@@ -41,6 +43,14 @@
 #define NOTICE(format, ...) do {                                            \
   os_printf(format "\n", ## __VA_ARGS__);                                   \
 } while ( 0 )
+#endif
+
+#ifdef MEMLEAK_DEBUG
+#include "mem.h"
+bool ICACHE_FLASH_ATTR check_memleak_debug_enable(void)
+{
+    return MEMLEAK_DEBUG_ENABLE;
+}
 #endif
 
 /*
@@ -66,6 +76,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/log/reset", cgiReset, NULL },
   { "/console/reset", ajaxConsoleReset, NULL },
   { "/console/baud", ajaxConsoleBaud, NULL },
+  { "/console/fmt", ajaxConsoleFormat, NULL },
   { "/console/text", ajaxConsole, NULL },
   { "/console/send", ajaxConsoleSend, NULL },
   //Enable the line below to protect the WiFi configuration with an username/password combo.
@@ -88,6 +99,8 @@ HttpdBuiltInUrl builtInUrls[] = {
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
 #endif
+  { "/web-server/upload", cgiWebServerSetupUpload, NULL },
+  { "*.json", WEB_CgiJsonHook, NULL }, //Catch-all cgi JSON queries
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
 };
@@ -109,14 +122,37 @@ extern uint32_t _binary_espfs_img_start;
 extern void app_init(void);
 extern void mqtt_client_init(void);
 
-void user_rf_pre_init(void) {
+void ICACHE_FLASH_ATTR
+user_rf_pre_init(void) {
   //default is enabled
   system_set_os_print(DEBUG_SDK);
 }
 
+/* user_rf_cal_sector_set is a required function that is called by the SDK to get a flash
+ * sector number where it can store RF calibration data. This was introduced with SDK 1.5.4.1
+ * and is necessary because Espressif ran out of pre-reserved flash sectors. Ooops...  */
+uint32 ICACHE_FLASH_ATTR
+user_rf_cal_sector_set(void) {
+  uint32_t sect = 0;
+  switch (system_get_flash_size_map()) {
+  case FLASH_SIZE_4M_MAP_256_256: // 512KB
+    sect = 128 - 10; // 0x76000
+    break;
+  default:
+    sect = 128; // 0x80000
+  }
+  return sect;
+}
+
 // Main routine to initialize esp-link.
-void user_init(void) {
+void ICACHE_FLASH_ATTR
+user_init(void) {
   system_timer_reinit();
+
+// uncomment the following three lines to see flash config messages for troubleshooting
+  //uart_init(115200, 115200);
+  //logInit();
+  //os_delay_us(100000L);
   // get the flash config so we know how to init things
   //configWipe(); // uncomment to reset the config for testing purposes
   bool restoreOk = configRestore();
@@ -124,7 +160,8 @@ void user_init(void) {
   gpio_init();
   gpio_output_set(0, 0, 0, (1<<15)); // some people tie it to GND, gotta ensure it's disabled
   // init UART
-  uart_init(flashConfig.baud_rate, flashConfig.uart0_tx_enable_pin, 115200);
+  uart_init(CALC_UARTMODE(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits),
+            flashConfig.baud_rate, flashConfig.uart0_tx_enable_pin, 115200);
   logInit(); // must come after init of uart
   // Say hello (leave some time to cause break in TX after boot loader's msg
   os_delay_us(10000L);
@@ -136,11 +173,14 @@ void user_init(void) {
   // Wifi
   wifiInit();
   // init the flash filesystem with the html stuff
-  espFsInit(&_binary_espfs_img_start);
+  espFsInit(espLinkCtx, &_binary_espfs_img_start, ESPFS_MEMORY);
+
   //EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
   //os_printf("espFsInit %s\n", res?"ERR":"ok");
   // mount the http handlers
   httpdInit(builtInUrls, 80);
+  WEB_Init();
+
   // init the wifi-serial transparent bridge (port 23)
   serbridgeInit(23, 2323);
   uart_add_recv_cb(&serbridgeUartCb);
@@ -163,10 +203,15 @@ void user_init(void) {
   // Init SNTP service
   cgiServicesSNTPInit();
 #ifdef MQTT
-  NOTICE("initializing MQTT");
-  mqtt_client_init();
+  if (flashConfig.mqtt_enable) {
+    NOTICE("initializing MQTT");
+    mqtt_client_init();
+  }
 #endif
   NOTICE("initializing user application");
   app_init();
   NOTICE("Waiting for work to do...");
+#ifdef MEMLEAK_DEBUG
+  system_show_malloc();
+#endif
 }

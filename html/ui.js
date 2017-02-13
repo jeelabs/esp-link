@@ -151,7 +151,7 @@ function toggleClass(el, cl) {
 
 //===== AJAX
 
-function ajaxReq(method, url, ok_cb, err_cb) {
+function ajaxReq(method, url, ok_cb, err_cb, data) {
   var xhr = j();
   xhr.open(method, url, true);
   var timeout = setTimeout(function() {
@@ -173,7 +173,7 @@ function ajaxReq(method, url, ok_cb, err_cb) {
   }
 //  console.log("XHR send:", method, url);
   try {
-    xhr.send();
+    xhr.send(data);
   } catch(err) {
     console.log("XHR EXC :", method, url, "->", err);
     err_cb(599, err);

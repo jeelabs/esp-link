@@ -7,6 +7,7 @@
 #include "uart.h"
 #include "stk500.h"
 #include "serbridge.h"
+#include "mqtt_cmd.h"
 #include "serled.h"
 
 #define INIT_DELAY     150   // wait this many millisecs before sending anything
@@ -75,6 +76,7 @@ static void ICACHE_FLASH_ATTR optibootInit() {
   progState = stateInit;
   baudCnt = 0;
   uart0_baud(flashConfig.baud_rate);
+  mqtt_unblock();
   ackWait = 0;
   errMessage[0] = 0;
   responseLen = 0;
@@ -127,6 +129,7 @@ int ICACHE_FLASH_ATTR cgiOptibootSync(HttpdConnData *connData) {
   } else if (connData->requestType == HTTPD_METHOD_POST) {
     // issue reset
     optibootInit();
+    mqtt_block(); // prevent MQTT from interfering
     baudRate = flashConfig.baud_rate;
     programmingCB = optibootUartRecv;
     initBaud();
@@ -644,6 +647,7 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
       responseLen -= 2;
     }
     armTimer(PGM_INTERVAL); // reset timer
+    break;
   default:
     break;
   }

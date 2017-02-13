@@ -447,7 +447,6 @@ mqtt_send_message(MQTT_Client* client) {
   // get some details about the message
   uint16_t msg_type = mqtt_get_type(buf->data);
   uint8_t  msg_id = mqtt_get_id(buf->data, buf->filled);
-  msg_id = msg_id;
 #ifdef MQTT_DBG
   os_printf("MQTT: Send type=%s id=%04X len=%d\n", mqtt_msg_type[msg_type], msg_id, buf->filled);
 #if 0
@@ -629,7 +628,7 @@ void ICACHE_FLASH_ATTR
 MQTT_Init(MQTT_Client* client, char* host, uint32 port, uint8_t security, uint8_t sendTimeout,
     char* client_id, char* client_user, char* client_pass,
     uint8_t keepAliveTime) {
-  DBG_MQTT("MQTT_Init\n");
+  DBG_MQTT("MQTT_Init, host=%s\n", host);
 
   os_memset(client, 0, sizeof(MQTT_Client));
 

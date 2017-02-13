@@ -62,9 +62,9 @@ int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)
 
 // memory allocation functions are "different" due to memory debugging functionality
 // added in SDK 1.4.0
-void vPortFree(void *ptr, char * file, int line);
-void *pvPortMalloc(size_t xWantedSize, char * file, int line);
-void *pvPortZalloc(size_t, char * file, int line);
+void vPortFree(void *ptr, const char * file, int line);
+void *pvPortMalloc(size_t xWantedSize, const char * file, int line);
+void *pvPortZalloc(size_t, const char * file, int line);
 void *vPortMalloc(size_t xWantedSize);
 void pvPortFree(void *ptr);
 

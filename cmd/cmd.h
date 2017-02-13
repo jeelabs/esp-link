@@ -6,6 +6,9 @@
 #define CMD_H
 #include <esp8266.h>
 
+// keep track of whether we received a sync command from uC
+extern bool cmdInSync;
+
 // Standard SLIP escape chars from RFC
 #define SLIP_END      0300    // indicates end of packet
 #define SLIP_ESC      0333    // indicates byte stuffing
@@ -45,9 +48,16 @@ typedef enum {
   CMD_MQTT_SUBSCRIBE,   // subscribe to a topic
   CMD_MQTT_LWT,         // set the last-will-topic and messge
 
-  CMD_REST_SETUP = 20,
-  CMD_REST_REQUEST,
-  CMD_REST_SETHEADER,
+  CMD_REST_SETUP = 20,  // set-up callbacks
+  CMD_REST_REQUEST,     // do REST request
+  CMD_REST_SETHEADER,	// define header
+
+  CMD_WEB_SETUP = 30,   // set-up WEB callback
+  CMD_WEB_DATA,         // WEB data from MCU
+
+  CMD_SOCKET_SETUP = 40, // set-up callbacks
+  CMD_SOCKET_SEND,       // send data over UDP socket
+
 } CmdName;
 
 typedef void (*cmdfunc_t)(CmdPacket *cmd);
@@ -57,6 +67,9 @@ typedef struct {
   char      *sc_text;    // name as string
   cmdfunc_t sc_function; // pointer to function
 } CmdList;
+
+// command dispatch table
+extern const CmdList commands[];
 
 #define CMD_CBNLEN 16
 typedef struct {

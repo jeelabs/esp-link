@@ -90,11 +90,15 @@ function scanAPs() {
   scanTimeout = null;
   scanReqCnt = 0;
   ajaxReq('POST', "scan", function(data) {
-    //showNotification("Wifi scan started");
+    showNotification("Wifi scan started");
     window.setTimeout(scanResult, 1000);
   }, function(s, st) {
-    //showNotification("Wifi scan may have started?");
-    window.setTimeout(scanResult, 1000);
+    if (s == 400) {
+      showWarning("Cannot scan in AP mode");
+      $("#aps").innerHTML =
+        "Switch to <a href=\"#\" onclick=\"changeWifiMode(3)\">STA+AP mode</a> to scan.";
+    } else showWarning("Failed to scan: " + st);
+    //window.setTimeout(scanResult, 1000);
   });
 }
 
@@ -109,12 +113,10 @@ function getStatus() {
         showNotification(txt);
         showWifiInfo(data);
         blockScan = 0;
-
-  if (data.modechange == "yes") {
-    var txt2 = "esp-link will switch to STA-only mode in a few seconds";
-    window.setTimeout(function() { showNotification(txt2); }, 4000);
-  }
-
+        if (data.modechange == "yes") {
+          var txt2 = "esp-link will switch to STA-only mode in a few seconds";
+          window.setTimeout(function() { showNotification(txt2); }, 4000);
+        }
         $("#reconnect").removeAttribute("hidden");
         $("#reconnect").innerHTML =
           "If you are in the same network, go to <a href=\"http://"+data.ip+
@@ -138,6 +140,8 @@ function changeWifiMode(m) {
     showNotification("Mode changed");
     window.setTimeout(getWifiInfo, 100);
     blockScan = 0;
+    window.setTimeout(scanAPs, 500);
+    $("#aps").innerHTML = 'Scanning... <div class="spinner spinner-small"></div>';
   }, function(s, st) {
     showWarning("Error changing mode: " + st);
     window.setTimeout(getWifiInfo, 100);

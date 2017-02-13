@@ -13,6 +13,7 @@
 #include "syslog.h"
 #include "time.h"
 #include "task.h"
+#include "sntp.h"
 
 extern void * mem_trim(void *m, size_t s);	// not well documented...
 
@@ -46,7 +47,6 @@ static void ICACHE_FLASH_ATTR syslog_udp_recv_cb(void *arg, char *pusrdata, unsi
 
 #define syslog_send_udp() post_usr_task(syslog_task,0)
 
-#ifdef SYSLOG_DBG
 static char ICACHE_FLASH_ATTR *syslog_get_status(void) {
       switch (syslogState)
       {
@@ -77,11 +77,13 @@ static char ICACHE_FLASH_ATTR *syslog_get_status(void) {
       }
       return "UNKNOWN ";
 }
-#endif
 
 static void ICACHE_FLASH_ATTR syslog_set_status(enum syslog_state state) {
   syslogState = state;
   DBG("[%dµs] %s: %s (%d)\n", WDEV_NOW(), __FUNCTION__, syslog_get_status(), state);
+#ifndef SYSLOG_DBG
+  os_printf("Syslog state: %s\n", syslog_get_status());
+#endif
 }
 
 static void ICACHE_FLASH_ATTR syslog_timer_arm(int delay) {
@@ -261,6 +263,7 @@ void ICACHE_FLASH_ATTR syslog_init(char *syslog_host)
 {
 
   DBG("[%uµs] %s\n", WDEV_NOW(), __FUNCTION__);
+  os_printf("SYSLOG host=%s *host=0x%x\n", syslog_host, *syslog_host);
   if (!*syslog_host) {
     syslog_set_status(SYSLOG_HALTED);
     return;
@@ -399,6 +402,7 @@ syslog_compose(uint8_t facility, uint8_t severity, const char *tag, const char *
 
     // create timestamp: FULL-DATE "T" PARTIAL-TIME "Z": 'YYYY-mm-ddTHH:MM:SSZ '
     // as long as realtime_stamp is 0 we use tick div 10⁶ as date
+    uint32_t realtime_stamp = sntp_get_current_timestamp();
     now = (realtime_stamp == 0) ? (se->tick / 1000000) : realtime_stamp;
     tp = gmtime(&now);
 
@@ -504,8 +508,7 @@ void ICACHE_FLASH_ATTR syslog(uint8_t facility, uint8_t severity, const char *ta
 {
   DBG("[%dµs] %s status: %s\n", WDEV_NOW(), __FUNCTION__, syslog_get_status());
 
-  if (syslogState == SYSLOG_ERROR ||
-    syslogState == SYSLOG_HALTED)
+  if (flashConfig.syslog_host[0] == 0 || syslogState == SYSLOG_ERROR || syslogState == SYSLOG_HALTED)
     return;
 
   if (severity > flashConfig.syslog_filter)

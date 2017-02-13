@@ -95,8 +95,8 @@ tx_completed_interrupt(void *unused)
  * Parameters   : uart_no, use UART0 or UART1 defined ahead
  * Returns      : NONE
 *******************************************************************************/
-static void ICACHE_FLASH_ATTR
-uart_config(uint8 uart_no)
+void ICACHE_FLASH_ATTR
+uart_config(uint8 uart_no, UartBautRate baudrate, uint32 conf0)
 {
   if (uart_no == UART1) {
     PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_U1TXD_BK);
@@ -110,14 +110,11 @@ uart_config(uint8 uart_no)
     //PIN_PULLUP_DIS (PERIPHS_IO_MUX_U0RXD_U);
   }
 
-  uart_div_modify(uart_no, UART_CLK_FREQ / UartDev.baut_rate);
+  uart_div_modify(uart_no, UART_CLK_FREQ / baudrate);
 
   if (uart_no == UART1)  //UART 1 always 8 N 1
-    WRITE_PERI_REG(UART_CONF0(uart_no),
-        CALC_UARTMODE(EIGHT_BITS, NONE_BITS, ONE_STOP_BIT));
-  else
-    WRITE_PERI_REG(UART_CONF0(uart_no),
-        CALC_UARTMODE(UartDev.data_bits, UartDev.parity, UartDev.stop_bits));
+    conf0 = CALC_UARTMODE(EIGHT_BITS, NONE_BITS, ONE_STOP_BIT);
+  WRITE_PERI_REG(UART_CONF0(uart_no), conf0);
 
   //clear rx and tx fifo,not ready
   SET_PERI_REG_MASK(UART_CONF0(uart_no), UART_RXFIFO_RST | UART_TXFIFO_RST);
@@ -337,6 +334,12 @@ uart0_baud(int rate) {
   uart_div_modify(UART0, UART_CLK_FREQ / rate);
 }
 
+void ICACHE_FLASH_ATTR
+uart0_config(uint8_t data_bits, uint8_t parity, uint8_t stop_bits) {
+  uint32_t conf0 = CALC_UARTMODE(data_bits, parity, stop_bits);
+  WRITE_PERI_REG(UART_CONF0(0), conf0);
+}
+
 /******************************************************************************
  * FunctionName : uart_init
  * Description  : user interface for init uart
@@ -346,7 +349,7 @@ uart0_baud(int rate) {
  * Returns      : NONE
 *******************************************************************************/
 void ICACHE_FLASH_ATTR
-uart_init(UartBautRate uart0_br, int8_t uart0TxEnablePin, UartBautRate uart1_br)
+uart_init(uint32 conf0, UartBautRate uart0_br, int8_t uart0TxEnablePin, UartBautRate uart1_br)
 {
   if (uart0TxEnablePin >= 0) {
 	uart0_set_tx_enable_pin(uart0TxEnablePin);
@@ -356,11 +359,8 @@ uart_init(UartBautRate uart0_br, int8_t uart0TxEnablePin, UartBautRate uart1_br)
   }
 
   // rom use 74880 baut_rate, here reinitialize
-  uart0_baud_rate = (int)uart0_br;
-  UartDev.baut_rate = uart0_br;
-  uart_config(UART0);
-  UartDev.baut_rate = uart1_br;
-  uart_config(UART1);
+  uart_config(UART0, uart0_br, conf0);
+  uart_config(UART1, uart1_br, conf0);
   for (int i=0; i<4; i++) uart_tx_one_char(UART1, '\n');
   for (int i=0; i<4; i++) uart_tx_one_char(UART0, '\n');
   ETS_UART_INTR_ENABLE();
@@ -380,12 +380,4 @@ uart_add_recv_cb(UartRecv_cb cb) {
     }
   }
   os_printf("UART: max cb count exceeded\n");
-}
-
-void ICACHE_FLASH_ATTR
-uart_reattach()
-{
-  uart_init(BIT_RATE_74880, -1, BIT_RATE_74880);
-//  ETS_UART_INTR_ATTACH(uart_rx_intr_handler_ssc,  &(UartDev.rcv_buff));
-//  ETS_UART_INTR_ENABLE();
 }

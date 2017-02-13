@@ -121,18 +121,29 @@ void ICACHE_FLASH_ATTR wifiAddStateChangeCb(WifiStateChangeCb cb) {
   DBG("WIFI: max state change cb count exceeded\n");
 }
 
+static struct mdns_info *mdns_info;
+// See https://github.com/arduino/Arduino/blob/master/arduino-core/src/cc/arduino/packages/discoverers/NetworkDiscovery.java#L155-L168
+static char* mdns_txt = "ssh_upload=no";
+
 void ICACHE_FLASH_ATTR wifiStartMDNS(struct ip_addr ip) {
   if (flashConfig.mdns_enable) {
-    struct mdns_info *mdns_info = (struct mdns_info *)os_zalloc(sizeof(struct mdns_info));
+    if (mdns_info == NULL)
+      mdns_info = (struct mdns_info *)os_zalloc(sizeof(struct mdns_info));
+
     mdns_info->host_name = flashConfig.hostname;
     mdns_info->server_name = flashConfig.mdns_servername;
     mdns_info->server_port = 80;
     mdns_info->ipAddr = ip.addr;
+    mdns_info->txt_data[0] = mdns_txt;
     espconn_mdns_init(mdns_info);
   }
   else {
     espconn_mdns_server_unregister();
     espconn_mdns_close();
+    if (mdns_info != NULL) {
+      os_free(mdns_info);
+      mdns_info = NULL;
+    }
   }
   mdns_started = true;
 }
@@ -551,30 +562,34 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
     if (checkString(buff) && len>7 && len<=64) {
         // String preprocessing done in client side, wifiap.js line 31
         os_memcpy(apconf.password, buff, len);
+        os_printf("Setting AP password len=%d\n", len);
     } else if (len != 0) {
         jsonHeader(connData, 400);
         httpdSend(connData, "PASSWORD not valid or out of range", -1);
         return HTTPD_CGI_DONE;
     }
     // Set auth mode
-    if(len != 0){
+    if (len != 0) {
         // Set authentication mode, before password to check open settings
         len=httpdFindArg(connData->getArgs, "ap_authmode", buff, sizeof(buff));
-        if(len>0){
+        if (len > 0) {
             int value = atoi(buff);
-            if(value >= 0  && value <= 4){
+            if (value > 0  && value <= 4) {
                 apconf.authmode = value;
-            }else{
+            } else {
                 // If out of range set by default
+                os_printf("Forcing AP authmode to WPA_WPA2_PSK\n");
                 apconf.authmode = 4;
             }
-        }else{
+        } else {
             // Valid password but wrong auth mode, default 4
+            os_printf("Forcing AP authmode to WPA_WPA2_PSK\n");
             apconf.authmode = 4;
         }
-    }else{
+    } else {
         apconf.authmode = 0;
     }
+    os_printf("Setting AP authmode=%d\n", apconf.authmode);
     // Set max connection number
     len=httpdFindArg(connData->getArgs, "ap_maxconn", buff, sizeof(buff));
     if(len>0){
