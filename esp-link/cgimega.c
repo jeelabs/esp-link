@@ -1368,7 +1368,7 @@ static bool ICACHE_FLASH_ATTR debug() {
   return false;
 #endif
 
-#if 1
+#if 0
   if (optibootData == 0)
     return false;
   if ((0x0000F000 <= optibootData->address) && (optibootData->address <= 0x00010200))

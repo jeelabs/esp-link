@@ -4,6 +4,8 @@
 #include "config.h"
 #include "mqtt.h"
 
+#include "cmd/cmd.h"
+
 #ifdef MQTTCLIENT_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else
@@ -114,4 +116,23 @@ mqtt_client_on_data(MqttDataCallback dataCb) {
   data_cb = dataCb;
 }
 
+// Command handler for MQTT information
+void ICACHE_FLASH_ATTR cmdMqttGetClientId(CmdPacket *cmd) {
+  CmdRequest req;
+
+  cmdRequest(&req, cmd);
+  if(cmd->argc != 0 || cmd->value == 0) {
+    cmdResponseStart(CMD_RESP_V, 0, 0);
+    cmdResponseEnd();
+    return;
+  }
+
+  uint32_t callback = req.cmd->value;
+
+  cmdResponseStart(CMD_RESP_CB, callback, 1);
+  cmdResponseBody(flashConfig.mqtt_clientid, strlen(flashConfig.mqtt_clientid)+1);
+  cmdResponseEnd();
+
+  os_printf("MqttGetClientId : %s\n", flashConfig.mqtt_clientid);
+}
 #endif // MQTT

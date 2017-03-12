@@ -24,4 +24,7 @@ int checkString(char *str);
 extern uint8_t wifiState;
 extern bool mdns_started;
 
+int wifiGetApCount();
+void wifiGetApName(int i, char *ptr);
+
 #endif

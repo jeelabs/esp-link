@@ -30,7 +30,13 @@ static void cmdSync(CmdPacket *cmd);
 static void cmdWifiStatus(CmdPacket *cmd);
 static void cmdGetTime(CmdPacket *cmd);
 static void cmdGetWifiInfo(CmdPacket *cmd);
+static void cmdSetWifiInfo(CmdPacket *cmd);
 static void cmdAddCallback(CmdPacket *cmd);
+
+static void cmdWifiGetApCount(CmdPacket *cmd);
+static void cmdWifiGetApName(CmdPacket *cmd);
+
+void cmdMqttGetClientId(CmdPacket *cmd);
 
 // keep track of last status sent to uC so we can notify it when it changes
 static uint8_t lastWifiStatus = wifiIsDisconnected;
@@ -47,11 +53,17 @@ const CmdList commands[] = {
   {CMD_CB_ADD,          "ADD_CB",         cmdAddCallback},
   {CMD_GET_TIME,        "GET_TIME",       cmdGetTime},
   {CMD_GET_WIFI_INFO,   "GET_WIFI_INFO",  cmdGetWifiInfo},
+  {CMD_SET_WIFI_INFO,   "SET_WIFI_INFO",  cmdSetWifiInfo},
+
+  {CMD_WIFI_GET_APCOUNT,"WIFI_GET_APCOUNT", cmdWifiGetApCount},
+  {CMD_WIFI_GET_APNAME, "WIFI_GET_APNAME", cmdWifiGetApName},
+
 #ifdef MQTT
   {CMD_MQTT_SETUP,      "MQTT_SETUP",     MQTTCMD_Setup},
   {CMD_MQTT_PUBLISH,    "MQTT_PUB",       MQTTCMD_Publish},
   {CMD_MQTT_SUBSCRIBE , "MQTT_SUB",       MQTTCMD_Subscribe},
   {CMD_MQTT_LWT,        "MQTT_LWT",       MQTTCMD_Lwt},
+  {CMD_MQTT_GET_CLIENTID,"MQTT_CLIENTID", cmdMqttGetClientId},
 #endif
 #ifdef REST
   {CMD_REST_SETUP,      "REST_SETUP",     REST_Setup},
@@ -208,6 +220,11 @@ cmdGetWifiInfo(CmdPacket *cmd) {
   cmdResponseEnd();
 }
 
+static void ICACHE_FLASH_ATTR
+cmdSetWifiInfo(CmdPacket *cmd) {
+  os_printf("SetWifiInfo()\n");
+}
+
 // Command handler to add a callback to the named-callbacks list, this is for a callback to the uC
 static void ICACHE_FLASH_ATTR
 cmdAddCallback(CmdPacket *cmd) {
@@ -226,4 +243,40 @@ cmdAddCallback(CmdPacket *cmd) {
   DBG("cmdAddCallback: name=%s\n", name);
 
   cmdAddCb(name, cmd->value); // save the sensor callback
+}
+
+// Query the number of wifi access points
+static void ICACHE_FLASH_ATTR
+cmdWifiGetApCount(CmdPacket *cmd) {
+  int n = wifiGetApCount();
+  os_printf("WifiGetApCount : %d\n", n);
+  cmdResponseStart(CMD_RESP_V, n, 0);
+  cmdResponseEnd();
+}
+
+// Query the name of a wifi access point
+static void ICACHE_FLASH_ATTR
+cmdWifiGetApName(CmdPacket *cmd) {
+  CmdRequest req;
+
+  cmdRequest(&req, cmd);
+
+  int argc = cmdGetArgc(&req);
+  os_printf("cmdWifiGetApName: argc %d\n", argc);
+  if (argc != 1)
+    return;
+
+  uint16_t i;
+  cmdPopArg(&req, (uint8_t*)&i, 2);
+
+  uint32_t callback = req.cmd->value;
+
+  char myssid[33];
+  wifiGetApName(i, myssid);
+  myssid[32] = '\0';
+  os_printf("wifiGetApName(%d) -> {%s}\n", i, myssid);
+
+  cmdResponseStart(CMD_RESP_CB, callback, 1);
+  cmdResponseBody(myssid, strlen(myssid)+1);
+  cmdResponseEnd();
 }

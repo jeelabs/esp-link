@@ -944,3 +944,29 @@ void ICACHE_FLASH_ATTR wifiInit() {
     os_timer_setfn(&resetTimer, resetTimerCb, NULL);
     os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
 }
+
+// Access functions for cgiWifiAps
+int ICACHE_FLASH_ATTR wifiGetApCount() {
+  return cgiWifiAps.noAps;
+}
+
+ICACHE_FLASH_ATTR void wifiGetApName(int i, char *ptr) {
+  if (i < 0)
+    return;
+  if (i >= cgiWifiAps.noAps)
+    return;
+
+  if (ptr != 0)
+    strncpy(ptr, cgiWifiAps.apData[i]->ssid, 32);
+
+  os_printf("AP %s\n", cgiWifiAps.apData[i]->ssid);
+}
+
+// This may not belong here : called from cmd/handlers.c
+// But it's good to have similar functionality close to each other.
+// This performs functions similar to cgiWiFiConnect()
+int ICACHE_FLASH_ATTR wifiConnect(char *ssid, char *pass) {
+// Danny
+  return 0;
+}
+
