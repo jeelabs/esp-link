@@ -25,6 +25,7 @@ extern uint8_t wifiState;
 extern bool mdns_started;
 
 int wifiGetApCount();
-void wifiGetApName(int i, char *ptr);
+void wifiGetApName(int, char *);
+int wifiSignalStrength(int);
 
 #endif

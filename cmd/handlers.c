@@ -35,6 +35,8 @@ static void cmdAddCallback(CmdPacket *cmd);
 
 static void cmdWifiGetApCount(CmdPacket *cmd);
 static void cmdWifiGetApName(CmdPacket *cmd);
+static void cmdWifiSelectSSID(CmdPacket *cmd);
+static void cmdWifiSignalStrength(CmdPacket *cmd);
 
 void cmdMqttGetClientId(CmdPacket *cmd);
 
@@ -55,8 +57,10 @@ const CmdList commands[] = {
   {CMD_GET_WIFI_INFO,   "GET_WIFI_INFO",  cmdGetWifiInfo},
   {CMD_SET_WIFI_INFO,   "SET_WIFI_INFO",  cmdSetWifiInfo},
 
-  {CMD_WIFI_GET_APCOUNT,"WIFI_GET_APCOUNT", cmdWifiGetApCount},
-  {CMD_WIFI_GET_APNAME, "WIFI_GET_APNAME", cmdWifiGetApName},
+  {CMD_WIFI_GET_APCOUNT,	"WIFI_GET_APCOUNT",	cmdWifiGetApCount},
+  {CMD_WIFI_GET_APNAME,		"WIFI_GET_APNAME",	cmdWifiGetApName},
+  {CMD_WIFI_SELECT_SSID,	"WIFI_SELECT_SSID",	cmdWifiSelectSSID},
+  {CMD_WIFI_SIGNAL_STRENGTH,	"WIFI_SIGNAL_STRENGTH",	cmdWifiSignalStrength},
 
 #ifdef MQTT
   {CMD_MQTT_SETUP,      "MQTT_SETUP",     MQTTCMD_Setup},
@@ -220,11 +224,6 @@ cmdGetWifiInfo(CmdPacket *cmd) {
   cmdResponseEnd();
 }
 
-static void ICACHE_FLASH_ATTR
-cmdSetWifiInfo(CmdPacket *cmd) {
-  os_printf("SetWifiInfo()\n");
-}
-
 // Command handler to add a callback to the named-callbacks list, this is for a callback to the uC
 static void ICACHE_FLASH_ATTR
 cmdAddCallback(CmdPacket *cmd) {
@@ -246,8 +245,7 @@ cmdAddCallback(CmdPacket *cmd) {
 }
 
 // Query the number of wifi access points
-static void ICACHE_FLASH_ATTR
-cmdWifiGetApCount(CmdPacket *cmd) {
+static void ICACHE_FLASH_ATTR cmdWifiGetApCount(CmdPacket *cmd) {
   int n = wifiGetApCount();
   os_printf("WifiGetApCount : %d\n", n);
   cmdResponseStart(CMD_RESP_V, n, 0);
@@ -255,8 +253,7 @@ cmdWifiGetApCount(CmdPacket *cmd) {
 }
 
 // Query the name of a wifi access point
-static void ICACHE_FLASH_ATTR
-cmdWifiGetApName(CmdPacket *cmd) {
+static void ICACHE_FLASH_ATTR cmdWifiGetApName(CmdPacket *cmd) {
   CmdRequest req;
 
   cmdRequest(&req, cmd);
@@ -278,5 +275,41 @@ cmdWifiGetApName(CmdPacket *cmd) {
 
   cmdResponseStart(CMD_RESP_CB, callback, 1);
   cmdResponseBody(myssid, strlen(myssid)+1);
+  cmdResponseEnd();
+}
+
+/*
+ * Select a wireless network.
+ */
+static void ICACHE_FLASH_ATTR cmdWifiSelectSSID(CmdPacket *cmd) {
+}
+
+/*
+ * Once we're attached to some wireless network, choose not to pick up address from
+ * DHCP or so but set our own.
+ */
+static void ICACHE_FLASH_ATTR cmdSetWifiInfo(CmdPacket *cmd) {
+  os_printf("SetWifiInfo()\n");
+}
+
+static void ICACHE_FLASH_ATTR cmdWifiSignalStrength(CmdPacket *cmd) {
+  CmdRequest req;
+
+  cmdRequest(&req, cmd);
+
+  int argc = cmdGetArgc(&req);
+  if (argc != 1) {
+    os_printf("cmdWifiSignalStrength: argc %d\n", argc);
+    return;
+  }
+
+  int32_t i;
+  cmdPopArg(&req, (uint8_t*)&i, 4);
+  os_printf("cmdWifiSignalStrength: argc %d, ", argc);
+  os_printf("i %d\n", i);
+
+  int rssi = wifiSignalStrength(i);
+
+  cmdResponseStart(CMD_RESP_V, rssi, 0);
   cmdResponseEnd();
 }

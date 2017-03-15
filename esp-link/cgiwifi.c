@@ -152,7 +152,7 @@ void ICACHE_FLASH_ATTR wifiStartMDNS(struct ip_addr ip) {
 //WiFi access point data
 typedef struct {
   char ssid[32];
-  sint8 rssi;
+  sint8 rssi;		// Received signal strength indication
   char enc;
 } ApData;
 
@@ -970,3 +970,14 @@ int ICACHE_FLASH_ATTR wifiConnect(char *ssid, char *pass) {
   return 0;
 }
 
+ICACHE_FLASH_ATTR int wifiSignalStrength(int i) { 
+  sint8 rssi;
+
+  if (i < 0)
+    rssi = wifi_station_get_rssi();	// Current network's signal strength
+  else if (i >= cgiWifiAps.noAps)
+    rssi = 0;				// FIX ME
+  else
+    rssi = cgiWifiAps.apData[i]->rssi;	// Signal strength of any known network
+  return rssi;
+}
