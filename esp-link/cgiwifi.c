@@ -980,11 +980,5 @@ ICACHE_FLASH_ATTR int wifiSignalStrength(int i) {
   else
     rssi = cgiWifiAps.apData[i]->rssi;	// Signal strength of any known network
 
-  os_printf("RSSIs : ");
-  for (int j=0; j<cgiWifiAps.noAps; j++) {
-    int rssi = cgiWifiAps.apData[j]->rssi;
-    os_printf("%d ", rssi);
-  }
-  os_printf("\n");
   return rssi;
 }

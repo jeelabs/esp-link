@@ -304,8 +304,6 @@ static void ICACHE_FLASH_ATTR cmdWifiSignalStrength(CmdPacket *cmd) {
   }
 
   char x;
-  // int32_t i;
-  // cmdPopArg(&req, (uint8_t*)&i, 4);
   cmdPopArg(&req, (uint8_t*)&x, 1);
   int i = x;
   os_printf("cmdWifiSignalStrength: argc %d, ", argc);
