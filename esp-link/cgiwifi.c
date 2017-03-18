@@ -13,7 +13,9 @@ Cgi/template routines for the /wifi url.
  * ----------------------------------------------------------------------------
  */
 
+
 #include <esp8266.h>
+#include "cmd.h"
 #include "cgiwifi.h"
 #include "cgi.h"
 #include "status.h"
@@ -34,7 +36,7 @@ bool mdns_started = false;
 // ===== wifi status change callbacks
 static WifiStateChangeCb wifi_state_change_cb[4];
 
-// Temp store for new staion config
+// Temp store for new station config
 struct station_config stconf;
 
 // Temp store for new ap config
@@ -360,6 +362,18 @@ static void ICACHE_FLASH_ATTR reassTimerCb(void *arg) {
   os_timer_arm(&resetTimer, 4*RESET_TIMEOUT, 0);
 }
 
+// Kick off connection to some network
+void ICACHE_FLASH_ATTR connectToNetwork(char *ssid, char *pass) {
+  os_strncpy((char*)stconf.ssid, ssid, 32);
+  os_strncpy((char*)stconf.password, pass, 64);
+  DBG("Wifi try to connect to AP %s pw %s\n", ssid, pass);
+
+  // Schedule disconnect/connect
+  os_timer_disarm(&reassTimer);
+  os_timer_setfn(&reassTimer, reassTimerCb, NULL);
+  os_timer_arm(&reassTimer, 1000, 0); // 1 second for the response of this request to make it
+}
+
 // This cgi uses the routines above to connect to a specific access point with the
 // given ESSID using the given password.
 int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
@@ -379,14 +393,8 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 
   if (el > 0 && pl >= 0) {
     //Set to 0 if you want to disable the actual reconnecting bit
-    os_strncpy((char*)stconf.ssid, essid, 32);
-    os_strncpy((char*)stconf.password, passwd, 64);
-    DBG("Wifi try to connect to AP %s pw %s\n", essid, passwd);
 
-    //Schedule disconnect/connect
-    os_timer_disarm(&reassTimer);
-    os_timer_setfn(&reassTimer, reassTimerCb, NULL);
-    os_timer_arm(&reassTimer, 1000, 0); // 1 second for the response of this request to make it
+    connectToNetwork(essid, passwd);
     jsonHeader(connData, 200);
   } else {
     jsonHeader(connData, 400);
@@ -981,4 +989,19 @@ ICACHE_FLASH_ATTR int wifiSignalStrength(int i) {
     rssi = cgiWifiAps.apData[i]->rssi;	// Signal strength of any known network
 
   return rssi;
+}
+
+void ICACHE_FLASH_ATTR cmdWifiQuerySSID(CmdPacket *cmd) {
+  CmdRequest req;
+  cmdRequest(&req, cmd);
+  uint32_t callback = req.cmd->value;
+
+  struct station_config conf;
+  bool res = wifi_station_get_config(&conf);
+
+  os_printf("QuerySSID : %s\n", conf.ssid);
+
+  cmdResponseStart(CMD_RESP_CB, callback, 1);
+  cmdResponseBody(conf.ssid, strlen(conf.ssid)+1);
+  cmdResponseEnd();
 }

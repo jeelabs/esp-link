@@ -65,6 +65,7 @@ typedef enum {
   CMD_WIFI_GET_APNAME,
   CMD_WIFI_SELECT_SSID,
   CMD_WIFI_SIGNAL_STRENGTH,	// Query RSSI
+  CMD_WIFI_GET_SSID,		// Query SSID currently connected to
 
 } CmdName;
 

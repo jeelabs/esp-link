@@ -13,6 +13,7 @@
 #include "httpd.h"
 #include "httpdespfs.h"
 #include "cgi.h"
+#include "cmd.h"
 #include "cgiwifi.h"
 #include "cgipins.h"
 #include "cgitcp.h"

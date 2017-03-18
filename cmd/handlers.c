@@ -61,6 +61,7 @@ const CmdList commands[] = {
   {CMD_WIFI_GET_APNAME,		"WIFI_GET_APNAME",	cmdWifiGetApName},
   {CMD_WIFI_SELECT_SSID,	"WIFI_SELECT_SSID",	cmdWifiSelectSSID},
   {CMD_WIFI_SIGNAL_STRENGTH,	"WIFI_SIGNAL_STRENGTH",	cmdWifiSignalStrength},
+  {CMD_WIFI_GET_SSID,		"WIFI_GET_SSID",	cmdWifiQuerySSID},
 
 #ifdef MQTT
   {CMD_MQTT_SETUP,      "MQTT_SETUP",     MQTTCMD_Setup},
@@ -280,8 +281,48 @@ static void ICACHE_FLASH_ATTR cmdWifiGetApName(CmdPacket *cmd) {
 
 /*
  * Select a wireless network.
+ * This can be called in two ways :
+ * - with a pair of strings (SSID, password)
+ * - with a number and a string (index into network array, password)
  */
 static void ICACHE_FLASH_ATTR cmdWifiSelectSSID(CmdPacket *cmd) {
+  CmdRequest req;
+  cmdRequest(&req, cmd);
+  int argc = cmdGetArgc(&req);
+  char *ssid, *pass;
+
+  if (argc != 2)
+    return;
+
+  int len = cmdArgLen(&req);
+  if (len == 1) {
+    // Assume this is the index
+    uint8_t ix;
+    cmdPopArg(&req, &ix, 1);
+    len = cmdArgLen(&req);
+    pass = (char *)os_malloc(len+2);
+    cmdPopArg(&req, pass, len);
+    pass[len] = 0;
+
+    os_printf("SelectSSID(%d,%s)", ix, pass);
+
+    char myssid[33];
+    wifiGetApName(ix, myssid);
+    myssid[32] = '\0';
+    connectToNetwork(myssid, pass);
+  } else {
+    ssid = os_malloc(len+2);
+    cmdPopArg(&req, ssid, len);
+    ssid[len] = 0;
+
+    len = cmdArgLen(&req);
+    pass = (char *)os_malloc(len+2);
+    cmdPopArg(&req, pass, len);
+    pass[len] = 0;
+
+    os_printf("SelectSSID(%s,%s)", ssid, pass);
+    connectToNetwork(ssid, pass);
+  }
 }
 
 /*
