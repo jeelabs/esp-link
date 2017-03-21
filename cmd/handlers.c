@@ -62,6 +62,7 @@ const CmdList commands[] = {
   {CMD_WIFI_SELECT_SSID,	"WIFI_SELECT_SSID",	cmdWifiSelectSSID},
   {CMD_WIFI_SIGNAL_STRENGTH,	"WIFI_SIGNAL_STRENGTH",	cmdWifiSignalStrength},
   {CMD_WIFI_GET_SSID,		"WIFI_GET_SSID",	cmdWifiQuerySSID},
+  {CMD_WIFI_START_SCAN,		"WIFI_START_SCAN",	cmdWifiStartScan},
 
 #ifdef MQTT
   {CMD_MQTT_SETUP,      "MQTT_SETUP",     MQTTCMD_Setup},

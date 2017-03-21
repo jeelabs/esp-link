@@ -227,6 +227,7 @@ static void ICACHE_FLASH_ATTR scanStartCb(void *arg) {
   wifi_station_scan(NULL, wifiScanDoneCb);
 }
 
+// Start scanning, web interface
 static int ICACHE_FLASH_ATTR cgiWiFiStartScan(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
   jsonHeader(connData, 200);
@@ -237,6 +238,16 @@ static int ICACHE_FLASH_ATTR cgiWiFiStartScan(HttpdConnData *connData) {
     os_timer_arm(&scanTimer, 200, 0);
   }
   return HTTPD_CGI_DONE;
+}
+
+// Start scanning, API interface
+void ICACHE_FLASH_ATTR cmdWifiStartScan(CmdPacket *cmd) {
+  if (!cgiWifiAps.scanInProgress) {
+    cgiWifiAps.scanInProgress = 1;
+    os_timer_disarm(&scanTimer);
+    os_timer_setfn(&scanTimer, scanStartCb, NULL);
+    os_timer_arm(&scanTimer, 200, 0);
+  }
 }
 
 static int ICACHE_FLASH_ATTR cgiWiFiGetScan(HttpdConnData *connData) {
@@ -955,6 +966,8 @@ void ICACHE_FLASH_ATTR wifiInit() {
 
 // Access functions for cgiWifiAps
 int ICACHE_FLASH_ATTR wifiGetApCount() {
+  if (cgiWifiAps.scanInProgress)
+    return 0;
   return cgiWifiAps.noAps;
 }
 
@@ -1002,6 +1015,6 @@ void ICACHE_FLASH_ATTR cmdWifiQuerySSID(CmdPacket *cmd) {
   os_printf("QuerySSID : %s\n", conf.ssid);
 
   cmdResponseStart(CMD_RESP_CB, callback, 1);
-  cmdResponseBody(conf.ssid, strlen(conf.ssid)+1);
+  cmdResponseBody(conf.ssid, strlen((char *)conf.ssid)+1);
   cmdResponseEnd();
 }
