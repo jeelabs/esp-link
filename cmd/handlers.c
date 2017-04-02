@@ -40,6 +40,8 @@ static void cmdWifiSignalStrength(CmdPacket *cmd);
 
 void cmdMqttGetClientId(CmdPacket *cmd);
 
+void cmdUPnPScan(CmdPacket *cmd);
+
 // keep track of last status sent to uC so we can notify it when it changes
 static uint8_t lastWifiStatus = wifiIsDisconnected;
 // keep track of whether we have registered our cb handler with the wifi subsystem
@@ -63,6 +65,8 @@ const CmdList commands[] = {
   {CMD_WIFI_SIGNAL_STRENGTH,	"WIFI_SIGNAL_STRENGTH",	cmdWifiSignalStrength},
   {CMD_WIFI_GET_SSID,		"WIFI_GET_SSID",	cmdWifiQuerySSID},
   {CMD_WIFI_START_SCAN,		"WIFI_START_SCAN",	cmdWifiStartScan},
+
+  {CMD_UPNP_SCAN,		"UPNP_SCAN",		cmdUPnPScan},
 
 #ifdef MQTT
   {CMD_MQTT_SETUP,      "MQTT_SETUP",     MQTTCMD_Setup},
