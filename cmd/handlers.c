@@ -41,6 +41,8 @@ static void cmdWifiSignalStrength(CmdPacket *cmd);
 void cmdMqttGetClientId(CmdPacket *cmd);
 
 void cmdUPnPScan(CmdPacket *cmd);
+void cmdUPnPAddPort(CmdPacket *cmd);
+void cmdUPnPRemovePort(CmdPacket *cmd);
 
 // keep track of last status sent to uC so we can notify it when it changes
 static uint8_t lastWifiStatus = wifiIsDisconnected;
@@ -67,6 +69,8 @@ const CmdList commands[] = {
   {CMD_WIFI_START_SCAN,		"WIFI_START_SCAN",	cmdWifiStartScan},
 
   {CMD_UPNP_SCAN,		"UPNP_SCAN",		cmdUPnPScan},
+  {CMD_UPNP_ADD_PORT,		"UPNP_ADD_PORT",	cmdUPnPAddPort},
+  {CMD_UPNP_REMOVE_PORT,	"UPNP_REMOVE_PORT",	cmdUPnPRemovePort},
 
 #ifdef MQTT
   {CMD_MQTT_SETUP,      "MQTT_SETUP",     MQTTCMD_Setup},
