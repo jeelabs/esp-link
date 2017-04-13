@@ -48,16 +48,60 @@ socketclient_recv_cb(void *arg, char *pusrdata, unsigned short length) {
 
 	uint8_t clientNum = client->conn_num;
 	uint8_t cb_type = USERCB_RECV;
-	DBG_SOCK("SOCKET #%d: Received %d bytes: %s\n", client-socketClient, length, pusrdata);
+
+	// DBG_SOCK("SOCKET #%d: Received %d bytes: %s\n", client-socketClient, length, pusrdata);
+	// DBG_SOCK("SOCKET #%d: Received %d bytes, CB=0x%04X\n", client-socketClient, length, client->resp_cb);
+	DBG_SOCK("SOCKET #%d: Received %d bytes\n", client-socketClient, length);
+
+#if 0
+	// Hack : only forward the LOCATION: field
+	for (int i=0; i<length-20; i++)
+	  if (pusrdata[i] == 0x0D && pusrdata[i+1] == 0x0A && pusrdata[i+2] == 'L'
+	   && os_strncmp(pusrdata+i+2, "LOCATION:", 9) == 0) {
+	     // find end of LOCATION field
+	     int j=i+11, k;
+	     for (k=j; pusrdata[k] && pusrdata[k] != 0x0D; k++) ;
+	     int len = k-i-1;
+	pusrdata[k] = 0;
+
+	     cmdResponseStart(CMD_RESP_CB, client->resp_cb, 4);
+	     cmdResponseBody(&cb_type, 1);
+	     cmdResponseBody(&clientNum, 1);
+	     cmdResponseBody(&len, 2);
+	     cmdResponseBody(pusrdata+i+2, len);
+	     cmdResponseEnd();
+
+	DBG_SOCK("SOCKET #%d, CB 0x%04X: len %d message %s\n", client-socketClient, client->resp_cb, len, pusrdata+i+2);
+
+	     return;
+	   }
+#endif
+#if 0
+	if (length == 347) {
+	  for (int i=0; i<8; i++) {
+	    for (int j=0; j<16; j++)
+	      os_printf("%02x ", pusrdata[i*16+j]);
+	    for (int j=0; j<16; j++) {
+	      int c = pusrdata[i*16+j];
+	      if (c > ' ' && c < 0x80)
+	        os_printf("%c ", c);
+	      else
+		os_printf(" ");
+	    }
+	    os_printf("\n");
+	  }
+	}
+#endif
+
 	cmdResponseStart(CMD_RESP_CB, client->resp_cb, 4);
 	cmdResponseBody(&cb_type, 1);	
 	cmdResponseBody(&clientNum, 1);
 	cmdResponseBody(&length, 2);
 	cmdResponseBody(pusrdata, length);
 	cmdResponseEnd();
-	
+
 	if (client->sock_mode != SOCKET_TCP_SERVER) { // We don't wait for a response
-		DBG_SOCK("SOCKET #%d: disconnect after receiving\n", client-socketClient);
+		// DBG_SOCK("SOCKET #%d: disconnect after receiving\n", client-socketClient);
 		espconn_disconnect(client->pCon); // disconnect from the server
 	}
 }
@@ -70,7 +114,7 @@ socketclient_sent_cb(void *arg) {
 
 	uint8_t clientNum = client->conn_num;
 	uint8_t cb_type = USERCB_SENT;
-	DBG_SOCK("SOCKET #%d: Sent\n", client-socketClient);
+	// DBG_SOCK("SOCKET #%d: Sent\n", client-socketClient);
 	sint16 sentDataLen = client->data_sent;
 	if (client->data_sent != client->data_len) 
 	{
@@ -250,7 +294,7 @@ SOCKET_Setup(CmdPacket *cmd) {
 		goto fail;
 	}
 	err--;
-	DBG_SOCK("SOCKET Setup listener flag\n");
+	// DBG_SOCK("SOCKET Setup listener flag\n");
 
 	// clear connection structures the first time
 	if (socketNum == 0xff) {
@@ -274,7 +318,9 @@ SOCKET_Setup(CmdPacket *cmd) {
 		os_free(client->pCon);
 	}
 	os_memset(client, 0, sizeof(SocketClient));
+
 	DBG_SOCK("SOCKET #%d: Setup host=%s port=%d \n", clientNum, socket_host, port);
+	// DBG_SOCK("SOCKET #%d: Setup host=%s port=%d CB %04x\n", clientNum, socket_host, port, cmd->value);
 
 	client->sock_mode = sock_mode;
 	client->resp_cb = cmd->value;
@@ -283,6 +329,17 @@ SOCKET_Setup(CmdPacket *cmd) {
 	client->host = (char *)socket_host;
 	client->port = port;
 	
+	// Clear old similar sockets !!
+	for (int i=0; i<MAX_SOCKET; i++)
+	  if (i != clientNum) {
+	    SocketClient *client = socketClient + i;
+	    if (client->port == port && client->host == (char *)socket_host) {
+	      client->port = 0;		// FIX ME
+	      client->host = 0;		// FIX ME
+	      os_printf("Alert : clearing socket %d, while creating socket %d\n", i, clientNum);
+	    }
+	  }
+
 	if (sock_mode == SOCKET_UDP) {
 		wifi_set_broadcast_if(STATIONAP_MODE);
 	}
@@ -324,7 +381,7 @@ SOCKET_Setup(CmdPacket *cmd) {
 	espconn_regist_sentcb(client->pCon, socketclient_sent_cb);
 	espconn_regist_recvcb(client->pCon, socketclient_recv_cb);
 	if (sock_mode == SOCKET_UDP) {
-		DBG_SOCK("SOCKET #%d: Create connection to ip %s:%d\n", clientNum, client->host, client->port);
+		// DBG_SOCK("SOCKET #%d: Create connection to ip %s:%d\n", clientNum, client->host, client->port);
 		
 		if(UTILS_StrToIP((char *)client->host, &client->pCon->proto.udp->remote_ip)) {
 			espconn_create(client->pCon);
@@ -343,7 +400,7 @@ SOCKET_Setup(CmdPacket *cmd) {
 	
 	cmdResponseStart(CMD_RESP_V, clientNum, 0);
 	cmdResponseEnd();
-	DBG_SOCK("SOCKET #%d: setup finished\n", clientNum);
+	// DBG_SOCK("SOCKET #%d: setup finished\n", clientNum);
 	return;
 
 fail:
@@ -360,7 +417,7 @@ SOCKET_Send(CmdPacket *cmd) {
 	// Get client
 	uint32_t clientNum = cmd->value;
 	SocketClient *client = socketClient + (clientNum % MAX_SOCKET);
-	DBG_SOCK("SOCKET #%d: send", clientNum);
+	// DBG_SOCK("SOCKET #%d: send", clientNum);
 
 	if (cmd->argc != 1 && cmd->argc != 2) {
 		DBG_SOCK("\nSOCKET #%d: send - wrong number of arguments\n", clientNum);
@@ -369,7 +426,7 @@ SOCKET_Send(CmdPacket *cmd) {
 	
 	// Get data to sent
 	client->data_len = cmdArgLen(&req);
-	DBG_SOCK(" dataLen=%d", client->data_len);
+	// DBG_SOCK(" dataLen=%d", client->data_len);
 
 	if (client->data) os_free(client->data);
 	client->data = (char*)os_zalloc(client->data_len);
@@ -378,13 +435,13 @@ SOCKET_Send(CmdPacket *cmd) {
 		goto fail;
 	}
 	cmdPopArg(&req, client->data, client->data_len);
-	DBG_SOCK(" socketData=%s", client->data);
+	// DBG_SOCK(" socketData=%s", client->data);
 
 	// client->data_len = os_sprintf((char*)client->data, socketDataSet, socketData);
 	
-	DBG_SOCK("\n");
+	// DBG_SOCK("\n");
 
-	DBG_SOCK("SOCKET #%d: Create connection to ip %s:%d\n", clientNum, client->host, client->port);
+	// DBG_SOCK("SOCKET #%d: Create connection to ip %s:%d\n", clientNum, client->host, client->port);
 
 	if (client->sock_mode == SOCKET_TCP_SERVER) { // In TCP server mode we should be connected already and send the data immediately
 		remot_info *premot = NULL;
@@ -421,7 +478,8 @@ SOCKET_Send(CmdPacket *cmd) {
 		} 
 	} else { // in UDP socket mode we send the data immediately
 		client->data_sent = client->data_len <= 1400 ? client->data_len : 1400;
-		DBG_SOCK("SOCKET #%d: sending %d bytes: %s\n", clientNum, client->data_sent, client->data);
+		// DBG_SOCK("SOCKET #%d: sending %d bytes: %s\n", clientNum, client->data_sent, client->data);
+		// DBG_SOCK("SOCKET #%d: sending %d bytes\n", clientNum, client->data_sent);
 		espconn_sent(client->pCon, (uint8_t*)client->data, client->data_sent);
 	}
 

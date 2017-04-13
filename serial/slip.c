@@ -76,7 +76,7 @@ static void ICACHE_FLASH_ATTR
 slip_parse_char(char c) {
   if (c == SLIP_END) {
     // either start or end of packet, process whatever we may have accumulated
-    DBG("SLIP: start or end len=%d inpkt=%d\n", slip_len, slip_inpkt);
+    // DBG("SLIP: start or end len=%d inpkt=%d\n", slip_len, slip_inpkt);
     if (slip_len > 0) {
       if (slip_len > 2 && slip_inpkt) slip_process();
       else console_process(slip_buf, slip_len);

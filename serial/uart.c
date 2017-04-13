@@ -79,7 +79,8 @@ uart_config(uint8 uart_no, UartBautRate baudrate, uint32 conf0)
     // We do not enable framing error interrupts 'cause they tend to cause an interrupt avalanche
     // and instead just poll for them when we get a std RX interrupt.
     WRITE_PERI_REG(UART_CONF1(uart_no),
-                   ((80 & UART_RXFIFO_FULL_THRHD) << UART_RXFIFO_FULL_THRHD_S) |
+                   // ((80 & UART_RXFIFO_FULL_THRHD) << UART_RXFIFO_FULL_THRHD_S) |
+                   ((40 & UART_RXFIFO_FULL_THRHD) << UART_RXFIFO_FULL_THRHD_S) |
                    ((100 & UART_RX_FLOW_THRHD) << UART_RX_FLOW_THRHD_S) |
                    UART_RX_FLOW_EN |
                    (4 & UART_RX_TOUT_THRHD) << UART_RX_TOUT_THRHD_S |

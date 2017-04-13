@@ -71,6 +71,7 @@ typedef enum {
   CMD_UPNP_SCAN = 60,
   CMD_UPNP_ADD_PORT,
   CMD_UPNP_REMOVE_PORT,
+  CMD_UPNP_BEGIN,
 
 } CmdName;
 
