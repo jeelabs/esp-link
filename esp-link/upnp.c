@@ -64,7 +64,7 @@ static void upnp_tcp_recv(void *arg, char *pdata, unsigned short len);
 static void ICACHE_FLASH_ATTR
 ssdp_recv_cb(void *arg, char *pusrdata, unsigned short length) {
   struct espconn *con = (struct espconn *)arg;
-  UPnPClient *client = con->reverse;
+  // UPnPClient *client = con->reverse;
 
   os_printf("ssdp_recv_cb : %d bytes\n", length);
 
@@ -102,7 +102,7 @@ ssdp_sent_cb(void *arg) {
   struct espconn *con = (struct espconn *)arg;
   os_printf("ssdp_sent_cb, count %d\n", counter);
 
-#if 0
+#if 1
   if (upnp_state == upnp_multicasted && counter < counter_max) {
     counter++;
     espconn_sent(con, (uint8_t*)ssdp_message, ssdp_len);
@@ -113,13 +113,14 @@ ssdp_sent_cb(void *arg) {
 }
 
 // BTW, use http/1.0 to avoid responses with transfer-encoding: chunked
-const char *tmpl = "GET %s HTTP/1.0\r\n"
+const char *http_tmpl1 = "GET %s HTTP/1.0\r\n"
 		   "Host: %s\r\n"
                    "Connection: close\r\n"
                    "User-Agent: esp-link\r\n\r\n";
 
 static void ICACHE_FLASH_ATTR upnp_query_igd(struct espconn *con) {
   UPnPClient *client = con->reverse;
+  char *query;
 
   os_printf("upnp_query_igd\n");
 
@@ -139,7 +140,7 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(struct espconn *con) {
     con->proto.tcp->remote_port = 80;
   
   os_printf("upnp_query_igd : location {%s} port %d\n", location, con->proto.tcp->remote_port);
-// #if 0
+
   // Continue doing so : now the path
   char *path;
   for (; location[i] && location[i] != '/'; i++) ;
@@ -151,17 +152,17 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(struct espconn *con) {
   os_printf("path {%s}\n", path);
   // os_printf("client ptr %08x\n", client);
   client->path = path;
-
-// #if 0
+#if 0
   // Now the smallest of p and q points to end of IP address
   if (p != 0) {
-    location[p] = 0;
+    location[p-1] = 0;
   } else if (q != 0) {
     location[q] = 0;
   } else { // take the whole string
   }
+#endif
   char *host = location + 7;
-// #if 0
+
   con->type = ESPCONN_TCP;
   con->state = ESPCONN_NONE;
   con->proto.tcp->local_port = espconn_port();
@@ -172,6 +173,8 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(struct espconn *con) {
    * os_sprintf(query, tmpl, "/o8ee3npj36j/IGD/upnp/IGD.xml", "http://192.168.1.1:8000");
    * upnp_query_igd(query);
    */
+  query = (char *)os_malloc(strlen(http_tmpl1) + strlen(path) + strlen(location));
+  os_sprintf(query, http_tmpl1, path, location);
 
   client->data = query;
   client->data_len = strlen(query);
@@ -181,8 +184,10 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(struct espconn *con) {
   espconn_regist_reconcb(con, upnp_tcp_recon_cb);
 
   if (UTILS_StrToIP(host, &con->proto.tcp->remote_ip)) {
-    DBG_UPNP("UPnP: Connect to ip %s:%d\n", host, con->proto.tcp->remote_port);
+    // DBG_UPNP("UPnP: Connect to ip %s:%d\n", host, con->proto.tcp->remote_port);
     client->ip = *(ip_addr_t *)&con->proto.tcp->remote_ip[0];
+    ip_addr_t rip = client->ip;
+    os_printf("Connect to %d.%d.%d.%d : %d\n", ip4_addr1(&rip), ip4_addr2(&rip), ip4_addr3(&rip), ip4_addr4(&rip), con->proto.tcp->remote_port);
     espconn_connect(con);
   } else {
     DBG_UPNP("UPnP: Connect to host %s:%d\n", host, con->proto.tcp->remote_port);
