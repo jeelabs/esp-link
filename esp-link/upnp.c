@@ -18,7 +18,10 @@ enum upnp_state_t {
 };
 static enum upnp_state_t upnp_state;
 
-
+/*
+ * Query #1 : SSDP protocol, this is a UDP multicast to discover a IGD device.
+ * (internet gateway device)
+ */
 static const char *upnp_ssdp_multicast = "239.255.255.250";
 static short upnp_server_port = 1900;
 static const char *ssdp_message = "M-SEARCH * HTTP/1.1\r\n"
@@ -30,6 +33,167 @@ static int ssdp_len;
 // static char location[location_size];
 static char *control_url = 0;
 static int counter;
+
+/*
+ * Query #2 : query the IGD for its device & service list.
+ * We search this list for the control URL of the router.
+ * The protocol is now UPnP (universal plug and play), HTTP over TCP, usually with SOAP XML
+ * encoding. In this particular query, the query itself is a HTTP GET, no XML.
+ * But its reply is SOAP XML formatted.
+ */
+// BTW, use http/1.0 to avoid responses with transfer-encoding: chunked
+static const char *general_upnp_query = "GET %s HTTP/1.0\r\n"
+		   "Host: %s\r\n"
+                   "Connection: close\r\n"
+                   "User-Agent: esp-link\r\n\r\n";
+
+/*
+ * Subsequent queries aren't necessarily in order
+ *
+ * This one queries the IGD for its external IP address.
+ */
+static const char *upnp_query_external_address = "POST %s HTTP/1.0\r\n"	// control-url
+	"Host: %s\r\n"							// host ip+port
+	"User-Agent: esp-link\r\n"
+	"Content-Length : %d\r\n"					// XML length
+	"Content-Type: text/xml\r\n"
+	"SOAPAction: \"urn:schemas-upnp-org:service:WANPPPConnection:1#GetExternalIPAddress\"\r\n"
+	"Connection: Close\r\n"
+	"Cache-Control: no-cache\r\n"
+	"Pragma: no-cache\r\n"
+	"\r\n";
+
+static const char *upnp_query_external_address_xml =
+	"<?xml version=\"1.0\"?>\r\n"
+	"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\r\n"
+	"<s:Body>\r\n"
+	"<u:GetExternalIPAddress xmlns:u=\"urn:schemas-upnp-org:service:WANPPPConnection:1\">\r\n"
+	"</u:GetExternalIPAddress>\r\n"
+	"</s:Body>\r\n"
+	"</s:Envelope>\r\n";
+  /*
+    Sample query
+
+	POST /o8ee3npj36j/IGD/upnp/control/igd/wanpppc_1_1_1 HTTP/1.1
+	Host: 192.168.1.1:8000
+	User-Agent: Ubuntu/16.04, UPnP/1.1, MiniUPnPc/2.0
+	Content-Length: 286
+	Content-Type: text/xml
+	SOAPAction: "urn:schemas-upnp-org:service:WANPPPConnection:1#GetExternalIPAddress"
+	Connection: Close
+	Cache-Control: no-cache
+	Pragma: no-cache
+
+	<?xml version="1.0"?>
+	<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+	    s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+	  <s:Body>
+	     <u:GetExternalIPAddress xmlns:u="urn:schemas-upnp-org:service:WANPPPConnection:1">
+	     </u:GetExternalIPAddress>
+	  </s:Body>
+	</s:Envelope>
+
+    and its reply
+	<?xml version="1.0"?>
+	<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+	    s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+	  <s:Body>
+	    <m:GetExternalIPAddressResponse
+	        xmlns:m="urn:schemas-upnp-org:service:WANPPPConnection:1">
+	      <NewExternalIPAddress>213.49.166.224</NewExternalIPAddress>
+	    </m:GetExternalIPAddressResponse>
+	  </s:Body>
+	</s:Envelope>
+
+  */
+
+/*
+ * This query adds a port mapping
+
+	POST /o8ee3npj36j/IGD/upnp/control/igd/wanpppc_1_1_1 HTTP/1.1
+	Host: 192.168.1.1:8000
+	User-Agent: Ubuntu/16.04, UPnP/1.1, MiniUPnPc/2.0
+	Content-Length: 594
+	Content-Type: text/xml
+	SOAPAction: "urn:schemas-upnp-org:service:WANPPPConnection:1#AddPortMapping"
+	Connection: Close
+	Cache-Control: no-cache
+	Pragma: no-cache
+
+	<?xml version="1.0"?>
+	<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+	    s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+	  <s:Body>
+	    <u:AddPortMapping xmlns:u="urn:schemas-upnp-org:service:WANPPPConnection:1">
+	      <NewRemoteHost></NewRemoteHost>
+	      <NewExternalPort>9876</NewExternalPort>
+	      <NewProtocol>TCP</NewProtocol>
+	      <NewInternalPort>80</NewInternalPort>
+	      <NewInternalClient>192.168.1.176</NewInternalClient>
+	      <NewEnabled>1</NewEnabled>
+	      <NewPortMappingDescription>libminiupnpc</NewPortMappingDescription>
+	      <NewLeaseDuration>0</NewLeaseDuration>
+	    </u:AddPortMapping>
+	  </s:Body>
+	</s:Envelope>
+
+    and the reply
+
+	HTTP/1.0 200 OK
+	Connection: close
+	Date: Sat, 25 Mar 2017 16:54:41 GMT
+	Server: MediaAccess TG 789Ovn Xtream 10.A.0.I UPnP/1.0 (9C-97-26-26-44-DE)
+	Content-Length: 300
+	Content-Type: text/xml; charset="utf-8"
+	EXT:
+
+	<?xml version="1.0"?>
+	<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+	    s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+	  <s:Body>
+	<m:AddPortMappingResponse xmlns:m="urn:schemas-upnp-org:service:WANPPPConnection:1">
+	</m:AddPortMappingResponse>
+	</s:Body>
+	</s:Envelope>
+ */
+
+ /*
+  * Query to delete a port mapping
+
+	POST /o8ee3npj36j/IGD/upnp/control/igd/wanpppc_1_1_1 HTTP/1.1
+	Host: 192.168.1.1:8000
+	User-Agent: Ubuntu/16.04, UPnP/1.1, MiniUPnPc/2.0
+	Content-Length: 380
+	Content-Type: text/xml
+	SOAPAction: "urn:schemas-upnp-org:service:WANPPPConnection:1#DeletePortMapping"
+	Connection: Close
+	Cache-Control: no-cache
+	Pragma: no-cache
+
+	<?xml version="1.0"?>
+	<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+	    s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+	  <s:Body>
+	    <u:DeletePortMapping xmlns:u="urn:schemas-upnp-org:service:WANPPPConnection:1">
+	    <NewRemoteHost>
+	    </NewRemoteHost>
+	    <NewExternalPort>9876</NewExternalPort>
+	    <NewProtocol>TCP</NewProtocol>
+	  </u:DeletePortMapping>
+	  </s:Body>
+	</s:Envelope>
+
+    and its reply :
+
+	<?xml version="1.0"?>
+	<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+	    s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+	  <s:Body>
+	    <m:DeletePortMappingResponse xmlns:m="urn:schemas-upnp-org:service:WANPPPConnection:1">
+	    </m:DeletePortMappingResponse>
+	  </s:Body>
+	</s:Envelope>
+ */
 
 typedef struct {
   char			*host, *path, *location;
@@ -105,12 +269,6 @@ ssdp_sent_cb(void *arg) {
 #endif
 }
 
-// BTW, use http/1.0 to avoid responses with transfer-encoding: chunked
-const char *http_tmpl1 = "GET %s HTTP/1.0\r\n"
-		   "Host: %s\r\n"
-                   "Connection: close\r\n"
-                   "User-Agent: esp-link\r\n\r\n";
-
 /*
  * This should be a generic function that performs a query via TCP.
  */
@@ -137,8 +295,8 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
      * os_sprintf(query, tmpl, "/o8ee3npj36j/IGD/upnp/IGD.xml", "http://192.168.1.1:8000");
      * upnp_query_igd(query);
      */
-    query = (char *)os_malloc(strlen(http_tmpl1) + strlen(client->path) + strlen(client->location));
-    os_sprintf(query, http_tmpl1, client->path, client->location);
+    query = (char *)os_malloc(strlen(general_upnp_query) + strlen(client->path) + strlen(client->location));
+    os_sprintf(query, general_upnp_query, client->path, client->location);
     break;
   default:
     os_printf("upnp_query_igd: untreated state %d\n", (int)upnp_state);
@@ -474,8 +632,8 @@ cmdUPnPAddPort(CmdPacket *cmd) {
   client->con->type = ESPCONN_TCP;
   client->con->state = ESPCONN_NONE;
 
-  char *query = (char *)os_malloc(strlen(http_tmpl1) + strlen(client->path) + strlen(client->location));
-  os_sprintf(query, http_tmpl1, client->path, client->location);
+  char *query = (char *)os_malloc(strlen(general_upnp_query) + strlen(client->path) + strlen(client->location));
+  os_sprintf(query, general_upnp_query, client->path, client->location);
   client->data = query;
   client->data_len = strlen(query);
 
@@ -580,4 +738,8 @@ upnp_analyze_location(UPnPClient *client, char *orig_loc, int len) {
 
   client->host = os_malloc(strlen(client->location + 7) + 1);
   strcpy(client->host, client->location+7);
+}
+
+void ICACHE_FLASH_ATTR
+cmdUPnPQueryExternalAddress(CmdPacket *cmd) {
 }
