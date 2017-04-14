@@ -5,12 +5,6 @@
 #include <ip_addr.h>
 #include <strings.h>
 
-#if 1
-#define DBG_UPNP(format, ...) os_printf(format, ## __VA_ARGS__)
-#else
-#define DBG_UPNP(format, ...) do { } while(0)
-#endif
-
 #define location_size	80
 static const int counter_max = 4;
 
@@ -163,7 +157,6 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
   espconn_regist_sentcb(con, upnp_tcp_sent_cb);
 
   if (UTILS_StrToIP(client->host, &con->proto.tcp->remote_ip)) {
-    // DBG_UPNP("UPnP: Connect to ip %s:%d\n", host, con->proto.tcp->remote_port);
     memcpy(&client->ip, client->con->proto.tcp->remote_ip, 4);
     // client->ip = *(ip_addr_t *)&con->proto.tcp->remote_ip[0];
     ip_addr_t rip = client->ip;
@@ -174,7 +167,7 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
 
   } else {
     // Perform DNS query
-    DBG_UPNP("UPnP: lookup host %s\n", client->host);
+    os_printf("UPnP: lookup host %s\n", client->host);
     espconn_gethostbyname(con, client->host, (ip_addr_t *)&con->proto.tcp->remote_ip[0], upnp_dns_found);
 
     // Pick up next round of code in upnp_dns_found()
@@ -183,14 +176,14 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
 
 static void ICACHE_FLASH_ATTR
 upnp_tcp_sent_cb(void *arg) {
-  // struct espconn *pCon = (struct espconn *)arg;
+  // os_printf("upnp_tcp_sent_cb\n");
 
-#if 1
-  os_printf("upnp_tcp_sent_cb (disabled)\n");
-#else
+  struct espconn *con = (struct espconn *)arg;
+  UPnPClient *client = con->reverse;
+
   if (client->data_sent != client->data_len) {
     // we only sent part of the buffer, send the rest
-    espconn_sent(client->pCon, (uint8_t*)(client->data+client->data_sent),
+    espconn_send(client->con, (uint8_t*)(client->data+client->data_sent),
           client->data_len-client->data_sent);
     client->data_sent = client->data_len;
   } else {
@@ -198,7 +191,6 @@ upnp_tcp_sent_cb(void *arg) {
     if (client->data) os_free(client->data);
     client->data = 0;
   }
-#endif
 }
 
 static void ICACHE_FLASH_ATTR
@@ -230,22 +222,22 @@ upnp_tcp_recon_cb(void *arg, sint8 errType) {
 
 static void ICACHE_FLASH_ATTR
 upnp_tcp_connect_cb(void *arg) {
-#if 1
+#if 0
   os_printf("upnp_tcp_connect_cb (empty)\n");
 #else
+  os_printf("upnp_tcp_connect_cb\n");
+
   struct espconn *con = (struct espconn *)arg;
   UPnPClient *client = (UPnPClient *)con->reverse;
-
-  os_printf("upnp_tcp_connect_cb\n");
 
   espconn_regist_disconcb(con, upnp_tcp_discon_cb);
   espconn_regist_recvcb(con, upnp_tcp_recv_cb);
   espconn_regist_sentcb(con, upnp_tcp_sent_cb);
 
   client->data_sent = client->data_len <= 1400 ? client->data_len : 1400;
-  DBG_UPNP("UPnP sending %d\n", client->data_sent);
+  os_printf("UPnP sending %d {%s}\n", client->data_sent, client->data);
 
-  espconn_sent(con, (uint8_t*)client->data, client->data_sent);
+  espconn_send(con, (uint8_t*)client->data, client->data_sent);
 #endif
 }
 
@@ -258,7 +250,7 @@ upnp_dns_found(const char *name, ip_addr_t *ipaddr, void *arg) {
     os_printf("REST DNS: Got no ip, try to reconnect\n");
     return;
   }
-  DBG_UPNP("REST DNS: found ip %d.%d.%d.%d\n",
+  os_printf("REST DNS: found ip %d.%d.%d.%d\n",
       *((uint8 *) &ipaddr->addr),
       *((uint8 *) &ipaddr->addr + 1),
       *((uint8 *) &ipaddr->addr + 2),
@@ -272,7 +264,7 @@ upnp_dns_found(const char *name, ip_addr_t *ipaddr, void *arg) {
     } else
 #endif
     espconn_connect(client->con);
-    DBG_UPNP("REST: connecting...\n");
+    os_printf("REST: connecting...\n");
   }
 }
 
@@ -283,8 +275,13 @@ upnp_dns_found(const char *name, ip_addr_t *ipaddr, void *arg) {
  */
 static void ICACHE_FLASH_ATTR
 upnp_tcp_recv_cb(void *arg, char *pdata, unsigned short len) {
-#if 1
+#if 0
   os_printf("upnp_tcp_recv_cb (empty)\n");
+  os_printf("Received %d {", len);
+  int i;
+  for (i=0; i<len; i++)
+    os_printf("%c", pdata[i]);
+  os_printf("}\n");
 #else
   // struct espconn *con = (struct espconn*)arg;
   // UPnPClient *client = (UPnPClient *)con->reverse;
@@ -359,7 +356,7 @@ cmdUPnPScan(CmdPacket *cmd) {
 
   struct espconn *con = (struct espconn *)os_zalloc(sizeof(struct espconn));
   if (con == NULL) {
-    DBG_UPNP("SOCKET : Setup failed to alloc memory for client_pCon\n");
+    os_printf("SOCKET : Setup failed to alloc memory for client_pCon\n");
 
     // Return 0, this means failure
     cmdResponseStart(CMD_RESP_V, 0, 0);
@@ -372,7 +369,7 @@ cmdUPnPScan(CmdPacket *cmd) {
   con->type = ESPCONN_UDP;
   con->proto.udp = (esp_udp *)os_zalloc(sizeof(esp_udp));
   if (con->proto.udp == NULL) {
-    DBG_UPNP("SOCKET : Setup failed to alloc memory for client->pCon->proto.udp\n");
+    os_printf("SOCKET : Setup failed to alloc memory for client->pCon->proto.udp\n");
 
     // Return 0, this means failure
     cmdResponseStart(CMD_RESP_V, 0, 0);
@@ -394,12 +391,12 @@ cmdUPnPScan(CmdPacket *cmd) {
   espconn_regist_sentcb(con, ssdp_sent_cb);
   espconn_regist_recvcb(con, ssdp_recv_cb);
 
-  DBG_UPNP("SOCKET : Create connection to ip %s:%d\n", upnp_ssdp_multicast, upnp_server_port);
+  os_printf("SOCKET : Create connection to ip %s:%d\n", upnp_ssdp_multicast, upnp_server_port);
 
   if (UTILS_StrToIP((char *)upnp_ssdp_multicast, &con->proto.udp->remote_ip)) {
     espconn_create(con);
   } else {
-    DBG_UPNP("SOCKET : failed to copy remote_ip to &con->proto.udp->remote_ip\n");
+    os_printf("SOCKET : failed to copy remote_ip to &con->proto.udp->remote_ip\n");
 
     // Return 0, this means failure
     cmdResponseStart(CMD_RESP_V, 0, 0);
@@ -476,16 +473,17 @@ cmdUPnPAddPort(CmdPacket *cmd) {
   espconn_regist_recvcb(client->con, upnp_tcp_recv_cb);
   espconn_regist_sentcb(client->con, upnp_tcp_sent_cb);
 
+  upnp_state = upnp_found_igd;
+
   int r = UTILS_StrToIP(client->host, &client->con->proto.tcp->remote_ip);
   os_printf("StrToIP -> %d\n", r);
   memcpy(&client->ip, client->con->proto.tcp->remote_ip, 4);
   ip_addr_t rip = client->ip;
   os_printf("Target is %d.%d.%d.%d : %d\n", ip4_addr1(&rip), ip4_addr2(&rip),
       ip4_addr3(&rip), ip4_addr4(&rip), client->con->proto.tcp->remote_port);
-#if 1
+
   r = espconn_connect(client->con);
   os_printf("Connecting -> %d\n", r);
-#endif
 
 #if 0
   if (UTILS_StrToIP(client->host, &client->con->proto.tcp->remote_ip)) {
@@ -498,7 +496,7 @@ cmdUPnPAddPort(CmdPacket *cmd) {
 
   } else {
     // Perform DNS query
-    DBG_UPNP("UPnP: lookup host %s\n", client->host);
+    os_printf("UPnP: lookup host %s\n", client->host);
     espconn_gethostbyname(client->con, client->host, (ip_addr_t *)&client->con->proto.tcp->remote_ip[0], upnp_dns_found);
 
     // Pick up next round of code in upnp_dns_found()
