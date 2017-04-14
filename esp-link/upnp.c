@@ -79,17 +79,13 @@ ssdp_recv_cb(void *arg, char *pusrdata, unsigned short length) {
         // find end of LOCATION field
         int j, k;
         for (k=j=i+11; pusrdata[k] && pusrdata[k] != 0x0D; k++) ;
-        int len = k-j+1;
 
-        // pusrdata[k] = 0; // NULL terminate
-
-	upnp_analyze_location(client, pusrdata+j, len);
-
-        os_printf("ssdp_recv_cb : %s\n", pusrdata+i+2);
+	upnp_analyze_location(client, pusrdata+j, k-j);
 
 	upnp_cleanup_conn(client);
 
 	// Trigger next query
+	upnp_state = upnp_found_igd;
 	upnp_query_igd(client);
 	break;
       }
@@ -133,7 +129,6 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
   os_printf("upnp_query_igd : new espconn structure %08x\n", (uint32_t)con);
 
   con->proto.tcp = (esp_tcp *)os_zalloc(sizeof(esp_tcp));
-  upnp_state = upnp_found_igd;
 
   con->proto.tcp->remote_port = client->remote_port;
   
@@ -143,14 +138,22 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
   con->state = ESPCONN_NONE;
   con->proto.tcp->local_port = espconn_port();
 
-  /*
-   * strcpy(location, "http://192.168.1.1:8000/o8ee3npj36j/IGD/upnp/IGD.xml");
-   * char *query = (char *)os_malloc(strlen(tmpl) + location_size);
-   * os_sprintf(query, tmpl, "/o8ee3npj36j/IGD/upnp/IGD.xml", "http://192.168.1.1:8000");
-   * upnp_query_igd(query);
-   */
-  query = (char *)os_malloc(strlen(http_tmpl1) + strlen(client->path) + strlen(client->location));
-  os_sprintf(query, http_tmpl1, client->path, client->location);
+  switch (upnp_state) {
+  case upnp_found_igd:
+    /*
+     * strcpy(location, "http://192.168.1.1:8000/o8ee3npj36j/IGD/upnp/IGD.xml");
+     * char *query = (char *)os_malloc(strlen(tmpl) + location_size);
+     * os_sprintf(query, tmpl, "/o8ee3npj36j/IGD/upnp/IGD.xml", "http://192.168.1.1:8000");
+     * upnp_query_igd(query);
+     */
+    query = (char *)os_malloc(strlen(http_tmpl1) + strlen(client->path) + strlen(client->location));
+    os_sprintf(query, http_tmpl1, client->path, client->location);
+    break;
+  default:
+    os_printf("upnp_query_igd: untreated state %d\n", (int)upnp_state);
+    query = "";
+    break;
+  }
 
   client->data = query;
   client->data_len = strlen(query);
