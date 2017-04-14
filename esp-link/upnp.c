@@ -195,14 +195,26 @@ upnp_tcp_sent_cb(void *arg) {
 
 static void ICACHE_FLASH_ATTR
 upnp_tcp_discon_cb(void *arg) {
-#if 1
+  struct espconn *con = (struct espconn *)arg;
+  UPnPClient *client = con->reverse;
+
+#if 0
   os_printf("upnp_tcp_discon_cb (empty)\n");
-  // struct espconn *pespconn = (struct espconn *)arg;
 
 #else
+  os_printf("upnp_tcp_discon_cb (empty)\n");
   // free the data buffer, if we have one
   if (client->data) os_free(client->data);
   client->data = 0;
+
+  // Kick SM into next state, trigger next query
+  switch (upnp_state) {
+  case upnp_found_igd:
+    upnp_state = upnp_ready;
+    break;
+  default:
+    os_printf("upnp_tcp_discon_cb upnp_state %d\n", upnp_state);
+  }
 #endif
 }
 
@@ -473,8 +485,11 @@ cmdUPnPAddPort(CmdPacket *cmd) {
   espconn_regist_recvcb(client->con, upnp_tcp_recv_cb);
   espconn_regist_sentcb(client->con, upnp_tcp_sent_cb);
 
+  // Get recv_cb to start sending stuff
   upnp_state = upnp_found_igd;
 
+#if 0
+  // Debug code
   int r = UTILS_StrToIP(client->host, &client->con->proto.tcp->remote_ip);
   os_printf("StrToIP -> %d\n", r);
   memcpy(&client->ip, client->con->proto.tcp->remote_ip, 4);
@@ -485,7 +500,8 @@ cmdUPnPAddPort(CmdPacket *cmd) {
   r = espconn_connect(client->con);
   os_printf("Connecting -> %d\n", r);
 
-#if 0
+#else
+
   if (UTILS_StrToIP(client->host, &client->con->proto.tcp->remote_ip)) {
     memcpy(&client->ip, client->con->proto.tcp->remote_ip, 4);
     ip_addr_t rip = client->ip;
