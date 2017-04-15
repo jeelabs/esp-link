@@ -33,7 +33,6 @@
 #include <ip_addr.h>
 #include <strings.h>
 
-#define location_size	80
 static const int counter_max = 4;
 
 enum upnp_state_t {
@@ -58,7 +57,6 @@ static const char *ssdp_message = "M-SEARCH * HTTP/1.1\r\n"
 	"MAN: \"ssdp:discover\"\r\n"
 	"MX: 2\r\n";
 static int ssdp_len;
-// static char location[location_size];
 static char *control_url = 0;
 static int counter;
 
@@ -89,7 +87,7 @@ static const char *upnp_query_external_address = "POST %s HTTP/1.0\r\n"	// contr
 	"Connection: Close\r\n"
 	"Cache-Control: no-cache\r\n"
 	"Pragma: no-cache\r\n"
-	"\r\n";
+	"\r\n%s";							// XML
 
 static const char *upnp_query_external_address_xml =
 	"<?xml version=\"1.0\"?>\r\n"
@@ -331,19 +329,19 @@ ssdp_sent_cb(void *arg) {
  * This should be a generic function that performs a query via TCP.
  */
 static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
-  struct espconn *con;
   char *query;
 
   // Create new espconn
-  client->con = con = (struct espconn *)os_zalloc(sizeof(struct espconn));
-  os_printf("upnp_query_igd : new espconn structure %08x\n", (uint32_t)con);
-
-  con->proto.tcp = (esp_tcp *)os_zalloc(sizeof(esp_tcp));
-  con->proto.tcp->remote_port = client->remote_port;
+  client->con = (struct espconn *)os_zalloc(sizeof(struct espconn));
+  client->con->proto.tcp = (esp_tcp *)os_zalloc(sizeof(esp_tcp));
+  client->con->reverse = client;
   
-  con->type = ESPCONN_TCP;
-  con->state = ESPCONN_NONE;
-  con->proto.tcp->local_port = espconn_port();
+  os_printf("upnp_query_igd : new espconn structure %08x\n", (uint32_t)client->con);
+
+  client->con->type = ESPCONN_TCP;
+  client->con->state = ESPCONN_NONE;
+  client->con->proto.tcp->local_port = espconn_port();
+  client->con->proto.tcp->remote_port = client->remote_port;
 
   switch (upnp_state) {
   case upnp_found_igd:
@@ -376,7 +374,7 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
 
     // Don't forget to free the temporary string storage for step 1.
     os_free(xml);
-#if 0
+#if 1
     break;
 #else
     os_printf("Query : %s\n", query);
@@ -392,26 +390,26 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
   client->data = query;
   client->data_len = strlen(query);
 
-  con->state = ESPCONN_NONE;
-  espconn_regist_connectcb(con, upnp_tcp_connect_cb);
-  espconn_regist_reconcb(con, upnp_tcp_recon_cb);
-  espconn_regist_disconcb(con, upnp_tcp_discon_cb);
-  espconn_regist_recvcb(con, upnp_tcp_recv_cb);
-  espconn_regist_sentcb(con, upnp_tcp_sent_cb);
+  client->con->state = ESPCONN_NONE;
+  espconn_regist_connectcb(client->con, upnp_tcp_connect_cb);
+  espconn_regist_reconcb(client->con, upnp_tcp_recon_cb);
+  espconn_regist_disconcb(client->con, upnp_tcp_discon_cb);
+  espconn_regist_recvcb(client->con, upnp_tcp_recv_cb);
+  espconn_regist_sentcb(client->con, upnp_tcp_sent_cb);
 
-  if (UTILS_StrToIP(client->host, &con->proto.tcp->remote_ip)) {
+  if (UTILS_StrToIP(client->host, &client->con->proto.tcp->remote_ip)) {
     memcpy(&client->remote_ip, client->con->proto.tcp->remote_ip, 4);
-    // client->remote_ip = *(ip_addr_t *)&con->proto.tcp->remote_ip[0];
+    // client->remote_ip = *(ip_addr_t *)&client->con->proto.tcp->remote_ip[0];
     ip_addr_t rip = client->remote_ip;
 
-    int r = espconn_connect(con);
+    int r = espconn_connect(client->con);
     os_printf("Connect to %d.%d.%d.%d : %d -> %d\n", ip4_addr1(&rip), ip4_addr2(&rip),
-      ip4_addr3(&rip), ip4_addr4(&rip), con->proto.tcp->remote_port, r);
+      ip4_addr3(&rip), ip4_addr4(&rip), client->con->proto.tcp->remote_port, r);
 
   } else {
     // Perform DNS query
     os_printf("UPnP: lookup host %s\n", client->host);
-    espconn_gethostbyname(con, client->host, (ip_addr_t *)&con->proto.tcp->remote_ip[0], upnp_dns_found);
+    espconn_gethostbyname(client->con, client->host, (ip_addr_t *)&client->con->proto.tcp->remote_ip[0], upnp_dns_found);
 
     // Pick up next round of code in upnp_dns_found()
   }
@@ -419,10 +417,10 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
 
 static void ICACHE_FLASH_ATTR
 upnp_tcp_sent_cb(void *arg) {
-  // os_printf("upnp_tcp_sent_cb\n");
-
   struct espconn *con = (struct espconn *)arg;
   UPnPClient *client = con->reverse;
+
+  os_printf("upnp_tcp_sent_cb, len %d %d\n", client->data_sent, client->data_len);
 
   if (client->data_sent != client->data_len) {
     // we only sent part of the buffer, send the rest
@@ -450,6 +448,14 @@ upnp_tcp_discon_cb(void *arg) {
   // free the data buffer, if we have one
   if (client->data) os_free(client->data);
   client->data = 0;
+
+  // Free TCP structure
+  if (con->proto.tcp) os_free(con->proto.tcp);
+  con->proto.tcp = 0;
+
+  espconn_disconnect(con);
+  os_free(con);
+  client->con = 0;
 
   // Kick SM into next state, trigger next query
   switch (upnp_state) {
@@ -496,7 +502,9 @@ upnp_tcp_connect_cb(void *arg) {
   espconn_regist_sentcb(con, upnp_tcp_sent_cb);
 
   client->data_sent = client->data_len <= 1400 ? client->data_len : 1400;
-  os_printf("UPnP sending %d {%s}\n", client->data_sent, client->data);
+
+  // os_printf("UPnP sending %d {%s}\n", client->data_sent, client->data);
+  os_printf("UPnP sending %d\n", client->data_sent);
 
   espconn_send(con, (uint8_t*)client->data, client->data_sent);
 #endif
@@ -737,20 +745,6 @@ cmdUPnPAddPort(CmdPacket *cmd) {
   client->port = 0x1234;
   client->remote_port = 0x5678;
 
-#if 0
-  // Debug code
-  int r = UTILS_StrToIP(client->host, &client->con->proto.tcp->remote_ip);
-  os_printf("StrToIP -> %d\n", r);
-  memcpy(&client->remote_ip, client->con->proto.tcp->remote_ip, 4);
-  ip_addr_t rip = client->remote_ip;
-  os_printf("Target is %d.%d.%d.%d : %d\n", ip4_addr1(&rip), ip4_addr2(&rip),
-      ip4_addr3(&rip), ip4_addr4(&rip), client->con->proto.tcp->remote_port);
-
-  r = espconn_connect(client->con);
-  os_printf("Connecting -> %d\n", r);
-
-#else
-
   if (UTILS_StrToIP(client->host, &client->con->proto.tcp->remote_ip)) {
     memcpy(&client->remote_ip, client->con->proto.tcp->remote_ip, 4);
     ip_addr_t rip = client->remote_ip;
@@ -766,14 +760,6 @@ cmdUPnPAddPort(CmdPacket *cmd) {
 
     // Pick up next round of code in upnp_dns_found()
   }
-#endif
-
-#if 0
-  strcpy(location, "http://192.168.1.1:8000/o8ee3npj36j/IGD/upnp/IGD.xml");
-  char *query = (char *)os_malloc(strlen(tmpl) + location_size);
-  os_sprintf(query, tmpl, "/o8ee3npj36j/IGD/upnp/IGD.xml", "http://192.168.1.1:8000");
-  upnp_query_igd(query);
-#endif
 }
 
 void ICACHE_FLASH_ATTR
@@ -813,19 +799,13 @@ upnp_analyze_location(UPnPClient *client, char *orig_loc, int len) {
   else
     client->remote_port = 80;
   
-  os_printf("upnp_analyze_location : location {%s} port %d\n", client->location, client->remote_port);
-
   // Continue doing so : now the path
-  char *path;
   for (; client->location[i] && client->location[i] != '/'; i++) ;
   if (client->location[i] == '/') {
-    path = client->location + i;
+    client->path = client->location + i;
     q = i;
   } else
-    path = "";	// FIX ME not sure what to do if no path
-  os_printf("path {%s}\n", path);
-  // os_printf("client ptr %08x\n", client);
-  client->path = path;
+    client->path = "";	// FIX ME not sure what to do if no path
 
   // Cut of the host at the start of path
   if (q) {
@@ -836,8 +816,17 @@ upnp_analyze_location(UPnPClient *client, char *orig_loc, int len) {
     client->host = os_malloc(strlen(client->location+7)+1);
     strcpy(client->host, client->location+7);
   }
+
+  os_printf("upnp_analyze_location : location {%s} port %d\n", client->location, client->remote_port);
+  os_printf("path {%s} host {%s}\n", client->path, client->host);
+
 }
 
 void ICACHE_FLASH_ATTR
 cmdUPnPQueryExternalAddress(CmdPacket *cmd) {
+  char *query = os_malloc(strlen(upnp_query_external_address) + strlen(the_client->path) +
+    strlen(the_client->host) + 8 + strlen(upnp_query_external_address_xml));
+  os_sprintf(query, upnp_query_external_address,
+    the_client->path, the_client->host,
+    strlen(upnp_query_external_address_xml), upnp_query_external_address_xml);
 }
