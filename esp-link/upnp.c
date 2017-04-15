@@ -1,3 +1,31 @@
+/*
+ * Copyright (c) 2016, 2017 Danny Backx
+ *
+ * License (MIT license):
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy
+ *   of this software and associated documentation files (the "Software"), to deal
+ *   in the Software without restriction, including without limitation the rights
+ *   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *   copies of the Software, and to permit persons to whom the Software is
+ *   furnished to do so, subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in
+ *   all copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ *   THE SOFTWARE.
+ *
+ * This contains code to "punch a hole" in a NAT firewall, so a device on the inside
+ * network can be accessed from the outside by parties that know how to do so.
+ *
+ * This is basically a poor man's version of some of the UPnP protocols.
+ */
+
 #include "esp8266.h"
 #include "sntp.h"
 #include "cmd.h"
@@ -42,7 +70,7 @@ static int counter;
  * But its reply is SOAP XML formatted.
  */
 // BTW, use http/1.0 to avoid responses with transfer-encoding: chunked
-static const char *general_upnp_query = "GET %s HTTP/1.0\r\n"
+static const char *upnp_general_query = "GET %s HTTP/1.0\r\n"
 		   "Host: %s\r\n"
                    "Connection: close\r\n"
                    "User-Agent: esp-link\r\n\r\n";
@@ -107,6 +135,34 @@ static const char *upnp_query_external_address_xml =
 
   */
 
+static const char *upnp_query_add_tmpl =
+	"POST %s HTTP/1.0\r\n"			// Control URL
+	"Host: %s\r\n"				// IGD ip+port
+	"User-Agent: esp-link\r\n"
+	"Content-Length: %d\r\n"		// Length of XML
+	"Content-Type: text/xml\r\n"
+	"SOAPAction: \"urn:schemas-upnp-org:service:WANPPPConnection:1#AddPortMapping\"\r\n"
+	"Connection: Close\r\n"
+	"Cache-Control: no-cache\r\n"
+	"Pragma: no-cache\r\n\r\n%s";		// XML
+
+static const char *upnp_query_add_xml =
+	"<?xml version=\"1.0\"?>\r\n"
+	"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\""
+	" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\r\n"
+	"<s:Body>\r\n"
+	"<u:AddPortMapping xmlns:u=\"urn:schemas-upnp-org:service:WANPPPConnection:1\">\r\n"
+	"<NewRemoteHost></NewRemoteHost>\r\n"
+	"<NewExternalPort>%d</NewExternalPort>\r\n"			// remote port
+	"<NewProtocol>TCP</NewProtocol>\r\n"
+	"<NewInternalPort>%d</NewInternalPort>\r\n"			// local port
+	"<NewInternalClient>%d.%d.%d.%d</NewInternalClient>\r\n"	// local ip
+	"<NewEnabled>1</NewEnabled>\r\n"
+	"<NewPortMappingDescription>libminiupnpc</NewPortMappingDescription>\r\n"
+	"<NewLeaseDuration>0</NewLeaseDuration>\r\n"
+	"</u:AddPortMapping>\r\n"
+	"</s:Body>\r\n"
+	"</s:Envelope>\r\n";
 /*
  * This query adds a port mapping
 
@@ -196,13 +252,15 @@ static const char *upnp_query_external_address_xml =
  */
 
 typedef struct {
-  char			*host, *path, *location;
-  uint32_t		port, remote_port;
-  ip_addr_t		ip;
-  struct espconn	*con;
-  char			*data;
-  uint16_t		data_len;
-  uint16_t		data_sent;
+  char			*host, *path, *location;	// IGD specifics
+
+  uint32_t		port, remote_port;		// local, remote
+  ip_addr_t		ip, remote_ip;			// local, remote
+
+  struct espconn	*con;				// comms handler
+
+  char			*data;				// incremental data transmission
+  uint16_t		data_len, data_sent;
 } UPnPClient;
 
 static UPnPClient *the_client;
@@ -290,18 +348,45 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
   switch (upnp_state) {
   case upnp_found_igd:
     /*
-     * strcpy(location, "http://192.168.1.1:8000/o8ee3npj36j/IGD/upnp/IGD.xml");
-     * char *query = (char *)os_malloc(strlen(tmpl) + location_size);
-     * os_sprintf(query, tmpl, "/o8ee3npj36j/IGD/upnp/IGD.xml", "http://192.168.1.1:8000");
-     * upnp_query_igd(query);
+     * Start the UPnP query of the IGD so we know its control URL.
      */
-    query = (char *)os_malloc(strlen(general_upnp_query) + strlen(client->path) + strlen(client->location));
-    os_sprintf(query, general_upnp_query, client->path, client->location);
+    query = (char *)os_malloc(strlen(upnp_general_query) + strlen(client->path) + strlen(client->location));
+    os_sprintf(query, upnp_general_query, client->path, client->location);
     break;
+
+  case upnp_adding_port:
+    /*
+     * Start the query to add a port forwarding definition to the IGD.
+     */
+    os_printf("Port to be added is %08x : %04x (remote %04x)\n", client->ip.addr, client->port, client->remote_port);
+
+    // Two step approach, as the XML also contains variable info, and we need to pass its length.
+    char *xml = (char *)os_malloc(strlen(upnp_query_add_xml) + 32);
+
+    // FIXME byte order issue ?
+    os_sprintf(xml, upnp_query_add_xml, client->remote_port, client->port,
+      ip4_addr4(&client->ip), ip4_addr3(&client->ip),
+      ip4_addr2(&client->ip), ip4_addr1(&client->ip));
+
+    // Step 2 : create the headers.
+    query = (char *)os_malloc(strlen(upnp_query_add_tmpl) + strlen(client->path) + strlen(client->host) + 10 + strlen(xml));
+    os_sprintf(query, upnp_query_add_tmpl,
+      client->path, client->host,
+      strlen(xml), xml);
+
+    // Don't forget to free the temporary string storage for step 1.
+    os_free(xml);
+#if 0
+    break;
+#else
+    os_printf("Query : %s\n", query);
+    os_free(query);
+    return;
+#endif
   default:
     os_printf("upnp_query_igd: untreated state %d\n", (int)upnp_state);
     query = "";
-    break;
+    return;
   }
 
   client->data = query;
@@ -315,9 +400,9 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
   espconn_regist_sentcb(con, upnp_tcp_sent_cb);
 
   if (UTILS_StrToIP(client->host, &con->proto.tcp->remote_ip)) {
-    memcpy(&client->ip, client->con->proto.tcp->remote_ip, 4);
-    // client->ip = *(ip_addr_t *)&con->proto.tcp->remote_ip[0];
-    ip_addr_t rip = client->ip;
+    memcpy(&client->remote_ip, client->con->proto.tcp->remote_ip, 4);
+    // client->remote_ip = *(ip_addr_t *)&con->proto.tcp->remote_ip[0];
+    ip_addr_t rip = client->remote_ip;
 
     int r = espconn_connect(con);
     os_printf("Connect to %d.%d.%d.%d : %d -> %d\n", ip4_addr1(&rip), ip4_addr2(&rip),
@@ -360,7 +445,8 @@ upnp_tcp_discon_cb(void *arg) {
   os_printf("upnp_tcp_discon_cb (empty)\n");
 
 #else
-  os_printf("upnp_tcp_discon_cb (empty)\n");
+  os_printf("upnp_tcp_discon_cb\n");
+
   // free the data buffer, if we have one
   if (client->data) os_free(client->data);
   client->data = 0;
@@ -368,7 +454,12 @@ upnp_tcp_discon_cb(void *arg) {
   // Kick SM into next state, trigger next query
   switch (upnp_state) {
   case upnp_found_igd:
-    upnp_state = upnp_ready;
+    // upnp_state = upnp_ready;
+
+    os_printf("Kick SM into new state\n");
+    upnp_state = upnp_adding_port;
+    upnp_query_igd(client);
+
     break;
   default:
     os_printf("upnp_tcp_discon_cb upnp_state %d\n", upnp_state);
@@ -425,7 +516,7 @@ upnp_dns_found(const char *name, ip_addr_t *ipaddr, void *arg) {
       *((uint8 *) &ipaddr->addr + 1),
       *((uint8 *) &ipaddr->addr + 2),
       *((uint8 *) &ipaddr->addr + 3));
-  if (client && client->ip.addr == 0 && ipaddr->addr != 0) {
+  if (client && client->remote_ip.addr == 0 && ipaddr->addr != 0) {
     os_memcpy(client->con->proto.tcp->remote_ip, &ipaddr->addr, 4);
 
 #ifdef CLIENT_SSL_ENABLE
@@ -482,7 +573,7 @@ upnp_tcp_recv_cb(void *arg, char *pdata, unsigned short len) {
 	control_url[k] = 0;
 	os_printf("UPnP: Control URL %s\n", control_url);
 
-	upnp_state = upnp_ready;
+	// upnp_state = upnp_ready;	// upnp_tcp_discon_cb will do this
       }
     }
     break;
@@ -517,7 +608,7 @@ cmdUPnPScan(CmdPacket *cmd) {
     if (the_client == 0)
       cmdResponseStart(CMD_RESP_V, 0, 0);
     else
-      cmdResponseStart(CMD_RESP_V, (uint32_t)the_client->ip.addr, 0);
+      cmdResponseStart(CMD_RESP_V, (uint32_t)the_client->remote_ip.addr, 0);
     cmdResponseEnd();
     return;
   }
@@ -609,12 +700,7 @@ cmdUPnPScan(CmdPacket *cmd) {
   os_printf("Return at end of cmdUPnPScan(), upnp_state = upnp_multicasted\n");
 }
 
-// BTW, use http/1.0 to avoid responses with transfer-encoding: chunked
-const char *tmpl = "GET %s HTTP/1.0\r\n"
-		   "Host: %s\r\n"
-                   "Connection: close\r\n"
-                   "User-Agent: esp-link\r\n\r\n";
-
+// Currently this is test code
 void ICACHE_FLASH_ATTR
 cmdUPnPAddPort(CmdPacket *cmd) {
   UPnPClient *client = (UPnPClient *)os_zalloc(sizeof(UPnPClient));
@@ -632,8 +718,8 @@ cmdUPnPAddPort(CmdPacket *cmd) {
   client->con->type = ESPCONN_TCP;
   client->con->state = ESPCONN_NONE;
 
-  char *query = (char *)os_malloc(strlen(general_upnp_query) + strlen(client->path) + strlen(client->location));
-  os_sprintf(query, general_upnp_query, client->path, client->location);
+  char *query = (char *)os_malloc(strlen(upnp_general_query) + strlen(client->path) + strlen(client->location));
+  os_sprintf(query, upnp_general_query, client->path, client->location);
   client->data = query;
   client->data_len = strlen(query);
 
@@ -646,12 +732,17 @@ cmdUPnPAddPort(CmdPacket *cmd) {
   // Get recv_cb to start sending stuff
   upnp_state = upnp_found_igd;
 
+  // Set up stuff for "add port"
+  client->ip.addr = 0xC0A80196;
+  client->port = 0x1234;
+  client->remote_port = 0x5678;
+
 #if 0
   // Debug code
   int r = UTILS_StrToIP(client->host, &client->con->proto.tcp->remote_ip);
   os_printf("StrToIP -> %d\n", r);
-  memcpy(&client->ip, client->con->proto.tcp->remote_ip, 4);
-  ip_addr_t rip = client->ip;
+  memcpy(&client->remote_ip, client->con->proto.tcp->remote_ip, 4);
+  ip_addr_t rip = client->remote_ip;
   os_printf("Target is %d.%d.%d.%d : %d\n", ip4_addr1(&rip), ip4_addr2(&rip),
       ip4_addr3(&rip), ip4_addr4(&rip), client->con->proto.tcp->remote_port);
 
@@ -661,8 +752,8 @@ cmdUPnPAddPort(CmdPacket *cmd) {
 #else
 
   if (UTILS_StrToIP(client->host, &client->con->proto.tcp->remote_ip)) {
-    memcpy(&client->ip, client->con->proto.tcp->remote_ip, 4);
-    ip_addr_t rip = client->ip;
+    memcpy(&client->remote_ip, client->con->proto.tcp->remote_ip, 4);
+    ip_addr_t rip = client->remote_ip;
 
     int r = espconn_connect(client->con);
     os_printf("Connect to %d.%d.%d.%d : %d -> %d\n", ip4_addr1(&rip), ip4_addr2(&rip),
@@ -736,8 +827,15 @@ upnp_analyze_location(UPnPClient *client, char *orig_loc, int len) {
   // os_printf("client ptr %08x\n", client);
   client->path = path;
 
-  client->host = os_malloc(strlen(client->location + 7) + 1);
-  strcpy(client->host, client->location+7);
+  // Cut of the host at the start of path
+  if (q) {
+    client->host = os_malloc(q-6);
+    strncpy(client->host, client->location+7, q-7);
+    client->host[q-7] = 0;
+  } else {
+    client->host = os_malloc(strlen(client->location+7)+1);
+    strcpy(client->host, client->location+7);
+  }
 }
 
 void ICACHE_FLASH_ATTR
