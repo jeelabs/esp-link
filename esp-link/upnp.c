@@ -251,6 +251,7 @@ static const char *upnp_query_add_xml =
 
 typedef struct {
   char			*host, *path, *location;	// IGD specifics
+  uint16_t		control_port;
 
   uint32_t		port, remote_port;		// local, remote
   ip_addr_t		ip, remote_ip;			// local, remote
@@ -338,10 +339,16 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
   
   os_printf("upnp_query_igd : new espconn structure %08x\n", (uint32_t)client->con);
 
+  client->con->proto.tcp->local_port = espconn_port();
+  client->con->proto.tcp->remote_port = client->control_port;
   client->con->type = ESPCONN_TCP;
   client->con->state = ESPCONN_NONE;
-  client->con->proto.tcp->local_port = espconn_port();
-  client->con->proto.tcp->remote_port = client->remote_port;
+
+  espconn_regist_connectcb(client->con, upnp_tcp_connect_cb);
+  espconn_regist_reconcb(client->con, upnp_tcp_recon_cb);
+  espconn_regist_disconcb(client->con, upnp_tcp_discon_cb);
+  espconn_regist_recvcb(client->con, upnp_tcp_recv_cb);
+  espconn_regist_sentcb(client->con, upnp_tcp_sent_cb);
 
   switch (upnp_state) {
   case upnp_found_igd:
@@ -390,16 +397,8 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
   client->data = query;
   client->data_len = strlen(query);
 
-  client->con->state = ESPCONN_NONE;
-  espconn_regist_connectcb(client->con, upnp_tcp_connect_cb);
-  espconn_regist_reconcb(client->con, upnp_tcp_recon_cb);
-  espconn_regist_disconcb(client->con, upnp_tcp_discon_cb);
-  espconn_regist_recvcb(client->con, upnp_tcp_recv_cb);
-  espconn_regist_sentcb(client->con, upnp_tcp_sent_cb);
-
   if (UTILS_StrToIP(client->host, &client->con->proto.tcp->remote_ip)) {
     memcpy(&client->remote_ip, client->con->proto.tcp->remote_ip, 4);
-    // client->remote_ip = *(ip_addr_t *)&client->con->proto.tcp->remote_ip[0];
     ip_addr_t rip = client->remote_ip;
 
     int r = espconn_connect(client->con);
@@ -453,7 +452,7 @@ upnp_tcp_discon_cb(void *arg) {
   if (con->proto.tcp) os_free(con->proto.tcp);
   con->proto.tcp = 0;
 
-  espconn_disconnect(con);
+  espconn_delete(con);
   os_free(con);
   client->con = 0;
 
@@ -721,8 +720,10 @@ cmdUPnPAddPort(CmdPacket *cmd) {
   client->con->proto.tcp = (esp_tcp *)os_zalloc(sizeof(esp_tcp));
   client->con->reverse = client;
 
+  os_printf("UPnP test : new espconn structure %08x\n", (uint32_t)client->con);
+
   client->con->proto.tcp->local_port = espconn_port();
-  client->con->proto.tcp->remote_port = client->remote_port;
+  client->con->proto.tcp->remote_port = client->control_port;
   client->con->type = ESPCONN_TCP;
   client->con->state = ESPCONN_NONE;
 
@@ -775,7 +776,7 @@ cmdUPnPBegin(CmdPacket *cmd) {
  * Free/disconnect old structure
  */
 static void ICACHE_FLASH_ATTR upnp_cleanup_conn(UPnPClient *client) {
-  espconn_disconnect(client->con);
+  espconn_delete(client->con);
   os_free(client->con);
   client->con = 0;
 }
@@ -795,9 +796,9 @@ upnp_analyze_location(UPnPClient *client, char *orig_loc, int len) {
       break;
     }
   if (p != 0)
-    client->remote_port = atoi(client->location+p);
+    client->control_port = atoi(client->location+p);
   else
-    client->remote_port = 80;
+    client->control_port = 80;
   
   // Continue doing so : now the path
   for (; client->location[i] && client->location[i] != '/'; i++) ;
@@ -817,7 +818,7 @@ upnp_analyze_location(UPnPClient *client, char *orig_loc, int len) {
     strcpy(client->host, client->location+7);
   }
 
-  os_printf("upnp_analyze_location : location {%s} port %d\n", client->location, client->remote_port);
+  os_printf("upnp_analyze_location : location {%s} port %d\n", client->location, client->control_port);
   os_printf("path {%s} host {%s}\n", client->path, client->host);
 
 }
