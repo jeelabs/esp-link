@@ -337,7 +337,7 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
   client->con->proto.tcp = (esp_tcp *)os_zalloc(sizeof(esp_tcp));
   client->con->reverse = client;
   
-  os_printf("upnp_query_igd : new espconn structure %08x\n", (uint32_t)client->con);
+  // os_printf("upnp_query_igd : new espconn structure %08x\n", (uint32_t)client->con);
 
   client->con->proto.tcp->local_port = espconn_port();
   client->con->proto.tcp->remote_port = client->control_port;
@@ -382,6 +382,7 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
     // Don't forget to free the temporary string storage for step 1.
     os_free(xml);
 #if 1
+    os_printf("Query : %s\n", query);
     break;
 #else
     os_printf("Query : %s\n", query);
@@ -459,12 +460,14 @@ upnp_tcp_discon_cb(void *arg) {
   // Kick SM into next state, trigger next query
   switch (upnp_state) {
   case upnp_found_igd:
-    // upnp_state = upnp_ready;
+    upnp_state = upnp_ready;
 
+#if 0
+    // FIXME test code
     os_printf("Kick SM into new state\n");
     upnp_state = upnp_adding_port;
     upnp_query_igd(client);
-
+#endif
     break;
   default:
     os_printf("upnp_tcp_discon_cb upnp_state %d\n", upnp_state);
@@ -543,14 +546,6 @@ upnp_dns_found(const char *name, ip_addr_t *ipaddr, void *arg) {
  */
 static void ICACHE_FLASH_ATTR
 upnp_tcp_recv_cb(void *arg, char *pdata, unsigned short len) {
-#if 0
-  os_printf("upnp_tcp_recv_cb (empty)\n");
-  os_printf("Received %d {", len);
-  int i;
-  for (i=0; i<len; i++)
-    os_printf("%c", pdata[i]);
-  os_printf("}\n");
-#else
   // struct espconn *con = (struct espconn*)arg;
   // UPnPClient *client = (UPnPClient *)con->reverse;
 
@@ -596,7 +591,6 @@ upnp_tcp_recv_cb(void *arg, char *pdata, unsigned short len) {
     os_printf("upnp_state (not treated) %d\n", (int)upnp_state);
     break;
   }
-#endif
 }
 
 /*
@@ -673,33 +667,15 @@ cmdUPnPScan(CmdPacket *cmd) {
     return;
   }
 
-#if 0
-  // Return 0, this means failure
-  cmdResponseStart(CMD_RESP_V, 0, 0);	// Danny
-  cmdResponseEnd();			// Danny
-  return;				// Danny
-#endif
-
   os_printf("Determining strlen(ssdp_message)\n");
   ssdp_len = strlen(ssdp_message);
   os_printf("strlen(ssdp_message) = %d\n", ssdp_len);
   espconn_sent(con, (uint8_t*)ssdp_message, ssdp_len);
   os_printf("espconn_sent() done\n");
-#if 0
-  // Return 0, this means failure
-  cmdResponseStart(CMD_RESP_V, 0, 0);	// Danny
-  cmdResponseEnd();			// Danny
-  return;				// Danny
-#endif
+
   // DBG_UPNP("SOCKET : sending %d bytes\n", ssdp_len);
   upnp_state = upnp_multicasted;
 
-#if 0
-  // Return 0, this means failure
-  cmdResponseStart(CMD_RESP_V, 0, 0);	// Danny
-  cmdResponseEnd();			// Danny
-  return;				// Danny
-#endif
   // Not ready yet --> indicate failure
   cmdResponseStart(CMD_RESP_V, 0, 0);
   cmdResponseEnd();
@@ -707,6 +683,42 @@ cmdUPnPScan(CmdPacket *cmd) {
   os_printf("Return at end of cmdUPnPScan(), upnp_state = upnp_multicasted\n");
 }
 
+void ICACHE_FLASH_ATTR
+cmdUPnPAddPort(CmdPacket *cmd) {
+  CmdRequest	req;
+  uint32_t	ip;
+  uint16_t	local_port, remote_port;
+
+  // start parsing the command
+  cmdRequest(&req, cmd);
+  if(cmdGetArgc(&req) != 3) {
+    os_printf("UPnPAddPort parse command failure: (cmdGetArgc(&req) != 3)\n");
+    return;
+  }
+
+  // Get the IP address
+  if (cmdPopArg(&req, (uint8_t*)&ip, 4)) {
+    os_printf("UPnPAddPort parse command failure: cannot get port\n");
+    return;
+  }
+  // get the ports
+  if (cmdPopArg(&req, (uint8_t*)&local_port, 2)) {
+    os_printf("UPnPAddPort parse command failure: cannot get port\n");
+    return;
+  }
+  if (cmdPopArg(&req, (uint8_t*)&remote_port, 2)) {
+    os_printf("UPnPAddPort parse command failure: cannot get port\n");
+    return;
+  }
+
+  os_printf("UPnPAddPort %08x %04x %04x\n", ip, local_port, remote_port);
+
+  // Return 0
+  cmdResponseStart(CMD_RESP_V, 0, 0);
+  cmdResponseEnd();
+}
+
+#if 0
 // Currently this is test code
 void ICACHE_FLASH_ATTR
 cmdUPnPAddPort(CmdPacket *cmd) {
@@ -720,7 +732,7 @@ cmdUPnPAddPort(CmdPacket *cmd) {
   client->con->proto.tcp = (esp_tcp *)os_zalloc(sizeof(esp_tcp));
   client->con->reverse = client;
 
-  os_printf("UPnP test : new espconn structure %08x\n", (uint32_t)client->con);
+  // os_printf("UPnP test : new espconn structure %08x\n", (uint32_t)client->con);
 
   client->con->proto.tcp->local_port = espconn_port();
   client->con->proto.tcp->remote_port = client->control_port;
@@ -762,6 +774,7 @@ cmdUPnPAddPort(CmdPacket *cmd) {
     // Pick up next round of code in upnp_dns_found()
   }
 }
+#endif
 
 void ICACHE_FLASH_ATTR
 cmdUPnPRemovePort(CmdPacket *cmd) {
