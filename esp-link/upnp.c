@@ -41,7 +41,8 @@ enum upnp_state_t {
 	upnp_found_igd,
 	upnp_ready,
 	upnp_adding_port,
-	upnp_removing_port
+	upnp_removing_port,
+	upnp_query_extaddress
 };
 static enum upnp_state_t upnp_state;
 
@@ -78,16 +79,17 @@ static const char *upnp_general_query = "GET %s HTTP/1.0\r\n"
  *
  * This one queries the IGD for its external IP address.
  */
-static const char *upnp_query_external_address = "POST %s HTTP/1.0\r\n"	// control-url
-	"Host: %s\r\n"							// host ip+port
+static const char *upnp_query_external_address =
+	"POST %s HTTP/1.0\r\n"					// control-url
+	"Host: %s\r\n"						// host ip+port
 	"User-Agent: esp-link\r\n"
-	"Content-Length : %d\r\n"					// XML length
+	"Content-Length : %d\r\n"				// XML length
 	"Content-Type: text/xml\r\n"
 	"SOAPAction: \"urn:schemas-upnp-org:service:WANPPPConnection:1#GetExternalIPAddress\"\r\n"
 	"Connection: Close\r\n"
 	"Cache-Control: no-cache\r\n"
 	"Pragma: no-cache\r\n"
-	"\r\n%s";							// XML
+	"\r\n%s";						// XML
 
 static const char *upnp_query_external_address_xml =
 	"<?xml version=\"1.0\"?>\r\n"
@@ -211,6 +213,31 @@ static const char *upnp_query_add_xml =
 	</s:Envelope>
  */
 
+static const char *upnp_query_remove_tmpl =
+	"POST %s HTTP/1.0\r\n"					// Control URL
+	"Host: %s\r\n"						// host ip:port
+	"User-Agent: esp-link\r\n"
+	"Content-Length: %d\r\n"				// XML length
+	"Content-Type: text/xml\r\n"
+	"SOAPAction: \"urn:schemas-upnp-org:service:WANPPPConnection:1#DeletePortMapping\"\r\n"
+	"Connection: Close\r\n"
+	"Cache-Control: no-cache\r\n"
+	"Pragma: no-cache\r\n";
+
+static const char *upnp_query_remove_xml =
+	"<?xml version=\"1.0\"?>\r\n"
+	"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\"\r\n"
+	"    s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\r\n"
+	"  <s:Body>\r\n"
+	"    <u:DeletePortMapping xmlns:u=\"urn:schemas-upnp-org:service:WANPPPConnection:1\">\r\n"
+	"    <NewRemoteHost>\r\n"
+	"    </NewRemoteHost>\r\n"
+	"    <NewExternalPort>%d</NewExternalPort>\r\n"		// remote port
+	"    <NewProtocol>TCP</NewProtocol>\r\n"
+	"  </u:DeletePortMapping>\r\n"
+	"  </s:Body>\r\n"
+	"</s:Envelope>\r\n";
+
  /*
   * Query to delete a port mapping
 
@@ -253,6 +280,8 @@ typedef struct {
   char			*host, *path, *location;	// IGD specifics
   char			*control_url;
   uint16_t		control_port;
+
+  ip_addr_t		external_address;		// IGD external address
 
   uint32_t		port, remote_port;		// local, remote
   ip_addr_t		ip, remote_ip;			// local, remote
@@ -331,7 +360,7 @@ ssdp_sent_cb(void *arg) {
  * This should be a generic function that performs a query via TCP.
  */
 static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
-  char *query;
+  char *query, *xml;
 
   // Create new espconn
   client->con = (struct espconn *)os_zalloc(sizeof(struct espconn));
@@ -367,7 +396,7 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
     os_printf("Port to be added is %08x : %04x (remote %04x)\n", client->ip.addr, client->port, client->remote_port);
 
     // Two step approach, as the XML also contains variable info, and we need to pass its length.
-    char *xml = (char *)os_malloc(strlen(upnp_query_add_xml) + 32);
+    xml = (char *)os_malloc(strlen(upnp_query_add_xml) + 32);
 
     // FIXME byte order issue ?
     os_sprintf(xml, upnp_query_add_xml, client->remote_port, client->port,
@@ -382,8 +411,13 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
 
     // Don't forget to free the temporary string storage for step 1.
     os_free(xml);
+
 #if 1
+    // Production : no debug output
+    break;
+#else
     //os_printf("Query : %s\n", query);
+    // Just calling os_printf() produces empty lines (\r\n)
     char *p, *q;
     for (p=query; *p; p++) {
       for (q=p; *q && *q != '\r'; q++) ;
@@ -393,11 +427,69 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
       p=q+1;
     }
     break;
-#else
-    os_printf("Query : %s\n", query);
-    os_free(query);
-    return;
 #endif
+
+  case upnp_removing_port:
+    /*
+     * Start the query to remove a port forwarding definition from the IGD.
+     */
+    os_printf("Port to be removed is (remote %04x)\n", client->remote_port);
+
+    // Two step approach, as the XML also contains variable info, and we need to pass its length.
+    xml = (char *)os_malloc(strlen(upnp_query_remove_xml) + 7);
+
+    // FIXME byte order issue ?
+    os_sprintf(xml, upnp_query_remove_xml, client->remote_port);
+
+    // Step 2 : create the headers.
+    query = (char *)os_malloc(strlen(upnp_query_remove_tmpl) + strlen(client->control_url) + strlen(client->host) + 10 + strlen(xml));
+    os_sprintf(query, upnp_query_remove_tmpl,
+      client->control_url, client->host,
+      strlen(xml), xml);
+
+    // Don't forget to free the temporary string storage for step 1.
+    os_free(xml);
+
+#if 0
+    // Production : no debug output
+    break;
+#else
+    //os_printf("Query : %s\n", query);
+    // Just calling os_printf() produces empty lines (\r\n)
+    char *p, *q;
+    for (p=query; *p; p++) {
+      for (q=p; *q && *q != '\r'; q++) ;
+      *q = 0;
+      os_printf("%s\n", p);
+      *q = '\r';
+      p=q+1;
+    }
+    break;
+#endif
+
+  case upnp_query_extaddress:
+    query = os_malloc(strlen(upnp_query_external_address) + strlen(the_client->control_url) +
+      strlen(the_client->host) + 8 + strlen(upnp_query_external_address_xml));
+    os_sprintf(query, upnp_query_external_address,
+      the_client->control_url, the_client->host,
+      strlen(upnp_query_external_address_xml), upnp_query_external_address_xml);
+#if 1
+    // Production : no debug output
+    break;
+#else
+    //os_printf("Query : %s\n", query);
+    // Just calling os_printf() produces empty lines (\r\n)
+    //char *p, *q;
+    for (p=query; *p; p++) {
+      for (q=p; *q && *q != '\r'; q++) ;
+      *q = 0;
+      os_printf("%s\n", p);
+      *q = '\r';
+      p=q+1;
+    }
+    break;
+#endif
+
   default:
     os_printf("upnp_query_igd: untreated state %d\n", (int)upnp_state);
     query = "";
@@ -448,12 +540,6 @@ upnp_tcp_discon_cb(void *arg) {
   struct espconn *con = (struct espconn *)arg;
   UPnPClient *client = con->reverse;
 
-#if 0
-  os_printf("upnp_tcp_discon_cb (empty)\n");
-
-#else
-  os_printf("upnp_tcp_discon_cb\n");
-
   // free the data buffer, if we have one
   if (client->data) os_free(client->data);
   client->data = 0;
@@ -471,17 +557,10 @@ upnp_tcp_discon_cb(void *arg) {
   case upnp_found_igd:
     upnp_state = upnp_ready;
 
-#if 0
-    // FIXME test code
-    os_printf("Kick SM into new state\n");
-    upnp_state = upnp_adding_port;
-    upnp_query_igd(client);
-#endif
     break;
   default:
     os_printf("upnp_tcp_discon_cb upnp_state %d\n", upnp_state);
   }
-#endif
 }
 
 static void ICACHE_FLASH_ATTR
@@ -500,10 +579,7 @@ upnp_tcp_recon_cb(void *arg, sint8 errType) {
 
 static void ICACHE_FLASH_ATTR
 upnp_tcp_connect_cb(void *arg) {
-#if 0
-  os_printf("upnp_tcp_connect_cb (empty)\n");
-#else
-  os_printf("upnp_tcp_connect_cb\n");
+  // os_printf("upnp_tcp_connect_cb\n");
 
   struct espconn *con = (struct espconn *)arg;
   UPnPClient *client = (UPnPClient *)con->reverse;
@@ -515,10 +591,9 @@ upnp_tcp_connect_cb(void *arg) {
   client->data_sent = client->data_len <= 1400 ? client->data_len : 1400;
 
   // os_printf("UPnP sending %d {%s}\n", client->data_sent, client->data);
-  os_printf("UPnP sending %d\n", client->data_sent);
+  // os_printf("UPnP sending %d\n", client->data_sent);
 
   espconn_send(con, (uint8_t*)client->data, client->data_sent);
-#endif
 }
 
 static void ICACHE_FLASH_ATTR
@@ -594,10 +669,26 @@ upnp_tcp_recv_cb(void *arg, char *pdata, unsigned short len) {
   case upnp_ready:
     break;
   case upnp_adding_port:
+    // FIXME
     os_printf("UPnP <adding port> TCP Recv len %d, %s\n", len, pdata);
     break;
   case upnp_removing_port:
+    // FIXME
     os_printf("UPnP <removing port> TCP Recv len %d, %s\n", len, pdata);
+    break;
+  case upnp_query_extaddress:
+    // <NewExternalIPAddress>83.134.116.129</NewExternalIPAddress>
+    // os_printf("UPnP <query external address> TCP Recv len %d, %s\n", len, pdata);
+    for (int i=0; i<len; i++) {
+      if (strncasecmp(pdata+i, "<NewExternalIPAddress>", 22) == 0) {
+	uint32_t e;
+	if (UTILS_StrToIP(client->host, &e)) {
+	  os_printf("Found %08x\n", e);
+	  client->external_address.addr = e;
+	}
+	break;
+      }
+    }
     break;
   default:
     os_printf("upnp_state (not treated) %d\n", (int)upnp_state);
@@ -749,70 +840,49 @@ cmdUPnPAddPort(CmdPacket *cmd) {
   cmdResponseEnd();
 }
 
-#if 0
-// Currently this is test code
-void ICACHE_FLASH_ATTR
-cmdUPnPAddPort(CmdPacket *cmd) {
-  UPnPClient *client = (UPnPClient *)os_zalloc(sizeof(UPnPClient));
-  os_memset(client, 0, sizeof(UPnPClient));
-
-  char *lp = "http://192.168.1.1:8000/o8ee3npj36j/IGD/upnp/IGD.xml";
-  upnp_analyze_location(client, lp, strlen(lp));
-
-  client->con = (struct espconn *)os_zalloc(sizeof(struct espconn));
-  client->con->proto.tcp = (esp_tcp *)os_zalloc(sizeof(esp_tcp));
-  client->con->reverse = client;
-
-  // os_printf("UPnP test : new espconn structure %08x\n", (uint32_t)client->con);
-
-  client->con->proto.tcp->local_port = espconn_port();
-  client->con->proto.tcp->remote_port = client->control_port;
-  client->con->type = ESPCONN_TCP;
-  client->con->state = ESPCONN_NONE;
-
-  char *query = (char *)os_malloc(strlen(upnp_general_query) + strlen(client->path) + strlen(client->location));
-  os_sprintf(query, upnp_general_query, client->path, client->location);
-  client->data = query;
-  client->data_len = strlen(query);
-
-  espconn_regist_connectcb(client->con, upnp_tcp_connect_cb);
-  espconn_regist_reconcb(client->con, upnp_tcp_recon_cb);
-  espconn_regist_disconcb(client->con, upnp_tcp_discon_cb);
-  espconn_regist_recvcb(client->con, upnp_tcp_recv_cb);
-  espconn_regist_sentcb(client->con, upnp_tcp_sent_cb);
-
-  // Get recv_cb to start sending stuff
-  upnp_state = upnp_found_igd;
-
-  // Set up stuff for "add port"
-  client->ip.addr = 0xC0A80196;
-  client->port = 0x1234;
-  client->remote_port = 0x5678;
-
-  if (UTILS_StrToIP(client->host, &client->con->proto.tcp->remote_ip)) {
-    memcpy(&client->remote_ip, client->con->proto.tcp->remote_ip, 4);
-    ip_addr_t rip = client->remote_ip;
-
-    int r = espconn_connect(client->con);
-    os_printf("Connect to %d.%d.%d.%d : %d -> %d\n", ip4_addr1(&rip), ip4_addr2(&rip),
-      ip4_addr3(&rip), ip4_addr4(&rip), client->con->proto.tcp->remote_port, r);
-
-  } else {
-    // Perform DNS query
-    os_printf("UPnP: lookup host %s\n", client->host);
-    espconn_gethostbyname(client->con, client->host, (ip_addr_t *)&client->con->proto.tcp->remote_ip[0], upnp_dns_found);
-
-    // Pick up next round of code in upnp_dns_found()
-  }
-}
-#endif
-
 void ICACHE_FLASH_ATTR
 cmdUPnPRemovePort(CmdPacket *cmd) {
+  CmdRequest	req;
+  uint16_t	remote_port;
+
+  // start parsing the command
+  cmdRequest(&req, cmd);
+  if(cmdGetArgc(&req) != 1) {
+    os_printf("UPnPRemovePort parse command failure: (cmdGetArgc(&req) != 3)\n");
+    return;
+  }
+
+  // get the port
+  if (cmdPopArg(&req, (uint8_t*)&remote_port, 2)) {
+    os_printf("UPnPRemovePort parse command failure: cannot get port\n");
+    return;
+  }
+
+  // Only do anything if ..
+  if (the_client == 0 || the_client->remote_ip.addr == 0 || upnp_state != upnp_ready) {
+    if (the_client == 0) os_printf("the_client NULL\n");
+    else if (the_client->remote_ip.addr == 0) os_printf("IP addr 0\n");
+    else if (upnp_state != upnp_ready) os_printf("UPnP state %d\n", upnp_state);
+    else os_printf("Returning ??\n");
+
+    cmdResponseStart(CMD_RESP_V, -1, 0);
+    cmdResponseEnd();
+    return;
+  }
+
+  the_client->remote_port = remote_port;
+
+  upnp_state = upnp_removing_port;
+  upnp_query_igd(the_client);
+
+  // Return 0 -> ok
+  cmdResponseStart(CMD_RESP_V, 0, 0);
+  cmdResponseEnd();
 }
 
 void ICACHE_FLASH_ATTR
 cmdUPnPBegin(CmdPacket *cmd) {
+  the_client = 0;
   upnp_state = upnp_none;
 }
 
@@ -869,9 +939,38 @@ upnp_analyze_location(UPnPClient *client, char *orig_loc, int len) {
 
 void ICACHE_FLASH_ATTR
 cmdUPnPQueryExternalAddress(CmdPacket *cmd) {
-  char *query = os_malloc(strlen(upnp_query_external_address) + strlen(the_client->path) +
-    strlen(the_client->host) + 8 + strlen(upnp_query_external_address_xml));
-  os_sprintf(query, upnp_query_external_address,
-    the_client->path, the_client->host,
-    strlen(upnp_query_external_address_xml), upnp_query_external_address_xml);
+  // Only do anything if ..
+  if (the_client == 0 || the_client->remote_ip.addr == 0) {
+    if (the_client == 0) os_printf("the_client NULL\n");
+    else if (the_client->remote_ip.addr == 0) os_printf("IP addr 0\n");
+    else if (upnp_state != upnp_ready) os_printf("UPnP state %d\n", upnp_state);
+    else os_printf("Returning ??\n");
+
+    cmdResponseStart(CMD_RESP_V, -1, 0);
+    cmdResponseEnd();
+    return;
+  }
+
+  if (upnp_state == upnp_query_extaddress) {
+    uint32_t ext = the_client->external_address.addr;
+
+    if (ext != 0)
+      upnp_state = upnp_ready;			// Got it, reset our state
+
+    cmdResponseStart(CMD_RESP_V, ext, 0);
+    cmdResponseEnd();
+    return;
+  }
+
+  if (upnp_state == upnp_ready) {
+    upnp_state = upnp_query_extaddress;
+    upnp_query_igd(the_client);
+
+    cmdResponseStart(CMD_RESP_V, 0, 0);		// Cannot return info immediately, try again later
+    cmdResponseEnd();
+    return;
+  }
+
+  cmdResponseStart(CMD_RESP_V, -1, 0);		// invalid status
+  cmdResponseEnd();
 }
