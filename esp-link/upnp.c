@@ -251,6 +251,7 @@ static const char *upnp_query_add_xml =
 
 typedef struct {
   char			*host, *path, *location;	// IGD specifics
+  char			*control_url;
   uint16_t		control_port;
 
   uint32_t		port, remote_port;		// local, remote
@@ -374,15 +375,23 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
       ip4_addr2(&client->ip), ip4_addr1(&client->ip));
 
     // Step 2 : create the headers.
-    query = (char *)os_malloc(strlen(upnp_query_add_tmpl) + strlen(client->path) + strlen(client->host) + 10 + strlen(xml));
+    query = (char *)os_malloc(strlen(upnp_query_add_tmpl) + strlen(client->control_url) + strlen(client->host) + 10 + strlen(xml));
     os_sprintf(query, upnp_query_add_tmpl,
-      client->path, client->host,
+      client->control_url, client->host,
       strlen(xml), xml);
 
     // Don't forget to free the temporary string storage for step 1.
     os_free(xml);
 #if 1
-    os_printf("Query : %s\n", query);
+    //os_printf("Query : %s\n", query);
+    char *p, *q;
+    for (p=query; *p; p++) {
+      for (q=p; *q && *q != '\r'; q++) ;
+      *q = 0;
+      os_printf("%s\n", p);
+      *q = '\r';
+      p=q+1;
+    }
     break;
 #else
     os_printf("Query : %s\n", query);
@@ -546,8 +555,8 @@ upnp_dns_found(const char *name, ip_addr_t *ipaddr, void *arg) {
  */
 static void ICACHE_FLASH_ATTR
 upnp_tcp_recv_cb(void *arg, char *pdata, unsigned short len) {
-  // struct espconn *con = (struct espconn*)arg;
-  // UPnPClient *client = (UPnPClient *)con->reverse;
+  struct espconn *con = (struct espconn*)arg;
+  UPnPClient *client = (UPnPClient *)con->reverse;
 
   int inservice = 0, get_this = -1;
 
@@ -573,7 +582,10 @@ upnp_tcp_recv_cb(void *arg, char *pdata, unsigned short len) {
 	for (j=i+12; pdata[j] && pdata[j] != '<'; j++, k++)
 	  control_url[k] = pdata[j];
 	control_url[k] = 0;
+
 	os_printf("UPnP: Control URL %s\n", control_url);
+	client->control_url = os_malloc(strlen(control_url)+1);
+	strcpy(client->control_url, control_url);
 
 	// upnp_state = upnp_ready;	// upnp_tcp_discon_cb will do this
       }
@@ -711,9 +723,28 @@ cmdUPnPAddPort(CmdPacket *cmd) {
     return;
   }
 
+  // Only do anything if ..
+  if (the_client == 0 || the_client->remote_ip.addr == 0 || upnp_state != upnp_ready) {
+    if (the_client == 0) os_printf("the_client NULL\n");
+    else if (the_client->remote_ip.addr == 0) os_printf("IP addr 0\n");
+    else if (upnp_state != upnp_ready) os_printf("UPnP state %d\n", upnp_state);
+    else os_printf("Returning ??\n");
+
+    cmdResponseStart(CMD_RESP_V, -1, 0);
+    cmdResponseEnd();
+    return;
+  }
+
   os_printf("UPnPAddPort %08x %04x %04x\n", ip, local_port, remote_port);
 
-  // Return 0
+  the_client->ip.addr = ip;
+  the_client->port = local_port;
+  the_client->remote_port = remote_port;
+
+  upnp_state = upnp_adding_port;
+  upnp_query_igd(the_client);
+
+  // Return 0 -> ok
   cmdResponseStart(CMD_RESP_V, 0, 0);
   cmdResponseEnd();
 }
