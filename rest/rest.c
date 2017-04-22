@@ -316,7 +316,7 @@ REST_SetHeader(CmdPacket *cmd) {
     client->header[len] = '\r';
     client->header[len+1] = '\n';
     client->header[len+2] = 0;
-    DBG_REST("REST: Set header: %s\r\n", client->header);
+    // DBG_REST("REST: Set header: %s\r\n", client->header);
     break;
   case HEADER_CONTENT_TYPE:
     if(client->content_type) os_free(client->content_type);
@@ -325,7 +325,7 @@ REST_SetHeader(CmdPacket *cmd) {
     client->content_type[len] = '\r';
     client->content_type[len+1] = '\n';
     client->content_type[len+2] = 0;
-    DBG_REST("REST: Set content_type: %s\r\n", client->content_type);
+    // DBG_REST("REST: Set content_type: %s\r\n", client->content_type);
     break;
   case HEADER_USER_AGENT:
     if(client->user_agent) os_free(client->user_agent);
@@ -334,7 +334,7 @@ REST_SetHeader(CmdPacket *cmd) {
     client->user_agent[len] = '\r';
     client->user_agent[len+1] = '\n';
     client->user_agent[len+2] = 0;
-    DBG_REST("REST: Set user_agent: %s\r\n", client->user_agent);
+    // DBG_REST("REST: Set user_agent: %s\r\n", client->user_agent);
     break;
   }
 }

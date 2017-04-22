@@ -670,11 +670,13 @@ upnp_tcp_recv_cb(void *arg, char *pdata, unsigned short len) {
     break;
   case upnp_adding_port:
     // FIXME
-    os_printf("UPnP <adding port> TCP Recv len %d, %s\n", len, pdata);
+    // os_printf("UPnP <adding port> TCP Recv len %d, %s\n", len, pdata);
+    os_printf("UPnP <adding port> TCP Recv len %d\n", len);
     break;
   case upnp_removing_port:
     // FIXME
-    os_printf("UPnP <removing port> TCP Recv len %d, %s\n", len, pdata);
+    // os_printf("UPnP <removing port> TCP Recv len %d, %s\n", len, pdata);
+    os_printf("UPnP <removing port> TCP Recv len %d\n", len);
     break;
   case upnp_query_extaddress:
     // <NewExternalIPAddress>83.134.116.129</NewExternalIPAddress>
@@ -682,7 +684,8 @@ upnp_tcp_recv_cb(void *arg, char *pdata, unsigned short len) {
     for (int i=0; i<len; i++) {
       if (strncasecmp(pdata+i, "<NewExternalIPAddress>", 22) == 0) {
 	uint32_t e;
-	if (UTILS_StrToIP(client->host, &e)) {
+	if (UTILS_StrToIP(pdata+i+22, &e)) {
+	  os_printf("Found %08x\n", e);
 	  os_printf("Found %08x\n", e);
 	  client->external_address.addr = e;
 	}
