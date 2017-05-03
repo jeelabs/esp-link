@@ -46,6 +46,13 @@ enum upnp_state_t {
 };
 static enum upnp_state_t upnp_state;
 
+enum service_type_t {
+	service_type_unknown,
+	wanppp,
+	wanip
+};
+static enum service_type_t service_type = service_type_unknown;
+
 /*
  * Query #1 : SSDP protocol, this is a UDP multicast to discover a IGD device.
  * (internet gateway device)
@@ -60,6 +67,14 @@ static const char *ssdp_message = "M-SEARCH * HTTP/1.1\r\n"
 static int ssdp_len;
 static char *control_url = 0;
 static int counter;
+
+static const char *service_type_wanip = "urn:upnp-org:serviceId:WANIPConn1";
+static int service_type_wanip_len = 33;
+static const char *service_type_wanppp = "urn:upnp-org:serviceId:WANPPPConn1";
+static int service_type_wanppp_len = 34;
+
+static const char *connection_wanppp = "WANPPPConnection";
+static const char *connection_wanip = "WANIPConnection";
 
 /*
  * Query #2 : query the IGD for its device & service list.
@@ -85,7 +100,9 @@ static const char *upnp_query_external_address =
 	"User-Agent: esp-link\r\n"
 	"Content-Length : %d\r\n"				// XML length
 	"Content-Type: text/xml\r\n"
-	"SOAPAction: \"urn:schemas-upnp-org:service:WANPPPConnection:1#GetExternalIPAddress\"\r\n"
+	// "SOAPAction: \"urn:schemas-upnp-org:service:WANPPPConnection:1#GetExternalIPAddress\"\r\n"
+	"SOAPAction: \"urn:schemas-upnp-org:service:%s:1#GetExternalIPAddress\"\r\n"
+								// WANPPPConnection
 	"Connection: Close\r\n"
 	"Cache-Control: no-cache\r\n"
 	"Pragma: no-cache\r\n"
@@ -95,7 +112,8 @@ static const char *upnp_query_external_address_xml =
 	"<?xml version=\"1.0\"?>\r\n"
 	"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\r\n"
 	"<s:Body>\r\n"
-	"<u:GetExternalIPAddress xmlns:u=\"urn:schemas-upnp-org:service:WANPPPConnection:1\">\r\n"
+	// "<u:GetExternalIPAddress xmlns:u=\"urn:schemas-upnp-org:service:WANPPPConnection:1\">\r\n"
+	"<u:GetExternalIPAddress xmlns:u=\"urn:schemas-upnp-org:service:%s:1\">\r\n"
 	"</u:GetExternalIPAddress>\r\n"
 	"</s:Body>\r\n"
 	"</s:Envelope>\r\n";
@@ -141,7 +159,8 @@ static const char *upnp_query_add_tmpl =
 	"User-Agent: esp-link\r\n"
 	"Content-Length: %d\r\n"		// Length of XML
 	"Content-Type: text/xml\r\n"
-	"SOAPAction: \"urn:schemas-upnp-org:service:WANPPPConnection:1#AddPortMapping\"\r\n"
+	// "SOAPAction: \"urn:schemas-upnp-org:service:WANPPPConnection:1#AddPortMapping\"\r\n"
+	"SOAPAction: \"urn:schemas-upnp-org:service:%s:1#AddPortMapping\"\r\n"
 	"Connection: Close\r\n"
 	"Cache-Control: no-cache\r\n"
 	"Pragma: no-cache\r\n\r\n%s";		// XML
@@ -151,7 +170,8 @@ static const char *upnp_query_add_xml =
 	"<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\""
 	" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">\r\n"
 	"<s:Body>\r\n"
-	"<u:AddPortMapping xmlns:u=\"urn:schemas-upnp-org:service:WANPPPConnection:1\">\r\n"
+	// "<u:AddPortMapping xmlns:u=\"urn:schemas-upnp-org:service:WANPPPConnection:1\">\r\n"
+	"<u:AddPortMapping xmlns:u=\"urn:schemas-upnp-org:service:%s:1\">\r\n"
 	"<NewRemoteHost></NewRemoteHost>\r\n"
 	"<NewExternalPort>%d</NewExternalPort>\r\n"			// remote port
 	"<NewProtocol>TCP</NewProtocol>\r\n"
@@ -361,6 +381,7 @@ ssdp_sent_cb(void *arg) {
  */
 static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
   char *query, *xml;
+  char *p, *q;
 
   // Create new espconn
   client->con = (struct espconn *)os_zalloc(sizeof(struct espconn));
@@ -396,29 +417,42 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
     os_printf("Port to be added is %08x : %04x (remote %04x)\n", client->ip.addr, client->port, client->remote_port);
 
     // Two step approach, as the XML also contains variable info, and we need to pass its length.
-    xml = (char *)os_malloc(strlen(upnp_query_add_xml) + 32);
+    xml = (char *)os_malloc(strlen(upnp_query_add_xml) + strlen(connection_wanppp) + 32);
 
     // FIXME byte order issue ?
-    os_sprintf(xml, upnp_query_add_xml, client->remote_port, client->port,
-      ip4_addr4(&client->ip), ip4_addr3(&client->ip),
-      ip4_addr2(&client->ip), ip4_addr1(&client->ip));
+    os_sprintf(xml, upnp_query_add_xml,
+      (service_type == wanppp) ? connection_wanppp : connection_wanip,
+      client->remote_port, client->port,
+      ip4_addr1(&client->ip), ip4_addr2(&client->ip),
+      ip4_addr3(&client->ip), ip4_addr4(&client->ip));
+
+    // os_printf("XML %s\n", xml);
+    // os_printf("Control URL %s\n", client->control_url);
+    // return;	// Danny
 
     // Step 2 : create the headers.
     query = (char *)os_malloc(strlen(upnp_query_add_tmpl) + strlen(client->control_url) + strlen(client->host) + 10 + strlen(xml));
     os_sprintf(query, upnp_query_add_tmpl,
       client->control_url, client->host,
-      strlen(xml), xml);
+      strlen(xml),
+      (service_type == wanppp) ? connection_wanppp : connection_wanip,
+      xml);
 
     // Don't forget to free the temporary string storage for step 1.
     os_free(xml);
 
-#if 1
+    // os_printf("QUERY %s\n", query);
+    // os_printf("Control URL %s\n", client->control_url);
+    // return;	// Danny
+
+#if 0
     // Production : no debug output
     break;
 #else
     //os_printf("Query : %s\n", query);
     // Just calling os_printf() produces empty lines (\r\n)
-    char *p, *q;
+
+    os_printf("Query : ");
     for (p=query; *p; p++) {
       for (q=p; *q && *q != '\r'; q++) ;
       *q = 0;
@@ -426,6 +460,7 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
       *q = '\r';
       p=q+1;
     }
+    // return;	// Danny
     break;
 #endif
 
@@ -456,7 +491,6 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
 #else
     //os_printf("Query : %s\n", query);
     // Just calling os_printf() produces empty lines (\r\n)
-    char *p, *q;
     for (p=query; *p; p++) {
       for (q=p; *q && *q != '\r'; q++) ;
       *q = 0;
@@ -468,12 +502,21 @@ static void ICACHE_FLASH_ATTR upnp_query_igd(UPnPClient *client) {
 #endif
 
   case upnp_query_extaddress:
+    // Step 1
+    xml = os_malloc(strlen(upnp_query_external_address_xml) + strlen(connection_wanppp));
+    os_sprintf(xml, upnp_query_external_address_xml,
+      (service_type == wanppp) ? connection_wanppp : connection_wanip);
+
+    // Step 2
     query = os_malloc(strlen(upnp_query_external_address) + strlen(the_client->control_url) +
-      strlen(the_client->host) + 8 + strlen(upnp_query_external_address_xml));
+      strlen(the_client->host) + 8 + strlen(xml) + strlen(connection_wanppp));
     os_sprintf(query, upnp_query_external_address,
       the_client->control_url, the_client->host,
-      strlen(upnp_query_external_address_xml), upnp_query_external_address_xml);
-#if 1
+      strlen(xml),
+      (service_type == wanppp) ? connection_wanppp : connection_wanip,
+      xml);
+    os_free(xml);
+#if 0
     // Production : no debug output
     break;
 #else
@@ -555,6 +598,7 @@ upnp_tcp_discon_cb(void *arg) {
   // Kick SM into next state, trigger next query
   switch (upnp_state) {
   case upnp_found_igd:
+    os_printf("upnp_tcp_discon_cb set state to READY\n");
     upnp_state = upnp_ready;
 
     break;
@@ -641,12 +685,34 @@ upnp_tcp_recv_cb(void *arg, char *pdata, unsigned short len) {
   case upnp_found_igd:
     // Find a service with specific id, remember its control-url.
     for (int i=0; i<len; i++) {
+      // Debug
+      if (strncasecmp(pdata+i, "<serviceType>", 13) == 0) {
+        int k, l;
+	for (k=i+13; pdata[k] && pdata[k] != '<'; k++) ;
+	for (l=i; l<k; l++)
+	  os_printf("%c", pdata[l]);
+	os_printf("\n");
+      }
+      // End debug
+
       if (strncasecmp(pdata+i, "<service>", 9) == 0) {
 	inservice++;
+#if 0
+	// Debug
+	int k, l;
+	for (k=i, l=0; l<4 && k<i+500; k++) {
+	  if (pdata[k] == '\n') l++;
+	  os_printf("%c", pdata[k]);
+	}
+#endif
       } else if (strncasecmp(pdata+i, "</service>", 10) == 0) {
 	inservice--;
-      } else if (strncasecmp(pdata+i, "urn:upnp-org:serviceId:WANPPPConn1", 34) == 0) {
+      } else if (strncasecmp(pdata+i, service_type_wanip, service_type_wanip_len) == 0) {
 	get_this = inservice;
+	service_type = wanip;
+      } else if (strncasecmp(pdata+i, service_type_wanppp, service_type_wanppp_len) == 0) {
+	get_this = inservice;
+	service_type = wanppp;
       } else if (get_this == inservice && strncasecmp(pdata+i, "<controlURL>", 12) == 0) {
 	get_this = -1;
 	int j;
@@ -669,9 +735,9 @@ upnp_tcp_recv_cb(void *arg, char *pdata, unsigned short len) {
   case upnp_ready:
     break;
   case upnp_adding_port:
-    // FIXME
     // os_printf("UPnP <adding port> TCP Recv len %d, %s\n", len, pdata);
     os_printf("UPnP <adding port> TCP Recv len %d\n", len);
+    // FIXME should interpret the result
     break;
   case upnp_removing_port:
     // FIXME
@@ -710,6 +776,14 @@ void ICACHE_FLASH_ATTR
 cmdUPnPScan(CmdPacket *cmd) {
   os_printf("cmdUPnPScan()\n");
 
+  // States that signify we're not ready --> reply immediately, with NULL
+  if (upnp_state == upnp_multicasted || upnp_state == upnp_found_igd) {
+    cmdResponseStart(CMD_RESP_V, 0, 0);
+    cmdResponseEnd();
+    return;
+  }
+
+  // If we're ready, return indicating the IP address of the router
   if (upnp_state == upnp_ready) {
     // Return the IP address of the gateway, this indicates success.
     if (the_client == 0)
@@ -720,6 +794,7 @@ cmdUPnPScan(CmdPacket *cmd) {
     return;
   }
 
+  // Otherwise, start a scan already
   upnp_state = upnp_none;
 
   struct espconn *con = (struct espconn *)os_zalloc(sizeof(struct espconn));
@@ -834,6 +909,14 @@ cmdUPnPAddPort(CmdPacket *cmd) {
   the_client->ip.addr = ip;
   the_client->port = local_port;
   the_client->remote_port = remote_port;
+
+#if 0
+  // Stop right here
+  // Return 0 -> ok
+  cmdResponseStart(CMD_RESP_V, 0, 0);
+  cmdResponseEnd();
+  return;
+#endif
 
   upnp_state = upnp_adding_port;
   upnp_query_igd(the_client);
