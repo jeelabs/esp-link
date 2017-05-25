@@ -44,6 +44,11 @@ serbridgeConnData connData[MAX_CONN];
 #define SetDataSize  2  // Set data size
 #define SetParity    3  // Set parity
 #define SetControl   5  // Set control lines
+#define PurgeData   12  // Flush FIFO buffer(s)
+#define PURGE_TX     2
+#define BRK_REQ      4  // request current BREAK state
+#define BRK_ON       5  // set BREAK (TX-line to LOW)
+#define BRK_OFF      6  // reset BREAK
 #define DTR_ON       8  // used here to reset microcontroller
 #define DTR_OFF      9
 #define RTS_ON      11  // used here to signal ISP (in-system-programming) to uC
@@ -51,9 +56,10 @@ serbridgeConnData connData[MAX_CONN];
 
 // telnet state machine states
 enum { TN_normal, TN_iac, TN_will, TN_start, TN_end, TN_comPort, TN_setControl, TN_setBaud,
-    TN_setDataSize, TN_setParity };
+    TN_setDataSize, TN_setParity, TN_purgeData };
 static char tn_baudCnt;
 static uint32_t tn_baud; // shared across all sockets, thus possible race condition
+static uint8_t tn_break = 0;  // 0=BREAK-OFF, 1=BREAK-ON
 
 // process a buffer-full on a telnet connection
 static void ICACHE_FLASH_ATTR
@@ -110,8 +116,17 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
       case SetDataSize: state = TN_setDataSize; break;
       case SetParity: state = TN_setParity; break;
       case SetBaud: state = TN_setBaud; tn_baudCnt = 0; tn_baud = 0; break;
+      case PurgeData: state = TN_purgeData; break;
       default: state = TN_end; break;
       }
+      break;
+    case TN_purgeData:              // purge FIFO-buffers
+      switch (c) {
+        case PURGE_TX:
+          // TODO: flush TX buffer
+          break;
+      }
+      state = TN_end;
       break;
     case TN_setControl:             // switch control line and delay a tad
       switch (c) {
@@ -155,6 +170,33 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
           os_delay_us(100L);
         }
         if (in_mcu_flashing > 0) in_mcu_flashing--;
+        break;
+      case BRK_REQ: {
+        char respBuf[7] = { IAC, SB, ComPortOpt, SetControl, tn_break, IAC, SE };
+        espbuffsend(conn, respBuf, 7);
+#ifdef SERBR_DBG
+        os_printf("Telnet: BREAK state requested: state = %d)\n", tn_break);
+#endif
+        break; }
+      case BRK_ON:
+	if (((READ_PERI_REG(UART_STATUS(UART0))>>UART_TXFIFO_CNT_S)&UART_TXFIFO_CNT) == 0) {  // TX-FIFO of UART0 must be empty
+          PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_GPIO1);
+          GPIO_OUTPUT_SET(1, 0);
+          tn_break = 1;
+#ifdef SERBR_DBG
+          os_printf("Telnet: BREAK ON: set TX to LOW\n");
+#endif
+	}
+        break;
+      case BRK_OFF:
+        if (tn_break == 1) {
+          GPIO_OUTPUT_SET(1, 1);
+          PIN_FUNC_SELECT(PERIPHS_IO_MUX_U0TXD_U, FUNC_U0TXD);
+          tn_break = 0;
+#ifdef SERBR_DBG
+          os_printf("Telnet: BREAK OFF: set TX to HIGH\n");
+#endif
+	}
         break;
       }
       state = TN_end;
