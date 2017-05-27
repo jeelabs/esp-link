@@ -4,6 +4,8 @@
 #include "config.h"
 #include "mqtt.h"
 
+#include "cmd/cmd.h"
+
 #ifdef MQTTCLIENT_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
 #else

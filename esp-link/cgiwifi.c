@@ -13,7 +13,9 @@ Cgi/template routines for the /wifi url.
  * ----------------------------------------------------------------------------
  */
 
+
 #include <esp8266.h>
+#include "cmd.h"
 #include "cgiwifi.h"
 #include "cgi.h"
 #include "status.h"
@@ -34,7 +36,7 @@ bool mdns_started = false;
 // ===== wifi status change callbacks
 static WifiStateChangeCb wifi_state_change_cb[4];
 
-// Temp store for new staion config
+// Temp store for new station config
 struct station_config stconf;
 
 // Temp store for new ap config

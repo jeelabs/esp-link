@@ -8,7 +8,6 @@
 #include "uart.h"
 #include "stk500.h"
 #include "serbridge.h"
-#include "mqtt_cmd.h"
 #include "serled.h"
 
 #define INIT_DELAY     150   // wait this many millisecs before sending anything
