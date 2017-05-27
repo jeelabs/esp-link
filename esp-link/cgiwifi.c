@@ -995,7 +995,7 @@ int ICACHE_FLASH_ATTR wifiConnect(char *ssid, char *pass) {
 ICACHE_FLASH_ATTR int wifiSignalStrength(int i) { 
   sint8 rssi;
 
-  if (i < 0)
+  if (i < 0 || i == 255)
     rssi = wifi_station_get_rssi();	// Current network's signal strength
   else if (i >= cgiWifiAps.noAps)
     rssi = 0;				// FIX ME
