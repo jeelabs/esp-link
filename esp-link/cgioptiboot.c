@@ -9,6 +9,7 @@
 #include "stk500.h"
 #include "serbridge.h"
 #include "serled.h"
+#include "mqtt_cmd.h"
 
 #define INIT_DELAY     150   // wait this many millisecs before sending anything
 #define BAUD_INTERVAL  600   // interval after which we change baud rate

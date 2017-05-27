@@ -1011,7 +1011,7 @@ void ICACHE_FLASH_ATTR cmdWifiQuerySSID(CmdPacket *cmd) {
   uint32_t callback = req.cmd->value;
 
   struct station_config conf;
-  bool res = wifi_station_get_config(&conf);
+  // bool res = wifi_station_get_config(&conf);
 
   os_printf("QuerySSID : %s\n", conf.ssid);
 
