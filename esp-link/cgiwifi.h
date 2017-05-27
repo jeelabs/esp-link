@@ -24,4 +24,11 @@ int checkString(char *str);
 extern uint8_t wifiState;
 extern bool mdns_started;
 
+int wifiGetApCount();
+void wifiGetApName(int, char *);
+int wifiSignalStrength(int);
+void connectToNetwork(char *, char *);
+void cmdWifiQuerySSID(CmdPacket *cmd);
+void cmdWifiStartScan(CmdPacket *cmd);
+
 #endif

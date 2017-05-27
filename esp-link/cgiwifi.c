@@ -226,6 +226,7 @@ static void ICACHE_FLASH_ATTR scanStartCb(void *arg) {
   wifi_station_scan(NULL, wifiScanDoneCb);
 }
 
+// Start scanning, web interface
 static int ICACHE_FLASH_ATTR cgiWiFiStartScan(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
   jsonHeader(connData, 200);
@@ -236,6 +237,16 @@ static int ICACHE_FLASH_ATTR cgiWiFiStartScan(HttpdConnData *connData) {
     os_timer_arm(&scanTimer, 200, 0);
   }
   return HTTPD_CGI_DONE;
+}
+
+// Start scanning, API interface
+void ICACHE_FLASH_ATTR cmdWifiStartScan(CmdPacket *cmd) {
+  if (!cgiWifiAps.scanInProgress) {
+    cgiWifiAps.scanInProgress = 1;
+    os_timer_disarm(&scanTimer);
+    os_timer_setfn(&scanTimer, scanStartCb, NULL);
+    os_timer_arm(&scanTimer, 200, 0);
+  }
 }
 
 static int ICACHE_FLASH_ATTR cgiWiFiGetScan(HttpdConnData *connData) {
@@ -361,6 +372,18 @@ static void ICACHE_FLASH_ATTR reassTimerCb(void *arg) {
   os_timer_arm(&resetTimer, 4*RESET_TIMEOUT, 0);
 }
 
+// Kick off connection to some network
+void ICACHE_FLASH_ATTR connectToNetwork(char *ssid, char *pass) {
+  os_strncpy((char*)stconf.ssid, ssid, 32);
+  os_strncpy((char*)stconf.password, pass, 64);
+  DBG("Wifi try to connect to AP %s pw %s\n", ssid, pass);
+
+  // Schedule disconnect/connect
+  os_timer_disarm(&reassTimer);
+  os_timer_setfn(&reassTimer, reassTimerCb, NULL);
+  os_timer_arm(&reassTimer, 1000, 0); // 1 second for the response of this request to make it
+}
+
 // This cgi uses the routines above to connect to a specific access point with the
 // given ESSID using the given password.
 int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
@@ -380,14 +403,8 @@ int ICACHE_FLASH_ATTR cgiWiFiConnect(HttpdConnData *connData) {
 
   if (el > 0 && pl >= 0) {
     //Set to 0 if you want to disable the actual reconnecting bit
-    os_strncpy((char*)stconf.ssid, essid, 32);
-    os_strncpy((char*)stconf.password, passwd, 64);
-    DBG("Wifi try to connect to AP %s pw %s\n", essid, passwd);
 
-    //Schedule disconnect/connect
-    os_timer_disarm(&reassTimer);
-    os_timer_setfn(&reassTimer, reassTimerCb, NULL);
-    os_timer_arm(&reassTimer, 1000, 0); // 1 second for the response of this request to make it
+    connectToNetwork(essid, passwd);
     jsonHeader(connData, 200);
   } else {
     jsonHeader(connData, 400);
@@ -944,4 +961,59 @@ void ICACHE_FLASH_ATTR wifiInit() {
     os_timer_disarm(&resetTimer);
     os_timer_setfn(&resetTimer, resetTimerCb, NULL);
     os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
+}
+
+// Access functions for cgiWifiAps
+int ICACHE_FLASH_ATTR wifiGetApCount() {
+  if (cgiWifiAps.scanInProgress)
+    return 0;
+  return cgiWifiAps.noAps;
+}
+
+ICACHE_FLASH_ATTR void wifiGetApName(int i, char *ptr) {
+  if (i < 0)
+    return;
+  if (i >= cgiWifiAps.noAps)
+    return;
+
+  if (ptr != 0)
+    strncpy(ptr, cgiWifiAps.apData[i]->ssid, 32);
+
+  os_printf("AP %s\n", cgiWifiAps.apData[i]->ssid);
+}
+
+// This may not belong here : called from cmd/handlers.c
+// But it's good to have similar functionality close to each other.
+// This performs functions similar to cgiWiFiConnect()
+int ICACHE_FLASH_ATTR wifiConnect(char *ssid, char *pass) {
+// Danny
+  return 0;
+}
+
+ICACHE_FLASH_ATTR int wifiSignalStrength(int i) { 
+  sint8 rssi;
+
+  if (i < 0)
+    rssi = wifi_station_get_rssi();	// Current network's signal strength
+  else if (i >= cgiWifiAps.noAps)
+    rssi = 0;				// FIX ME
+  else
+    rssi = cgiWifiAps.apData[i]->rssi;	// Signal strength of any known network
+
+  return rssi;
+}
+
+void ICACHE_FLASH_ATTR cmdWifiQuerySSID(CmdPacket *cmd) {
+  CmdRequest req;
+  cmdRequest(&req, cmd);
+  uint32_t callback = req.cmd->value;
+
+  struct station_config conf;
+  bool res = wifi_station_get_config(&conf);
+
+  os_printf("QuerySSID : %s\n", conf.ssid);
+
+  cmdResponseStart(CMD_RESP_CB, callback, 1);
+  cmdResponseBody(conf.ssid, strlen((char *)conf.ssid)+1);
+  cmdResponseEnd();
 }
