@@ -13,12 +13,14 @@
 #include "httpd.h"
 #include "httpdespfs.h"
 #include "cgi.h"
+#include "cmd.h"
 #include "cgiwifi.h"
 #include "cgipins.h"
 #include "cgitcp.h"
 #include "cgimqtt.h"
 #include "cgiflash.h"
 #include "cgioptiboot.h"
+#include "cgimega.h"
 #include "cgiwebserversetup.h"
 #include "auth.h"
 #include "espfs.h"
@@ -69,8 +71,16 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/flash/next", cgiGetFirmwareNext, NULL },
   { "/flash/upload", cgiUploadFirmware, NULL },
   { "/flash/reboot", cgiRebootFirmware, NULL },
+
   { "/pgm/sync", cgiOptibootSync, NULL },
   { "/pgm/upload", cgiOptibootData, NULL },
+
+  { "/pgmmega/sync", cgiMegaSync, NULL },		// Start programming mode
+  { "/pgmmega/upload", cgiMegaData, NULL },		// Upload stuff
+  { "/pgmmega/read/*", cgiMegaRead, NULL },		// Download stuff (to verify)
+  { "/pgmmega/fuse/*", cgiMegaFuse, NULL },		// Read or write fuse
+  { "/pgmmega/rebootmcu", cgiMegaRebootMCU, NULL },	// Get out of programming mode
+
   { "/log/text", ajaxLog, NULL },
   { "/log/dbg", ajaxLogDbg, NULL },
   { "/log/reset", cgiReset, NULL },
