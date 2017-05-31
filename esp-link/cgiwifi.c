@@ -232,12 +232,10 @@ static void ICACHE_FLASH_ATTR scanStartCb(void *arg) {
 static int ICACHE_FLASH_ATTR cgiWiFiStartScan(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
   jsonHeader(connData, 200);
-  if (!cgiWifiAps.scanInProgress) {
-    cgiWifiAps.scanInProgress = 1;
-    os_timer_disarm(&scanTimer);
-    os_timer_setfn(&scanTimer, scanStartCb, NULL);
-    os_timer_arm(&scanTimer, 200, 0);
-  }
+
+  // Don't duplicate code, reuse the function below
+  cmdWifiStartScan(0);
+
   return HTTPD_CGI_DONE;
 }
 
@@ -257,7 +255,7 @@ static int ICACHE_FLASH_ATTR cgiWiFiGetScan(HttpdConnData *connData) {
   const int chunk = 1460/64; // ssid is up to 32 chars
   int len = 0;
 
-  os_printf("GET scan: cgiData=%d noAps=%d\n", (int)connData->cgiData, cgiWifiAps.noAps);
+  DBG("GET scan: cgiData=%d noAps=%d\n", (int)connData->cgiData, cgiWifiAps.noAps);
 
   // handle continuation call, connData->cgiData-1 is the position in the scan results where we
   // we need to continue sending from (using -1 'cause 0 means it's the first call)
@@ -444,12 +442,12 @@ static bool ICACHE_FLASH_ATTR parse_ip(char *buff, ip_addr_t *ip_ptr) {
 static void ICACHE_FLASH_ATTR debugIP() {
   struct ip_info info;
   if (wifi_get_ip_info(0, &info)) {
-    os_printf("\"ip\": \"%d.%d.%d.%d\"\n", IP2STR(&info.ip.addr));
-    os_printf("\"netmask\": \"%d.%d.%d.%d\"\n", IP2STR(&info.netmask.addr));
-    os_printf("\"gateway\": \"%d.%d.%d.%d\"\n", IP2STR(&info.gw.addr));
-    os_printf("\"hostname\": \"%s\"\n", wifi_station_get_hostname());
+    DBG("\"ip\": \"%d.%d.%d.%d\"\n", IP2STR(&info.ip.addr));
+    DBG("\"netmask\": \"%d.%d.%d.%d\"\n", IP2STR(&info.netmask.addr));
+    DBG("\"gateway\": \"%d.%d.%d.%d\"\n", IP2STR(&info.gw.addr));
+    DBG("\"hostname\": \"%s\"\n", wifi_station_get_hostname());
   } else {
-    os_printf("\"ip\": \"-none-\"\n");
+    DBG("\"ip\": \"-none-\"\n");
   }
 }
 #endif
@@ -581,7 +579,7 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
     if (checkString(buff) && len>7 && len<=64) {
         // String preprocessing done in client side, wifiap.js line 31
         os_memcpy(apconf.password, buff, len);
-        os_printf("Setting AP password len=%d\n", len);
+        DBG("Setting AP password len=%d\n", len);
     } else if (len != 0) {
         jsonHeader(connData, 400);
         httpdSend(connData, "PASSWORD not valid or out of range", -1);
@@ -597,18 +595,18 @@ int ICACHE_FLASH_ATTR cgiApSettingsChange(HttpdConnData *connData) {
                 apconf.authmode = value;
             } else {
                 // If out of range set by default
-                os_printf("Forcing AP authmode to WPA_WPA2_PSK\n");
+                DBG("Forcing AP authmode to WPA_WPA2_PSK\n");
                 apconf.authmode = 4;
             }
         } else {
             // Valid password but wrong auth mode, default 4
-            os_printf("Forcing AP authmode to WPA_WPA2_PSK\n");
+            DBG("Forcing AP authmode to WPA_WPA2_PSK\n");
             apconf.authmode = 4;
         }
     } else {
         apconf.authmode = 0;
     }
-    os_printf("Setting AP authmode=%d\n", apconf.authmode);
+    DBG("Setting AP authmode=%d\n", apconf.authmode);
     // Set max connection number
     len=httpdFindArg(connData->getArgs, "ap_maxconn", buff, sizeof(buff));
     if(len>0){
@@ -965,13 +963,14 @@ void ICACHE_FLASH_ATTR wifiInit() {
     os_timer_arm(&resetTimer, RESET_TIMEOUT, 0);
 }
 
-// Access functions for cgiWifiAps
+// Access functions for cgiWifiAps : query the number of entries in the table
 int ICACHE_FLASH_ATTR wifiGetApCount() {
   if (cgiWifiAps.scanInProgress)
     return 0;
   return cgiWifiAps.noAps;
 }
 
+// Access functions for cgiWifiAps : returns the name of a network, i is the index into the array, return stored in memory pointed to by ptr.
 ICACHE_FLASH_ATTR void wifiGetApName(int i, char *ptr) {
   if (i < 0)
     return;
@@ -981,17 +980,10 @@ ICACHE_FLASH_ATTR void wifiGetApName(int i, char *ptr) {
   if (ptr != 0)
     strncpy(ptr, cgiWifiAps.apData[i]->ssid, 32);
 
-  os_printf("AP %s\n", cgiWifiAps.apData[i]->ssid);
+  DBG("AP %s\n", cgiWifiAps.apData[i]->ssid);
 }
 
-// This may not belong here : called from cmd/handlers.c
-// But it's good to have similar functionality close to each other.
-// This performs functions similar to cgiWiFiConnect()
-int ICACHE_FLASH_ATTR wifiConnect(char *ssid, char *pass) {
-// Danny
-  return 0;
-}
-
+// Access functions for cgiWifiAps : returns the signal strength of network (i is index into array). Return current network strength for negative i.
 ICACHE_FLASH_ATTR int wifiSignalStrength(int i) { 
   sint8 rssi;
 
@@ -1003,19 +995,4 @@ ICACHE_FLASH_ATTR int wifiSignalStrength(int i) {
     rssi = cgiWifiAps.apData[i]->rssi;	// Signal strength of any known network
 
   return rssi;
-}
-
-void ICACHE_FLASH_ATTR cmdWifiQuerySSID(CmdPacket *cmd) {
-  CmdRequest req;
-  cmdRequest(&req, cmd);
-  uint32_t callback = req.cmd->value;
-
-  struct station_config conf;
-  // bool res = wifi_station_get_config(&conf);
-
-  os_printf("QuerySSID : %s\n", conf.ssid);
-
-  cmdResponseStart(CMD_RESP_CB, callback, 1);
-  cmdResponseBody(conf.ssid, strlen((char *)conf.ssid)+1);
-  cmdResponseEnd();
 }
