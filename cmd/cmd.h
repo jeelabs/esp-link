@@ -61,12 +61,12 @@ typedef enum {
   CMD_SOCKET_SETUP = 40, // set-up callbacks
   CMD_SOCKET_SEND,       // send data over UDP socket
 
-  CMD_WIFI_GET_APCOUNT = 50,    /* */
-  CMD_WIFI_GET_APNAME,
-  CMD_WIFI_SELECT_SSID,
-  CMD_WIFI_SIGNAL_STRENGTH,	// Query RSSI
-  CMD_WIFI_GET_SSID,		// Query SSID currently connected to
-  CMD_WIFI_START_SCAN,		// Trigger a scan (takes a long time)
+  CMD_WIFI_GET_APCOUNT = 50,  // Query the number of networks / Access Points known
+  CMD_WIFI_GET_APNAME,        // Query the name (SSID) of an Access Point (AP)
+  CMD_WIFI_SELECT_SSID,       // Connect to a specific network
+  CMD_WIFI_SIGNAL_STRENGTH,   // Query RSSI
+  CMD_WIFI_GET_SSID,          // Query SSID currently connected to
+  CMD_WIFI_START_SCAN,        // Trigger a scan (takes a long time)
 
 } CmdName;
 

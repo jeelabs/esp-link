@@ -1,6 +1,5 @@
 #ifdef MQTT
 #include <esp8266.h>
-#include "cmd/cmd.h"
 #include "cgiwifi.h"
 #include "config.h"
 #include "mqtt.h"

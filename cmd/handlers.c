@@ -33,7 +33,7 @@ static void cmdSync(CmdPacket *cmd);
 static void cmdWifiStatus(CmdPacket *cmd);
 static void cmdGetTime(CmdPacket *cmd);
 static void cmdGetWifiInfo(CmdPacket *cmd);
-static void cmdSetWifiInfo(CmdPacket *cmd);
+// static void cmdSetWifiInfo(CmdPacket *cmd);
 static void cmdAddCallback(CmdPacket *cmd);
 
 static void cmdWifiGetApCount(CmdPacket *cmd);
@@ -60,7 +60,7 @@ const CmdList commands[] = {
   {CMD_CB_ADD,          "ADD_CB",         cmdAddCallback},
   {CMD_GET_TIME,        "GET_TIME",       cmdGetTime},
   {CMD_GET_WIFI_INFO,   "GET_WIFI_INFO",  cmdGetWifiInfo},
-  {CMD_SET_WIFI_INFO,   "SET_WIFI_INFO",  cmdSetWifiInfo},
+  // {CMD_SET_WIFI_INFO,   "SET_WIFI_INFO",  cmdSetWifiInfo},
 
   {CMD_WIFI_GET_APCOUNT,	"WIFI_GET_APCOUNT",	cmdWifiGetApCount},
   {CMD_WIFI_GET_APNAME,		"WIFI_GET_APNAME",	cmdWifiGetApName},
@@ -331,6 +331,7 @@ static void ICACHE_FLASH_ATTR cmdWifiSelectSSID(CmdPacket *cmd) {
   }
 }
 
+#if 0
 /*
  * Once we're attached to some wireless network, choose not to pick up address from
  * DHCP or so but set our own.
@@ -338,6 +339,7 @@ static void ICACHE_FLASH_ATTR cmdWifiSelectSSID(CmdPacket *cmd) {
 static void ICACHE_FLASH_ATTR cmdSetWifiInfo(CmdPacket *cmd) {
   DBG("SetWifiInfo()\n");
 }
+#endif
 
 static void ICACHE_FLASH_ATTR cmdWifiSignalStrength(CmdPacket *cmd) {
   CmdRequest req;

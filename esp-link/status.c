@@ -3,7 +3,6 @@
 #include <esp8266.h>
 #include "config.h"
 #include "serled.h"
-#include "cmd.h"
 #include "cgiwifi.h"
 
 #ifdef MQTT

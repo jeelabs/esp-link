@@ -1,5 +1,4 @@
 #include <esp8266.h>
-#include "cmd.h"
 #include "cgiwifi.h"
 #include "cgi.h"
 #include "config.h"
