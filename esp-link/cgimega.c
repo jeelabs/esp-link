@@ -37,18 +37,13 @@
 #include "stk500v2.h"
 #include "serbridge.h"
 #include "serled.h"
+#include "pgmshared.h"
 
 #define INIT_DELAY     150   // wait this many millisecs before sending anything
 #define BAUD_INTERVAL  600   // interval after which we change baud rate
 #define PGM_TIMEOUT  20000   // timeout after sync is achieved, in milliseconds
 #define PGM_INTERVAL   200   // send sync at this interval in ms when in programming mode
 #define ATTEMPTS         8   // number of attempts total to make
-
-#ifdef OPTIBOOT_DBG
-#define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
-#else
-#define DBG(format, ...) do { } while(0)
-#endif
 
 #define DBG_GPIO5 1 // define to 1 to use GPIO5 to trigger scope
 
@@ -78,36 +73,8 @@ static short baudCnt;        // counter for sync attempts at different baud rate
 static short ackWait;        // counter of expected ACKs
 static uint32_t baudRate;    // baud rate at which we're programming
 
-#define RESP_SZ 64
-static char responseBuf[RESP_SZ]; // buffer to accumulate responses from optiboot
-static short responseLen = 0;     // amount accumulated so far
-#define ERR_MAX 128
-static char errMessage[ERR_MAX];  // error message
-
 #define MAX_PAGE_SZ 512      // max flash page size supported
 #define MAX_SAVED   512      // max chars in saved buffer
-// structure used to remember request details from one callback to the next
-// allocated dynamically so we don't burn so much static RAM
-static struct optibootData {
-  char *saved;               // buffer for saved incomplete hex records
-  char *pageBuf;             // buffer for received data to be sent to AVR
-  uint16_t pageLen;          // number of bytes in pageBuf
-  uint16_t pgmSz;            // size of flash page to be programmed at a time
-  uint32_t pgmDone;          // number of bytes programmed
-  uint32_t address;          // address to write next page to
-  uint32_t segment;          // for extended segment addressing, added to the address field
-  uint32_t startTime;        // time of program POST request
-  HttpdConnData *conn;       // request doing the programming, so we can cancel it
-  bool eof;                  // got EOF record
-} *optibootData;
-
-// STK500v2 variables
-static int	hardwareVersion,
-		firmwareVersionMajor,
-		firmwareVersionMinor,
-		vTarget;
-static uint8_t signature[3];
-uint8_t		lfuse, hfuse, efuse;
 
 // Sequence number of current command/answer. Increment before sending packet.
 static int cur_seqno;
@@ -125,8 +92,6 @@ struct packet {
 // forward function references
 static void megaTimerCB(void *);
 static void megaUartRecv(char *buffer, short length);
-static bool processRecord(char *buf, short len);
-static bool programPage(void);
 static void armTimer(uint32_t ms);
 static void initBaud(void);
 static void initPacket();
@@ -243,8 +208,8 @@ int ICACHE_FLASH_ATTR cgiMegaSync(HttpdConnData *connData) {
       char buf[64];
       DBG("OB got sync\n");
       os_sprintf(buf, "SYNC at %d baud, board %02x.%02x.%02x, hardware v%d, firmware %d.%d",
-          baudRate, signature[0], signature[1], signature[2], 
-	  hardwareVersion, firmwareVersionMajor, firmwareVersionMinor);
+          baudRate, optibootData->signature[0], optibootData->signature[1], optibootData->signature[2], 
+	  optibootData->hardwareVersion, optibootData->firmwareVersionMajor, optibootData->firmwareVersionMinor);
       httpdSend(connData, buf, -1);
     } else if (errMessage[0] && progState == stateSync) {
       DBG("OB cannot sync\n");
@@ -266,30 +231,6 @@ int ICACHE_FLASH_ATTR cgiMegaSync(HttpdConnData *connData) {
   return HTTPD_CGI_DONE;
 }
 
-// verify that N chars are hex characters
-static bool ICACHE_FLASH_ATTR checkHex(char *buf, short len) {
-  while (len--) {
-    char c = *buf++;
-    if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))
-      continue;
-    DBG("OB non-hex\n");
-    os_sprintf(errMessage, "Non hex char in POST record: '%c'/0x%02x", c, c);
-    return false;
-  }
-  return true;
-}
-
-// get hex value of some hex characters
-static uint32_t ICACHE_FLASH_ATTR getHexValue(char *buf, short len) {
-  uint32_t v = 0;
-  while (len--) {
-    v = (v<<4) | (uint32_t)(*buf & 0xf);
-    if (*buf > '9') v += 9;
-    buf++;
-  }
-  return v;
-}
-
 // Allocate and initialize, to be called upon first CGI query
 static void ICACHE_FLASH_ATTR initPacket() {
   cur_seqno = 0;
@@ -298,15 +239,6 @@ static void ICACHE_FLASH_ATTR initPacket() {
   pbuf.start = MESSAGE_START;	// 0x1B
   pbuf.token = TOKEN;		// 0x0E
 }
-
-#if 0
-// To be called after flashing terminates
-static void ICACHE_FLASH_ATTR cleanupPacket() {
-  if (pbuf.body != 0)
-    os_free(pbuf.body);
-  pbuf.body = 0;
-}
-#endif
 
 static void ICACHE_FLASH_ATTR writePacket() {
   int i, len;
@@ -383,59 +315,6 @@ static void ICACHE_FLASH_ATTR sendQuerySignaturePacket(int param) {
 
   writePacket();
 }
-
-#if 0
-// Read the UART directly
-static int ICACHE_FLASH_ATTR readPacket() {
-  char recv1[8], recv2[4];
-  int i;
-
-  uint16_t got1 = uart0_rx_poll(recv1, 5, 50000);	// 5 : start + seqno + 2 x size + token
-  if (got1 < 5)
-    return -1;
-  uint16_t len = (recv1[2] << 8) + recv1[3];
-  uint16_t got2 = uart0_rx_poll((char *)pbuf.body, len, 50000);
-  if (got2 < len)
-    return -1;
-  uint16_t got3 = uart0_rx_poll(recv2, 1, 50000);
-  if (got3 < 1)
-    return -1;
-
-#if 0
-  if (debug()) {
-    os_printf("Packet received : ");
-    for (i=0; i<5; i++)
-      os_printf(" %02x", recv1[i]);
-    os_printf(" - ");
-    for (i=0; i<len && i<80; i++)
-      os_printf(" %02x", pbuf.body[i]);
-    os_printf(" -  %02x\n", recv2[0]);
-  }
-#endif
-
-  // Compute cksum
-  uint8_t x = 0;
-  x = 0;
-  for (i=0; i<5; i++)
-    x ^= recv1[i];
-  for (i=0; i<len; i++)
-    x ^= pbuf.body[i];
-
-  if (x != recv2[0]) {
-    os_printf("Invalid checksum received, %02x expected %02x, ignoring packet.\n", x, recv2[0]);
-
-    // Return a negative value if the checksum is bad, but don't lose the byte count.
-    return -len;
-  }
-
-  if (recv1[0] == MESSAGE_START && recv1[1] == cur_seqno && recv1[4] == TOKEN) {
-    if (debug()) os_printf("OB valid packet received, len %d\n", len);
-    return len;
-  }
-
-  return -len;
-}
-#endif
 
 /*
  * Read the UART directly
@@ -671,6 +550,7 @@ int ICACHE_FLASH_ATTR cgiMegaData(HttpdConnData *connData) {
     optibootData->pageBuf = pageBuf;
     optibootData->saved = saved;
     optibootData->startTime = system_get_time();
+    optibootData->mega = true;
 #if 1
 
     optibootData->pgmSz = 256;			// HACK FIX ME
@@ -757,12 +637,6 @@ int ICACHE_FLASH_ATTR cgiMegaData(HttpdConnData *connData) {
   }
 
   if (optibootData->eof) {
-#if 0
-    // tell optiboot to reboot into the sketch
-    sendRebootMCUQuery();
-    readRebootMCUReply();
-    // cleanupPacket();
-#endif
     code = 200;
     // calculate some stats
     float dt = ((system_get_time() - optibootData->startTime)/1000)/1000.0; // in seconds
@@ -786,109 +660,8 @@ int ICACHE_FLASH_ATTR cgiMegaData(HttpdConnData *connData) {
   return HTTPD_CGI_DONE;
 }
 
-// verify checksum
-static bool ICACHE_FLASH_ATTR verifyChecksum(char *buf, short len) {
-  uint8_t sum = 0;
-  while (len >= 2) {
-    sum += (uint8_t)getHexValue(buf, 2);
-    buf += 2;
-    len -= 2;
-  }
-  return sum == 0;
-}
-
-// Process a hex record -- assumes that the records starts with ':' & hex length
-static bool ICACHE_FLASH_ATTR processRecord(char *buf, short len) {
-  buf++; len--; // skip leading ':'
-  // check we have all hex chars
-  if (!checkHex(buf, len)) return false;
-  // verify checksum
-  if (!verifyChecksum(buf, len)) {
-    buf[len] = 0;
-    os_sprintf(errMessage, "Invalid checksum for record %s", buf);
-    return false;
-  }
-  // dispatch based on record type
-  uint8_t type = getHexValue(buf+6, 2);
-  switch (type) {
-  case 0x00: { // Intel HEX data record
-    //DBG("OB REC data %ld pglen=%d\n", getHexValue(buf, 2), optibootData->pageLen);
-    uint32_t addr = getHexValue(buf+2, 4);
-    // check whether we need to program previous record(s)
-    if (optibootData->pageLen > 0 &&
-        addr != ((optibootData->address+optibootData->pageLen)&0xffff)) {
-      //DBG("OB addr chg\n");
-      os_printf("processRecord addr chg, len %d, addr 0x%04x\n", optibootData->pageLen, addr);
-      if (!programPage()) return false;
-    }
-    // set address, unless we're adding to the end (programPage may have changed pageLen)
-    if (optibootData->pageLen == 0) {
-      optibootData->address = (optibootData->address & 0xffff0000) | addr;
-      //DBG("OB set-addr 0x%lx\n", optibootData->address);
-    }
-    // append record
-    uint16_t recLen = getHexValue(buf, 2);
-    for (uint16_t i=0; i<recLen; i++)
-      optibootData->pageBuf[optibootData->pageLen++] = getHexValue(buf+8+2*i, 2);
-    // program page, if we have a full page
-    if (optibootData->pageLen >= optibootData->pgmSz) {
-      //DBG("OB full\n");
-      if (debug()) os_printf("processRecord %d, call programPage() %08x\n", optibootData->pgmSz, optibootData->address + optibootData->segment);
-      if (!programPage()) return false;
-    }
-    break; }
-  case 0x01: // Intel HEX EOF record
-    DBG("OB EOF\n");
-    // program any remaining partial page
-#if 1
-    if (optibootData->pageLen > 0) {
-      // os_printf("processRecord remaining partial page, len %d, addr 0x%04x\n", optibootData->pageLen, optibootData->address + optibootData->segment);
-      if (!programPage()) return false;
-    }
-    optibootData->eof = true;
-#else
-    if (optibootData->pageLen > 0) {
-      // HACK : fill up with 0xFF
-      while (optibootData->pageLen < 256) {
-        optibootData->pageBuf[optibootData->pageLen++] = 0xFF;
-      }
-      if (!programPage()) return false;
-    }
-    optibootData->eof = true;
-#endif
-    break;
-  case 0x04: // Intel HEX address record
-    DBG("OB address 0x%x\n", getHexValue(buf+8, 4) << 16);
-    // program any remaining partial page
-    if (optibootData->pageLen > 0) {
-      os_printf("processRecord 0x04 remaining partial page, len %d, addr 0x%04x\n",
-        optibootData->pageLen, optibootData->address + optibootData->segment);
-      if (!programPage()) return false;
-    }
-    optibootData->address = getHexValue(buf+8, 4) << 16;
-    break;
-  case 0x05: // Intel HEX start address (MDK-ARM only)
-    // ignore, there's no way to tell optiboot that...
-    break;
-  case 0x02: // Intel HEX extended segment address record
-    // Depending on the case, just ignoring this record could solve the problem
-    // optibootData->segment = getHexValue(buf+8, 4) << 4;
-    DBG("OB segment 0x%08X\n", optibootData->segment);
-    return true;
-  default:
-    DBG("OB bad record type\n");
-#if 0
-    os_sprintf(errMessage, "Invalid/unknown record type: 0x%02x", type);
-#else
-    os_sprintf(errMessage, "Invalid/unknown record type: 0x%02x, packet %s", type, buf);
-#endif
-    return false;
-  }
-  return true;
-}
-
 // Program a flash page
-static bool ICACHE_FLASH_ATTR programPage(void) {
+bool ICACHE_FLASH_ATTR megaProgramPage(void) {
   if (debug())
     os_printf("programPage len %d addr 0x%04x\n", optibootData->pageLen, optibootData->address + optibootData->segment);
 
@@ -1052,7 +825,7 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
     ok = 0;
     if (responseLen >= 9) {
       if (responseBuf[4] == TOKEN && responseBuf[5] == CMD_GET_PARAMETER && responseBuf[6] == STATUS_CMD_OK) {
-        hardwareVersion = responseBuf[7];
+        optibootData->hardwareVersion = responseBuf[7];
 	ok++;
       }
       os_memcpy(responseBuf, responseBuf+9, responseLen-9);
@@ -1065,7 +838,7 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
   case stateVar1:
     if (responseLen >= 9) {
       if (responseBuf[4] == TOKEN && responseBuf[5] == CMD_GET_PARAMETER && responseBuf[6] == STATUS_CMD_OK) {
-        firmwareVersionMajor = responseBuf[7];
+        optibootData->firmwareVersionMajor = responseBuf[7];
 	ok++;
       }
       os_memcpy(responseBuf, responseBuf+9, responseLen-9);
@@ -1078,7 +851,7 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
   case stateVar2:
     if (responseLen >= 9) {
       if (responseBuf[4] == TOKEN && responseBuf[5] == CMD_GET_PARAMETER && responseBuf[6] == STATUS_CMD_OK) {
-        firmwareVersionMinor = responseBuf[7];
+        optibootData->firmwareVersionMinor = responseBuf[7];
 	ok++;
       }
       os_memcpy(responseBuf, responseBuf+9, responseLen-9);
@@ -1091,7 +864,7 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
   case stateVar3:
     if (responseLen >= 9) {
       if (responseBuf[4] == TOKEN && responseBuf[5] == CMD_GET_PARAMETER && responseBuf[6] == STATUS_CMD_OK) {
-        vTarget = responseBuf[7];
+        optibootData->vTarget = responseBuf[7];
 	ok++;
       }
       os_memcpy(responseBuf, responseBuf+9, responseLen-9);
@@ -1102,13 +875,13 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
     sendQuerySignaturePacket(0);
     if (debug())
       os_printf("Hardware version %d, firmware %d.%d. Vtarget = %d.%d V\n",
-        hardwareVersion, firmwareVersionMajor, firmwareVersionMinor, vTarget / 16, vTarget % 16);
+        optibootData->hardwareVersion, optibootData->firmwareVersionMajor, optibootData->firmwareVersionMinor, optibootData->vTarget / 16, optibootData->vTarget % 16);
     armTimer(PGM_INTERVAL); // reset timer
     break;
   case stateGetSig1:
     if (responseLen >= 13) {
       if (responseBuf[4] == TOKEN && responseBuf[5] == CMD_SPI_MULTI && responseBuf[3] == 7) {
-        signature[0] = responseBuf[10];
+        optibootData->signature[0] = responseBuf[10];
       }
       os_memcpy(responseBuf, responseBuf+13, responseLen-13);
       responseLen -= 13;
@@ -1120,7 +893,7 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
   case stateGetSig2:
     if (responseLen >= 13) {
       if (responseBuf[4] == TOKEN && responseBuf[5] == CMD_SPI_MULTI && responseBuf[3] == 7) {
-        signature[1] = responseBuf[10];
+        optibootData->signature[1] = responseBuf[10];
       }
       os_memcpy(responseBuf, responseBuf+13, responseLen-13);
       responseLen -= 13;
@@ -1132,34 +905,34 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
   case stateGetSig3:
     if (responseLen >= 13) {
       if (responseBuf[4] == TOKEN && responseBuf[5] == CMD_SPI_MULTI && responseBuf[3] == 7) {
-        signature[2] = responseBuf[10];
+        optibootData->signature[2] = responseBuf[10];
       }
       os_memcpy(responseBuf, responseBuf+13, responseLen-13);
       responseLen -= 13;
       progState++;
 
-      if (debug()) os_printf("Board signature %02x.%02x.%02x\n", signature[0], signature[1], signature[2]);
+      if (debug()) os_printf("Board signature %02x.%02x.%02x\n", optibootData->signature[0], optibootData->signature[1], optibootData->signature[2]);
       sendReadFuseQuery('l');
     }
     armTimer(PGM_INTERVAL); // reset timer
     break;
 
   case stateGetFuse1:
-    lfuse = getFuseReply(buf, length);
+    optibootData->lfuse = getFuseReply(buf, length);
     sendReadFuseQuery('h');
     progState++;
     break;
 
   case stateGetFuse2:
-    hfuse = getFuseReply(buf, length);
+    optibootData->hfuse = getFuseReply(buf, length);
     sendReadFuseQuery('e');
     progState++;
     break;
 
   case stateGetFuse3:
-    efuse = getFuseReply(buf, length);
+    optibootData->efuse = getFuseReply(buf, length);
     if (debug())
-      os_printf("Fuses %02x %02x %02x\n", lfuse, hfuse, efuse);
+      os_printf("Fuses %02x %02x %02x\n", optibootData->lfuse, optibootData->hfuse, optibootData->efuse);
     progState++;
     break;
 
