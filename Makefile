@@ -253,7 +253,7 @@ MODULES		+= $(foreach sdir,$(LIBRARIES_DIR),$(wildcard $(sdir)/*))
 EXTRA_INCDIR 	= include .
 
 # libraries used in this project, mainly provided by the SDK
-LIBS = c gcc hal phy pp net80211 wpa main lwip crypto
+LIBS = c gcc hal phy pp net80211 wpa main lwip_536 crypto
 
 # compiler flags using during compilation of source files
 CFLAGS	+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-inline-functions \
@@ -519,3 +519,13 @@ ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 endif
 
 $(foreach bdir,$(BUILD_DIR),$(eval $(call compile-objects,$(bdir))))
+
+depend:
+	makedepend -p${BUILD_BASE}/ -Y -- $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) -I${XTENSA_TOOLS_ROOT}../xtensa-lx106-elf/include -I${XTENSA_TOOLS_ROOT}../lib/gcc/xtensa-lx106-elf/4.8.2/include -- */*.c
+
+# Rebuild version at least at every Makefile change
+
+${BUILD_BASE}/esp-link/main.o: Makefile
+
+# DO NOT DELETE
+

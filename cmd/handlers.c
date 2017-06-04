@@ -40,6 +40,8 @@ static void cmdWifiGetApCount(CmdPacket *cmd);
 static void cmdWifiGetApName(CmdPacket *cmd);
 static void cmdWifiSelectSSID(CmdPacket *cmd);
 static void cmdWifiSignalStrength(CmdPacket *cmd);
+static void cmdWifiQuerySSID(CmdPacket *cmd);
+static void cmdWifiStartScan(CmdPacket *cmd);
 
 void cmdMqttGetClientId(CmdPacket *cmd);
 
@@ -361,7 +363,7 @@ static void ICACHE_FLASH_ATTR cmdWifiSignalStrength(CmdPacket *cmd) {
 }
 
 // 
-void ICACHE_FLASH_ATTR cmdWifiQuerySSID(CmdPacket *cmd) {
+static void ICACHE_FLASH_ATTR cmdWifiQuerySSID(CmdPacket *cmd) {
   CmdRequest req;
   cmdRequest(&req, cmd);
   uint32_t callback = req.cmd->value;
@@ -381,7 +383,7 @@ void ICACHE_FLASH_ATTR cmdWifiQuerySSID(CmdPacket *cmd) {
 }
 
 // Start scanning, API interface
-void ICACHE_FLASH_ATTR cmdWifiStartScan(CmdPacket *cmd) {
+static void ICACHE_FLASH_ATTR cmdWifiStartScan(CmdPacket *cmd) {
   // call a function that belongs in esp-link/cgiwifi.c due to variable access
   wifiStartScan();
 }
