@@ -7,7 +7,6 @@
 #include "c_types.h"
 #include "ip_addr.h"
 #include "socket.h"
-#include "cmd.h"
 
 #define SOCK_DBG
 

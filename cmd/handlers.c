@@ -18,6 +18,7 @@
 #include <socket.h>
 #endif
 #include <ip_addr.h>
+#include "esp-link/cgi.h"
 
 #include "config.h"
 
@@ -377,6 +378,12 @@ void ICACHE_FLASH_ATTR cmdWifiQuerySSID(CmdPacket *cmd) {
   cmdResponseStart(CMD_RESP_CB, callback, 1);
   cmdResponseBody(conf.ssid, strlen((char *)conf.ssid)+1);
   cmdResponseEnd();
+}
+
+// Start scanning, API interface
+void ICACHE_FLASH_ATTR cmdWifiStartScan(CmdPacket *cmd) {
+  // call a function that belongs in esp-link/cgiwifi.c due to variable access
+  wifiStartScan();
 }
 
 // Command handler for MQTT information

@@ -15,7 +15,6 @@ Cgi/template routines for the /wifi url.
 
 
 #include <esp8266.h>
-#include "cmd.h"
 #include "cgiwifi.h"
 #include "cgi.h"
 #include "status.h"
@@ -228,27 +227,6 @@ static void ICACHE_FLASH_ATTR scanStartCb(void *arg) {
   wifi_station_scan(NULL, wifiScanDoneCb);
 }
 
-// Start scanning, web interface
-static int ICACHE_FLASH_ATTR cgiWiFiStartScan(HttpdConnData *connData) {
-  if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
-  jsonHeader(connData, 200);
-
-  // Don't duplicate code, reuse the function below
-  cmdWifiStartScan(0);
-
-  return HTTPD_CGI_DONE;
-}
-
-// Start scanning, API interface
-void ICACHE_FLASH_ATTR cmdWifiStartScan(CmdPacket *cmd) {
-  if (!cgiWifiAps.scanInProgress) {
-    cgiWifiAps.scanInProgress = 1;
-    os_timer_disarm(&scanTimer);
-    os_timer_setfn(&scanTimer, scanStartCb, NULL);
-    os_timer_arm(&scanTimer, 200, 0);
-  }
-}
-
 static int ICACHE_FLASH_ATTR cgiWiFiGetScan(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
   char buff[1460];
@@ -293,6 +271,27 @@ static int ICACHE_FLASH_ATTR cgiWiFiGetScan(HttpdConnData *connData) {
   connData->cgiData = (void *)1; // start with first result next time we're called
   httpdSend(connData, buff, len);
   return HTTPD_CGI_MORE;
+}
+
+// Start scanning, without parameters
+void ICACHE_FLASH_ATTR wifiStartScan() {
+  if (!cgiWifiAps.scanInProgress) {
+    cgiWifiAps.scanInProgress = 1;
+    os_timer_disarm(&scanTimer);
+    os_timer_setfn(&scanTimer, scanStartCb, NULL);
+    os_timer_arm(&scanTimer, 200, 0);
+  }
+}
+
+// Start scanning, web interface
+int ICACHE_FLASH_ATTR cgiWiFiStartScan(HttpdConnData *connData) {
+  if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+  jsonHeader(connData, 200);
+
+  // Don't duplicate code, reuse the function above.
+  wifiStartScan();
+
+  return HTTPD_CGI_DONE;
 }
 
 int ICACHE_FLASH_ATTR cgiWiFiScan(HttpdConnData *connData) {
