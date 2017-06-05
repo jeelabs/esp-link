@@ -495,9 +495,9 @@ static void ICACHE_FLASH_ATTR sendProgramPageQuery(char *data, int pgmLen) {
   for (int i=0, j=10; i<pgmLen; i++, j++)
     pbuf.body[j] = data[i];
 
-      os_delay_us(4500L);	// Flashing takes about 4.5ms
+      // os_delay_us(4500L);	// Flashing takes about 4.5ms
   writePacket();
-      os_delay_us(4500L);	// Flashing takes about 4.5ms
+      // os_delay_us(4500L);	// Flashing takes about 4.5ms
 }
 
 static void ICACHE_FLASH_ATTR readProgramPageReply() {
@@ -506,7 +506,7 @@ static void ICACHE_FLASH_ATTR readProgramPageReply() {
     if (pbuf.body[0] == CMD_PROGRAM_FLASH_ISP && pbuf.body[1] == STATUS_CMD_OK) {
       reply_ok = true;
       // DBG("Program page : ok\n");
-      os_delay_us(4500L);	// Flashing takes about 4.5ms
+      // os_delay_us(4500L);	// Flashing takes about 4.5ms
       return;
     }
   }
