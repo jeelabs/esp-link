@@ -189,7 +189,8 @@ endif
 TRAVIS_BRANCH?=$(shell git symbolic-ref --short HEAD --quiet)
 # Use git describe to get the latest version tag, commits since then, sha and dirty flag, this
 # results is something like "v1.2.0-13-ab6cedf-dirty"
-VERSION := $(shell (git describe --tags --match 'v*' --long --dirty || echo "no-tag") | sed -re 's/(\.0)?-/./')
+NO_TAG ?= "no-tag"
+VERSION := $(shell (git describe --tags --match 'v*' --long --dirty || echo $(NO_TAG)) | sed -re 's/(\.0)?-/./')
 # If not on master then insert the branch name
 ifneq ($(TRAVIS_BRANCH),master)
 ifneq ($(findstring V%,$(TRAVIS_BRANCH)),)
