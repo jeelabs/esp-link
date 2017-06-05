@@ -4,6 +4,8 @@
 #ifndef _PGM_SHARED_H_
 #define _PGM_SHARED_H_
 
+#include "user_config.h"
+
 #define RESP_SZ 64
 #define ERR_MAX 128
 

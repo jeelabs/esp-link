@@ -95,6 +95,7 @@ static void megaUartRecv(char *buffer, short length);
 static void armTimer(uint32_t ms);
 static void initBaud(void);
 static void initPacket();
+static void allocateOptibootData();
 #if 0
 static void cleanupPacket();
 #endif
@@ -176,7 +177,7 @@ int ICACHE_FLASH_ATTR cgiMegaSync(HttpdConnData *connData) {
     errorResponse(connData, 400, "No reset pin defined");
 
   } else if (connData->requestType == HTTPD_METHOD_POST) {
-    if (debug()) os_printf("cgiMegaSync POST\n");
+    if (debug()) DBG("cgiMegaSync POST\n");
 
     // issue reset
     optibootInit();
@@ -200,16 +201,18 @@ int ICACHE_FLASH_ATTR cgiMegaSync(HttpdConnData *connData) {
     httpdSend(connData, "", 0);
 
   } else if (connData->requestType == HTTPD_METHOD_GET) {
-    if (debug()) os_printf("cgiMegaSync GET\n");
+    if (debug()) DBG("cgiMegaSync GET\n");
 
     noCacheHeaders(connData, 200);
     httpdEndHeaders(connData);
     if (!errMessage[0] && progState >= stateProg) {
       char buf[64];
+      if (optibootData == NULL)
+	allocateOptibootData();
       DBG("OB got sync\n");
       os_sprintf(buf, "SYNC at %d baud, board %02x.%02x.%02x, hardware v%d, firmware %d.%d",
-          baudRate, optibootData->signature[0], optibootData->signature[1], optibootData->signature[2], 
-	  optibootData->hardwareVersion, optibootData->firmwareVersionMajor, optibootData->firmwareVersionMinor);
+	baudRate, optibootData->signature[0], optibootData->signature[1], optibootData->signature[2], 
+	optibootData->hardwareVersion, optibootData->firmwareVersionMajor, optibootData->firmwareVersionMinor);
       httpdSend(connData, buf, -1);
     } else if (errMessage[0] && progState == stateSync) {
       DBG("OB cannot sync\n");
@@ -268,19 +271,19 @@ static void ICACHE_FLASH_ATTR writePacket() {
 
 #if 1
   if (debug()) {
-    os_printf("Packet sent : %02x %02x %02x %02x %02x - ",
+    DBG("Packet sent : %02x %02x %02x %02x %02x - ",
       pbuf.start, pbuf.seqno, pbuf.ms1, pbuf.ms2, pbuf.token);
     for (i=0; i<len; i++)
-      os_printf(" %02x", pbuf.body[i]);
-    os_printf(" - %02x\n", pbuf.cksum);
+      DBG(" %02x", pbuf.body[i]);
+    DBG(" - %02x\n", pbuf.cksum);
   }
 #else
     // write a limited amount of the packet
-    os_printf("Packet sent : %02x %02x %02x %02x %02x - ",
+    DBG("Packet sent : %02x %02x %02x %02x %02x - ",
       pbuf.start, pbuf.seqno, pbuf.ms1, pbuf.ms2, pbuf.token);
     for (i=0; i<len && i<16; i++)
-      os_printf(" %02x", pbuf.body[i]);
-    os_printf(" ...\n");
+      DBG(" %02x", pbuf.body[i]);
+    DBG(" ...\n");
 #endif
 }
 
@@ -327,33 +330,33 @@ static int ICACHE_FLASH_ATTR readPacket() {
 
   uint16_t got1 = uart0_rx_poll(recv1, 5, 50000);	// 5 : start + seqno + 2 x size + token
   if (got1 < 5) {
-    os_printf("readPacket: got1 %d, expected 5\n", got1);
+    DBG("readPacket: got1 %d, expected 5\n", got1);
     return -1;
   }
   uint16_t len = (recv1[2] << 8) + recv1[3];
   uint16_t got2 = uart0_rx_poll((char *)pbuf.body, len, 50000);
   if (got2 < len) {
-    os_printf("readPacket: got2 %d, expected %d\n", got2, len);
+    DBG("readPacket: got2 %d, expected %d\n", got2, len);
     return -1;
   }
   uint16_t got3 = uart0_rx_poll(recv2, 1, 50000);
   if (got3 < 1) {
-    os_printf("readPacket: got3 %d, expected 1\n", got3);
+    DBG("readPacket: got3 %d, expected 1\n", got3);
     return -1;
   }
 #if 1
   if (debug()) {
-    os_printf("Packet received : ");
+    DBG("Packet received : ");
     for (i=0; i<5; i++)
-      os_printf(" %02x", recv1[i]);
-    os_printf(" - ");
+      DBG(" %02x", recv1[i]);
+    DBG(" - ");
     for (i=0; i<len && i<80; i++)
-      os_printf(" %02x", pbuf.body[i]);
-    os_printf(" -  %02x\n", recv2[0]);
+      DBG(" %02x", pbuf.body[i]);
+    DBG(" -  %02x\n", recv2[0]);
   }
 #endif
   if (recv1[0] == MESSAGE_START && recv1[1] == cur_seqno && recv1[4] == TOKEN) {
-    // os_printf("OB valid packet received, len %d\n", len);
+    // DBG("OB valid packet received, len %d\n", len);
   }
 
   // Compute cksum
@@ -365,7 +368,7 @@ static int ICACHE_FLASH_ATTR readPacket() {
     x ^= pbuf.body[i];
 
   if (x != recv2[0]) {
-    os_printf("Invalid checksum received, %02x expected %02x, ignoring packet.\n", x, recv2[0]);
+    DBG("Invalid checksum received, %02x expected %02x, ignoring packet.\n", x, recv2[0]);
 
     // Return a negative value if the checksum is bad, but don't lose the byte count.
     return -len;
@@ -379,16 +382,16 @@ static int ICACHE_FLASH_ATTR readSyncPacket() {
   if (len == 11) {
     if (pbuf.body[0] == CMD_SIGN_ON && pbuf.body[1] == STATUS_CMD_OK && pbuf.body[2] == 8) {
       pbuf.body[len] = 0;
-      if (debug()) os_printf("Device identifies as %s\n", pbuf.body+3);
+      if (debug()) DBG("Device identifies as %s\n", pbuf.body+3);
       return len;
     } else {
-      os_printf("Invalid packet\n");
+      DBG("Invalid packet\n");
       return len;
     }
   } else if (len < 0) {
     return len;	// This is bad but already reported this, so just pass the info.
   } else {
-    os_printf("Sync reply length invalid : %d should be 11\n", len);
+    DBG("Sync reply length invalid : %d should be 11\n", len);
     return len;
   }
 }
@@ -408,7 +411,7 @@ static void ICACHE_FLASH_ATTR readRebootMCUReply() {
   if (len == 2) {
     if (pbuf.body[0] == CMD_LEAVE_PROGMODE_ISP && pbuf.body[1] == STATUS_CMD_OK) {
       reply_ok = true;
-      if (debug()) os_printf("Rebooting MCU : ok\n");
+      if (debug()) DBG("Rebooting MCU : ok\n");
       return;
     }
   }
@@ -463,12 +466,12 @@ static void ICACHE_FLASH_ATTR readLoadAddressReply() {
   if (len == 2) {
     if (pbuf.body[0] == CMD_LOAD_ADDRESS && pbuf.body[1] == STATUS_CMD_OK) {
       reply_ok = true;
-      // os_printf("LoadAddress Reply : ok\n");
+      // DBG("LoadAddress Reply : ok\n");
       return;
     }
   }
 
-  os_printf("LoadAddress : %02x %02x (expected %02x %02x), len %d exp 2\n",
+  DBG("LoadAddress : %02x %02x (expected %02x %02x), len %d exp 2\n",
     pbuf.body[0], pbuf.body[1], CMD_LOAD_ADDRESS, STATUS_CMD_OK, len);
 }
 
@@ -502,11 +505,28 @@ static void ICACHE_FLASH_ATTR readProgramPageReply() {
   if (len == 2) {
     if (pbuf.body[0] == CMD_PROGRAM_FLASH_ISP && pbuf.body[1] == STATUS_CMD_OK) {
       reply_ok = true;
-      // os_printf("Program page : ok\n");
+      // DBG("Program page : ok\n");
       os_delay_us(4500L);	// Flashing takes about 4.5ms
       return;
     }
   }
+}
+
+static void ICACHE_FLASH_ATTR allocateOptibootData() {
+  optibootData = os_zalloc(sizeof(struct optibootData));
+  char *saved = os_zalloc(MAX_SAVED+1); // need space for string terminator
+  char *pageBuf = os_zalloc(MAX_PAGE_SZ+MAX_SAVED/2);
+  if (!optibootData || !pageBuf || !saved) {
+    return;
+  }
+  optibootData->pageBuf = pageBuf;
+  optibootData->saved = saved;
+  optibootData->startTime = system_get_time();
+  optibootData->mega = true;
+  optibootData->pgmSz = 256;			// Try to force this to write 256 bytes per page
+  DBG("OB data alloc\n");
+
+  optibootData->address = optibootData->segment;
 }
 
 /*
@@ -517,7 +537,7 @@ static void ICACHE_FLASH_ATTR readProgramPageReply() {
  *	and set up synchronized communication with it.
  */
 int ICACHE_FLASH_ATTR cgiMegaData(HttpdConnData *connData) {
-  // os_printf("cgiMegaData state=%d postLen=%d\n", progState, connData->post->len);
+  // DBG("cgiMegaData state=%d postLen=%d\n", progState, connData->post->len);
 
   if (connData->conn==NULL)
     return HTTPD_CGI_DONE; // Connection aborted. Clean up.
@@ -540,28 +560,11 @@ int ICACHE_FLASH_ATTR cgiMegaData(HttpdConnData *connData) {
 
   // allocate data structure to track programming
   if (!optibootData) {
-    optibootData = os_zalloc(sizeof(struct optibootData));
-    char *saved = os_zalloc(MAX_SAVED+1); // need space for string terminator
-    char *pageBuf = os_zalloc(MAX_PAGE_SZ+MAX_SAVED/2);
-    if (!optibootData || !pageBuf || !saved) {
+    allocateOptibootData();
+    if (!optibootData || !optibootData->pageBuf || !optibootData->saved) {
       errorResponse(connData, 400, "Out of memory");
       return HTTPD_CGI_DONE;
     }
-    optibootData->pageBuf = pageBuf;
-    optibootData->saved = saved;
-    optibootData->startTime = system_get_time();
-    optibootData->mega = true;
-#if 1
-
-    optibootData->pgmSz = 256;			// HACK FIX ME
-    						// Try to force this to write 256 bytes per page
-#else
-    optibootData->pgmSz = 128; // hard coded for 328p for now, should be query string param
-#endif
-    DBG("OB data alloc\n");
-
-    // optibootData->segment = 0x0;			// Not necessary, os_zalloc() does this
-    optibootData->address = optibootData->segment;
   }
 
   // iterate through the data received and program the AVR one block at a time
@@ -662,8 +665,10 @@ int ICACHE_FLASH_ATTR cgiMegaData(HttpdConnData *connData) {
 
 // Program a flash page
 bool ICACHE_FLASH_ATTR megaProgramPage(void) {
+  if (optibootData == NULL)
+    allocateOptibootData();
   if (debug())
-    os_printf("programPage len %d addr 0x%04x\n", optibootData->pageLen, optibootData->address + optibootData->segment);
+    DBG("programPage len %d addr 0x%04x\n", optibootData->pageLen, optibootData->address + optibootData->segment);
 
   if (optibootData->pageLen == 0)
     return true;
@@ -690,7 +695,7 @@ bool ICACHE_FLASH_ATTR megaProgramPage(void) {
     return false;
   }
   armTimer(PGM_TIMEOUT);
-  // os_printf("OB sent address 0x%04x\n", addr);
+  // DBG("OB sent address 0x%04x\n", addr);
 
   // send page content
   sendProgramPageQuery(optibootData->pageBuf, pgmLen);
@@ -709,9 +714,9 @@ bool ICACHE_FLASH_ATTR megaProgramPage(void) {
 #if 1
   optibootData->address += pgmLen;
 #else
-  os_printf("Address old %08x ", optibootData->address + optibootData->segment);
+  DBG("Address old %08x ", optibootData->address + optibootData->segment);
   optibootData->address += pgmLen;
-  os_printf(" new %08x\n", optibootData->address + optibootData->segment);
+  DBG(" new %08x\n", optibootData->address + optibootData->segment);
 #endif
   optibootData->pgmDone += pgmLen;
 
@@ -745,17 +750,17 @@ static void ICACHE_FLASH_ATTR initBaud() {
  * 2. in other cases, timeouts are a problem, we failed somewhere.
  */
 static void ICACHE_FLASH_ATTR megaTimerCB(void *arg) {
-  if (debug()) os_printf("megaTimerCB state %d (%s)\n", progState, progStates[progState]);
+  if (debug()) DBG("megaTimerCB state %d (%s)\n", progState, progStates[progState]);
 
   switch (progState) {
     case stateInit: // initial delay expired, send sync chars
       initPacket();
 
-      // os_printf("Reset pin %d to LOW ...", flashConfig.reset_pin);
+      // DBG("Reset pin %d to LOW ...", flashConfig.reset_pin);
       GPIO_OUTPUT_SET(flashConfig.reset_pin, 0);
       os_delay_us(2000L);	// Keep reset line low for 2 ms
       GPIO_OUTPUT_SET(flashConfig.reset_pin, 1);
-      // os_printf(" and up again.\n");
+      // DBG(" and up again.\n");
 
       os_delay_us(2000L);	// Now wait an additional 2 ms before sending packets
 
@@ -802,10 +807,10 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
 
   //if (progState > stateGetSig3)
     if (debug()) {
-      os_printf("megaUartRecv %d bytes, ", length);
+      DBG("megaUartRecv %d bytes, ", length);
       for (int i=0; i<length; i++)
-        os_printf(" %02x", buf[i]);
-      os_printf("\n");
+        DBG(" %02x", buf[i]);
+      DBG("\n");
     }
 
   // append what we got to what we have accumulated
@@ -823,6 +828,11 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
     break;
   case stateSync: // we're trying to get a sync response
     ok = 0;
+    if (optibootData == NULL) {
+      allocateOptibootData();
+      DBG("megaUartRecv NULL stateSync\n");
+      // break;
+    }
     if (responseLen >= 9) {
       if (responseBuf[4] == TOKEN && responseBuf[5] == CMD_GET_PARAMETER && responseBuf[6] == STATUS_CMD_OK) {
         optibootData->hardwareVersion = responseBuf[7];
@@ -874,7 +884,7 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
     progState++;
     sendQuerySignaturePacket(0);
     if (debug())
-      os_printf("Hardware version %d, firmware %d.%d. Vtarget = %d.%d V\n",
+      DBG("Hardware version %d, firmware %d.%d. Vtarget = %d.%d V\n",
         optibootData->hardwareVersion, optibootData->firmwareVersionMajor, optibootData->firmwareVersionMinor, optibootData->vTarget / 16, optibootData->vTarget % 16);
     armTimer(PGM_INTERVAL); // reset timer
     break;
@@ -911,7 +921,7 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
       responseLen -= 13;
       progState++;
 
-      if (debug()) os_printf("Board signature %02x.%02x.%02x\n", optibootData->signature[0], optibootData->signature[1], optibootData->signature[2]);
+      if (debug()) DBG("Board signature %02x.%02x.%02x\n", optibootData->signature[0], optibootData->signature[1], optibootData->signature[2]);
       sendReadFuseQuery('l');
     }
     armTimer(PGM_INTERVAL); // reset timer
@@ -932,7 +942,7 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
   case stateGetFuse3:
     optibootData->efuse = getFuseReply(buf, length);
     if (debug())
-      os_printf("Fuses %02x %02x %02x\n", optibootData->lfuse, optibootData->hfuse, optibootData->efuse);
+      DBG("Fuses %02x %02x %02x\n", optibootData->lfuse, optibootData->hfuse, optibootData->efuse);
     progState++;
     break;
 
@@ -943,7 +953,7 @@ static void ICACHE_FLASH_ATTR megaUartRecv(char *buf, short length) {
 }
 
 int ICACHE_FLASH_ATTR cgiMegaRead(HttpdConnData *connData) {
-  // os_printf("cgiMegaRead %s\n", connData->url);
+  // DBG("cgiMegaRead %s\n", connData->url);
 
   int p, i, len;
   char *buffer, s[12];
@@ -955,7 +965,7 @@ int ICACHE_FLASH_ATTR cgiMegaRead(HttpdConnData *connData) {
   p = strtoul(ptr, &ptr, 16);
   ptr++;	// skip comma
   len = strtoul(ptr, NULL, 16);
-  // os_printf("cgiMegaRead : %x %x\n", p, len);
+  // DBG("cgiMegaRead : %x %x\n", p, len);
 
   buffer = os_malloc(len / 16 * 60);
   if (buffer == 0) {
@@ -1031,7 +1041,7 @@ int ICACHE_FLASH_ATTR readReadFuseReply() {
   reply_ok = false;
   int len = readPacket();
   if (len != 7) {
-    os_printf("readReadFuseReply: packet len %d, expexted 13.\n", len);
+    DBG("readReadFuseReply: packet len %d, expexted 13.\n", len);
     return -1;
   }
   if (pbuf.body[0] == CMD_SPI_MULTI && pbuf.body[1] == STATUS_CMD_OK) {
@@ -1048,7 +1058,7 @@ int ICACHE_FLASH_ATTR readReadFuseReply() {
 int ICACHE_FLASH_ATTR getFuseReply(char *ptr, int len) {
   reply_ok = false;
   if (len != 13) {
-    os_printf("readReadFuseReply: packet len %d, expexted 13.\n", len);
+    DBG("readReadFuseReply: packet len %d, expexted 13.\n", len);
     return -1;
   }
   if (ptr[4] != TOKEN && ptr[0] != MESSAGE_START)
@@ -1071,7 +1081,7 @@ int ICACHE_FLASH_ATTR readFuse(char fuse) {
  * /pgmmega/fuse/1 writes fuse 1
  */
 int ICACHE_FLASH_ATTR cgiMegaFuse(HttpdConnData *connData) {
-  os_printf("cgiMegaFuse %s\n", connData->url);
+  DBG("cgiMegaFuse %s\n", connData->url);
 
   // decode url
   char fuse = 'l';
