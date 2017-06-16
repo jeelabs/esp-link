@@ -9,7 +9,6 @@
 #include "config.h"
 #include "console.h"
 #include "slip.h"
-#include "cmd.h"
 #ifdef SYSLOG
 #include "syslog.h"
 #else

@@ -189,7 +189,8 @@ endif
 TRAVIS_BRANCH?=$(shell git symbolic-ref --short HEAD --quiet)
 # Use git describe to get the latest version tag, commits since then, sha and dirty flag, this
 # results is something like "v1.2.0-13-ab6cedf-dirty"
-VERSION := $(shell (git describe --tags --match 'v*' --long --dirty || echo "no-tag") | sed -re 's/(\.0)?-/./')
+NO_TAG ?= "no-tag"
+VERSION := $(shell (git describe --tags --match 'v*' --long --dirty || echo $(NO_TAG)) | sed -re 's/(\.0)?-/./')
 # If not on master then insert the branch name
 ifneq ($(TRAVIS_BRANCH),master)
 ifneq ($(findstring V%,$(TRAVIS_BRANCH)),)
@@ -519,3 +520,13 @@ ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 endif
 
 $(foreach bdir,$(BUILD_DIR),$(eval $(call compile-objects,$(bdir))))
+
+depend:
+	makedepend -p${BUILD_BASE}/ -Y -- $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) -I${XTENSA_TOOLS_ROOT}../xtensa-lx106-elf/include -I${XTENSA_TOOLS_ROOT}../lib/gcc/xtensa-lx106-elf/4.8.2/include -- */*.c
+
+# Rebuild version at least at every Makefile change
+
+${BUILD_BASE}/esp-link/main.o: Makefile
+
+# DO NOT DELETE
+
