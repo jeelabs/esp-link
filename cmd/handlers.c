@@ -319,7 +319,7 @@ static void ICACHE_FLASH_ATTR cmdWifiSelectSSID(CmdPacket *cmd) {
   cmdPopArg(&req, pass, len);
   pass[len] = 0;
 
-  DBG("SelectSSID(%d,%s)", ix, pass);
+  DBG("SelectSSID(%s,%s)", ssid, pass);
   connectToNetwork(ssid, pass);
 }
 
