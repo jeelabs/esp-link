@@ -295,40 +295,32 @@ static void ICACHE_FLASH_ATTR cmdWifiSelectSSID(CmdPacket *cmd) {
   CmdRequest req;
   cmdRequest(&req, cmd);
   int argc = cmdGetArgc(&req);
-  char *ssid, *pass;
+  char ssid[33], pass[65];
 
-  if (argc != 2)
-    return;
+  if (argc != 2) return;
 
   int len = cmdArgLen(&req);
   if (len == 1) {
     // Assume this is the index
     uint8_t ix;
     cmdPopArg(&req, &ix, 1);
-    len = cmdArgLen(&req);
-    pass = (char *)os_malloc(len+1);
-    cmdPopArg(&req, pass, len);
-    pass[len] = 0;
-
-    DBG("SelectSSID(%d,%s)", ix, pass);
-
-    char myssid[33];
-    wifiGetApName(ix, myssid);
-    myssid[32] = '\0';
-    connectToNetwork(myssid, pass);
+    wifiGetApName(ix, ssid);
+    ssid[32] = '\0';
   } else {
-    ssid = os_malloc(len+1);
+    // Longer than 1 byte: must be SSID
+    if (len > 32) return;
     cmdPopArg(&req, ssid, len);
     ssid[len] = 0;
-
-    len = cmdArgLen(&req);
-    pass = (char *)os_malloc(len+2);
-    cmdPopArg(&req, pass, len);
-    pass[len] = 0;
-
-    DBG("SelectSSID(%s,%s)", ssid, pass);
-    connectToNetwork(ssid, pass);
   }
+
+  // Extract password from message
+  len = cmdArgLen(&req);
+  if (len > 64) return;
+  cmdPopArg(&req, pass, len);
+  pass[len] = 0;
+
+  DBG("SelectSSID(%d,%s)", ix, pass);
+  connectToNetwork(ssid, pass);
 }
 
 #if 0
@@ -364,7 +356,7 @@ static void ICACHE_FLASH_ATTR cmdWifiSignalStrength(CmdPacket *cmd) {
   cmdResponseEnd();
 }
 
-// 
+//
 static void ICACHE_FLASH_ATTR cmdWifiQuerySSID(CmdPacket *cmd) {
   CmdRequest req;
   cmdRequest(&req, cmd);
