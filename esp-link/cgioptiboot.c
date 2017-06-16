@@ -1,5 +1,10 @@
 // Copyright (c) 2015 by Thorsten von Eicken, see LICENSE.txt in the esp-link repo
 
+// Some code moved to esp-link/pgmshared.c to avoid code duplication.
+// Those changes are Copyright (c) 2017 by Danny Backx.
+
+// Protocol used : https://github.com/Optiboot/optiboot/wiki/HowOptibootWorks
+
 #include <esp8266.h>
 #include "cgi.h"
 #include "cgioptiboot.h"
@@ -9,6 +14,8 @@
 #include "serbridge.h"
 #include "mqtt_cmd.h"
 #include "serled.h"
+
+#include "pgmshared.h"
 
 #define INIT_DELAY     150   // wait this many millisecs before sending anything
 #define BAUD_INTERVAL  600   // interval after which we change baud rate
@@ -42,33 +49,12 @@ static short ackWait;        // counter of expected ACKs
 static uint16_t optibootVers;
 static uint32_t baudRate;    // baud rate at which we're programming
 
-#define RESP_SZ 64
-static char responseBuf[RESP_SZ]; // buffer to accumulate responses from optiboot
-static short responseLen = 0;     // amount accumulated so far
-#define ERR_MAX 128
-static char errMessage[ERR_MAX];  // error message
-
 #define MAX_PAGE_SZ 512      // max flash page size supported
 #define MAX_SAVED   512      // max chars in saved buffer
-// structure used to remember request details from one callback to the next
-// allocated dynamically so we don't burn so much static RAM
-static struct optibootData {
-  char *saved;               // buffer for saved incomplete hex records
-  char *pageBuf;             // buffer for received data to be sent to AVR
-  uint16_t pageLen;          // number of bytes in pageBuf
-  uint16_t pgmSz;            // size of flash page to be programmed at a time
-  uint16_t pgmDone;          // number of bytes programmed
-  uint32_t address;          // address to write next page to
-  uint32_t startTime;        // time of program POST request
-  HttpdConnData *conn;       // request doing the programming, so we can cancel it
-  bool eof;                  // got EOF record
-} *optibootData;
 
 // forward function references
 static void optibootTimerCB(void *);
 static void optibootUartRecv(char *buffer, short length);
-static bool processRecord(char *buf, short len);
-static bool programPage(void);
 static void armTimer(uint32_t ms);
 static void initBaud(void);
 
@@ -175,30 +161,6 @@ int ICACHE_FLASH_ATTR cgiOptibootSync(HttpdConnData *connData) {
   return HTTPD_CGI_DONE;
 }
 
-// verify that N chars are hex characters
-static bool ICACHE_FLASH_ATTR checkHex(char *buf, short len) {
-  while (len--) {
-    char c = *buf++;
-    if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))
-      continue;
-    DBG("OB non-hex\n");
-    os_sprintf(errMessage, "Non hex char in POST record: '%c'/0x%02x", c, c);
-    return false;
-  }
-  return true;
-}
-
-// get hex value of some hex characters
-static uint32_t ICACHE_FLASH_ATTR getHexValue(char *buf, short len) {
-  uint32_t v = 0;
-  while (len--) {
-    v = (v<<4) | (uint32_t)(*buf & 0xf);
-    if (*buf > '9') v += 9;
-    buf++;
-  }
-  return v;
-}
-
 //===== Cgi to write firmware to Optiboot, requires prior sync call
 int ICACHE_FLASH_ATTR cgiOptibootData(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
@@ -228,6 +190,7 @@ int ICACHE_FLASH_ATTR cgiOptibootData(HttpdConnData *connData) {
       errorResponse(connData, 400, "Out of memory");
       return HTTPD_CGI_DONE;
     }
+    optibootData->mega = false;
     optibootData->pageBuf = pageBuf;
     optibootData->saved = saved;
     optibootData->startTime = system_get_time();
@@ -332,80 +295,6 @@ int ICACHE_FLASH_ATTR cgiOptibootData(HttpdConnData *connData) {
   return HTTPD_CGI_DONE;
 }
 
-// verify checksum
-static bool ICACHE_FLASH_ATTR verifyChecksum(char *buf, short len) {
-  uint8_t sum = 0;
-  while (len >= 2) {
-    sum += (uint8_t)getHexValue(buf, 2);
-    buf += 2;
-    len -= 2;
-  }
-  return sum == 0;
-}
-
-// Process a hex record -- assumes that the records starts with ':' & hex length
-static bool ICACHE_FLASH_ATTR processRecord(char *buf, short len) {
-  buf++; len--; // skip leading ':'
-  // check we have all hex chars
-  if (!checkHex(buf, len)) return false;
-  // verify checksum
-  if (!verifyChecksum(buf, len)) {
-    buf[len] = 0;
-    os_sprintf(errMessage, "Invalid checksum for record %s", buf);
-    return false;
-  }
-  // dispatch based on record type
-  uint8_t type = getHexValue(buf+6, 2);
-  switch (type) {
-  case 0x00: { // data
-    //DBG("OB REC data %ld pglen=%d\n", getHexValue(buf, 2), optibootData->pageLen);
-    uint32_t addr = getHexValue(buf+2, 4);
-    // check whether we need to program previous record(s)
-    if (optibootData->pageLen > 0 &&
-        addr != ((optibootData->address+optibootData->pageLen)&0xffff)) {
-      //DBG("OB addr chg\n");
-      if (!programPage()) return false;
-    }
-    // set address, unless we're adding to the end (programPage may have changed pageLen)
-    if (optibootData->pageLen == 0) {
-      optibootData->address = (optibootData->address & 0xffff0000) | addr;
-      //DBG("OB set-addr 0x%lx\n", optibootData->address);
-    }
-    // append record
-    uint16_t recLen = getHexValue(buf, 2);
-    for (uint16_t i=0; i<recLen; i++)
-      optibootData->pageBuf[optibootData->pageLen++] = getHexValue(buf+8+2*i, 2);
-    // program page, if we have a full page
-    if (optibootData->pageLen >= optibootData->pgmSz) {
-      //DBG("OB full\n");
-      if (!programPage()) return false;
-    }
-    break; }
-  case 0x01: // EOF
-    DBG("OB EOF\n");
-    // program any remaining partial page
-    if (optibootData->pageLen > 0)
-      if (!programPage()) return false;
-    optibootData->eof = true;
-    break;
-  case 0x04: // address
-    DBG("OB address 0x%x\n", getHexValue(buf+8, 4) << 16);
-    // program any remaining partial page
-    if (optibootData->pageLen > 0)
-      if (!programPage()) return false;
-    optibootData->address = getHexValue(buf+8, 4) << 16;
-    break;
-  case 0x05: // start address
-    // ignore, there's no way to tell optiboot that...
-    break;
-  default:
-    DBG("OB bad record type\n");
-    os_sprintf(errMessage, "Invalid/unknown record type: 0x%02x", type);
-    return false;
-  }
-  return true;
-}
-
 // Poll UART for ACKs, max 50ms
 static bool pollAck() {
   char recv[16];
@@ -426,7 +315,7 @@ static bool pollAck() {
 }
 
 // Program a flash page
-static bool ICACHE_FLASH_ATTR programPage(void) {
+bool ICACHE_FLASH_ATTR optibootProgramPage(void) {
   if (optibootData->pageLen == 0) return true;
   armTimer(PGM_TIMEOUT); // keep the timerCB out of the picture
 
