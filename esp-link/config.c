@@ -2,7 +2,6 @@
 /* Configuration stored in flash */
 
 #include <esp8266.h>
-#include <osapi.h>
 #include "config.h"
 #include "espfs.h"
 #include "crc16.h"
@@ -35,6 +34,7 @@ FlashConfig flashDefault = {
   .data_bits	= EIGHT_BITS,
   .parity	= NONE_BITS,
   .stop_bits	= ONE_STOP_BIT,
+  .uart0_tx_enable_pin = -1,
 };
 
 typedef union {

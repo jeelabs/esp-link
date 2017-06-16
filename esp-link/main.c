@@ -147,7 +147,9 @@ user_rf_cal_sector_set(void) {
 // Main routine to initialize esp-link.
 void ICACHE_FLASH_ATTR
 user_init(void) {
-  // uncomment the following three lines to see flash config messages for troubleshooting
+  system_timer_reinit();
+
+// uncomment the following three lines to see flash config messages for troubleshooting
   //uart_init(115200, 115200);
   //logInit();
   //os_delay_us(100000L);
@@ -159,7 +161,7 @@ user_init(void) {
   gpio_output_set(0, 0, 0, (1<<15)); // some people tie it to GND, gotta ensure it's disabled
   // init UART
   uart_init(CALC_UARTMODE(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits),
-            flashConfig.baud_rate, 115200);
+            flashConfig.baud_rate, flashConfig.uart0_tx_enable_pin, 115200);
   logInit(); // must come after init of uart
   // Say hello (leave some time to cause break in TX after boot loader's msg
   os_delay_us(10000L);
@@ -185,7 +187,7 @@ user_init(void) {
 #ifdef SHOW_HEAP_USE
   os_timer_disarm(&prHeapTimer);
   os_timer_setfn(&prHeapTimer, prHeapTimerCb, NULL);
-  os_timer_arm(&prHeapTimer, 10000, 1);
+  os_timer_arm_us(&prHeapTimer, 10 * 1000000, 1);
 #endif
 
   struct rst_info *rst_info = system_get_rst_info();
