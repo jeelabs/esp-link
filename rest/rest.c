@@ -302,8 +302,8 @@ REST_SetHeader(CmdPacket *cmd) {
   RestClient *client = restClient + (clientNum % MAX_REST);
 
   // Get header selector
-  uint32_t header_index;
-  if (cmdPopArg(&req, (uint8_t*)&header_index, 4)) return;
+  uint8_t header_index;
+  if (cmdPopArg(&req, &header_index, 1)) return;
 
   // Get header value
   uint16_t len = cmdArgLen(&req);
