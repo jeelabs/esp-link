@@ -191,7 +191,7 @@ TRAVIS_BRANCH?=$(shell git symbolic-ref --short HEAD --quiet)
 # Use git describe to get the latest version tag, commits since then, sha and dirty flag, this
 # results is something like "v1.2.0-13-ab6cedf-dirty"
 NO_TAG ?= "no-tag"
-VERSION := $(shell (git describe --tags --match 'v*' --long --dirty || echo $(NO_TAG)) | sed -re 's/(\.0)?-/./')
+VERSION := $(shell (git describe --tags --match 'v*.0' --long --dirty || echo $(NO_TAG)) | sed -re 's/(\.0)?-/./')
 # If not on master then insert the branch name
 ifneq ($(TRAVIS_BRANCH),master)
 ifneq ($(findstring V%,$(TRAVIS_BRANCH)),)
@@ -200,7 +200,6 @@ endif
 endif
 VERSION :=$(VERSION)
 $(info VERSION is $(VERSION))
-$(info GIT TAGS is $(shell git tag -n))
 
 # Output directors to store intermediate compiled files
 # relative to the project directory

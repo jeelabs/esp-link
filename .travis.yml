@@ -25,6 +25,7 @@ script:
   - export XTENSA_TOOLS_ROOT=$PWD/xtensa-lx106-elf/bin/
   - export BRANCH=$TRAVIS_BRANCH
     #- export SDK_BASE=$PWD/esp_iot_sdk_v2.0.0.p1
+  - git tags -n
   - make release
 
 notifications:
