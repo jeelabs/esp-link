@@ -26,6 +26,7 @@ script:
   - export BRANCH=$TRAVIS_BRANCH
     #- export SDK_BASE=$PWD/esp_iot_sdk_v2.0.0.p1
   - git tag -n
+  - git describe --tags --match 'v*.0' --long --debug
   - make release
 
 notifications:
