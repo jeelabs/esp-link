@@ -32,7 +32,10 @@
 #include "log.h"
 #include "gpio.h"
 #include "cgiservices.h"
+
+#ifdef WEBSERVER
 #include "web-server.h"
+#endif
 
 #ifdef SYSLOG
 #include "syslog.h"
@@ -108,8 +111,10 @@ HttpdBuiltInUrl builtInUrls[] = {
 #ifdef MQTT
   { "/mqtt", cgiMqtt, NULL },
 #endif
+#ifdef WEBSERVER
   { "/web-server/upload", cgiWebServerSetupUpload, NULL },
   { "*.json", WEB_CgiJsonHook, NULL }, //Catch-all cgi JSON queries
+#endif
   { "*", cgiEspFsHook, NULL }, //Catch-all cgi function for the filesystem
   { NULL, NULL, NULL }
 };
@@ -170,7 +175,7 @@ user_init(void) {
   gpio_output_set(0, 0, 0, (1<<15)); // some people tie it to GND, gotta ensure it's disabled
   // init UART
   uart_init(CALC_UARTMODE(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits),
-            flashConfig.baud_rate, flashConfig.uart0_tx_enable_pin, 115200);
+            flashConfig.baud_rate, flashConfig.tx_enable_pin, 115200);
   logInit(); // must come after init of uart
   // Say hello (leave some time to cause break in TX after boot loader's msg
   os_delay_us(10000L);
@@ -188,7 +193,9 @@ user_init(void) {
   //os_printf("espFsInit %s\n", res?"ERR":"ok");
   // mount the http handlers
   httpdInit(builtInUrls, 80);
+#ifdef WEBSERVER
   WEB_Init();
+#endif
 
   // init the wifi-serial transparent bridge (port 23)
   serbridgeInit(23, 2323);

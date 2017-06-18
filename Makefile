@@ -163,6 +163,7 @@ else ifeq ("$(FLASH_SIZE)","2MB")
 ESP_SPI_SIZE        ?= 4       # 6->4MB (1MB+1MB) or 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+:q
 ET_FS               ?= 16m     # 16Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x1FE000 # where to flash blank.bin to erase wireless settings
@@ -199,19 +200,6 @@ endif
 endif
 VERSION :=$(VERSION)
 $(info VERSION is $(VERSION))
-
-# OLD - DEPRECATED
-# This queries git to produce a version string like "esp-link v0.9.0 2015-06-01 34bc76"
-# If you don't have a proper git checkout or are on windows, then simply swap for the constant
-# Steps to release: create release on github, git pull, git describe --tags to verify you're
-# on the release tag, make release, upload esp-link.tgz into the release files
-#VERSION ?= "esp-link custom version"
-#DATE    := $(shell date '+%F %T')
-#BRANCH  ?= $(shell if git diff --quiet HEAD; then git describe --tags; \
-#                   else git symbolic-ref --short HEAD; fi)
-#SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | cut -d"/" -f 3; \
-#                   else echo "development"; fi)
-#VERSION ?=esp-link $(BRANCH) - $(DATE) - $(SHA)
 
 # Output directors to store intermediate compiled files
 # relative to the project directory

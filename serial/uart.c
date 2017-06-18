@@ -45,7 +45,7 @@ static void uart0_rx_intr_handler(void *para);
 *******************************************************************************/
 void ICACHE_FLASH_ATTR
 uart0_set_tx_enable_pin(int8_t pin) {
-	uart0_tx_enable_pin = pin;
+  uart0_tx_enable_pin = pin;
 }
 
 /******************************************************************************
@@ -59,14 +59,11 @@ static void ICACHE_FLASH_ATTR
 tx_enable(bool state)
 {
   if (uart0_tx_enable_pin >= 0) {
-#ifdef SERBR_DBG
-    os_printf("TX_ENABLE gpio%d state=%d\n", uart0_tx_enable_pin, (int)state);
-#endif
+    DBG_UART("TX_ENABLE gpio%d state=%d\n", uart0_tx_enable_pin, (int)state);
     GPIO_OUTPUT_SET(uart0_tx_enable_pin, (state) ? 1 : 0);
+  } else {
+    DBG_UART("TX Enable: no pin\n");
   }
-#ifdef SERBR_DBG
-  else { os_printf("TX Enable: no pin\n"); }
-#endif
 }
 
 os_timer_t uart_tx_enable_timer;

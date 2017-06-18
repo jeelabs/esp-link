@@ -437,6 +437,14 @@ static void ICACHE_FLASH_ATTR optibootTimerCB(void *arg) {
   }
 }
 
+#if 0
+static void ICACHE_FLASH_ATTR print_buff(char *msg, char *buf, short length) {
+  DBG("OB GOT %s %d:", msg, length);
+  for (int i=0; i<length; i++) DBG(" %x", buf[i]);
+  DBG("\n");
+}
+#endif
+
 // skip in-sync responses
 static short ICACHE_FLASH_ATTR skipInSync(char *buf, short length) {
   while (length > 1 && buf[0] == STK_INSYNC && buf[1] == STK_OK) {
@@ -449,6 +457,7 @@ static short ICACHE_FLASH_ATTR skipInSync(char *buf, short length) {
 
 // receive response from optiboot, we only store the last response
 static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
+  //print_buff("RAW", buf, length);
   // append what we got to what we have accumulated
   if (responseLen < RESP_SZ-1) {
     char *rb = responseBuf+responseLen;
@@ -457,6 +466,7 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
     responseLen = rb-responseBuf;
     responseBuf[responseLen] = 0; // string terminator
   }
+  //print_buff("RBUF", responseBuf, responseLen);
 
   // dispatch based the current state
   switch (progState) {
@@ -471,13 +481,13 @@ static void ICACHE_FLASH_ATTR optibootUartRecv(char *buf, short length) {
     } else if (responseLen > 1 && responseBuf[responseLen-2] == STK_INSYNC &&
         responseBuf[responseLen-1] == STK_OK) {
       // got sync response
-      os_memcpy(responseBuf, responseBuf+2, responseLen-2);
-      responseLen -= 2;
+      responseLen = 0; // ignore anything that may have accumulated
       // send request to get signature
       uart0_write_char(STK_READ_SIGN);
       uart0_write_char(CRC_EOP);
       progState++;
       armTimer(PGM_INTERVAL); // reset timer
+      //DBG("OB: got sync, sent read-sig\n");
     } else {
       // nothing useful, keep at most half the buffer for error message purposes
       if (responseLen > RESP_SZ/2) {

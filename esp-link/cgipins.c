@@ -32,10 +32,10 @@ int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
   int len;
 
   len = os_sprintf(buff,
-      "{ \"reset\":%d, \"isp\":%d, \"conn\":%d, \"ser\":%d, \"swap\":%d, \"rxpup\":%d, \"uart0-tx-enable\":%d }",
+      "{ \"reset\":%d, \"isp\":%d, \"conn\":%d, \"ser\":%d, \"swap\":%d, \"rxpup\":%d, \"txen\":%d }",
       flashConfig.reset_pin, flashConfig.isp_pin, flashConfig.conn_led_pin,
       flashConfig.ser_led_pin, !!flashConfig.swap_uart, !!flashConfig.rx_pullup,
-	  flashConfig.uart0_tx_enable_pin);
+      flashConfig.tx_enable_pin);
 
   jsonHeader(connData, 200);
   httpdSend(connData, buff, len);
@@ -49,7 +49,7 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
   }
 
   int8_t ok = 0;
-  int8_t reset, isp, conn, ser, uart0_tx_enable;
+  int8_t reset, isp, conn, ser, tx_enable;
   uint8_t swap, rxpup;
   ok |= getInt8Arg(connData, "reset", &reset);
   ok |= getInt8Arg(connData, "isp", &isp);
@@ -57,7 +57,7 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
   ok |= getInt8Arg(connData, "ser", &ser);
   ok |= getBoolArg(connData, "swap", &swap);
   ok |= getBoolArg(connData, "rxpup", &rxpup);
-  ok |= getInt8Arg(connData, "uart0-tx-enable", &uart0_tx_enable);
+  ok |= getInt8Arg(connData, "txen", &tx_enable);
   if (ok < 0) return HTTPD_CGI_DONE;
 
   char *coll;
@@ -77,9 +77,9 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
       if (pins & (1<<ser)) { coll = "Serial LED"; goto collision; }
       pins |= 1 << ser;
     }
-    if (uart0_tx_enable >= 0) {
-        if (pins & (1<<uart0_tx_enable)) { coll = "UART0 TX Enable"; goto collision; }
-        pins |= 1 << uart0_tx_enable;
+    if (tx_enable >= 0) {
+        if (pins & (1<<tx_enable)) { coll = "TX Enable"; goto collision; }
+        pins |= 1 << tx_enable;
     }
     if (swap) {
       if (pins & (1<<15)) { coll = "Uart TX"; goto collision; }
@@ -96,9 +96,9 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
     flashConfig.ser_led_pin = ser;
     flashConfig.swap_uart = swap;
     flashConfig.rx_pullup = rxpup;
-    flashConfig.uart0_tx_enable_pin = uart0_tx_enable;
-    os_printf("Pins changed: reset=%d isp=%d conn=%d ser=%d swap=%d rx-pup=%d uart0_tx_enable=%d\n",
-	reset, isp, conn, ser, swap, rxpup, uart0_tx_enable);
+    flashConfig.tx_enable_pin = tx_enable;
+    os_printf("Pins changed: reset=%d isp=%d conn=%d ser=%d swap=%d rx-pup=%d tx_enable=%d\n",
+	reset, isp, conn, ser, swap, rxpup, tx_enable);
 
     // apply the changes
     serbridgeInitPins();
