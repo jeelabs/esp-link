@@ -200,6 +200,7 @@ endif
 endif
 VERSION :=$(VERSION)
 $(info VERSION is $(VERSION))
+$(info GIT TAGS is $(shell git tag -n))
 
 # Output directors to store intermediate compiled files
 # relative to the project directory
