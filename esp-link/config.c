@@ -2,7 +2,6 @@
 /* Configuration stored in flash */
 
 #include <esp8266.h>
-#include <osapi.h>
 #include "config.h"
 #include "espfs.h"
 #include "crc16.h"

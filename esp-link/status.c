@@ -92,7 +92,7 @@ static void ICACHE_FLASH_ATTR ledTimerCb(void *v) {
   }
 
   setLed(ledState);
-  os_timer_arm(&ledTimer, time, 0);
+  os_timer_arm_us(&ledTimer, time * 1000, 0);
 }
 
 // change the wifi state indication
@@ -101,7 +101,7 @@ void ICACHE_FLASH_ATTR statusWifiUpdate(uint8_t state) {
   // schedule an update (don't want to run into concurrency issues)
   os_timer_disarm(&ledTimer);
   os_timer_setfn(&ledTimer, ledTimerCb, NULL);
-  os_timer_arm(&ledTimer, 500, 0);
+  os_timer_arm_us(&ledTimer, 500000, 0);
 }
 
 //===== Init status stuff
@@ -117,12 +117,12 @@ void ICACHE_FLASH_ATTR statusInit(void) {
 
   os_timer_disarm(&ledTimer);
   os_timer_setfn(&ledTimer, ledTimerCb, NULL);
-  os_timer_arm(&ledTimer, 2000, 0);
+  os_timer_arm_us(&ledTimer, 2 * 1000000, 0);
 
 #ifdef MQTT
   os_timer_disarm(&mqttStatusTimer);
   os_timer_setfn(&mqttStatusTimer, mqttStatusCb, NULL);
-  os_timer_arm(&mqttStatusTimer, MQTT_STATUS_INTERVAL, 1); // recurring timer
+  os_timer_arm_us(&mqttStatusTimer, MQTT_STATUS_INTERVAL * 1000, 1); // recurring timer
 #endif // MQTT
 }
 

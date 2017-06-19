@@ -91,7 +91,7 @@ static void ICACHE_FLASH_ATTR syslog_timer_arm(int delay) {
     syslog_timer_armed = true;
     os_timer_disarm(&wifi_chk_timer);
     os_timer_setfn(&wifi_chk_timer, (os_timer_func_t *)syslog_chk_status, NULL);
-    os_timer_arm(&wifi_chk_timer, delay, 0);
+    os_timer_arm_us(&wifi_chk_timer, delay * 1000, 0);
 }
 
 /******************************************************************************

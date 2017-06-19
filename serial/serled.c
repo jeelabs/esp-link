@@ -25,7 +25,7 @@ void ICACHE_FLASH_ATTR serledFlash(int duration) {
   setSerled(1);
   os_timer_disarm(&serledTimer);
   os_timer_setfn(&serledTimer, serledTimerCb, NULL);
-  os_timer_arm(&serledTimer, duration, 0);
+  os_timer_arm_us(&serledTimer, duration * 1000, 0);
 }
 
 void ICACHE_FLASH_ATTR serledInit(void) {

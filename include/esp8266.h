@@ -5,8 +5,6 @@
 #undef MEMLEAK_DEBUG
 #define USE_OPTIMIZE_PRINTF
 
-#define os_timer_arm_us(a,b,c) os_timer_arm(a,b/1000,c)
-
 #include <user_config.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -19,6 +17,8 @@
 #include <ets_sys.h>
 #include <gpio.h>
 #include <mem.h>
+
+#define USE_US_TIMER
 #include <osapi.h>
 #include <upgrade.h>
 

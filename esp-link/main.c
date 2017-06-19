@@ -161,10 +161,12 @@ user_rf_cal_sector_set(void) {
 // Main routine to initialize esp-link.
 void ICACHE_FLASH_ATTR
 user_init(void) {
-  // uncomment the following three lines to see flash config messages for troubleshooting
-  //uart_init(CALC_UARTMODE(8, 0, 1), 115200, 115200);
+  system_timer_reinit();
+
+// uncomment the following three lines to see flash config messages for troubleshooting
+  //uart_init(115200, 115200);
   //logInit();
-  //os_delay_us(60000L);
+  //os_delay_us(100000L);
   // get the flash config so we know how to init things
   //configWipe(); // uncomment to reset the config for testing purposes
   bool restoreOk = configRestore();
@@ -201,7 +203,7 @@ user_init(void) {
 #ifdef SHOW_HEAP_USE
   os_timer_disarm(&prHeapTimer);
   os_timer_setfn(&prHeapTimer, prHeapTimerCb, NULL);
-  os_timer_arm(&prHeapTimer, 10000, 1);
+  os_timer_arm_us(&prHeapTimer, 10 * 1000000, 1);
 #endif
 
   struct rst_info *rst_info = system_get_rst_info();
