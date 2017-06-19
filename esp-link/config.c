@@ -34,6 +34,7 @@ FlashConfig flashDefault = {
   .data_bits	= EIGHT_BITS,
   .parity	= NONE_BITS,
   .stop_bits	= ONE_STOP_BIT,
+  .tx_enable_pin = -1,
 };
 
 typedef union {
@@ -159,6 +160,13 @@ bool ICACHE_FLASH_ATTR configRestore(void) {
       flashConfig.data_bits = flashDefault.data_bits;
       flashConfig.parity = flashDefault.parity;
       flashConfig.stop_bits = flashDefault.stop_bits;
+  }
+  if (flashConfig.tx_enable_pin == 0 &&
+      (flashConfig.conn_led_pin == 0 || flashConfig.reset_pin == 0 ||
+       flashConfig.isp_pin == 0 || flashConfig.ser_led_pin == 0)) {
+    // just added tx_enable_pin and it got the default 0, which is not good, need to default to
+    // disabled.
+    flashConfig.tx_enable_pin = -1;
   }
   return true;
 }

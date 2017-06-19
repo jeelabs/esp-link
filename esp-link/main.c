@@ -163,10 +163,11 @@ void ICACHE_FLASH_ATTR
 user_init(void) {
   system_timer_reinit();
 
-// uncomment the following three lines to see flash config messages for troubleshooting
+  // uncomment the following three lines to see flash config messages for troubleshooting
   //uart_init(115200, 115200);
   //logInit();
-  //os_delay_us(100000L);
+  //os_delay_us(60000L);
+
   // get the flash config so we know how to init things
   //configWipe(); // uncomment to reset the config for testing purposes
   bool restoreOk = configRestore();
