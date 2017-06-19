@@ -42,11 +42,14 @@ typedef enum {
   CMD_CB_ADD,
   CMD_CB_EVENTS,
   CMD_GET_TIME,       // get current time in seconds since the unix epoch
+  CMD_GET_WIFI_INFO,	// query ip address info
+  CMD_SET_WIFI_INFO,	// set ip address info
 
   CMD_MQTT_SETUP = 10,  // set-up callbacks
   CMD_MQTT_PUBLISH,     // publish a message
   CMD_MQTT_SUBSCRIBE,   // subscribe to a topic
   CMD_MQTT_LWT,         // set the last-will-topic and messge
+  CMD_MQTT_GET_CLIENTID,
 
   CMD_REST_SETUP = 20,  // set-up callbacks
   CMD_REST_REQUEST,     // do REST request
@@ -57,6 +60,13 @@ typedef enum {
 
   CMD_SOCKET_SETUP = 40, // set-up callbacks
   CMD_SOCKET_SEND,       // send data over UDP socket
+
+  CMD_WIFI_GET_APCOUNT = 50,  // Query the number of networks / Access Points known
+  CMD_WIFI_GET_APNAME,        // Query the name (SSID) of an Access Point (AP)
+  CMD_WIFI_SELECT_SSID,       // Connect to a specific network
+  CMD_WIFI_SIGNAL_STRENGTH,   // Query RSSI
+  CMD_WIFI_GET_SSID,          // Query SSID currently connected to
+  CMD_WIFI_START_SCAN,        // Trigger a scan (takes a long time)
 
 } CmdName;
 

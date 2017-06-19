@@ -189,7 +189,8 @@ endif
 TRAVIS_BRANCH?=$(shell git symbolic-ref --short HEAD --quiet)
 # Use git describe to get the latest version tag, commits since then, sha and dirty flag, this
 # results is something like "v1.2.0-13-ab6cedf-dirty"
-VERSION := $(shell (git describe --tags --match 'v*' --long --dirty || echo "no-tag") | sed -re 's/(\.0)?-/./')
+NO_TAG ?= "no-tag"
+VERSION := $(shell (git describe --tags --match 'v*.0' --long --dirty || echo $(NO_TAG)) | sed -re 's/(\.0)?-/./')
 # If not on master then insert the branch name
 ifneq ($(TRAVIS_BRANCH),master)
 ifneq ($(findstring V%,$(TRAVIS_BRANCH)),)
@@ -198,19 +199,6 @@ endif
 endif
 VERSION :=$(VERSION)
 $(info VERSION is $(VERSION))
-
-# OLD - DEPRECATED
-# This queries git to produce a version string like "esp-link v0.9.0 2015-06-01 34bc76"
-# If you don't have a proper git checkout or are on windows, then simply swap for the constant
-# Steps to release: create release on github, git pull, git describe --tags to verify you're
-# on the release tag, make release, upload esp-link.tgz into the release files
-#VERSION ?= "esp-link custom version"
-#DATE    := $(shell date '+%F %T')
-#BRANCH  ?= $(shell if git diff --quiet HEAD; then git describe --tags; \
-#                   else git symbolic-ref --short HEAD; fi)
-#SHA     := $(shell if git diff --quiet HEAD; then git rev-parse --short HEAD | cut -d"/" -f 3; \
-#                   else echo "development"; fi)
-#VERSION ?=esp-link $(BRANCH) - $(DATE) - $(SHA)
 
 # Output directors to store intermediate compiled files
 # relative to the project directory
@@ -519,3 +507,13 @@ ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 endif
 
 $(foreach bdir,$(BUILD_DIR),$(eval $(call compile-objects,$(bdir))))
+
+depend:
+	makedepend -p${BUILD_BASE}/ -Y -- $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) -I${XTENSA_TOOLS_ROOT}../xtensa-lx106-elf/include -I${XTENSA_TOOLS_ROOT}../lib/gcc/xtensa-lx106-elf/4.8.2/include -- */*.c
+
+# Rebuild version at least at every Makefile change
+
+${BUILD_BASE}/esp-link/main.o: Makefile
+
+# DO NOT DELETE
+
