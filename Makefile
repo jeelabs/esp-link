@@ -488,8 +488,8 @@ release: all
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user1.bin | cut -b 1-80
 	$(Q) egrep -a 'esp-link [a-z0-9.]+ - 201' $(FW_BASE)/user2.bin | cut -b 1-80
 	$(Q) cp $(FW_BASE)/user1.bin $(FW_BASE)/user2.bin $(SDK_BASE)/bin/blank.bin \
-	       "$(SDK_BASE)/bin/boot_v1.6.bin" "$(SDK_BASE)/bin/esp_init_data_default.bin" \
-	       wiflash avrflash release/esp-link-$(VERSION)
+	       "$(SDK_BASE)/bin/boot_v1.7.bin" "$(SDK_BASE)/bin/esp_init_data_default.bin" \
+	       wiflash avrflash megaflash release/esp-link-$(VERSION)
 	$(Q) tar zcf esp-link-$(VERSION).tgz -C release esp-link-$(VERSION)
 	$(Q) echo "Release file: esp-link-$(VERSION).tgz"
 	$(Q) rm -rf release
