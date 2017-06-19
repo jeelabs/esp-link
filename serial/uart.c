@@ -348,12 +348,10 @@ uart0_config(uint8_t data_bits, uint8_t parity, uint8_t stop_bits) {
 void ICACHE_FLASH_ATTR
 uart_init(uint32 conf0, UartBautRate uart0_br, int8_t uart0TxEnablePin, UartBautRate uart1_br)
 {
-  if (uart0TxEnablePin >= 0) {
-	uart0_set_tx_enable_pin(uart0TxEnablePin);
-	// Set up a timer to disable the TX line after the last byte has been transmitted
-    os_timer_disarm(&uart_tx_enable_timer);
-    os_timer_setfn(&uart_tx_enable_timer, tx_completed_interrupt, NULL);
-  }
+  uart0_set_tx_enable_pin(uart0TxEnablePin);
+  // Set up a timer to disable the TX line after the last byte has been transmitted
+  os_timer_disarm(&uart_tx_enable_timer);
+  os_timer_setfn(&uart_tx_enable_timer, tx_completed_interrupt, NULL);
 
   // rom use 74880 baut_rate, here reinitialize
   uart_config(UART0, uart0_br, conf0);
