@@ -13,7 +13,7 @@ RUN apt-get update \
                        zlib1g-dev openjdk-8-jre-headless
 
 RUN curl -Ls http://s3.voneicken.com/xtensa-lx106-elf-20160330.tgx | tar Jxf -
-RUN curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.0.0.p1.tgx | tar -Jxf -
+RUN curl -Ls http://s3.voneicken.com/esp_iot_sdk_v2.1.0.tgx | tar -Jxf -
 
 ENV XTENSA_TOOLS_ROOT /xtensa-lx106-elf/bin/
 
