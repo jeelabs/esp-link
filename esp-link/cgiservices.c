@@ -39,7 +39,7 @@ int ICACHE_FLASH_ATTR cgiSystemSet(HttpdConnData *connData) {
     // schedule hostname change-over
     os_timer_disarm(&reassTimer);
     os_timer_setfn(&reassTimer, configWifiIP, NULL);
-    os_timer_arm_us(&reassTimer, 1 * 1000000, 0); // 1 second for the response of this request to make it
+    os_timer_arm(&reassTimer, 1000, 0); // 1 second for the response of this request to make it
   }
 
   if (configSave()) {

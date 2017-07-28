@@ -28,7 +28,6 @@
 #endif
 
 LOCAL uint8_t uart_recvTaskNum;
-LOCAL int8_t uart0_tx_enable_pin;
 
 // UartDev is defined and initialized in rom code.
 extern UartDevice    UartDev;
@@ -36,53 +35,6 @@ extern UartDevice    UartDev;
 static UartRecv_cb uart_recv_cb[4];
 
 static void uart0_rx_intr_handler(void *para);
-
-/******************************************************************************
- * FunctionName : set_tx_enable_pin
- * Description  : Set which pin to use for RS-485 TX_ENABLE
- * Parameters   : pin, the pin to use
- * Returns      : NONE
-*******************************************************************************/
-void ICACHE_FLASH_ATTR
-uart0_set_tx_enable_pin(int8_t pin) {
-  uart0_tx_enable_pin = pin;
-}
-
-/******************************************************************************
- * FunctionName : tx_enable
- * Description  : Internal used function
- *                Set the TX_ENABLE line for RS-485 communications
- * Parameters   : state, true if the TX_ENABLE line should be asserted high
- * Returns      : NONE
-*******************************************************************************/
-static void ICACHE_FLASH_ATTR
-tx_enable(bool state)
-{
-  if (uart0_tx_enable_pin >= 0) {
-    DBG_UART("TX_ENABLE gpio%d state=%d\n", uart0_tx_enable_pin, (int)state);
-    GPIO_OUTPUT_SET(uart0_tx_enable_pin, (state) ? 1 : 0);
-  } else {
-    DBG_UART("TX Enable: no pin\n");
-  }
-}
-
-os_timer_t uart_tx_enable_timer;
-bool uart_tx_enable_timer_inited = false;
-
-/******************************************************************************
- * FunctionName : tx_completed_interrupt
- * Description  : Internal used function
- *                Set the TX enable line low, after the UART has completed tranmission
- * Parameters   : unused unused
- * Returns      : NONE
-*******************************************************************************/
-static void ICACHE_FLASH_ATTR
-tx_completed_interrupt(void *unused)
-{
-	os_timer_disarm(&uart_tx_enable_timer);
-	tx_enable(false);
-}
-
 
 /******************************************************************************
  * FunctionName : uart_config
@@ -126,20 +78,12 @@ uart_config(uint8 uart_no, UartBautRate baudrate, uint32 conf0)
     // to set the threshold here...
     // We do not enable framing error interrupts 'cause they tend to cause an interrupt avalanche
     // and instead just poll for them when we get a std RX interrupt.
-
-	uint32_t tx_empty_bits = 0;
-	if (uart0_tx_enable_pin >= 0) {
-	  // Set the empty threshold to 0 and enable the buffer empty interrupt
-	  tx_empty_bits = (0 & UART_TXFIFO_EMPTY_THRHD) << UART_TXFIFO_EMPTY_THRHD_S | UART_TXFIFO_EMPTY_INT_ENA;
-	}
     WRITE_PERI_REG(UART_CONF1(uart_no),
                    ((80 & UART_RXFIFO_FULL_THRHD) << UART_RXFIFO_FULL_THRHD_S) |
                    ((100 & UART_RX_FLOW_THRHD) << UART_RX_FLOW_THRHD_S) |
                    UART_RX_FLOW_EN |
                    (4 & UART_RX_TOUT_THRHD) << UART_RX_TOUT_THRHD_S |
-                   UART_RX_TOUT_EN) |
-                   tx_empty_bits
-         ;
+                   UART_RX_TOUT_EN);
     SET_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA | UART_RXFIFO_TOUT_INT_ENA);
   } else {
     WRITE_PERI_REG(UART_CONF1(uart_no),
@@ -164,16 +108,7 @@ uart_tx_one_char(uint8 uart, uint8 c)
   //Wait until there is room in the FIFO
   while (((READ_PERI_REG(UART_STATUS(uart))>>UART_TXFIFO_CNT_S)&UART_TXFIFO_CNT)>=100) ;
   //Send the character
-  if (UART0 == uart && uart0_tx_enable_pin >= 0) {
-    // A tx_completed_interrupt may have already been scheduled, cancel it before it fires during our transmission
-	os_timer_disarm(&uart_tx_enable_timer);
-
-    tx_enable(true);
-    WRITE_PERI_REG(UART_FIFO(uart), c);
-    SET_PERI_REG_MASK(UART_INT_ENA(uart), UART_TXFIFO_EMPTY_INT_ENA);
-  } else {
-    WRITE_PERI_REG(UART_FIFO(uart), c);
-  }
+  WRITE_PERI_REG(UART_FIFO(uart), c);
   return OK;
 }
 
@@ -231,7 +166,6 @@ uart0_sendStr(const char *str)
 }
 
 static uint32 last_frm_err; // time in us when last framing error message was printed
-static int uart0_baud_rate = 0; // The baud rate for uart0
 
 /******************************************************************************
  * FunctionName : uart0_rx_intr_handler
@@ -270,13 +204,6 @@ uart0_rx_intr_handler(void *para)
     //DBG_UART("stat:%02X",*(uint8 *)UART_INT_ENA(uart_no));
     ETS_UART_INTR_DISABLE();
     post_usr_task(uart_recvTaskNum, 0);
-  } else if (UART_TXFIFO_EMPTY_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_TXFIFO_EMPTY_INT_ST)) {
-    // TX Queue is empty, disable the TX_ENABLE line once the transmission is complete
-    CLEAR_PERI_REG_MASK(UART_INT_ENA(UART0), UART_TXFIFO_EMPTY_INT_ENA);
-	if (0 != uart0_baud_rate) {
-	  int tx_char_time = 8 * 1000000 / uart0_baud_rate; // assumes 8 bits per character
-	  os_timer_arm_us(&uart_tx_enable_timer, tx_char_time, false);
-	}
   }
 }
 
@@ -326,7 +253,6 @@ done:
 
 void ICACHE_FLASH_ATTR
 uart0_baud(int rate) {
-  uart0_baud_rate = rate;
   os_printf("UART %d baud\n", rate);
   uart_div_modify(UART0, UART_CLK_FREQ / rate);
 }
@@ -341,18 +267,12 @@ uart0_config(uint8_t data_bits, uint8_t parity, uint8_t stop_bits) {
  * FunctionName : uart_init
  * Description  : user interface for init uart
  * Parameters   : UartBautRate uart0_br - uart0 bautrate
- *                uart0TxEnablePin
  *                UartBautRate uart1_br - uart1 bautrate
  * Returns      : NONE
 *******************************************************************************/
 void ICACHE_FLASH_ATTR
-uart_init(uint32 conf0, UartBautRate uart0_br, int8_t uart0TxEnablePin, UartBautRate uart1_br)
+uart_init(uint32 conf0, UartBautRate uart0_br, UartBautRate uart1_br)
 {
-  uart0_set_tx_enable_pin(uart0TxEnablePin);
-  // Set up a timer to disable the TX line after the last byte has been transmitted
-  os_timer_disarm(&uart_tx_enable_timer);
-  os_timer_setfn(&uart_tx_enable_timer, tx_completed_interrupt, NULL);
-
   // rom use 74880 baut_rate, here reinitialize
   uart_config(UART0, uart0_br, conf0);
   uart_config(UART1, uart1_br, conf0);

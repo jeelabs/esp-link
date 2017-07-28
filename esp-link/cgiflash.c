@@ -179,7 +179,7 @@ int ICACHE_FLASH_ATTR cgiRebootFirmware(HttpdConnData *connData) {
   system_upgrade_flag_set(UPGRADE_FLAG_FINISH);
   os_timer_disarm(&flash_reboot_timer);
   os_timer_setfn(&flash_reboot_timer, (os_timer_func_t *)system_upgrade_reboot, NULL);
-  os_timer_arm_us(&flash_reboot_timer, 2 * 1000000, 1);
+  os_timer_arm(&flash_reboot_timer, 2000, 1);
   return HTTPD_CGI_DONE;
 }
 
@@ -193,6 +193,6 @@ int ICACHE_FLASH_ATTR cgiReset(HttpdConnData *connData) {
   // Schedule a reboot
   os_timer_disarm(&flash_reboot_timer);
   os_timer_setfn(&flash_reboot_timer, (os_timer_func_t *)system_restart, NULL);
-  os_timer_arm_us(&flash_reboot_timer, 2 * 1000000, 1);
+  os_timer_arm(&flash_reboot_timer, 2000, 1);
   return HTTPD_CGI_DONE;
 }

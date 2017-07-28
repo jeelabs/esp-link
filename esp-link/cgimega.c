@@ -25,7 +25,7 @@
  *     The number of data bytes in the record must match the number specified by the ll field.
  *   cc is the checksum field that represents the checksum of the record. The checksum is
  *     calculated by summing the values of all hexadecimal digit pairs in the record modulo
- *     256 and taking the two's complement. 
+ *     256 and taking the two's complement.
  *
  */
 
@@ -211,7 +211,7 @@ int ICACHE_FLASH_ATTR cgiMegaSync(HttpdConnData *connData) {
 	allocateOptibootData();
       DBG("OB got sync\n");
       os_sprintf(buf, "SYNC at %d baud, board %02x.%02x.%02x, hardware v%d, firmware %d.%d",
-	baudRate, optibootData->signature[0], optibootData->signature[1], optibootData->signature[2], 
+	baudRate, optibootData->signature[0], optibootData->signature[1], optibootData->signature[2],
 	optibootData->hardwareVersion, optibootData->firmwareVersionMajor, optibootData->firmwareVersionMinor);
       httpdSend(connData, buf, -1);
     } else if (errMessage[0] && progState == stateSync) {
@@ -375,7 +375,7 @@ static int ICACHE_FLASH_ATTR readPacket() {
   }
 
   return len;
-} 
+}
 
 static int ICACHE_FLASH_ATTR readSyncPacket() {
   int len = readPacket();
