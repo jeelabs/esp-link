@@ -68,6 +68,8 @@ typedef enum {
   CMD_WIFI_GET_SSID,          // Query SSID currently connected to
   CMD_WIFI_START_SCAN,        // Trigger a scan (takes a long time)
 
+  CMD_RESP_CB_CONTINUE = 70,	// RESP_CB for a long packet
+
 } CmdName;
 
 typedef void (*cmdfunc_t)(CmdPacket *cmd);
