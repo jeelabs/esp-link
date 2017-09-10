@@ -19,8 +19,8 @@
 #endif
 #include <ip_addr.h>
 #include "esp-link/cgi.h"
-
 #include "config.h"
+#include <cgiservices.h>
 
 #ifdef CMD_DBG
 #define DBG(format, ...) do { os_printf(format, ## __VA_ARGS__); } while(0)
@@ -199,6 +199,8 @@ cmdWifiStatus(CmdPacket *cmd) {
 // Command handler for time
 static void ICACHE_FLASH_ATTR
 cmdGetTime(CmdPacket *cmd) {
+  cgiServicesCheckDST();	// This can cause DST to change, so the sntp call to return 0.
+
   cmdResponseStart(CMD_RESP_V, sntp_get_current_timestamp(), 0);
   cmdResponseEnd();
   return;

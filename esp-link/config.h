@@ -41,6 +41,7 @@ typedef struct {
   int8_t   data_bits;
   int8_t   parity;
   int8_t   stop_bits;
+  uint8_t  dst_mode;
 } FlashConfig;
 extern FlashConfig flashConfig;
 
