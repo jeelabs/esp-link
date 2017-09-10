@@ -2,6 +2,7 @@
 #define CGIWIFI_H
 
 #include "httpd.h"
+#include "cmd.h"
 
 enum { wifiIsDisconnected, wifiIsConnected, wifiGotIP };
 typedef void(*WifiStateChangeCb)(uint8_t wifiStatus);
