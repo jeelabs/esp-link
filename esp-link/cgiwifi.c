@@ -128,6 +128,7 @@ static char* mdns_txt = "ssh_upload=no";
 
 void ICACHE_FLASH_ATTR wifiStartMDNS(struct ip_addr ip) {
   if (flashConfig.mdns_enable) {
+    wifi_set_broadcast_if(wifi_get_opmode());
     if (mdns_info == NULL)
       mdns_info = (struct mdns_info *)os_zalloc(sizeof(struct mdns_info));
 
