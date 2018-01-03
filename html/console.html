@@ -91,7 +91,10 @@
     $("#clear-button").addEventListener("click", function(e) {
         e.preventDefault();
         var co = $("#console");
-        co.innerHTML = "";
+        ajaxSpin('POST', "/console/clear",
+          function(resp) { showNotification("uC buffer cleared"); co.innerHTML = ""; co.textEnd = 0;},
+          function(s, st) { showWarning("Error clearing buffer in uC"); }
+        );
     });
 
     ajaxJson('GET', "/console/baud",
