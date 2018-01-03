@@ -60,6 +60,15 @@ ajaxConsoleReset(HttpdConnData *connData) {
 }
 
 int ICACHE_FLASH_ATTR
+ajaxConsoleClear(HttpdConnData *connData) {
+  if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
+  jsonHeader(connData, 200);
+  //reset buffer
+  console_rd = console_wr = console_pos = 0;
+  return HTTPD_CGI_DONE;
+}
+
+int ICACHE_FLASH_ATTR
 ajaxConsoleBaud(HttpdConnData *connData) {
   if (connData->conn==NULL) return HTTPD_CGI_DONE; // Connection aborted. Clean up.
   char buff[512];

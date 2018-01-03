@@ -88,6 +88,7 @@ HttpdBuiltInUrl builtInUrls[] = {
   { "/log/reset", cgiReset, NULL },
   { "/console/reset", ajaxConsoleReset, NULL },
   { "/console/baud", ajaxConsoleBaud, NULL },
+  { "/console/clear", ajaxConsoleClear, NULL },
   { "/console/fmt", ajaxConsoleFormat, NULL },
   { "/console/text", ajaxConsole, NULL },
   { "/console/send", ajaxConsoleSend, NULL },
