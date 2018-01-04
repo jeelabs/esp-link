@@ -100,6 +100,16 @@ flash modules. Note the different address for esp_init_data_default.bin and blan
 
 For __8Mbit / 1MByte__ modules the addresses are 0xFC000 and 0xFE000.
 
+Debian, and probably other Linux distributions, come with a different esptool. It is similar,
+but all the flags are different. Here is an example of flashing an **ESP-01S** which has 1M of flash using
+```
+esptool -cp /dev/ttyUSB0 -cb 460800 -cd none -bz 1M\
+        -ca 0x00000 -cf boot_v1.7.bin\
+        -ca 0x01000 -cf user1.bin\
+        -ca 0xFC000 -cf esp_init_data_default.bin\
+        -ca 0xFE000 -cf blank.bin
+```
+
 __Warning__: there is a bug in boot_v1.5.bin which causes it to only boot into user1 once.
 If that fails it gets stuck trying to boot into user2. If this happens (can be seen in the
 boot output on uart2 at 76600 baud) reflash just blank.bin at 0x7E000 (4Mbit module). (Sigh)
