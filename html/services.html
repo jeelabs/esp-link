@@ -94,7 +94,16 @@
                 <div>
                   <label>Timezone Offset</label>
                   <input type="text" name="timezone_offset" />
-                  <div class="popup">Offset hours to apply (no daylight savings support)</div>
+                  <div class="popup">Offset hours to apply</div>
+                </div>
+                <div>
+                  <label>Daylight Savings Time (DST) mode</label>
+                  <select name="dst_mode" href="#">
+                    <option value="0">None</option>
+                    <option value="1">Europe</option>
+                    <option value="2">USA</option>
+                  </select>
+                  <div class="popup">Region specific DST automation</div>
                 </div>
               </div>
               <button id="SNTP-button" type="submit" class="pure-button button-primary">
