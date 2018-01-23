@@ -24,7 +24,7 @@ typedef struct {
   char     mqtt_old_host[32],          // replaced by 64-char mqtt_host below
            mqtt_clientid[48],
            mqtt_username[32],
-           mqtt_password[32],
+           mqtt_old_password[32],      // replaced by 64-char mqtt_password below
            mqtt_status_topic[32];
   char     sys_descr[129];             // system description
   int8_t   rx_pullup;                  // internal pull-up on RX pin
@@ -41,6 +41,7 @@ typedef struct {
   int8_t   data_bits;
   int8_t   parity;
   int8_t   stop_bits;
+  char     mqtt_password[64];          // MQTT password, was 32-char mqtt_old_password
 } FlashConfig;
 extern FlashConfig flashConfig;
 
