@@ -83,7 +83,7 @@ esptool.py --port /dev/ttyUSB0 --baud 230400 write_flash -fs 32m -ff 80m \
     0x00000 boot_v1.5.bin 0x1000 user1.bin \
     0x3FC000 esp_init_data_default.bin 0x3FE000 blank.bin
 ```
-I use a high baud rate as shown above because I'm impatient, but that's not required.
+I use a high baud rate as shown above because I'm impatient, but that's not required. Attention: For some modules you have to set the flash mode to `dio` by adding `--fm dio` to the command line above, otherwise they won't boot. 
 
 ### 4Mbit / 512Kbyte module
 ```
