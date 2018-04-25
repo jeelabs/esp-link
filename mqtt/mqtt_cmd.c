@@ -93,10 +93,10 @@ MQTTCMD_Lwt(CmdPacket *cmd) {
   client->connect_info.will_message[len] = 0;
 
   // get qos
-  cmdPopArg(&req, (uint8_t*)&client->connect_info.will_qos, 4);
+  cmdPopArg(&req, (uint8_t*)&client->connect_info.will_qos, sizeof(client->connect_info.will_qos));
 
   // get retain
-  cmdPopArg(&req, (uint8_t*)&client->connect_info.will_retain, 4);
+  cmdPopArg(&req, (uint8_t*)&client->connect_info.will_retain, sizeof(client->connect_info.will_retain));
 
   DBG("MQTT: MQTTCMD_Lwt topic=%s, message=%s, qos=%d, retain=%d\n",
        client->connect_info.will_topic,
@@ -177,7 +177,7 @@ MQTTCMD_Subscribe(CmdPacket *cmd) {
 
   // get qos
   uint32_t qos = 0;
-  cmdPopArg(&req, (uint8_t*)&qos, 4);
+  cmdPopArg(&req, (uint8_t*)&qos, sizeof(qos));
 
   DBG("MQTT: MQTTCMD_Subscribe topic=%s, qos=%u\n", topic, qos);
 
