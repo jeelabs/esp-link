@@ -1,0 +1,31 @@
+<!doctype html><html><head><title>esp-link</title><link rel=stylesheet href="/pure.css"><link rel=stylesheet href="/style.css"><meta name=viewport content="width=device-width, initial-scale=1"><script src="/ui.js"></script></head><body><div id=layout><div id=main><div class=header><h1>Debug Log</h1></div><div class=content><p>The debug log shows the most recent characters printed by the esp-link software itself to its own debug log.</p><div class=pure-g><p class=pure-u-1-4 style="vertical-align: baseline;width:40%"><a id=refresh-button class="pure-button button-primary" href="#">Refresh</a> &nbsp;<a id=reset-button class="dbg-btn pure-button button-primary" href="#">Reset esp-link</a></p><p class=pure-u-3-4 style="vertical-align: baseline;width:60%">UART debug log: <a id=dbg-auto class="dbg-btn pure-button" href="#">auto</a><a id=dbg-off class="dbg-btn pure-button" href="#">off</a><a id=dbg-on0 class="dbg-btn pure-button" href="#">on uart0</a><a id=dbg-on1 class="dbg-btn pure-button" href="#">on uart1</a></p></div><pre id=console class=console style="margin-top: 0px;"></pre></div></div></div><script type="text/javascript">console_url = "/log/text"</script><script src="console.js"></script><script type="text/javascript">
+  onLoad(function() {
+    fetchText(100, false);
+
+    $("#refresh-button").addEventListener("click", function(e) {
+      e.preventDefault();
+      fetchText(100, false);
+    });
+
+    $("#reset-button").addEventListener("click", function (e) {
+        e.preventDefault();
+        var co = $("#console");
+        co.innerHTML = "";
+        ajaxSpin('POST', "/log/reset",
+          function (resp) { showNotification("Resetting esp-link"); co.textEnd = 0; fetchText(2000, false); },
+          function (s, st) { showWarning("Error resetting esp-link"); }
+        );
+    });
+
+    ["auto", "off", "on0", "on1"].forEach(function(mode) {
+      bnd($('#dbg-'+mode), "click", function(el) {
+        ajaxJsonSpin('POST', "/log/dbg?mode="+mode,
+          function(data) { showNotification("UART mode " + data.mode); showDbgMode(data.mode); },
+          function(s, st) { showWarning("Error setting UART mode: " + st); }
+        );
+      });
+    });
+
+    ajaxJson('GET', "/log/dbg", function(data) { showDbgMode(data.mode); }, function() {});
+  });
+</script></body></html>
