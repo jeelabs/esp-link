@@ -3,6 +3,7 @@ specials["ap_ssid"] = "SSID name";
 specials["ap_password"] = "PASSWORD";
 specials["ap_maxconn"] = "Max Connections number";
 specials["ap_beacon"] = "Beacon Interval";
+specials["ap_channel"] = "Channel";
 
 function changeWifiMode(m) {
   blockScan = 1;
