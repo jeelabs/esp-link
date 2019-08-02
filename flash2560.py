@@ -1,5 +1,11 @@
-#!/usr/bin/python3
-# Created by Fabio Manz (30.7.2019)
+#!/usr/bin/python
+
+# ----------------------------------------------------------------------------
+# "THE BEER-WARE LICENSE" (Revision 42):
+# Fabio Manz wrote this file. As long as you retain 
+# this notice you can do whatever you want with this stuff. If we meet some day, 
+# and you think this stuff is worth it, you can buy me a beer in return. 
+# ----------------------------------------------------------------------------
 
 import sys
 import re
