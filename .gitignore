@@ -1,3 +1,4 @@
+src/espfs_image.c
 build/
 firmware/
 espfs/mkespfsimage/*.o
