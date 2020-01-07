@@ -185,10 +185,9 @@ user_init(void) {
   // Wifi
   wifiInit();
   // init the flash filesystem with the html stuff
-  espFsInit(espLinkCtx, espfs_image, ESPFS_MEMORY);
+  EspFsInitResult res = espFsInit(espLinkCtx, espfs_image, ESPFS_MEMORY);
+  os_printf("espFsInit %s (%d)\n", res?"ERR":"ok", res);
 
-  //EspFsInitResult res = espFsInit(&_binary_espfs_img_start);
-  //os_printf("espFsInit %s\n", res?"ERR":"ok");
   // mount the http handlers
   httpdInit(builtInUrls, 80);
 #ifdef WEBSERVER

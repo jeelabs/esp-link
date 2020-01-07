@@ -15,7 +15,9 @@ buf = BytesIO()
 espfsimg = mkespfs(dir, buf)
 
 fd = Path(espfile).open(mode='w')
-fd.write("unsigned char espfs_image[] __attribute__((section(\".irom.text\"))) = {");
+fd.write("unsigned char espfs_image[] ");
+fd.write("__attribute__((aligned(4))) ");
+fd.write("__attribute__((section(\".irom.text\"))) = {");
 for i, b in enumerate(buf.getbuffer()):
     if i%16 == 0: fd.write("\n")
     fd.write(" 0x{:02x},".format(b))
