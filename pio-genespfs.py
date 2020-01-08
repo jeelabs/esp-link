@@ -7,13 +7,43 @@ Import("env")
 from mkespfs import mkespfs
 from io import BytesIO
 from pathlib import Path
+import shutil
 
 dir = "html"
+hdr = "head-"
+temp = "temp-espfs"
 espfile = "src/espfs_img.c"
 
-buf = BytesIO()
-espfsimg = mkespfs(dir, buf)
+# create empty temporary dir to create fs image
+shutil.rmtree(temp, ignore_errors=True)
+Path(temp).mkdir()
 
+# place all the files we want into a temp directory and prefix all .html with hdr
+f_html = list(Path(dir).rglob('*.html'))
+f_css = list(Path(dir).rglob('*.css'))
+f_js = list(Path(dir).rglob('*.js'))
+f_img = list(Path(dir).rglob('*.ico')) + list(Path(dir).rglob('*.png'))
+# simply copy most files
+for fn in f_css+f_js+f_img:
+    dst = Path(temp).joinpath(fn.relative_to(dir))
+    dst.parent.mkdir(exist_ok=True)
+    shutil.copyfile(fn, dst)
+# prepend shared header to html files
+for fn in f_html:
+    with open(Path(temp).joinpath(fn.relative_to(dir)), 'wb') as dst:
+        with open(Path(dir).joinpath(hdr), 'rb') as src:
+            shutil.copyfileobj(src, dst)
+        with open(fn, 'rb') as src:
+            shutil.copyfileobj(src, dst)
+
+# generate espfs image
+buf = BytesIO()
+espfsimg = mkespfs(temp, buf)
+
+# remove temp tree
+#shutil.rmtree(temp, ignore_errors=True)
+
+# write as C file
 fd = Path(espfile).open(mode='w')
 fd.write("unsigned char espfs_image[] ");
 fd.write("__attribute__((aligned(4))) ");

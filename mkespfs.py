@@ -18,7 +18,7 @@
 # 	int32_t magic;
 # 	int8_t flags;
 # 	int8_t compression;
-# 	int16_t nameLen; // including padding!
+# 	int16_t nameLen; // name must be null-terminated and NameLen includes padding!
 # 	int32_t fileLenComp;
 # 	int32_t fileLenDecomp;
 # } __attribute__((packed)) EspFsHeader;
@@ -34,25 +34,23 @@ def mkespfs(dir, outbuf):
     FL_GZIP = 2 # gzipped file flag
     FL_LAST = 1 # last entry file flag
 
-    f_html = list(Path(dir).rglob('*')) #.html'))
-    f_css = list(Path(dir).rglob('*.css'))
-    f_js = list(Path(dir).rglob('*.js'))
-    f_img = list(Path(dir).rglob('*.ico')) + list(Path(dir).rglob('*.png'))
-    f_all = f_html + f_css + f_js + f_img
     sz = 0
-
-    for fn in f_all:
+    for fn in Path(dir).rglob('*.*'):
         if not fn.is_file(): continue
-        out_path = fn.relative_to(dir).as_posix().encode('ascii')
+        out_path = fn.relative_to(dir).as_posix().encode('ascii') + b'\000'
         while len(out_path) & 3 != 0: out_path += b'\000'
         info = fn.stat()
         data_un = fn.read_bytes()
         data_comp = gzip.compress(data_un)
+        flag = FL_GZIP
+        if len(data_un) <= len(data_comp):
+            data_comp = data_un
+            flag = 0
 
         print("Processing {} -> {}[{}], {}->{} bytes".format(fn, out_path, len(out_path), info.st_size,
             len(data_comp)), file=stderr)
 
-        header = struct.pack('<IBBHII', MAGIC, FL_GZIP, 0, len(out_path), len(data_comp), info.st_size)
+        header = struct.pack('<IBBHII', MAGIC, flag, 0, len(out_path), len(data_comp), info.st_size)
         outbuf.write(header)
         sz += len(header)
         outbuf.write(out_path)
