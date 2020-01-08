@@ -3,6 +3,28 @@
 # with all the html, js, css, png, and ico files found in the directory tree.
 # Each file is compressed with gzip so it can be served up in compressed form from the esp8266.
 
+# Format description from Jeroen:
+# The idea 'borrows' from cpio: it's basically a concatenation of {header, filename, file} data.
+# Header, filename and file data is 32-bit aligned. The last file is indicated by data-less header
+# with the FLAG_LASTFILE flag set.
+#
+# #define FLAG_LASTFILE (1<<0)
+# #define FLAG_GZIP (1<<1)
+# #define COMPRESS_NONE 0
+# #define COMPRESS_HEATSHRINK 1
+# #define ESPFS_MAGIC 0x73665345
+#
+# typedef struct {
+# 	int32_t magic;
+# 	int8_t flags;
+# 	int8_t compression;
+# 	int16_t nameLen; // including padding!
+# 	int32_t fileLenComp;
+# 	int32_t fileLenDecomp;
+# } __attribute__((packed)) EspFsHeader;
+
+
+
 from sys import argv, exit, stderr, stdout
 from pathlib import Path
 import re, gzip, struct
@@ -12,7 +34,7 @@ def mkespfs(dir, outbuf):
     FL_GZIP = 2 # gzipped file flag
     FL_LAST = 1 # last entry file flag
 
-    f_html = list(Path(dir).rglob('*.html'))
+    f_html = list(Path(dir).rglob('*')) #.html'))
     f_css = list(Path(dir).rglob('*.css'))
     f_js = list(Path(dir).rglob('*.js'))
     f_img = list(Path(dir).rglob('*.ico')) + list(Path(dir).rglob('*.png'))
@@ -22,20 +44,18 @@ def mkespfs(dir, outbuf):
     for fn in f_all:
         if not fn.is_file(): continue
         out_path = fn.relative_to(dir).as_posix().encode('ascii')
+        while len(out_path) & 3 != 0: out_path += b'\000'
         info = fn.stat()
         data_un = fn.read_bytes()
         data_comp = gzip.compress(data_un)
 
-        #print("Processing {} -> {}[{}], {}->{} bytes".format(fn, out_path, len(out_path), info.st_size,
-        #    len(data_comp)), file=stderr)
+        print("Processing {} -> {}[{}], {}->{} bytes".format(fn, out_path, len(out_path), info.st_size,
+            len(data_comp)), file=stderr)
 
         header = struct.pack('<IBBHII', MAGIC, FL_GZIP, 0, len(out_path), len(data_comp), info.st_size)
         outbuf.write(header)
         sz += len(header)
         outbuf.write(out_path)
-        sz = (sz+len(out_path)+3) // 4 * 4
-        if len(out_path)%4 != 0:
-            outbuf.write(bytes(4)[:4-len(out_path)%4])
         outbuf.write(data_comp)
         sz += len(data_comp)
         if len(data_comp)%4 != 0:
