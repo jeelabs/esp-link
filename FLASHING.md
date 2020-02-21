@@ -76,22 +76,22 @@ On Linux using esptool.py this turns into the following for a 32mbit=4MByte flas
 such as an esp-12 module typically has (_substitute the appropriate release number and bootloader
 version number_):
 ```
-curl -L https://github.com/jeelabs/esp-link/releases/download/v2.2.3/esp-link-v2.2.3.tgz | \
+curl -L http://s3.voneicken.com/esp-link/esp-link-v3.0.14-g963ffbb.tgz | \
     tar xzf -
 cd esp-link-v2.2.3
-esptool.py --port /dev/ttyUSB0 --baud 230400 write_flash -fs 32m -ff 80m \
-    0x00000 boot_v1.5.bin 0x1000 user1.bin \
+esptool.py --port /dev/ttyUSB0 --baud 230400 write_flash -fs 4MB -ff 80m \
+    0x00000 boot_v1.6.bin 0x1000 user1.bin \
     0x3FC000 esp_init_data_default.bin 0x3FE000 blank.bin
 ```
 I use a high baud rate as shown above because I'm impatient, but that's not required. Attention: For some modules you have to set the flash mode to `dio` by adding `--fm dio` to the command line above, otherwise they won't boot. 
 
 ### 4Mbit / 512Kbyte module
 ```
-curl -L https://github.com/jeelabs/esp-link/releases/download/v2.2.3/esp-link-v2.2.3.tgz | \
+curl -L http://s3.voneicken.com/esp-link/esp-link-v3.0.14-g963ffbb.tgz | \
     tar xzf -
 cd esp-link-v2.2.3
-esptool.py --port /dev/ttyUSB0 --baud 460800 write_flash -fs 4m -ff 40m \
-    0x00000 boot_v1.5.bin 0x1000 user1.bin \
+esptool.py --port /dev/ttyUSB0 --baud 460800 write_flash -fs 512KB -ff 40m \
+    0x00000 boot_v1.6.bin 0x1000 user1.bin \
     0x7C000 esp_init_data_default.bin 0x7E000 blank.bin
 ```
 The `-fs 4m -ff40m` options say 4Mbits and 40Mhz as opposed to 32Mbits at 80Mhz for the 4MByte
