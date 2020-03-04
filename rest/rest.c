@@ -1,4 +1,5 @@
 // Copyright 2015 by Thorsten von Eicken, see LICENSE.txt
+// Copyright 2017 by Danny Backx : code to send a long REST reply
 //
 // Adapted from: github.com/tuanpmt/esp_bridge, Created on: Mar 4, 2015, Author: Minh
 
@@ -99,15 +100,43 @@ tcpclient_recv(void *arg, char *pdata, unsigned short len) {
     cmdResponseBody(&code, sizeof(code));
     cmdResponseEnd();
   } else {
-    cmdResponseStart(CMD_RESP_CB, client->resp_cb, 2);
-    cmdResponseBody(&code, sizeof(code));
-    cmdResponseBody(pdata+pi, body_len>100?100:body_len);
-    cmdResponseEnd();
+    // Try to forward more than 100 bytes
+
+#define	MAX_RECEIVE_PACKET_LENGTH	100
+
+    unsigned short position = 0;
+    do {
+      unsigned short msgLen = body_len - position;
+
+      if (msgLen > MAX_RECEIVE_PACKET_LENGTH) {
+	msgLen = MAX_RECEIVE_PACKET_LENGTH;
 #if 0
-    os_printf("REST: body=");
-    for (int j=pi; j<len; j++) os_printf(" %02x", pdata[j]);
-    os_printf("\n");
+        os_printf("REST CONTINUE (pos %d) : sending %d bytes of body .. ", position, msgLen);
+        for (int i=0; i<10; i++) os_printf("%c", pdata[pi+position+i]);
+        os_printf("\n");
 #endif
+	// CMD_RESP_CB_CONTINUE : indicates that more data is available
+	// Use the field for HTTP status to send total packet length, in each segment.
+
+        cmdResponseStart(CMD_RESP_CB_CONTINUE, client->resp_cb, 2);
+        cmdResponseBody(&body_len, sizeof(body_len));	// Total packet length
+        cmdResponseBody(pdata+pi+position, msgLen);
+        cmdResponseEnd();
+      } else {
+#if 0
+        os_printf("REST (pos %d) : sending %d bytes of body .. ", position, msgLen);
+        for (int i=0; i<10; i++) os_printf("%c", pdata[pi+position+i]);
+        os_printf("\n");
+#endif
+	// CMD_RESP_CB : data fits in one packet (<= 100 bytes)
+        cmdResponseStart(CMD_RESP_CB, client->resp_cb, 2);
+        cmdResponseBody(&code, sizeof(code));		// REST HTTP status code
+        cmdResponseBody(pdata+pi+position, msgLen);
+        cmdResponseEnd();
+      }
+
+      position += msgLen;
+    } while (position < body_len);	// End of loop for multi-packet data
   }
 
   //if(client->security)
