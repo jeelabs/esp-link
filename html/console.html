@@ -100,7 +100,7 @@
         );
     });
     
-    $(".fullscreen-control").addEventListener("click", function(e) {
+    $(".fullscreen-control")[0].addEventListener("click", function(e) {
       e.preventDefault();
       var fbc = this.parentNode.classList;
       fbc[fbc.contains("full") ? "remove" : "add"].call(fbc, "full");
