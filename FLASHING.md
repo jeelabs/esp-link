@@ -63,7 +63,7 @@ The short version for the serial flashing is:
 - flash `boot_v1.X.bin` from the official SDK or from the release tgz to `0x00000`
 - flash `blank.bin` from the official SDK or from the tgz to `0x3FE000`
 - flash `esp_init_data_default.bin` from the official SDK or from the tgz to `0x3FC000`
-- flash `user1.bin` to `0x01000`
+- flash `user1.bin` to `0x1000`
 - be sure to use the commandline flags to set the correct flash size when flashing the bootloader
 - some of the addresses vary with flash chip size
 
@@ -105,7 +105,7 @@ but all the flags are different. Here is an example of flashing an **ESP-01S** w
 ```
 esptool -cp /dev/ttyUSB0 -cb 460800 -cd none -bz 1M\
         -ca 0x00000 -cf boot_v1.7.bin\
-        -ca 0x01000 -cf user1.bin\
+        -ca 0x1000 -cf user1.bin\
         -ca 0xFC000 -cf esp_init_data_default.bin\
         -ca 0xFE000 -cf blank.bin
 ```
