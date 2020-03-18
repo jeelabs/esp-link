@@ -63,7 +63,7 @@ The short version for the serial flashing is:
 - flash `boot_v1.X.bin` from the official SDK or from the release tgz to `0x00000`
 - flash `blank.bin` from the official SDK or from the tgz to `0x3FE000`
 - flash `esp_init_data_default.bin` from the official SDK or from the tgz to `0x3FC000`
-- flash `user1.bin` to `0x01000`
+- flash `user1.bin` to `0x10000`
 - be sure to use the commandline flags to set the correct flash size when flashing the bootloader
 - some of the addresses vary with flash chip size
 
@@ -80,7 +80,7 @@ curl -L https://github.com/jeelabs/esp-link/releases/download/v2.2.3/esp-link-v2
     tar xzf -
 cd esp-link-v2.2.3
 esptool.py --port /dev/ttyUSB0 --baud 230400 write_flash -fs 32m -ff 80m \
-    0x00000 boot_v1.5.bin 0x1000 user1.bin \
+    0x00000 boot_v1.5.bin 0x10000 user1.bin \
     0x3FC000 esp_init_data_default.bin 0x3FE000 blank.bin
 ```
 I use a high baud rate as shown above because I'm impatient, but that's not required. Attention: For some modules you have to set the flash mode to `dio` by adding `--fm dio` to the command line above, otherwise they won't boot. 
@@ -91,7 +91,7 @@ curl -L https://github.com/jeelabs/esp-link/releases/download/v2.2.3/esp-link-v2
     tar xzf -
 cd esp-link-v2.2.3
 esptool.py --port /dev/ttyUSB0 --baud 460800 write_flash -fs 4m -ff 40m \
-    0x00000 boot_v1.5.bin 0x1000 user1.bin \
+    0x00000 boot_v1.5.bin 0x10000 user1.bin \
     0x7C000 esp_init_data_default.bin 0x7E000 blank.bin
 ```
 The `-fs 4m -ff40m` options say 4Mbits and 40Mhz as opposed to 32Mbits at 80Mhz for the 4MByte
@@ -105,7 +105,7 @@ but all the flags are different. Here is an example of flashing an **ESP-01S** w
 ```
 esptool -cp /dev/ttyUSB0 -cb 460800 -cd none -bz 1M\
         -ca 0x00000 -cf boot_v1.7.bin\
-        -ca 0x01000 -cf user1.bin\
+        -ca 0x10000 -cf user1.bin\
         -ca 0xFC000 -cf esp_init_data_default.bin\
         -ca 0xFE000 -cf blank.bin
 ```
