@@ -69,7 +69,7 @@ a:hover {
 }
 .click-to-edit span:active, .click-to-edit div:active {
     box-shadow: 0 0 0 1px rgba(0,0,0, 0.15) inset, 0 0 6px rgba(0,0,0, 0.20) inset;
-    border-color: #000\9;
+    border-color: #000;
 }
 /* Firefox: Get rid of the inner focus border */
 .click-to-edit span::-moz-focus-inner,
@@ -248,14 +248,59 @@ input.inline {
   margin-left: 0.5em;
 }
 
+/* Console fullscreen */
+.fullscreen-box {
+  position: relative;
+}
+
+.fullscreen-box.full {
+  position: fixed;
+  height: 100vh;
+  width: 100vw;
+  left: 0;
+  top: 0;
+  z-index: 1001;
+}
+
+.fullscreen-box > .fullscreen-control {
+  position: absolute;
+  border-radius: 2px;
+  top: 16px;
+  right: 16px;
+  width: 1em;
+  height: 1em;
+  text-align: center;
+  background: #00000025;
+  padding: 15px;
+  line-height: 1em;
+  color: #fff;
+  cursor: pointer;
+}
+
+.fullscreen-box > .fullscreen-control::before {
+  content: "F";
+}
+
+.fullscreen-box.full > .fullscreen-control::before {
+  content: "X";
+}
+
+.fullscreen-box > pre.console {
+  height: 500px;
+}
+
+.fullscreen-box.full > pre.console {
+  height: 100vh;
+}
+
 /* Text console */
 pre.console {
+  box-sizing: border-box;
   background-color: #663300;
   border-radius: 5px;
   border: 0px solid #000000;
   color: #66ff66;
   padding: 5px;
-  overflow: scroll;
   margin: 0px;
 }
 

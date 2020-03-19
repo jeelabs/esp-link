@@ -39,7 +39,10 @@
         <div class="pure-u-1-4"><legend><b>Console</b></legend></div>
         <div class="pure-u-3-4"></div>
       </div>
-      <pre class="console flex-fill" id="console">--- No Content ---</pre>
+      <div class="fullscreen-box">
+        <div class="fullscreen-control"></div>
+        <pre class="console flex-fill" id="console">--- No Content ---</pre>
+      </div>
       <div>
         <div class="pure-g">
           <div class="pure-u-1-4"><legend><b>Console entry</b></legend></div>
@@ -95,6 +98,12 @@
           function(resp) { showNotification("uC buffer cleared"); co.innerHTML = ""; co.textEnd = 0;},
           function(s, st) { showWarning("Error clearing buffer in uC"); }
         );
+    });
+    
+    $(".fullscreen-control")[0].addEventListener("click", function(e) {
+      e.preventDefault();
+      var fbc = this.parentNode.classList;
+      fbc[fbc.contains("full") ? "remove" : "add"].call(fbc, "full");
     });
 
     ajaxJson('GET', "/console/baud",
