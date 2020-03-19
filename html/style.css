@@ -295,6 +295,7 @@ input.inline {
 
 /* Text console */
 pre.console {
+  box-sizing: border-box;
   background-color: #663300;
   border-radius: 5px;
   border: 0px solid #000000;
