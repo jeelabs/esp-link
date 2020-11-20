@@ -394,11 +394,23 @@ function showNotification(text) {
 
 var pinPresets = {
   // array: reset, isp, conn, ser, swap, rxpup
-  "esp-01":       [  0, -1, 2, -1, 0, 1 ],
-  "esp-12":       [ 12, 14, 0,  2, 0, 1 ],
-  "esp-12 swap":  [  1,  3, 0,  2, 1, 1 ],
-  "esp-bridge":   [ 12, 13, 0, 14, 0, 0 ],
-  "wifi-link-12": [  1,  3, 0,  2, 1, 0 ],
+  "esp-01":       [  0, -1, 2, -1, 0, 1, 0 ],
+  "esp-01-inv":   [  0, -1, 2, -1, 0, 1, 63 ],
+  "esp-12":       [ 12, 14, 0,  2, 0, 1, 0 ],
+  "esp-12 swap":  [  1,  3, 0,  2, 1, 1, 0 ],
+  "esp-12-inv":   [ 12, 14, 0,  2, 0, 1, 63 ],
+  "esp-12 swap-inv":  [  1,  3, 0,  2, 1, 1, 63 ],
+  "esp-bridge":   [ 12, 13, 0, 14, 0, 0, 0 ],
+  "wifi-link-12": [  1,  3, 0,  2, 1, 0, 0 ],
+};
+
+var invertPins = {
+  "rxd" : 1,
+  "cts" : 2,
+  "dsr" : 4,
+  "txd":  8,
+  "rts": 16,
+  "dtr": 32
 };
 
 function createPresets(sel) {
@@ -418,6 +430,16 @@ function createPresets(sel) {
     setPP("ser",   pp[3]);
     setPP("swap",  pp[4]);
     $("#pin-rxpup").checked = !!pp[5];
+    $("#pin-invert").checked = !!pp[6];
+    if ($("#pin-invert").checked)
+    {
+      $("#pins-invert-group").style.display = "block";
+    }
+    else
+    {
+      $("#pins-invert-group").style.display = "none";
+    }
+    pinsInvertApplyConfig(pp[6]);
     sel.value = 0;
   };
 
@@ -453,6 +475,12 @@ function displayPins(resp) {
   createSelectForPin("ser", resp["ser"]);
   $("#pin-swap").value = resp["swap"];
   $("#pin-rxpup").checked = !!resp["rxpup"];
+  $("#pin-invert").checked = !!resp["pinvert"];
+  pinsInvertApplyConfig(resp["pinvert"]);
+  if ($("#pin-invert").checked)
+  {
+    $("#pins-invert-group").style.display = "block";
+  }
   createPresets($("#pin-preset"));
 
   $("#pin-spinner").setAttribute("hidden", "");
@@ -465,8 +493,65 @@ function fetchPins() {
   });
 }
 
+function pinsInvertApplyConfig(v)
+{
+  for (var p in invertPins)
+  {
+    if (invertPins[p] & v)
+    {
+      $("#pin-" + p + "-invert").checked = true;
+    }
+    else
+    {
+      $("#pin-" + p + "-invert").checked = false;
+    }
+  }
+
+}
+
+function pinInvertChanged()
+{
+  var any = false;
+  for (var p in invertPins)
+  {
+    if ($("#pin-" + p + "-invert").checked)
+    {
+      any = true;
+    }
+  }
+  if (!any)
+  {
+    $("#pin-invert").checked = false;
+    pinsInvertChanged();
+  }
+}
+
+function pinsInvertChanged()
+{
+  if ($("#pin-invert").checked)
+  {
+    pinsInvertApplyConfig(63);
+    $("#pins-invert-group").style.display = "block";
+  }
+  else
+  {
+    pinsInvertApplyConfig(0);
+    $("#pins-invert-group").style.display = "none";
+  }
+}
+
+function setInvertBindings()
+{
+  bnd($("#pin-invert"),"click", pinsInvertChanged);
+  for (var p in invertPins)
+  {
+    bnd($("#pin-" + p + "-invert"),"click", pinInvertChanged);
+  }
+}
+
 function setPins(ev) {
   ev.preventDefault();
+  setEditToClick()
   var url = "/pins";
   var sep = "?";
   ["reset", "isp", "conn", "ser", "swap"].forEach(function(p) {
@@ -474,6 +559,15 @@ function setPins(ev) {
     sep = "&";
   });
   url += "&rxpup=" + ($("#pin-rxpup").checked ? "1" : "0");
+  var invert = 0;
+  for (var p in invertPins)
+  {
+    if ($("#pin-" + p + "-invert").checked)
+    {
+      invert +=  invertPins[p];
+    }
+  }
+  url += "&pinvert=" + invert;
 //  console.log("set pins: " + url);
   ajaxSpin("POST", url, function() {
     showNotification("Pin assignment changed");

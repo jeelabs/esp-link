@@ -59,10 +59,12 @@ uart_config(uint8 uart_no, UartBautRate baudrate, uint32 conf0)
     //PIN_PULLUP_DIS (PERIPHS_IO_MUX_U0RXD_U);
   }
 
+  os_printf("uart config %d: %x\n", uart_no, conf0);
+
   uart_div_modify(uart_no, UART_CLK_FREQ / baudrate);
 
   if (uart_no == UART1)  //UART 1 always 8 N 1
-    conf0 = CALC_UARTMODE(EIGHT_BITS, NONE_BITS, ONE_STOP_BIT);
+    conf0 = CALC_UARTMODE(EIGHT_BITS, NONE_BITS, ONE_STOP_BIT, UART_NO_INVERT);
   WRITE_PERI_REG(UART_CONF0(uart_no), conf0);
 
   //clear rx and tx fifo,not ready
@@ -258,8 +260,8 @@ uart0_baud(int rate) {
 }
 
 void ICACHE_FLASH_ATTR
-uart0_config(uint8_t data_bits, uint8_t parity, uint8_t stop_bits) {
-  uint32_t conf0 = CALC_UARTMODE(data_bits, parity, stop_bits);
+uart0_config(uint8_t data_bits, uint8_t parity, uint8_t stop_bits, uint8_t invert) {
+  uint32_t conf0 = CALC_UARTMODE(data_bits, parity, stop_bits, invert);
   WRITE_PERI_REG(UART_CONF0(0), conf0);
 }
 

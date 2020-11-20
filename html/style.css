@@ -141,6 +141,10 @@ fieldset fields {
     text-align: left;
     width: 6em;
 }
+.pins-invert-group {
+  display: none;
+}
+
 .pure-form-aligned.form-narrow input[type=checkbox],
 .pure-form-aligned.form-narrow input[type=radio] {
   float: none;

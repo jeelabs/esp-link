@@ -97,6 +97,49 @@
                   </div>
                 </div>
                 <div class="pure-control-group">
+                  <label for="pin-invert" class="pure-checkbox">pin invert</label>
+                  <input id="pin-invert" type="checkbox">
+                  <div class="popup">Expect inverted serial in signals, and/or invert serial out signals on serial port</div>
+                </div>
+                <div id="pins-invert-group" class ="pins-invert-group">
+                  <div class="pin-invert-group pure-control-group">
+                    &NonBreakingSpace;
+                    <label for="pin-rxd-invert" class="pure-checkbox">RXD</label>
+                    <input id="pin-rxd-invert" type="checkbox">
+                    <div class="popup">invert RXD line</div>
+                  </div>
+                  <div class="pin-invert-group pure-control-group">
+                    &NonBreakingSpace;
+                    <label for="pin-txd-invert" class="pure-checkbox">TXD</label>
+                    <input id="pin-txd-invert" type="checkbox">
+                    <div class="popup">invert TXD line</div>
+                  </div>
+                  <div class="pin-invert-group pure-control-group">
+                    &NonBreakingSpace;
+                    <label for="pin-cts-invert" class="pure-checkbox">CTS</label>
+                    <input id="pin-cts-invert" type="checkbox">
+                    <div class="popup">invert CTS line</div>
+                  </div>
+                  <div class="pin-invert-group pure-control-group">
+                    &NonBreakingSpace;
+                    <label for="pin-rts-invert" class="pure-checkbox">RTS</label>
+                    <input id="pin-rts-invert" type="checkbox">
+                    <div class="popup">invert RTS line</div>
+                  </div>
+                  <div class="pin-invert-group pure-control-group">
+                    &NonBreakingSpace;
+                    <label for="pin-dtr-invert" class="pure-checkbox">DTR</label>
+                    <input id="pin-dtr-invert" type="checkbox">
+                    <div class="popup">invert DTR line</div>
+                  </div>
+                  <div class="pin-invert-group pure-control-group">
+                    &NonBreakingSpace;
+                    <label for="pin-dsr-invert" class="pure-checkbox">DSR</label>
+                    <input id="pin-dsr-invert" type="checkbox">
+                    <div class="popup">invert DSR line</div>
+                  </div>
+                </div>
+                <div class="pure-control-group">
                   <label for="pin-rxpup" class="pure-checkbox">RX pull-up</label>
                   <input id="pin-rxpup" type="checkbox">
                   <div class="popup">Enable internal 40K pull-up on RX</div>
@@ -156,6 +199,7 @@ onLoad(function() {
   getWifiInfo();
   getSystemInfo();
   bnd($("#pinform"), "submit", setPins);
+  setInvertBindings();
 });
 </script>
 </body></html>
