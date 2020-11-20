@@ -80,6 +80,15 @@
 #define UART_RXFIFO_CNT_S 0
 
 #define UART_CONF0( i )                         (REG_UART_BASE( i ) + 0x20)
+#define UART_DTR_INV (BIT(24))
+#define UART_RTS_INV (BIT(23))
+#define UART_TXD_INV (BIT(22))
+#define UART_DSR_INV (BIT(21))
+#define UART_CTS_INV (BIT(20))
+#define UART_RXD_INV (BIT(19))
+#define UART_INVERT_BIT_NUM 0x0000003F
+#define UART_INVERT_BIT_NUM_S 19
+#define UART_NO_INVERT (0)
 #define UART_TXFIFO_RST (BIT(18))
 #define UART_RXFIFO_RST (BIT(17))
 #define UART_IRDA_EN (BIT(16))
@@ -133,10 +142,11 @@
 #define UART1   1
 
 //calc bit 0..5 for  UART_CONF0 register
-#define CALC_UARTMODE(data_bits,parity,stop_bits) \
+#define CALC_UARTMODE(data_bits,parity,stop_bits, invert_bits) \
 	(((parity == NONE_BITS) ? 0x0 : (UART_PARITY_EN | (parity & UART_PARITY))) | \
 	((stop_bits & UART_STOP_BIT_NUM) << UART_STOP_BIT_NUM_S) | \
-	((data_bits & UART_BIT_NUM) << UART_BIT_NUM_S))
+	((data_bits & UART_BIT_NUM) << UART_BIT_NUM_S) | \
+    ((invert_bits & UART_INVERT_BIT_NUM) << UART_INVERT_BIT_NUM_S))
 
 typedef enum {
     FIVE_BITS = 0x0,
@@ -161,6 +171,7 @@ typedef enum {
     STICK_PARITY_DIS   = 0,
     STICK_PARITY_EN    = BIT3 | BIT5
 } UartExistParity;
+
 
 typedef enum {
     BIT_RATE_300    = 300,

@@ -203,7 +203,7 @@ telnetUnwrap(serbridgeConnData *conn, uint8_t *inBuf, int len)
     case TN_setDataSize:
       if (c >= 5 && c <= 8) {
         flashConfig.data_bits = c - 5 + FIVE_BITS;
-        uart0_config(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits);
+        uart0_config(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits, flashConfig.pin_invert );
         configSave();
         os_printf("Telnet: %d bits/char\n", c);
       } else if (c == 0) {
@@ -558,8 +558,8 @@ serbridgeInitPins()
   mcu_reset_pin = flashConfig.reset_pin;
   mcu_isp_pin = flashConfig.isp_pin;
 #ifdef SERBR_DBG
-  os_printf("Serbridge pins: reset=%d isp=%d swap=%d\n",
-      mcu_reset_pin, mcu_isp_pin, flashConfig.swap_uart);
+  os_printf("Serbridge pins: reset=%d isp=%d swap=%d invert=%d\n",
+      mcu_reset_pin, mcu_isp_pin, flashConfig.swap_uart, flashConfig.pin_invert);
 #endif
 
   if (flashConfig.swap_uart) {
@@ -577,6 +577,12 @@ serbridgeInitPins()
     else                       PIN_PULLUP_DIS(PERIPHS_IO_MUX_U0RXD_U);
     system_uart_de_swap();
   }
+  //re-initialise invert pins
+
+  uint32_t conf = READ_PERI_REG(UART_CONF0(0));
+  conf &= ~(UART_INVERT_BIT_NUM << UART_INVERT_BIT_NUM_S);
+  conf |= (flashConfig.pin_invert & UART_INVERT_BIT_NUM) << UART_INVERT_BIT_NUM_S;
+  WRITE_PERI_REG(UART_CONF0(0), conf);
 
   // set both pins to 1 before turning them on so we don't cause a reset
   if (mcu_isp_pin >= 0)   GPIO_OUTPUT_SET(mcu_isp_pin, 1);

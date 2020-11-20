@@ -106,7 +106,7 @@ ajaxConsoleFormat(HttpdConnData *connData) {
     if (buff[1] == 'O') flashConfig.parity = ODD_BITS;
     if (buff[2] == '1') flashConfig.stop_bits = ONE_STOP_BIT;
     if (buff[2] == '2') flashConfig.stop_bits = TWO_STOP_BIT;
-    uart0_config(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits);
+    uart0_config(flashConfig.data_bits, flashConfig.parity, flashConfig.stop_bits, UART_NO_INVERT);
     status = configSave() ? 200 : 400;
   } else if (connData->requestType == HTTPD_METHOD_GET) {
     status = 200;

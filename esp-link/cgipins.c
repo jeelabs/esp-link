@@ -32,9 +32,9 @@ int ICACHE_FLASH_ATTR cgiPinsGet(HttpdConnData *connData) {
   int len;
 
   len = os_sprintf(buff,
-      "{ \"reset\":%d, \"isp\":%d, \"conn\":%d, \"ser\":%d, \"swap\":%d, \"rxpup\":%d }",
+      "{ \"reset\":%d, \"isp\":%d, \"conn\":%d, \"ser\":%d, \"swap\":%d, \"rxpup\":%d, \"pinvert\":%d }",
       flashConfig.reset_pin, flashConfig.isp_pin, flashConfig.conn_led_pin,
-      flashConfig.ser_led_pin, !!flashConfig.swap_uart, !!flashConfig.rx_pullup);
+      flashConfig.ser_led_pin, !!flashConfig.swap_uart, !!flashConfig.rx_pullup, flashConfig.pin_invert);
 
   jsonHeader(connData, 200);
   httpdSend(connData, buff, len);
@@ -49,13 +49,14 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
 
   int8_t ok = 0;
   int8_t reset, isp, conn, ser;
-  uint8_t swap, rxpup;
+  uint8_t swap, rxpup, pinvert;
   ok |= getInt8Arg(connData, "reset", &reset);
   ok |= getInt8Arg(connData, "isp", &isp);
   ok |= getInt8Arg(connData, "conn", &conn);
   ok |= getInt8Arg(connData, "ser", &ser);
   ok |= getBoolArg(connData, "swap", &swap);
   ok |= getBoolArg(connData, "rxpup", &rxpup);
+  ok |= getUInt8Arg(connData, "pinvert", &pinvert);
   if (ok < 0) return HTTPD_CGI_DONE;
 
   char *coll;
@@ -90,8 +91,9 @@ int ICACHE_FLASH_ATTR cgiPinsSet(HttpdConnData *connData) {
     flashConfig.ser_led_pin = ser;
     flashConfig.swap_uart = swap;
     flashConfig.rx_pullup = rxpup;
-    os_printf("Pins changed: reset=%d isp=%d conn=%d ser=%d swap=%d rx-pup=%d\n",
-	reset, isp, conn, ser, swap, rxpup);
+    flashConfig.pin_invert = pinvert;
+    os_printf("Pins changed: reset=%d isp=%d conn=%d ser=%d swap=%d rx-pup=%d pinvert=%X\n",
+	reset, isp, conn, ser, swap, rxpup, pinvert);
 
     // apply the changes
     serbridgeInitPins();
