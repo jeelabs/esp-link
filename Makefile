@@ -424,7 +424,7 @@ ifeq ("$(COMPRESS_W_HTMLCOMPRESSOR)","yes")
 $(BUILD_BASE)/espfs_img.o: tools/$(HTML_COMPRESSOR)
 endif
 
-$(BUILD_BASE)/espfs_img.o: html/ html/wifi/ espfs/mkespfsimage/mkespfsimage
+$(BUILD_BASE)/espfs_img.o: $(wildcard html/*) $(wildcard html/wifi/*) espfs/mkespfsimage/mkespfsimage
 	$(Q) rm -rf html_compressed; mkdir html_compressed; mkdir html_compressed/wifi;
 	$(Q) cp -r html/*.ico html_compressed;
 	$(Q) cp -r html/*.css html_compressed;
