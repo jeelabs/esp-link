@@ -255,9 +255,9 @@ CFLAGS	+= -Os -ggdb -std=c99 -Werror -Wpointer-arith -Wundef -Wall -Wl,-EL -fno-
 LDFLAGS		= -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--gc-sections
 
 # linker script used for the above linker step
-LD_SCRIPT 	:= build/eagle.esphttpd.v6.ld
-LD_SCRIPT1	:= build/eagle.esphttpd1.v6.ld
-LD_SCRIPT2	:= build/eagle.esphttpd2.v6.ld
+LD_SCRIPT 	:= $(BUILD_BASE)/eagle.esphttpd.v6.ld
+LD_SCRIPT1	:= $(BUILD_BASE)/eagle.esphttpd1.v6.ld
+LD_SCRIPT2	:= $(BUILD_BASE)/eagle.esphttpd2.v6.ld
 
 # various paths from the SDK used in this project
 SDK_LIBDIR	= lib
@@ -277,6 +277,9 @@ ELF_SIZE	:= $(XTENSA_TOOLS_ROOT)xtensa-lx106-elf-size
 SRC_DIR		:= $(MODULES)
 BUILD_DIR	:= $(addprefix $(BUILD_BASE)/,$(MODULES))
 
+ABS_BUILD_DIR := $(abspath $(BUILD_BASE))
+ABS_BASE_DIR  := $(abspath .)
+
 SDK_LIBDIR	:= $(addprefix $(SDK_BASE)/,$(SDK_LIBDIR))
 SDK_LDDIR 	:= $(addprefix $(SDK_BASE)/,$(SDK_LDDIR))
 SDK_INCDIR	:= $(addprefix -I$(SDK_BASE)/,$(SDK_INCDIR))
@@ -293,6 +296,7 @@ USER2_OUT 	:= $(addprefix $(BUILD_BASE)/,$(TARGET).user2.out)
 INCDIR		:= $(addprefix -I,$(SRC_DIR))
 EXTRA_INCDIR	:= $(addprefix -I,$(EXTRA_INCDIR))
 MODULE_INCDIR	:= $(addsuffix /include,$(INCDIR))
+
 
 V ?= $(VERBOSE)
 ifeq ("$(V)","1")
@@ -463,18 +467,18 @@ endif
 	    mv $$file- $$file; \
 	  done
 	$(Q) rm html_compressed/head-
-	$(Q) cd html_compressed; find . \! -name \*- | ../espfs/mkespfsimage/mkespfsimage > ../build/espfs.img; cd ..;
-	$(Q) ls -sl build/espfs.img
-	$(Q) cd build; $(OBJCP) -I binary -O elf32-xtensa-le -B xtensa --rename-section .data=.espfs \
-	  espfs.img espfs_img.o; cd ..
+	$(Q) cd html_compressed; find . \! -name \*- | ../espfs/mkespfsimage/mkespfsimage > $(ABS_BUILD_DIR)/espfs.img; cd ..;
+	$(Q) ls -sl $(ABS_BUILD_DIR)/espfs.img
+	$(Q) cd $(ABS_BUILD_DIR); $(OBJCP) -I binary -O elf32-xtensa-le -B xtensa --rename-section .data=.espfs \
+	  espfs.img espfs_img.o; cd $(ABS_BASE_DIR);
 
 # edit the loader script to add the espfs section to the end of irom with a 4 byte alignment.
 # we also adjust the sizes of the segments 'cause we need more irom0
-build/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld
+$(BUILD_BASE)/eagle.esphttpd1.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 		-e '/^  irom0_0_seg/ s/6B000/7C000/' \
 		$(SDK_LDDIR)/eagle.app.v6.new.1024.app1.ld >$@
-build/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld
+$(BUILD_BASE)/eagle.esphttpd2.v6.ld: $(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld
 	$(Q) sed -e '/\.irom\.text/{' -e 'a . = ALIGN (4);' -e 'a *(.espfs)' -e '}'  \
 		-e '/^  irom0_0_seg/ s/6B000/7C000/' \
 		$(SDK_LDDIR)/eagle.app.v6.new.1024.app2.ld >$@
