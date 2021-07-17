@@ -41,9 +41,7 @@ to do your editing in there. The steps are:
 - cd into the esp-link top directory
 - run `make` in docker while mounting your esp-link directory into the container:
   - linux: `docker run -v $PWD:/esp-link jeelabs/esp-link:latest`
-  - windows: `docker run -v c:\somepath\esp-link:/esp-link jeelabs/esp-link:latest`,
-    where `somepath` is the path to where you cloned esp-link, you probably end up with
-    something like `-v c:\Users\tve\source\esp-link:/esp-link`
+  - windows: `docker run -v %CD%:/esp-link jeelabs/esp-link:latest`
 - if you are not building esp-link `master` then read the release notes to see which version of
   the Espressif SDK you need and use that as tag for the container image, such as
   `jeelabs/esp-link:SDK2.0.0.p1`; you can see the list of available SDKs on
